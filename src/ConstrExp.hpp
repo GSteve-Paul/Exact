@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,7 +37,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
@@ -52,7 +62,7 @@ struct CePtr {
   // default constructor
   CePtr() : ce(nullptr) {}
   // regular constructor
-  CePtr(CE* c) : ce(c) {
+  explicit CePtr(CE* c) : ce(c) {
     if (ce) ce->increaseUsage();
   }
   // copy constructor
@@ -65,7 +75,7 @@ struct CePtr {
     if (ce) ce->increaseUsage();
   }
   // move constructor
-  CePtr(CePtr<CE>&& other) : ce{other.ce} { other.ce = nullptr; }
+  CePtr(CePtr<CE>&& other) noexcept : ce{other.ce} { other.ce = nullptr; }
   // move constructor allowing for polymorphism
   template <typename T, typename = std::enable_if_t<std::is_convertible_v<T&, CE&>>>
   CePtr(CePtr<T>&& other) : ce{other.ce} {
@@ -84,7 +94,7 @@ struct CePtr {
     return *this;
   }
   // move assignment operator
-  CePtr<CE>& operator=(CePtr<CE>&& other) {
+  CePtr<CE>& operator=(CePtr<CE>&& other) noexcept {
     if (this == &other) return *this;
     if (ce) ce->decreaseUsage();
     ce = other.ce;
@@ -95,17 +105,27 @@ struct CePtr {
   CE& operator*() const { return *ce; }
   CE* operator->() const { return ce; }
   explicit operator bool() const { return ce; }
+  void makeNull() {
+    if (ce) ce->decreaseUsage();
+    ce = nullptr;
+  }
 };
 
 struct ConstraintAllocator;
 class ConstrExpPools;
 class Solver;
+class Heuristic;
 
 struct ConstrExpSuper {
+  // protected:
+  // for some reason (templates?) copyTo_ cannot acces external vars and indexes if protected
   std::vector<Var> vars;
+  std::vector<int> index;  // -1 implies the variable has coefficient 0
+
+ public:
   Origin orig = Origin::UNKNOWN;
 
-  virtual ~ConstrExpSuper() {}
+  virtual ~ConstrExpSuper() = default;
 
   virtual void increaseUsage() = 0;
   virtual void decreaseUsage() = 0;
@@ -121,14 +141,21 @@ struct ConstrExpSuper {
   virtual std::unique_ptr<ConstrSimpleSuper> toSimple() const = 0;
 
   virtual void resize(size_t s) = 0;
-  virtual void resetBuffer(ID proofID = ID_Trivial) = 0;
+  virtual void resetBuffer(ID proofID) = 0;
   virtual void initializeLogging(std::shared_ptr<Logger>& l) = 0;
   virtual void stopLogging() = 0;
   virtual bool isReset() const = 0;
-  virtual void reset() = 0;
+  virtual void reset(bool partial) = 0;
+
+  virtual double getStrength() const = 0;
+  virtual int nVars() const { return vars.size(); }
+  virtual const std::vector<Var>& getVars() const { return vars; };
 
   virtual Lit getLit(Lit l) const = 0;
   virtual bool hasLit(Lit l) const = 0;
+  bool used(Var v) const { return index[v] >= 0; }
+  virtual bool saturatedLit(Lit l) const = 0;
+  virtual bool saturatedVar(Var v) const = 0;
 
   virtual void weaken(Var v) = 0;
   virtual void weakenLast() = 0;
@@ -137,42 +164,44 @@ struct ConstrExpSuper {
   virtual bool hasNegativeSlack(const IntSet& assumptions) const = 0;
   virtual bool isTautology() const = 0;
   virtual bool isInconsistency() const = 0;
-  virtual bool isSatisfied(const IntVecIt& level) const = 0;
+  virtual bool isSatisfied(const std::vector<Lit>& assignment) const = 0;
+  virtual unsigned int getLBD(const IntVecIt& level) const = 0;
 
-  virtual void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos, bool doSaturation = true) = 0;
+  virtual void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos) = 0;
   virtual bool hasNoUnits(const IntVecIt& level) const = 0;
   virtual void removeZeroes() = 0;
   virtual bool hasNoZeroes() const = 0;
 
-  virtual void saturate(const std::vector<Var>& vs, bool check = true) = 0;
-  virtual void saturate(bool check = true) = 0;
+  virtual void saturate(const std::vector<Var>& vs, bool check, bool sorted) = 0;
+  virtual void saturate(bool check, bool sorted) = 0;
   virtual bool isSaturated() const = 0;
-  virtual void saturateAndFixOverflow(const IntVecIt& level, bool fullWeakening, int bitOverflow, int bitReduce,
-                                      Lit asserting) = 0;
+  virtual void getSaturatedLits(IntSet& out) const = 0;
+  virtual void saturateAndFixOverflow(const IntVecIt& level, int bitOverflow, int bitReduce, Lit asserting) = 0;
   virtual void saturateAndFixOverflowRational(const std::vector<double>& lpSolution) = 0;
   virtual bool fitsInDouble() const = 0;
   virtual bool largestCoefFitsIn(int bits) const = 0;
 
-  virtual void weakenDivideRound(const IntVecIt& level, Lit l, bool slackdiv, bool fullWeakening) = 0;
-
   virtual bool divideByGCD() = 0;
-  virtual void postProcess(const IntVecIt& level, const std::vector<int>& pos, bool sortFirst, Stats& sts) = 0;
+  virtual void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst,
+                           Stats& sts) = 0;
   virtual AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const = 0;
-  virtual int getAssertionLevel(const IntVecIt& level, const std::vector<int>& pos) const = 0;
+  virtual std::pair<int, bool> getAssertionStatus(const IntVecIt& level, const std::vector<int>& pos) const = 0;
   virtual void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos, Stats& sts) = 0;
 
-  virtual bool simplifyToCardinality(bool equivalencePreserving) = 0;
-  virtual void simplifyToClause() = 0;
+  virtual bool simplifyToCardinality(bool equivalencePreserving, int cardDegree) = 0;
   virtual bool isCardinality() const = 0;
   virtual int getCardinalityDegree() const = 0;
+  virtual int getMaxStrengthCardinalityDegree(std::vector<int>& cardPoints) const = 0;
+  virtual void getCardinalityPoints(std::vector<int>& cardPoints) const = 0;
   virtual int getCardinalityDegreeWithZeroes() = 0;
-  virtual void simplifyToMinLengthCardinality() = 0;
+  virtual void simplifyToClause() = 0;
   virtual bool isClause() const = 0;
-  virtual void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker = [](Var, Var) {
-    return false;
-  }) = 0;
+
   virtual bool isSortedInDecreasingCoefOrder() const = 0;
-  virtual void sort(const std::function<bool(Var, Var)>& comp) = 0;
+  virtual void sortInDecreasingCoefOrder(const Heuristic& heur) = 0;
+  virtual void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) = 0;
+  virtual void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) = 0;
+  virtual void reverseOrder() = 0;
 
   virtual ID logAsInput() = 0;
   virtual ID logProofLine() = 0;
@@ -183,51 +212,61 @@ struct ConstrExpSuper {
   virtual void toStreamAsOPB(std::ostream& o) const = 0;
   virtual void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const = 0;
 
-  virtual void resolveWith(Ce32 c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos) = 0;
-  virtual void resolveWith(Ce64 c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos) = 0;
-  virtual void resolveWith(Ce96 c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos) = 0;
-  virtual void resolveWith(Ce128 c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos) = 0;
-  virtual void resolveWith(CeArb c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos) = 0;
-  virtual void resolveWith(const Clause& c, Lit l, IntSet* actSet, const IntVecIt& Level,
-                           const std::vector<int>& Pos) = 0;
-  virtual void resolveWith(const Cardinality& c, Lit l, IntSet* actSet, const IntVecIt& Level,
-                           const std::vector<int>& Pos) = 0;
+  virtual int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
+                          const std::vector<int>& pos) = 0;
+  virtual int resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual int resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual int resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual int resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual int resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
+                          const std::vector<int>& pos) = 0;
+  virtual int subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual int subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual int subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual int subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual int subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l,
+                          const IntVecIt& level, const std::vector<int>& pos) = 0;
 };
+std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce);
+std::ostream& operator<<(std::ostream& o, const CeSuper& ce);
 
-template <typename CE>
+template <typename SMALL, typename LARGE>
 class ConstrExpPool;
 
 template <typename SMALL, typename LARGE>  // LARGE should be able to fit sums of SMALL
 struct ConstrExp final : public ConstrExpSuper {
  private:
-  ConstrExpPool<ConstrExp<SMALL, LARGE>>& pool;
+  ConstrExpPool<SMALL, LARGE>& pool;
   long long usageCount = 0;
 
  public:
   LARGE degree = 0;
   LARGE rhs = 0;
   std::vector<SMALL> coefs;
-  std::vector<bool> used;
   std::stringstream proofBuffer;
   std::shared_ptr<Logger> plogger;
 
  private:
-  void remove(Var v);
+  void add(Var v, SMALL c, bool removeZeroes = false);
+  void remove(Var v);  // NOTE: modifies order of variables
   bool increasesSlack(const IntVecIt& level, Var v) const;
   LARGE calcDegree() const;
   LARGE calcRhs() const;
   bool testConstraint() const;
   bool falsified(const IntVecIt& level, Var v) const;
-  template <typename T>
-  std::string proofMult(const T& mult) {
-    std::stringstream ss;
-    if (mult != 1) ss << mult << " * ";
-    return ss.str();
-  }
-  void logIfUnit(Lit l, const SMALL& c, const IntVecIt& level, const std::vector<int>& pos);
 
  public:
-  ConstrExp(ConstrExpPool<ConstrExp<SMALL, LARGE>>& cep);
+  explicit ConstrExp(ConstrExpPool<SMALL, LARGE>& cep);
   void increaseUsage() {
     ++usageCount;
     assert(usageCount > 0);
@@ -246,31 +285,37 @@ struct ConstrExp final : public ConstrExpSuper {
   void copyTo(CeArb ce) const { copyTo_(ce); }
 
   CeSuper clone(ConstrExpPools& ce) const;
+  CePtr<ConstrExp<SMALL, LARGE>> cloneEmpty() const;
   CRef toConstr(ConstraintAllocator& ca, bool locked, ID id) const;
   std::unique_ptr<ConstrSimpleSuper> toSimple() const;
 
   void resize(size_t s);
-  void resetBuffer(ID proofID = ID_Trivial);
+  void resetBuffer(ID proofID);
   void initializeLogging(std::shared_ptr<Logger>& l);
   void stopLogging();
 
   bool isReset() const;
-  void reset();
+  void reset(bool partial);
 
+  double getStrength() const;
   LARGE getRhs() const;
   LARGE getDegree() const;
   SMALL getCoef(Lit l) const;
+  SMALL getLargestCoef(const std::vector<Var>& vs) const;
   SMALL getLargestCoef() const;
   SMALL getSmallestCoef() const;
   LARGE getCutoffVal() const;
   Lit getLit(Lit l) const;
   bool hasLit(Lit l) const;
+  bool saturatedLit(Lit l) const;
+  bool saturatedVar(Var v) const;
 
   void addRhs(const LARGE& r);
   void addLhs(const SMALL& cf, Lit l);  // TODO: Term?
   void weaken(const SMALL& m, Var v);
   void weaken(Var v);
   void weakenLast();
+  void popLast();
 
   LARGE getSlack(const IntVecIt& level) const;
   bool hasNegativeSlack(const IntVecIt& level) const;
@@ -278,29 +323,33 @@ struct ConstrExp final : public ConstrExpSuper {
   bool hasNegativeSlack(const IntSet& assumptions) const;
   bool isTautology() const;
   bool isInconsistency() const;
-  bool isSatisfied(const IntVecIt& level) const;
+  bool isSatisfied(const std::vector<Lit>& assignment) const;
+  unsigned int getLBD(const IntVecIt& level) const;
 
   // @post: preserves order of vars
-  void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos, bool doSaturation = true);
+  void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos);
   bool hasNoUnits(const IntVecIt& level) const;
   // @post: mutates order of vars
   void removeZeroes();
   bool hasNoZeroes() const;
 
   // @post: preserves order of vars
-  void saturate(const std::vector<Var>& vs, bool check = true);
-  void saturate(bool check = true);
+  void saturate(const std::vector<Var>& vs, bool check, bool sorted);
+  void saturate(bool check, bool sorted);
   bool isSaturated() const;
+  void getSaturatedLits(IntSet& out) const;
   /*
    * Fixes overflow
-   * @post: saturated
+   * @pre @post: hasNoZeroes()
+   * @pre @post: isSaturated()
    * @post: nothing else if bitOverflow == 0
    * @post: the largest coefficient is less than 2^bitOverflow
    * @post: the degree and rhs are less than 2^bitOverflow * INF
    * @post: if overflow happened, all division until 2^bitReduce happened
    * @post: the constraint remains conflicting or propagating on asserting
    */
-  void saturateAndFixOverflow(const IntVecIt& level, bool fullWeakening, int bitOverflow, int bitReduce, Lit asserting);
+  void fixOverflow(const IntVecIt& level, int bitOverflow, int bitReduce, const SMALL& largestCoef, Lit asserting);
+  void saturateAndFixOverflow(const IntVecIt& level, int bitOverflow, int bitReduce, Lit asserting);
   /*
    * Fixes overflow for rationals
    * @post: saturated
@@ -311,47 +360,38 @@ struct ConstrExp final : public ConstrExpSuper {
   bool largestCoefFitsIn(int bits) const;
 
   template <typename S, typename L>
-  void addUp(CePtr<ConstrExp<S, L>> c, const SMALL& cmult = 1, const SMALL& thismult = 1) {
+  void addUp(CePtr<ConstrExp<S, L>> c, const SMALL& cmult = 1) {
+    stats.NADDEDLITERALS += c->nVars();
     assert(cmult >= 1);
-    assert(thismult >= 1);
-    if (plogger) proofBuffer << proofMult(thismult) << c->proofBuffer.str() << proofMult(cmult) << "+ ";
-    if (thismult > 1) {
-      degree *= thismult;
-      rhs *= thismult;
-      for (Var v : vars) coefs[v] *= thismult;
-    }
+    if (plogger) Logger::proofMult(proofBuffer << c->proofBuffer.str(), cmult) << "+ ";
     rhs += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->rhs);
     degree += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->degree);
     for (Var v : c->vars) {
       assert(v < (Var)coefs.size());
       assert(v > 0);
       SMALL val = cmult * static_cast<SMALL>(c->coefs[v]);
-      if (!used[v]) {
-        assert(coefs[v] == 0);
-        vars.push_back(v);
-        coefs[v] = val;
-        used[v] = true;
-      } else {
-        if ((coefs[v] < 0) != (val < 0)) degree -= std::min(aux::abs(coefs[v]), aux::abs(val));
-        coefs[v] += val;
-      }
+      add(v, val, true);
     }
   }
 
   void invert();
   void multiply(const SMALL& m);
-  void divide(const LARGE& d);
   void divideRoundUp(const LARGE& d);
-  void weakenDivideRound(const IntVecIt& level, Lit l, bool slackdiv, bool fullWeakening);
-  void weakenNonDivisibleNonFalsifieds(const IntVecIt& level, const LARGE& div, bool fullWeakening, Lit asserting);
-  void applyMIR(const LARGE& d, std::function<Lit(Var)> toLit);
+  void weakenDivideRound(const LARGE& div, const IntVecIt& level, Lit asserting);
+  void weakenDivideRoundOrdered(const LARGE& div, const IntVecIt& level);
+  void weakenNonDivisibleNonFalsifieds(const IntVecIt& level, const LARGE& div, Lit asserting);
+  void repairOrder();
+  void weakenSuperfluous(const LARGE& div, bool sorted);
+  void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
   // NOTE: only equivalence preserving operations!
-  void postProcess(const IntVecIt& level, const std::vector<int>& pos, bool sortFirst, Stats& sts);
+  void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst,
+                   Stats& sts);
   AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const;
-  // @return: earliest decision level that propagates a variable
-  int getAssertionLevel(const IntVecIt& level, const std::vector<int>& pos) const;
+  // @return: latest decision level that does not make the constraint inconsistent
+  // @return: whether or not the constraint is asserting at that level
+  std::pair<int, bool> getAssertionStatus(const IntVecIt& level, const std::vector<int>& pos) const;
   // @post: preserves order after removeZeroes()
   void weakenNonImplied(const IntVecIt& level, const LARGE& slack, Stats& sts);
   // @post: preserves order after removeZeroes()
@@ -362,25 +402,31 @@ struct ConstrExp final : public ConstrExpSuper {
   // @post: preserves order
   template <typename T>
   void weakenSmalls(const T& limit) {
-    for (Var v : vars)
-      if (aux::abs(coefs[v]) < limit) weaken(v);
-    saturate();
+    for (Var v : vars) {
+      if (aux::abs(coefs[v]) < limit) {
+        weaken(v);
+      }
+    }
+    saturate(true, false);
   }
 
   LARGE absCoeffSum() const;
 
   // @post: preserves order of vars
-  bool simplifyToCardinality(bool equivalencePreserving);
+  bool simplifyToCardinality(bool equivalencePreserving, int cardDegree);
   bool isCardinality() const;
   int getCardinalityDegree() const;
+  int getMaxStrengthCardinalityDegree(std::vector<int>& cardPoints) const;
+  void getCardinalityPoints(std::vector<int>& cardPoints) const;
   int getCardinalityDegreeWithZeroes();
-  void simplifyToMinLengthCardinality();
   void simplifyToClause();
   bool isClause() const;
 
-  void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker = [](Var, Var) { return false; });
   bool isSortedInDecreasingCoefOrder() const;
-  void sort(const std::function<bool(Var, Var)>& comp);
+  void sortInDecreasingCoefOrder(const Heuristic& heur);
+  void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);
+  void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
+  void reverseOrder();
 
   ID logAsInput();
   ID logProofLine();
@@ -392,47 +438,227 @@ struct ConstrExp final : public ConstrExpSuper {
   void toStreamAsOPB(std::ostream& o) const;
   void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const;
 
-  void resolveWith(Ce32 c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos);
-  void resolveWith(Ce64 c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos);
-  void resolveWith(Ce96 c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos);
-  void resolveWith(Ce128 c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos);
-  void resolveWith(CeArb c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos);
-  void resolveWith(const Clause& c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos);
-  void resolveWith(const Cardinality& c, Lit l, IntSet* actSet, const IntVecIt& Level, const std::vector<int>& Pos);
+  int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
+                  const std::vector<int>& pos);
+  int resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
+                  const IntVecIt& level, const std::vector<int>& pos);
+  int resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
+                  const IntVecIt& level, const std::vector<int>& pos);
+  int resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
+                  const IntVecIt& level, const std::vector<int>& pos);
+  int resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
+                  const IntVecIt& level, const std::vector<int>& pos);
+  int resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
+                  const IntVecIt& level, const std::vector<int>& pos);
+  int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
+                  const std::vector<int>& pos);
+  int subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l, const IntVecIt& level,
+                  const std::vector<int>& pos);
+  int subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Lit l,
+                  const IntVecIt& level, const std::vector<int>& pos);
+  int subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l, const IntVecIt& level,
+                  const std::vector<int>& pos);
+  int subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l, const IntVecIt& level,
+                  const std::vector<int>& pos);
+  int subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l, const IntVecIt& level,
+                  const std::vector<int>& pos);
 
  private:
   template <typename CF, typename DG>
-  void genericResolve(CePtr<ConstrExp<CF, DG>> reason, Lit l, IntSet* actSet, const IntVecIt& Level,
-                      const std::vector<int>& Pos) {
-    assert(getCoef(-l) > 0);
-    stats.NADDEDLITERALS += reason->vars.size();
-    reason->removeUnitsAndZeroes(Level, Pos);
-    if (options.weakenNonImplying) reason->weakenNonImplying(Level, reason->getCoef(l), reason->getSlack(Level), stats);
-    reason->saturateAndFixOverflow(Level, (bool)options.weakenFull, options.bitsOverflow.get(),
-                                   options.bitsReduced.get(), l);
-    assert(reason->getCoef(l) > 0);
-    assert(reason->getCoef(l) > reason->getSlack(Level));
-    reason->weakenDivideRound(Level, l, (bool)options.slackdiv, (bool)options.weakenFull);
-    assert(reason->getCoef(l) > 0);
-    assert(reason->getSlack(Level) <= 0);
-    if (actSet != nullptr) {
-      for (Var v : reason->vars) {
-        Lit l = reason->getLit(v);
-        if (options.bumpLits) {
-          actSet->add(l);
+  void initFixOverflow(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o, const IntVecIt& level,
+                       const std::vector<int>& pos, Lit asserting) {
+    orig = o;
+    assert(size > 0);
+    DG div = 1;
+    int bitOverflow = options.bitsOverflow.get();
+    int bitReduce = options.bitsReduced.get();
+    if (bitOverflow > 0) {
+      DG _rhs = degr;
+      for (unsigned int i = 0; i < size; ++i) {
+        _rhs -= terms[i].l < 0 ? aux::abs(terms[i].c) : 0;
+      }
+      DG maxVal =
+          std::max<DG>(aux::abs(terms[0].c), std::max<DG>(degr, aux::abs(_rhs)) / INF);  // largest coef in front
+      if (maxVal > 0 && (int)aux::msb(maxVal) >= bitOverflow) {
+        div = aux::ceildiv<DG>(maxVal, aux::pow<DG>(2, bitReduce) - 1);
+      }
+    }
+    if (div == 1) {
+      for (unsigned int i = 0; i < size; ++i) {
+        assert(bitOverflow == 0 || (int)aux::msb(aux::ceildiv<DG>(aux::abs(terms[i].c), div)) < bitOverflow);
+        addLhs(static_cast<SMALL>(aux::abs(terms[i].c)), terms[i].l);
+      }
+      addRhs(static_cast<LARGE>(degr));
+    } else {
+      assert(div > 1);
+      DG weakenedDegree = degr;
+      for (unsigned int i = 0; i < size; ++i) {
+        Lit l = terms[i].l;
+        CF cf = aux::abs(terms[i].c);
+        if (!isFalse(level, l) && l != asserting) {
+          addLhs(static_cast<SMALL>(cf / div), l);  // partial weakening
+          weakenedDegree -= cf % div;
         } else {
-          if (!options.bumpOnlyFalse || isFalse(Level, l)) actSet->add(v);
-          if (options.bumpCanceling && getLit(v) == -l) actSet->add(-v);
+          assert((int)aux::msb(aux::ceildiv<DG>(cf, div)) < bitOverflow);
+          addLhs(static_cast<SMALL>(aux::ceildiv<DG>(cf, div)), l);
+        }
+      }
+      addRhs(static_cast<LARGE>(aux::ceildiv<DG>(weakenedDegree, div)));
+    }
+    if (plogger) {
+      resetBuffer(id);
+      if (div > 1) {
+        for (unsigned int i = 0; i < size; ++i) {
+          Lit l = terms[i].l;
+          if (!isFalse(level, l) && l != asserting && aux::abs(terms[i].c) % div != 0) {
+            Logger::proofWeaken(proofBuffer, l, -(aux::abs(terms[i].c) % div));
+          }
+        }
+        Logger::proofDiv(proofBuffer, div);
+      }
+    }
+    repairOrder();
+    removeUnitsAndZeroes(level, pos);
+    saturate(true, true);
+  }
+
+  template <typename CF, typename DG>
+  int genericResolve(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o, Lit asserting,
+                     const IntVecIt& level, const std::vector<int>& pos) {
+    assert(getCoef(-asserting) > 0);
+    assert(hasNoZeroes());
+
+    CePtr<ConstrExp<SMALL, LARGE>> reason = cloneEmpty();
+    reason->initFixOverflow(terms, size, degr, id, o, level, pos, asserting);
+    assert(reason->getCoef(asserting) > 0);
+    assert(reason->getCoef(asserting) > reason->getSlack(level));
+
+    const SMALL conflCoef = getCoef(-asserting);
+    const LARGE reasonSlack = reason->getSlack(level);
+    const SMALL reasonCoef = reason->getCoef(asserting);
+    if (reasonSlack <= 0 || static_cast<SMALL>(reasonSlack) * conflCoef < reasonCoef) {
+      reason->multiply(conflCoef);
+      reason->weakenDivideRoundOrdered(reasonCoef, level);
+    } else {
+      if (options.slackdiv) {
+        assert(reasonCoef / (reasonSlack + 1) < conflCoef);
+        reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
+        reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
+      } else {
+        SMALL gcd = aux::gcd(conflCoef, reasonCoef);
+        while (reasonCoef <= reasonSlack * gcd) {
+          if ((gcd % 2) == 0) {
+            gcd /= 2;
+          } else if ((gcd % 3) == 0) {
+            gcd /= 3;
+          } else if ((gcd % 5) == 0) {
+            gcd /= 5;
+          } else {
+            gcd = 1;
+            break;
+          }
+        }
+        assert(reasonCoef / gcd > reasonSlack);
+        reason->weakenDivideRoundOrdered(reasonCoef / gcd, level);
+        reason->multiply(conflCoef / gcd);
+      }
+    }
+
+    assert(reason->getCoef(asserting) >= conflCoef);
+    assert(reason->getCoef(asserting) < 2 * conflCoef);
+    assert(reason->getSlack(level) <= 0);
+    assert(options.slackdiv || conflCoef == reason->getCoef(asserting));
+
+    for (Var v : reason->vars) {
+      Lit ll = reason->getLit(v);
+      if (options.bumpLits) {
+        actSet.add(ll);
+      } else {
+        if (!options.bumpOnlyFalse || isFalse(level, ll)) actSet.add(v);
+        if (options.bumpCanceling && getLit(v) == -ll) actSet.add(-v);
+      }
+    }
+
+    LARGE oldDegree = getDegree();
+    addUp(reason);
+
+    SMALL largestCF = getLargestCoef(reason->vars);
+    if (oldDegree <= getDegree() && oldDegree <= largestCF) {
+      if (largestCF > getDegree()) {
+        saturate(reason->vars, false, false);
+        largestCF = static_cast<SMALL>(getDegree());
+      }
+    } else {
+      largestCF = getLargestCoef();
+      if (largestCF > getDegree()) {
+        saturate(false, false);
+        largestCF = static_cast<SMALL>(getDegree());
+      }
+    }
+    fixOverflow(level, options.bitsOverflow.get(), options.bitsReduced.get(), largestCF, 0);
+    assert(getCoef(-asserting) <= 0);
+    assert(hasNegativeSlack(level));
+
+    return getLBD(level);
+  }
+
+  //@post: variable vector vars is not changed, but coefs[toVar(toSubsume)] may become 0
+  template <typename CF, typename DG>
+  int genericSubsume(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Lit toSubsume,
+                     const IntVecIt& level, const std::vector<int>& pos) {
+    assert(getCoef(-toSubsume) > 0);
+
+    DG weakenedDeg = degr;
+    assert(weakenedDeg > 0);
+    for (unsigned int i = 0; i < size; ++i) {
+      Lit l = terms[i].l;
+      if (l != toSubsume && !saturatedLits.has(l) && !isUnit(level, -l)) {
+        weakenedDeg -= aux::abs(terms[i].c);
+        if (weakenedDeg <= 0) {
+          return 0;
         }
       }
     }
-    SMALL reason_coef_l = static_cast<SMALL>(reason->getCoef(l));  // NOTE: SMALL >= CF
-    SMALL confl_coef_l = getCoef(-l);
-    SMALL gcd_coef_l = aux::gcd(reason_coef_l, confl_coef_l);
-    addUp(reason, confl_coef_l / gcd_coef_l, reason_coef_l / gcd_coef_l);
-    saturateAndFixOverflow(Level, (bool)options.weakenFull, options.bitsOverflow.get(), options.bitsReduced.get(), 0);
-    assert(getCoef(-l) == 0);
-    assert(hasNegativeSlack(Level));
+    assert(weakenedDeg > 0);
+    SMALL& cf = coefs[toVar(toSubsume)];
+    const SMALL mult = aux::abs(cf);
+    if (cf < 0) {
+      rhs -= cf;
+    }
+    cf = 0;
+    saturatedLits.remove(-toSubsume);
+    ++stats.NSUBSUMESTEPS;
+
+    if (plogger) {
+      proofBuffer << id << " ";
+      for (unsigned int i = 0; i < size; ++i) {
+        Lit l = terms[i].l;
+        if (isUnit(level, -l)) {
+          assert(l != toSubsume);
+          Logger::proofWeakenFalseUnit(proofBuffer, plogger->unitIDs[pos[toVar(l)]], -aux::abs(terms[i].c));
+        } else if (l != toSubsume && !saturatedLits.has(l) && !isUnit(level, -l)) {
+          Logger::proofWeaken(proofBuffer, l, -aux::abs(terms[i].c));
+        }
+      }
+      // saturate, divide, multiply, add, saturate
+      Logger::proofMult(Logger::proofDiv(proofBuffer << "s ", weakenedDeg), mult) << "+ s ";
+    }
+
+    if (options.bumpLits || options.bumpCanceling) {
+      actSet.add(toSubsume);
+    }
+    assert(lbdSet.isEmpty());
+    for (unsigned int i = 0; i < size; ++i) {
+      Lit l = terms[i].l;
+      if (l == toSubsume || saturatedLits.has(l)) {
+        lbdSet.add(level[-l] % INF);
+      }
+    }
+    lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
+    int lbd = lbdSet.size();
+    lbdSet.clear();
+    assert(lbd > 0);
+    return lbd;
   }
 
   template <typename S, typename L>
@@ -446,9 +672,9 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(out->coefs.size() == coefs.size());
     for (Var v : vars) {
       out->coefs[v] = static_cast<S>(coefs[v]);
-      assert(used[v] == true);
-      assert(out->used[v] == false);
-      out->used[v] = true;
+      assert(used(v));
+      assert(!out->used(v));
+      out->index[v] = index[v];
     }
     if (plogger) {
       out->proofBuffer.str(std::string());
@@ -469,70 +695,58 @@ struct ConstrExp final : public ConstrExpSuper {
   }
 };
 
-template <typename S, typename L>
-std::ostream& operator<<(std::ostream& o, const ConstrExp<S, L>& C) {
-  std::vector<Var> vars = C.vars;
-  std::sort(vars.begin(), vars.end(), [](Var v1, Var v2) { return v1 < v2; });
-  for (Var v : vars) {
-    Lit l = C.coefs[v] < 0 ? -v : v;
-    o << C.getCoef(l) << "x" << l << " ";
-  }
-  o << ">= " << C.degree;
-  return o;
-}
-
-template <typename CE>
+template <typename SMALL, typename LARGE>
 class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessible to ConstrExpPool?
   size_t n = 0;
-  std::vector<CE*> ces;
-  std::vector<CE*> availables;
+  std::vector<ConstrExp<SMALL, LARGE>*> ces;
+  std::vector<ConstrExp<SMALL, LARGE>*> availables;
   std::shared_ptr<Logger> plogger;
 
  public:
   ~ConstrExpPool() {
-    for (CE* ce : ces) delete ce;
+    for (ConstrExp<SMALL, LARGE>* ce : ces) delete ce;
   }
 
   void resize(size_t newn) {
     assert(n <= INF);
     n = newn;
-    for (CE* ce : ces) ce->resize(n);
+    for (ConstrExp<SMALL, LARGE>* ce : ces) ce->resize(n);
   }
 
   void initializeLogging(std::shared_ptr<Logger>& lgr) {
     plogger = lgr;
-    for (CE* ce : ces) ce->initializeLogging(lgr);
+    for (ConstrExp<SMALL, LARGE>* ce : ces) ce->initializeLogging(lgr);
   }
 
-  CE* take() {
+  CePtr<ConstrExp<SMALL, LARGE>> take() {
     assert(ces.size() < 20);  // Sanity check that no large amounts of ConstrExps are created
     if (availables.size() == 0) {
-      ces.emplace_back(new CE(*this));
+      ces.emplace_back(new ConstrExp<SMALL, LARGE>(*this));
       ces.back()->resize(n);
       ces.back()->initializeLogging(plogger);
       availables.push_back(ces.back());
     }
-    CE* result = availables.back();
+    ConstrExp<SMALL, LARGE>* result = availables.back();
     availables.pop_back();
     assert(result->isReset());
     assert(result->coefs.size() == n);
-    return result;
+    return CePtr<ConstrExp<SMALL, LARGE>>(result);
   }
 
-  void release(CE* ce) {
-    assert(std::any_of(ces.begin(), ces.end(), [&](CE* i) { return i == ce; }));
-    assert(std::none_of(availables.begin(), availables.end(), [&](CE* i) { return i == ce; }));
-    ce->reset();
+  void release(ConstrExp<SMALL, LARGE>* ce) {
+    assert(std::any_of(ces.cbegin(), ces.cend(), [&](ConstrExp<SMALL, LARGE>* i) { return i == ce; }));
+    assert(std::none_of(availables.cbegin(), availables.cend(), [&](ConstrExp<SMALL, LARGE>* i) { return i == ce; }));
+    ce->reset(false);
     availables.push_back(ce);
   }
 };
 
 class ConstrExpPools {
-  ConstrExpPool<ConstrExp32> ce32s;
-  ConstrExpPool<ConstrExp64> ce64s;
-  ConstrExpPool<ConstrExp96> ce96s;
-  ConstrExpPool<ConstrExp128> ce128s;
-  ConstrExpPool<ConstrExpArb> ceArbs;
+  ConstrExpPool<int, long long> ce32s;
+  ConstrExpPool<long long, int128> ce64s;
+  ConstrExpPool<int128, int128> ce96s;
+  ConstrExpPool<int128, int256> ce128s;
+  ConstrExpPool<bigint, bigint> ceArbs;
 
  public:
   void resize(size_t newn);

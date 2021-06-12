@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,7 +37,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
@@ -37,12 +47,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace rs {
 
 struct CRef {
-  uint32_t ofs;
+  uint32_t ofs = std::numeric_limits<uint32_t>::max();
   bool operator==(CRef const& o) const { return ofs == o.ofs; }
   bool operator!=(CRef const& o) const { return ofs != o.ofs; }
   bool operator<(CRef const& o) const { return ofs < o.ofs; }
-  std::ostream& operator<<(std::ostream& os) { return os << ofs; }
 };
+inline std::ostream& operator<<(std::ostream& o, const CRef& c) { return o << c.ofs; }
+
 const CRef CRef_Undef = {std::numeric_limits<uint32_t>::max()};
 
 // TODO: make below methods part of a Solver object that's passed around
@@ -50,8 +61,10 @@ inline bool isTrue(const IntVecIt& level, Lit l) { return level[l] != INF; }
 inline bool isFalse(const IntVecIt& level, Lit l) { return level[-l] != INF; }
 inline bool isUnit(const IntVecIt& level, Lit l) { return level[l] == 0; }
 inline bool isUnknown(const std::vector<int>& pos, Lit l) { return pos[toVar(l)] == INF; }
-inline bool isDecided(const std::vector<CRef>& reasons, Lit l) { return reasons[toVar(l)] == CRef_Undef; }
-inline bool isPropagated(const std::vector<CRef>& reasons, Lit l) { return !isDecided(reasons, l); }
+inline bool isKnown(const std::vector<int>& pos, Lit l) { return pos[toVar(l)] != INF; }
+// NOTE: below assumes isKnown(position,l)
+inline bool isDecided(const std::vector<CRef>& reasons, Var v) { return reasons[v] == CRef_Undef; }
+inline bool isPropagated(const std::vector<CRef>& reasons, Lit l) { return !isDecided(reasons, toVar(l)); }
 
 struct Watch {
   CRef cref;
@@ -80,36 +93,23 @@ struct ConstraintAllocator {
     capacity(at);
     return (C*)(memory + oldAt);
   }
-  Constr& operator[](CRef cr) { return (Constr&)*(memory + cr.ofs); }
-  const Constr& operator[](CRef cr) const { return (Constr&)*(memory + cr.ofs); }
+  Constr& operator[](CRef cr) const { return (Constr&)*(memory + cr.ofs); }
 };
 
-class OutOfMemoryException {};
+class OutOfMemoryException : public std::exception {};
 static inline void* xrealloc(void* ptr, size_t size) {
   void* mem = realloc(ptr, size);
-  if (mem == NULL && errno == ENOMEM)
+  if (mem == nullptr && errno == ENOMEM)
     throw OutOfMemoryException();
   else
     return mem;
 }
 
-// ---------------------------------------------------------------------
-// Order heap
-
-struct OrderHeap {  // segment tree (fast implementation of priority queue).
-  std::vector<ActValV>& activity;
-  int cap = 0;
-  std::vector<Var> tree = {-1, -1};
-
-  OrderHeap(std::vector<ActValV>& a) : activity(a) {}
-
-  void resize(int newsize);
-  void recalculate();
-  void percolateUp(Var x);
-  bool empty() const;
-  bool inHeap(Var x) const;
-  void insert(Var x);
-  Var removeMax();
-};
-
 }  // namespace rs
+
+namespace std {
+template <>
+struct hash<rs::CRef> {
+  size_t operator()(rs::CRef const& cr) const noexcept { return cr.ofs; }
+};
+}  // namespace std

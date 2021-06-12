@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,74 +37,127 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #include "quit.hpp"
 #include <iostream>
 #include "Solver.hpp"
+#include "aux.hpp"
 #include "globals.hpp"
 
 namespace rs {
 
-void quit::printSol(const std::vector<Lit>& sol) {
-  printf("v");
-  for (Var v = 1; v < (Var)sol.size() - stats.NAUXVARS; ++v) printf(sol[v] > 0 ? " x%d" : " -x%d", v);
-  printf("\n");
-}
-
-void quit::printSolAsOpb(const std::vector<Lit>& sol) {
-  for (Var v = 1; v < (Var)sol.size() - stats.NAUXVARS; ++v) {
-    if (sol[v] > 0)
-      std::cout << "+1 x" << v << " >= 1 ;\n";
-    else
-      std::cout << "-1 x" << v << " >= 0 ;\n";
+void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) {
+  std::cout << pre;
+  for (Lit l : lits) {
+    if (l == 0 || (onlyPositive && l < 0)) continue;
+    std::cout << " " << l;
   }
+  std::cout << std::endl;
 }
 
-void quit::exit_SAT(const Solver& solver) {
-  assert(solver.foundSolution());
-  if (solver.logger) solver.logger->flush();
-  if (options.verbosity.get() > 0) stats.print();
-  puts("s SATISFIABLE");
-  if (options.printSol) printSol(solver.lastSol);
-  exit(10);
-}
-
-template <typename LARGE>
-void quit::exit_UNSAT(const Solver& solver, const LARGE& bestObjVal) {
-  if (solver.logger) solver.logger->flush();
-  if (options.verbosity.get() > 0) stats.print();
-  if (solver.foundSolution()) {
-    std::cout << "o " << bestObjVal << std::endl;
-    std::cout << "s OPTIMUM FOUND" << std::endl;
-    if (options.printSol) printSol(solver.lastSol);
-    exit(30);
+void quit::printLitsMaxsat(const std::vector<Lit>& lits, const Solver& solver) {
+  std::cout << "v ";
+  if (options.outputMode.is("maxsatnew")) {
+    for (Var v = 1; v <= solver.maxSatVars; ++v) {
+      std::cout << (lits[v] > 0);
+    }
   } else {
-    puts("s UNSATISFIABLE");
-    exit(20);
+    assert(options.outputMode.is("maxsat"));
+    for (Var v = 1; v <= solver.maxSatVars; ++v) {
+      std::cout << lits[v] << " ";
+    }
+  }
+  std::cout << std::endl;
+}
+
+void quit::printFormula(Solver& solver) {
+  int nbConstraints = 0;
+  for (const CRef& cr : solver.getRawConstraints()) {
+    const Constr& c = solver.getCA()[cr];
+    nbConstraints +=
+        c.getOrigin() == Origin::FORMULA && !c.isMarkedForDelete() && !c.isSatisfiedAtRoot(solver.getLevel());
+  }
+  std::cout << "* #variable= " << solver.getNbOrigVars() << " #constraint= " << nbConstraints << "\n";
+  if (solver.hasObjective()) {
+    std::cout << "min: ";
+    for (Var v : solver.objective->vars) {
+      std::cout << (solver.objective->coefs[v] < 0 ? "" : "+") << solver.objective->coefs[v] << " x" << v << " ";
+    }
+    std::cout << ";\n";
+  }
+  for (Lit l : solver.getUnits()) {
+    if (toVar(l) > solver.getNbOrigVars()) continue;
+    std::cout << "+1 " << (l < 0 ? "~x" : "x") << toVar(l) << " >= 1 ;"
+              << "\n";
+  }
+  for (const CRef& cr : solver.getRawConstraints()) {
+    const Constr& c = solver.getCA()[cr];
+    if (c.getOrigin() == Origin::FORMULA && !c.isMarkedForDelete() && !c.isSatisfiedAtRoot(solver.getLevel())) {
+      CeSuper ce = c.toExpanded(solver.cePools);
+      ce->toStreamAsOPB(std::cout);
+      std::cout << "\n";
+    }
   }
 }
-template void quit::exit_UNSAT<int>(const Solver& solver, const int& bestObjVal);
-template void quit::exit_UNSAT<long long>(const Solver& solver, const long long& bestObjVal);
-template void quit::exit_UNSAT<int128>(const Solver& solver, const int128& bestObjVal);
-template void quit::exit_UNSAT<int256>(const Solver& solver, const int256& bestObjVal);
-template void quit::exit_UNSAT<bigint>(const Solver& solver, const bigint& bestObjVal);
 
-void quit::exit_UNSAT(const Solver& solver) { quit::exit_UNSAT<int>(solver, 0); }
-
-void quit::exit_INDETERMINATE(const Solver& solver) {
-  if (solver.foundSolution()) exit_SAT(solver);
-  if (solver.logger) solver.logger->flush();
+void quit::printFinalStats(Solver& solver) {
   if (options.verbosity.get() > 0) stats.print();
-  puts("s UNKNOWN");
-  exit(0);
+  if (options.printCsvData) stats.printCsvLine();
+  if (options.printOpb) printFormula(solver);
+}
+
+void quit::exit_SUCCESS(Solver& solver) {
+  if (solver.logger) solver.logger->flush();
+  if (solver.foundSolution()) {
+    if (options.printUnits) printLits(solver.getUnits(), 'u', false);
+    if (options.printSol) printLits(solver.getLastSolution(), 'v', true);
+    if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew"))
+      printLitsMaxsat(solver.getLastSolution(), solver);
+    std::cout << "o " << solver.getBestObjSoFar() << "\n";
+    printFinalStats(solver);
+    std::cout << "s OPTIMUM FOUND" << std::endl;
+    rs::aux::flushexit(30);
+  } else {
+    printFinalStats(solver);
+    std::cout << "s UNSATISFIABLE" << std::endl;
+    rs::aux::flushexit(20);
+  }
+}
+
+void quit::exit_INDETERMINATE(Solver& solver) {
+  if (solver.logger) solver.logger->flush();
+  if (options.printUnits) printLits(solver.getUnits(), 'u', false);
+  if (solver.foundSolution()) {
+    if (options.printSol) printLits(solver.getLastSolution(), 'v', true);
+    std::cout << "c best so far " << solver.getBestObjSoFar() << "\n";
+    printFinalStats(solver);
+    if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew")) {
+      printLitsMaxsat(solver.getLastSolution(), solver);
+      std::cout << "o " << solver.getBestObjSoFar() << "\n";
+      std::cout << "s UNKNOWN" << std::endl;
+    } else {
+      std::cout << "s SATISFIABLE" << std::endl;
+    }
+    rs::aux::flushexit(10);
+  } else {
+    printFinalStats(solver);
+    if (!options.noSolve) std::cout << "s UNKNOWN" << std::endl;
+    rs::aux::flushexit(0);
+  }
 }
 
 void quit::exit_ERROR(const std::initializer_list<std::string>& messages) {
   std::cout << "Error: ";
   for (const std::string& m : messages) std::cout << m;
   std::cout << std::endl;
-  exit(1);
+  rs::aux::flushexit(1);
+}
+
+void quit::checkInterrupt() {
+  if (asynch_interrupt || (options.timeout.get() > 0 && stats.getTime() > options.timeout.get()) ||
+      (options.timeoutDet.get() > 0 && stats.getDetTime() > options.timeoutDet.get()))
+    throw asynchInterrupt;
 }
 
 }  // namespace rs

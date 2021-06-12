@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,7 +37,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
@@ -40,14 +50,16 @@ namespace rs {
 class Solver;
 
 namespace quit {
-void printSol(const std::vector<Lit>& sol);
-void printSolAsOpb(const std::vector<Lit>& sol);
-void exit_SAT(const Solver& solver);
-template <typename LARGE>
-void exit_UNSAT(const Solver& solver, const LARGE& bestObjVal);
-void exit_UNSAT(const Solver& solver);
-void exit_INDETERMINATE(const Solver& solver);
+
+void printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive);
+void printLitsMaxsat(const std::vector<Lit>& lits, const Solver& solver);
+void printFinalStats(Solver& solver);
+void printFormula(Solver& solver);
+void exit_SUCCESS(Solver& solver);
+void exit_INDETERMINATE(Solver& solver);
 void exit_ERROR(const std::initializer_list<std::string>& messages);
+
+void checkInterrupt();
 }  // namespace quit
 
 }  // namespace rs

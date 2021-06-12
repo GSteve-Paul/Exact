@@ -1,3 +1,13 @@
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
 /***********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2020, Jo Devriendt
@@ -30,12 +40,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include <iostream>
-#include <unordered_map>
-#include "gpl_3_0.hpp"
-#include "lgpl_3_0.hpp"
+#include <string>
 
 namespace licenses {
-void printLicense(std::string licenseName);
+void printLicense(const std::string& licenseName);
 void printUsed();
 }  // namespace licenses

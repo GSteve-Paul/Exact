@@ -39,61 +39,42 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
-#include "ConstrSimple.hpp"
-#include "ConstrExp.hpp"
+#include "aux.hpp"
 
-namespace rs {
+namespace rs::aux {
 
-template <typename CF, typename DG>
-CeSuper ConstrSimple<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
-  // TODO: make this the minimal bitwidth expanded constraint?
-  CePtr<ConstrExp<CF, DG>> ce = cePools.take<CF, DG>();
-  ce->addRhs(rhs);
-  for (const Term<CF>& t : terms) {
-    ce->addLhs(t.c, t.l);
-  }
-  ce->orig = orig;
-  if (ce->plogger) {
-    ce->proofBuffer.str(std::string());
-    ce->proofBuffer << proofLine;
-  }
-  return ce;
+namespace rng {
+
+uint32_t seed = 1;
+
+uint32_t xorshift32() {
+  /* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
+  seed ^= seed << 13;
+  seed ^= seed >> 17;
+  seed ^= seed << 5;
+  return seed;
 }
 
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toNormalFormLit() {
-  for (Term<CF>& t : terms) {
-    if (t.c < 0) {
-      rhs -= t.c;
-      t.c = -t.c;
-      t.l = -t.l;
-    }
+}  // namespace rng
+
+uint32_t getRand(uint32_t min, uint32_t max) {
+  assert(min < max);
+  return min + (rng::xorshift32() % (max - min));
+}
+
+uint64_t hash(uint64_t x) {
+  x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+  x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
+  x = x ^ (x >> 31);
+  return x;
+}
+
+uint64_t hashForSet(const std::vector<int>& ints) {
+  uint64_t result = ints.size();
+  for (int i : ints) {
+    result ^= hash(i);
   }
+  return result;
 }
 
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toNormalFormVar() {
-  for (Term<CF>& t : terms) {
-    if (t.l < 0) {
-      rhs -= t.c;
-      t.c = -t.c;
-      t.l = -t.l;
-    }
-  }
-}
-
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::reset() {
-  orig = Origin::UNKNOWN;
-  terms.clear();
-  rhs = 0;
-  proofLine = (std::to_string(ID_Trivial) + " ");
-}
-
-template struct ConstrSimple<int, long long>;
-template struct ConstrSimple<long long, int128>;
-template struct ConstrSimple<int128, int128>;
-template struct ConstrSimple<int128, int256>;
-template struct ConstrSimple<bigint, bigint>;
-
-}  // namespace rs
+}  // namespace rs::aux

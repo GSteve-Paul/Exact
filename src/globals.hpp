@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,10 +37,12 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
+#include <random>
+#include "IntSet.hpp"
 #include "Options.hpp"
 #include "Stats.hpp"
 
@@ -39,5 +51,10 @@ namespace rs {
 extern bool asynch_interrupt;
 extern Options options;
 extern Stats stats;
+
+extern IntSet tmpSet;
+extern IntSet actSet;
+extern IntSet lbdSet;
+extern IntSet saturatedLits;
 
 }  // namespace rs

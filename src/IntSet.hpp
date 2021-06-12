@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,7 +37,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
@@ -38,12 +48,12 @@ namespace rs {
 struct IntSet {  // TODO: template to long long, int128, ...?
  private:
   std::vector<int> keys;
-  std::vector<int> _index = {-1};
+  std::vector<int> _index;
   std::vector<int>::iterator index = _index.begin();
   static constexpr int _unused_() { return -1; }
   const int resize_factor = 2;
 
-  bool check() {
+  [[nodiscard]] bool check() const {
     for (int i = 0; i < (int)_index.size() / 2; ++i) {
       assert(index[i] == _unused_() || i == keys[index[i]]);
       assert(index[-i] == _unused_() || -i == keys[index[-i]]);
@@ -53,7 +63,7 @@ struct IntSet {  // TODO: template to long long, int128, ...?
   }
 
  public:
-  IntSet() {}
+  IntSet() = default;
   IntSet(int size, const std::vector<int>& ints) {
     resize(size);
     for (int i : ints) add(i);
@@ -73,18 +83,20 @@ struct IntSet {  // TODO: template to long long, int128, ...?
   }
 
   void resize(int size) { aux::resizeIntMap(_index, index, size, resize_factor, _unused_()); }
-  size_t size() const { return keys.size(); }
-  bool isEmpty() const { return size() == 0; }
+  [[nodiscard]] size_t size() const { return keys.size(); }
+  [[nodiscard]] bool isEmpty() const { return size() == 0; }
 
   void clear() {
-    assert(check());  // TODO: disable
+    //    assert(check());  // test
     for (int k : keys) index[k] = _unused_();
     keys.clear();
   }
 
-  const std::vector<int>& getKeys() const { return keys; }
+  [[nodiscard]] const std::vector<int>& getKeys() const { return keys; }
 
-  bool has(int key) const { return _index.size() > (unsigned int)2 * std::abs(key) && index[key] != _unused_(); }
+  [[nodiscard]] bool has(int key) const {
+    return _index.size() > (unsigned int)2 * std::abs(key) && index[key] != _unused_();
+  }
 
   void add(int key) {
     if (_index.size() <= (unsigned int)2 * std::abs(key)) resize(std::abs(key));
@@ -102,12 +114,14 @@ struct IntSet {  // TODO: template to long long, int128, ...?
     index[key] = _unused_();
     assert(!has(key));
   }
-
-  std::ostream& operator<<(std::ostream& o) const {
-    for (int k : keys)
-      if (has(k)) o << k << " ";
-    return o;
-  }
 };
+inline std::ostream& operator<<(std::ostream& o, const IntSet& s) {
+  for (int k : s.getKeys()) {
+    if (s.has(k)) {
+      o << k << " ";
+    }
+  }
+  return o;
+}
 
 }  // namespace rs

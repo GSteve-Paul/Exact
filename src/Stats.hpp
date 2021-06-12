@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,7 +37,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
@@ -36,136 +46,423 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
+struct Stat {
+  long double z;
+  std::string name;
+};
+
+inline std::ostream& operator<<(std::ostream& o, const Stat& stat) {
+  o << stat.name << " ";
+  return aux::prettyPrint(o, stat.z);
+}
+
+inline void operator++(Stat& stat) { stat.z++; }
+inline void operator--(Stat& stat) { stat.z--; }
+template <typename IN>
+Stat& operator+=(Stat& stat, const IN& rhs) {
+  stat.z += static_cast<long double>(rhs);
+  return stat;
+}
+template <typename IN>
+Stat& operator-=(Stat& stat, const IN& rhs) {
+  stat.z -= static_cast<long double>(rhs);
+  return stat;
+}
+template <typename IN>
+long double operator+(const Stat& stat, const IN& in) {
+  return stat.z + static_cast<long double>(in);
+}
+template <typename IN>
+long double operator+(const IN& in, const Stat& stat) {
+  return static_cast<long double>(in) + stat.z;
+}
+inline long double operator+(const Stat& x, const Stat& y) { return x.z + y.z; }
+template <typename IN>
+long double operator-(const Stat& stat, const IN& in) {
+  return stat.z - static_cast<long double>(in);
+}
+template <typename IN>
+long double operator-(const IN& in, const Stat& stat) {
+  return static_cast<long double>(in) - stat.z;
+}
+inline long double operator-(const Stat& x, const Stat& y) { return x.z - y.z; }
+template <typename IN>
+long double operator*(const Stat& stat, const IN& in) {
+  return stat.z * static_cast<long double>(in);
+}
+template <typename IN>
+long double operator*(const IN& in, const Stat& stat) {
+  return static_cast<long double>(in) * stat.z;
+}
+inline long double operator*(const Stat& x, const Stat& y) { return x.z * y.z; }
+template <typename IN>
+long double operator/(const Stat& stat, const IN& in) {
+  return stat.z / static_cast<long double>(in);
+}
+template <typename IN>
+long double operator/(const IN& in, const Stat& stat) {
+  return static_cast<long double>(in) / stat.z;
+}
+inline long double operator/(const Stat& x, const Stat& y) { return x.z / y.z; }
+template <typename IN>
+bool operator==(const Stat& stat, const IN& in) {
+  return stat.z == static_cast<long double>(in);
+}
+template <typename IN>
+bool operator==(const IN& in, const Stat& stat) {
+  return static_cast<long double>(in) == stat.z;
+}
+inline bool operator==(const Stat& x, const Stat& y) { return x.z == y.z; }
+template <typename IN>
+bool operator>(const Stat& stat, const IN& in) {
+  return stat.z > static_cast<long double>(in);
+}
+template <typename IN>
+bool operator>(const IN& in, const Stat& stat) {
+  return static_cast<long double>(in) > stat.z;
+}
+inline bool operator>(const Stat& x, const Stat& y) { return x.z > y.z; }
+template <typename IN>
+bool operator<(const Stat& stat, const IN& in) {
+  return stat.z < static_cast<long double>(in);
+}
+template <typename IN>
+bool operator<(const IN& in, const Stat& stat) {
+  return static_cast<long double>(in) < stat.z;
+}
+inline bool operator<(const Stat& x, const Stat& y) { return x.z < y.z; }
+template <typename IN>
+bool operator<=(const Stat& stat, const IN& in) {
+  return stat.z <= static_cast<long double>(in);
+}
+template <typename IN>
+bool operator<=(const IN& in, const Stat& stat) {
+  return static_cast<long double>(in) <= stat.z;
+}
+inline bool operator<=(const Stat& x, const Stat& y) { return x.z <= y.z; }
+template <typename IN>
+bool operator>=(const Stat& stat, const IN& in) {
+  return stat.z >= static_cast<long double>(in);
+}
+template <typename IN>
+bool operator>=(const IN& in, const Stat& stat) {
+  return static_cast<long double>(in) >= stat.z;
+}
+inline bool operator>=(const Stat& x, const Stat& y) { return x.z >= y.z; }
+
 struct Stats {
-  long long NTRAILPOPS = 0, NWATCHLOOKUPS = 0, NWATCHLOOKUPSBJ = 0, NWATCHCHECKS = 0, NPROPCHECKS = 0,
-            NADDEDLITERALS = 0;
-  long long NCONFL = 0, NDECIDE = 0, NPROP = 0, NPROPCLAUSE = 0, NPROPCARD = 0, NPROPWATCH = 0, NPROPCOUNTING = 0,
-            NRESOLVESTEPS = 0;
-  long long NWATCHED = 0, NCOUNTING = 0;
-  int128 EXTERNLENGTHSUM = 0, LEARNEDLENGTHSUM = 0;
-  bigint EXTERNDEGREESUM = 0, LEARNEDDEGREESUM = 0;
-  long long NCLAUSESEXTERN = 0, NCARDINALITIESEXTERN = 0, NGENERALSEXTERN = 0;
-  long long NCLAUSESLEARNED = 0, NCARDINALITIESLEARNED = 0, NGENERALSLEARNED = 0;
-  long long NGCD = 0, NCARDDETECT = 0, NCORECARDINALITIES = 0, NCORES = 0, NSOLS = 0;
-  long long NWEAKENEDNONIMPLYING = 0, NWEAKENEDNONIMPLIED = 0;
-  long long NRESTARTS = 0, NCLEANUP = 0;
-  double STARTTIME = 0;
-  long long NORIGVARS = 0, NAUXVARS = 0;
-  long long NCONSFORMULA = 0, NCONSLEARNED = 0, NCONSBOUND = 0, NCONSCOREGUIDED = 0;
-  long long NENCFORMULA = 0, NENCLEARNED = 0, NENCBOUND = 0, NENCCOREGUIDED;
+  Stat NTRAILPOPS{0, "trail pops"};
+  Stat NWATCHLOOKUPS{0, "watch lookups"};
+  Stat NWATCHLOOKUPSBJ{0, "watch backjump lookups"};
+  Stat NWATCHCHECKS{0, "watch checks"};
+  Stat NPROPCHECKS{0, "propagation checks"};
+  Stat NADDEDLITERALS{0, "literal additions"};
+  Stat NSATURATESTEPS{0, "saturation steps"};
 
-  long long NLPADDEDROWS = 0, NLPDELETEDROWS = 0;
-  long long NLPPIVOTSINTERNAL = 0, NLPPIVOTSROOT = 0, NLPNOPIVOT = 0, NLPRESETBASIS = 0;
-  double LPSOLVETIME = 0, LPTOTALTIME = 0;
-  long long NLPCALLS = 0, NLPOPTIMAL = 0, NLPINFEAS = 0, NLPFARKAS = 0;
-  long long NLPCYCLING = 0, NLPNOPRIMAL = 0, NLPNOFARKAS = 0, NLPSINGULAR = 0, NLPOTHER = 0;
-  long long NLPGOMORYCUTS = 0, NLPLEARNEDCUTS = 0, NLPLEARNEDFARKAS = 0, NLPDELETEDCUTS = 0;
-  long long NLPENCGOMORY = 0, NLPENCFARKAS = 0, NLPENCLEARNEDFARKAS = 0;
+  Stat NCONFL{0, "conflicts"};
+  Stat NDECIDE{0, "decisions"};
+  Stat NPROP{0, "propagations"};
+  Stat NPROPCLAUSE{0, "clausal propagations"};
+  Stat NPROPCARD{0, "cardinality propagations"};
+  Stat NPROPWATCH{0, "watched propagations"};
+  Stat NPROPCOUNTING{0, "counting propagations"};
+  Stat NRESOLVESTEPS{0, "resolve steps"};
+  Stat NSUBSUMESTEPS{0, "self-subsumptions"};
+  Stat NWATCHED{0, "watched constraints"};
+  Stat NCOUNTING{0, "counting constraints"};
 
-  long long UNITCORES = 0, SINGLECORES = 0, REMOVEDBLOCKS = 0, FIRSTCOREBEST = 0, DECCOREBEST = 0, NOCOREBEST = 0,
-            COREDEGSUM = 0, CORESLACKSUM = 0;
+  Stat EXTERNLENGTHSUM{0, "input length sum"};
+  Stat EXTERNDEGREESUM{0, "input degree sum"};
+  Stat EXTERNSTRENGTHSUM{0, "input strength sum"};
+  Stat LEARNEDLENGTHSUM{0, "learned length sum"};
+  Stat LEARNEDDEGREESUM{0, "learned degree sum"};
+  Stat LEARNEDSTRENGTHSUM{0, "learned strength sum"};
+  Stat LEARNEDLBDSUM{0, "learned LBD sum"};
 
-  double SOLVETIME = 0, SOLVETIMECG = 0, CATIME = 0, PROPTIME = 0;
-  double RUNSTARTTIME = 0;
+  Stat NUNITS{0, "unit literals derived"};
+  Stat NHARDENINGS{0, "hardened literals"};
+  Stat NPURELITS{0, "pure literals"};
+  Stat NSATISFIEDSREMOVED{0, "constraints satisfied at root"};
 
-  inline double getTime() const { return aux::cpuTime() - STARTTIME; }
-  inline double getRunTime() const { return aux::cpuTime() - RUNSTARTTIME; }
-  inline double getSolveTime() const { return SOLVETIME + SOLVETIMECG; }
+  Stat NPROBINGLITS{0, "unit lits due to probing"};
+  Stat NPROBINGS{0, "probing calls"};
+  Stat PROBETIME{0, "probing inprocessing time"};
+  Stat ATMOSTONES{0, "detected at-most-ones"};
+  Stat ATMOSTONETIME{0, "at-most-one detection time"};
+  Stat NATMOSTONEUNITS{0, "units derived during at-most-one detection"};
+  Stat ATMOSTONEDETTIME{0, "at-most-one detection deterministic time"};
 
-  inline long long getDetTime() const {
-    return 1 + NADDEDLITERALS + NWATCHLOOKUPS + NWATCHLOOKUPSBJ + NWATCHCHECKS + NPROPCHECKS + NPROP + NTRAILPOPS +
-           NDECIDE + NLPPIVOTSROOT + NLPPIVOTSINTERNAL;
+  Stat STARTTIME{0, "start time"};
+  Stat PARSETIME{0, "parse time"};
+  Stat SOLVETIMEFREE{0, "free solve time"};
+  Stat SOLVETIMEASSUMP{0, "assumption solve time"};
+  Stat CATIME{0, "conflict analysis time"};
+  Stat MINTIME{0, "learned minimize time"};
+  Stat PROPTIME{0, "propagation time"};
+  Stat RUNSTARTTIME{0, "solve start time"};
+  Stat LPDETTIME{0, "LP deterministic time"};
+  Stat DETTIMEFREE{0, "deterministic free solve time"};
+  Stat DETTIMEASSUMP{0, "deterministic assumption solve time"};
+  Stat TABUTIME{0, "local search time"};
+  Stat TABUDETTIME{0, "deterministic local search time"};
+
+  Stat NCLAUSESEXTERN{0, "input clauses"};
+  Stat NCARDINALITIESEXTERN{0, "input cardinalities"};
+  Stat NGENERALSEXTERN{0, "input general constraints"};
+  Stat NCLAUSESLEARNED{0, "learned clauses"};
+  Stat NCARDINALITIESLEARNED{0, "learned cardinalities"};
+  Stat NGENERALSLEARNED{0, "learned general constraints"};
+
+  Stat NCLEANUP{0, "inprocessing phases"};
+  Stat NRESTARTS{0, "restarts"};
+  Stat NCORES{0, "cores"};
+  Stat NSOLS{0, "solutions"};
+  Stat NGCD{0, "gcd simplifications"};
+  Stat NCARDDETECT{0, "detected cardinalities"};
+  Stat NWEAKENEDNONIMPLYING{0, "weakened non-implying"};
+  Stat NWEAKENEDNONIMPLIED{0, "weakened non-implied"};
+  Stat NORIGVARS{0, "original variables"};
+  Stat NAUXVARS{0, "auxiliary variables"};
+
+  Stat NCONSFORMULA{0, "formula constraints"};
+  Stat NCONSLEARNED{0, "learned constraints"};
+  Stat NCONSBOUND{0, "bound constraints"};
+  Stat NCONSCOREGUIDED{0, "core-guided constraints"};
+  Stat NCONSDOMBREAKER{0, "dominance breaking constraints"};
+  Stat NCONSREDUCED{0, "reduced constraints"};
+  Stat NENCFORMULA{0, "encountered formula constraints"};
+  Stat NENCDOMBREAKER{0, "encountered dominance breaking constraints"};
+  Stat NENCLEARNED{0, "encountered learned constraints"};
+  Stat NENCBOUND{0, "encountered bound constraints"};
+  Stat NENCCOREGUIDED{0, "encountered core-guided constraints"};
+  Stat NENCREDUCED{0, "encountered reduced constraints"};
+  Stat NENCDETECTEDAMO{0, "encountered detected at-most-ones"};
+
+  Stat LPSOLVETIME{0, "LP solve time"};
+  Stat LPTOTALTIME{0, "LP total time"};
+
+  Stat NLPADDEDROWS{0, "LP constraints added"};
+  Stat NLPDELETEDROWS{0, "LP constraints removed"};
+  Stat NLPPIVOTS{0, "LP pivots"};
+  Stat NLPOPERATIONS{0, "LP approximate operations"};
+  Stat NLPADDEDLITERALS{0, "LP literal additions"};
+  Stat NLPNOPIVOT{0, "LP no pivot count"};
+  Stat NLPRESETBASIS{0, "LP basis resets"};
+  Stat NLPCALLS{0, "LP calls"};
+  Stat NLPOPTIMAL{0, "LP optimalities"};
+  Stat NLPINFEAS{0, "LP infeasibilities"};
+  Stat NLPFARKAS{0, "LP Farkas constraints"};
+  Stat NLPDUAL{0, "LP dual constraints"};
+  Stat NLPCYCLING{0, "LP cycling count"};
+  Stat NLPNOPRIMAL{0, "LP no primal count"};
+  Stat NLPNODUAL{0, "LP no dual count"};
+  Stat NLPNOFARKAS{0, "LP no farkas count"};
+  Stat NLPSINGULAR{0, "LP singular count"};
+  Stat NLPOTHER{0, "LP other issue count"};
+  Stat NLPGOMORYCUTS{0, "LP Gomory cuts"};
+  Stat NLPLEARNEDCUTS{0, "LP learned cuts"};
+  Stat NLPDELETEDCUTS{0, "LP deleted cuts"};
+  Stat NLPENCGOMORY{0, "LP encountered Gomory constraints"};
+  Stat NLPENCFARKAS{0, "LP encountered Farkas constraints"};
+  Stat NLPENCDUAL{0, "LP encountered dual constraints"};
+
+  Stat NCGUNITCORES{0, "CG unit cores"};
+  Stat NCGNONCLAUSALCORES{0, "CG non-clausal cores"};
+  Stat NCGCOREREUSES{0, "CG additional cardinalities from a core"};
+
+  // derived statistics
+  Stat DETTIME{0, "deterministic time"};
+  Stat CPUTIME{0, "cpu time"};
+  Stat SOLVETIME{0, "solve time"};
+  Stat OPTTIME{0, "optimization time"};
+  Stat CLEANUPTIME{0, "constraint cleanup time"};
+  Stat INPROCESSTIME{0, "inprocessing time"};
+  Stat GCTIME{0, "garbage collection time"};
+  Stat LEARNTIME{0, "constraint learning time"};
+
+  Stat EXTERNLENGTHAVG{0, "input length average"};
+  Stat EXTERNDEGREEAVG{0, "input degree average"};
+  Stat EXTERNSTRENGTHAVG{0, "input strength average"};
+  Stat LEARNEDLENGTHAVG{0, "learned length average"};
+  Stat LEARNEDDEGREEAVG{0, "learned degree average"};
+  Stat LEARNEDSTRENGTHAVG{0, "learned strength average"};
+  Stat LEARNEDLBDAVG{0, "learned LBD average"};
+
+  Stat TABUSOLS{0, "solutions found by local search"};
+  Stat TABUFLIPS{0, "number of local search literal flips"};
+  Stat NTABUUNITS{0, "units derived during local search"};
+
+  void setDerivedStats() {
+    DETTIME.z = getDetTime();
+    CPUTIME.z = getTime();
+    SOLVETIME.z = getSolveTime();
+    OPTTIME.z = getRunTime() - SOLVETIME;
+    LPDETTIME.z = getLpDetTime();
+
+    long double nonLearneds = NCLAUSESEXTERN + NCARDINALITIESEXTERN + NGENERALSEXTERN;
+    EXTERNLENGTHAVG.z = (nonLearneds == 0 ? 0 : EXTERNLENGTHSUM / nonLearneds);
+    EXTERNDEGREEAVG.z = (nonLearneds == 0 ? 0 : EXTERNDEGREESUM / nonLearneds);
+    EXTERNSTRENGTHAVG.z = (nonLearneds == 0 ? 0 : EXTERNSTRENGTHSUM / nonLearneds);
+    long double learneds = NCLAUSESLEARNED + NCARDINALITIESLEARNED + NGENERALSLEARNED;
+    LEARNEDLENGTHAVG.z = (learneds == 0 ? 0 : LEARNEDLENGTHSUM / learneds);
+    LEARNEDDEGREEAVG.z = (learneds == 0 ? 0 : LEARNEDDEGREESUM / learneds);
+    LEARNEDSTRENGTHAVG.z = (learneds == 0 ? 0 : LEARNEDSTRENGTHSUM / learneds);
+    LEARNEDLBDAVG.z = (learneds == 0 ? 0 : LEARNEDLBDSUM / learneds);
   }
 
-  void print() const {
-    printf("c cpu time %g s\n", getTime());
-    printf("c deterministic time %lld %.2e\n", getDetTime(), (double)getDetTime());
-    printf("c optimization time %g s\n", getRunTime() - getSolveTime());
-    printf("c total solve time %g s\n", getSolveTime());
-    printf("c core-guided solve time %g s\n", SOLVETIMECG);
-    printf("c propagation time %g s\n", PROPTIME);
-    printf("c conflict analysis time %g s\n", CATIME);
-    printf("c propagations %lld\n", NPROP);
-    printf("c resolve steps %lld\n", NRESOLVESTEPS);
-    printf("c decisions %lld\n", NDECIDE);
-    printf("c conflicts %lld\n", NCONFL);
-    printf("c restarts %lld\n", NRESTARTS);
-    printf("c inprocessing phases %lld\n", NCLEANUP);
-    printf("c input clauses %lld\n", NCLAUSESEXTERN);
-    printf("c input cardinalities %lld\n", NCARDINALITIESEXTERN);
-    printf("c input general constraints %lld\n", NGENERALSEXTERN);
-    long long nonLearneds = NCLAUSESEXTERN + NCARDINALITIESEXTERN + NGENERALSEXTERN;
-    printf("c input average constraint length %.2f\n", nonLearneds == 0 ? 0 : (double)EXTERNLENGTHSUM / nonLearneds);
-    printf("c input average constraint degree %.2f\n", nonLearneds == 0 ? 0 : (double)EXTERNDEGREESUM / nonLearneds);
-    printf("c learned clauses %lld\n", NCLAUSESLEARNED);
-    printf("c learned cardinalities %lld\n", NCARDINALITIESLEARNED);
-    printf("c learned general constraints %lld\n", NGENERALSLEARNED);
-    long long learneds = NCLAUSESLEARNED + NCARDINALITIESLEARNED + NGENERALSLEARNED;
-    printf("c learned average constraint length %.2f\n", learneds == 0 ? 0 : (double)LEARNEDLENGTHSUM / learneds);
-    printf("c learned average constraint degree %.2f\n", learneds == 0 ? 0 : (double)LEARNEDDEGREESUM / learneds);
-    printf("c watched constraints %lld\n", NWATCHED);
-    printf("c counting constraints %lld\n", NCOUNTING);
-    printf("c gcd simplifications %lld\n", NGCD);
-    printf("c detected cardinalities %lld\n", NCARDDETECT);
-    printf("c weakened non-implied lits %lld\n", NWEAKENEDNONIMPLIED);
-    printf("c weakened non-implying lits %lld\n", NWEAKENEDNONIMPLYING);
-    printf("c original variables %lld\n", NORIGVARS);
-    printf("c clausal propagations %lld\n", NPROPCLAUSE);
-    printf("c cardinality propagations %lld\n", NPROPCARD);
-    printf("c watched propagations %lld\n", NPROPWATCH);
-    printf("c counting propagations %lld\n", NPROPCOUNTING);
-    printf("c watch lookups %lld\n", NWATCHLOOKUPS);
-    printf("c watch backjump lookups %lld\n", NWATCHLOOKUPSBJ);
-    printf("c watch checks %lld\n", NWATCHCHECKS);
-    printf("c propagation checks %lld\n", NPROPCHECKS);
-    printf("c constraint additions %lld\n", NADDEDLITERALS);
-    printf("c trail pops %lld\n", NTRAILPOPS);
-    printf("c formula constraints %lld\n", NCONSFORMULA);
-    printf("c learned constraints %lld\n", NCONSLEARNED);
-    printf("c bound constraints %lld\n", NCONSBOUND);
-    printf("c core-guided constraints %lld\n", NCONSCOREGUIDED);
-    printf("c encountered formula constraints %lld\n", NENCFORMULA);
-    printf("c encountered learned constraints %lld\n", NENCLEARNED);
-    printf("c encountered bound constraints %lld\n", NENCBOUND);
-    printf("c encountered core-guided constraints %lld\n", NENCCOREGUIDED);
-    printf("c LP total time %g s\n", LPTOTALTIME);
-    printf("c LP solve time %g s\n", LPSOLVETIME);
-    printf("c LP constraints added %lld\n", NLPADDEDROWS);
-    printf("c LP constraints removed %lld\n", NLPDELETEDROWS);
-    printf("c LP pivots internal %lld\n", NLPPIVOTSINTERNAL);
-    printf("c LP pivots root %lld\n", NLPPIVOTSROOT);
-    printf("c LP calls %lld\n", NLPCALLS);
-    printf("c LP optimalities %lld\n", NLPOPTIMAL);
-    printf("c LP no pivot count %lld\n", NLPNOPIVOT);
-    printf("c LP infeasibilities %lld\n", NLPINFEAS);
-    printf("c LP valid Farkas constraints %lld\n", NLPFARKAS);
-    printf("c LP learned Farkas constraints %lld\n", NLPLEARNEDFARKAS);
-    printf("c LP basis resets %lld\n", NLPRESETBASIS);
-    printf("c LP cycling count %lld\n", NLPCYCLING);
-    printf("c LP singular count %lld\n", NLPSINGULAR);
-    printf("c LP no primal count %lld\n", NLPNOPRIMAL);
-    printf("c LP no farkas count %lld\n", NLPNOFARKAS);
-    printf("c LP other issue count %lld\n", NLPOTHER);
-    printf("c LP Gomory cuts %lld\n", NLPGOMORYCUTS);
-    printf("c LP learned cuts %lld\n", NLPLEARNEDCUTS);
-    printf("c LP deleted cuts %lld\n", NLPDELETEDCUTS);
-    printf("c LP encountered Gomory constraints %lld\n", NLPENCGOMORY);
-    printf("c LP encountered Farkas constraints %lld\n", NLPENCFARKAS);
-    printf("c LP encountered learned Farkas constraints %lld\n", NLPENCLEARNEDFARKAS);
-    printf("c CG auxiliary variables introduced %lld\n", NAUXVARS);
-    printf("c CG solutions found %lld\n", NSOLS);
-    printf("c CG cores constructed %lld\n", NCORES);
-    printf("c CG core cardinality constraints returned %lld\n", NCORECARDINALITIES);
-    printf("c CG unit cores %lld\n", UNITCORES);
-    printf("c CG single cores %lld\n", SINGLECORES);
-    printf("c CG blocks removed during cardinality reduction %lld\n", REMOVEDBLOCKS);
-    printf("c CG first core best %lld\n", FIRSTCOREBEST);
-    printf("c CG decision core best %lld\n", DECCOREBEST);
-    printf("c CG core reduction tie %lld\n", NOCOREBEST);
-    printf("c CG core degree average %.2f\n",
-           (NCORES - UNITCORES) == 0 ? 0 : COREDEGSUM / (double)(NCORES - UNITCORES));
-    printf("c CG core slack average %.2f\n",
-           (NCORES - UNITCORES) == 0 ? 0 : CORESLACKSUM / (double)(NCORES - UNITCORES));
+  const std::vector<Stat*> statsToDisplay = {
+      &DETTIME,
+      &CPUTIME,
+      &PARSETIME,
+      &SOLVETIME,
+      &OPTTIME,
+      &SOLVETIMEFREE,
+      &SOLVETIMEASSUMP,
+      &CATIME,
+      &MINTIME,
+      &PROPTIME,
+      &CLEANUPTIME,
+      &INPROCESSTIME,
+      &GCTIME,
+      &LEARNTIME,
+      &TABUTIME,
+      &ATMOSTONETIME,
+      &LPSOLVETIME,
+      &LPTOTALTIME,
+      &LPDETTIME,
+      &DETTIMEFREE,
+      &DETTIMEASSUMP,
+      &TABUDETTIME,
+      &ATMOSTONEDETTIME,
+      &NCORES,
+      &NSOLS,
+      &NPROP,
+      &NDECIDE,
+      &NCONFL,
+      &NRESTARTS,
+      &NCLEANUP,
+      &NORIGVARS,
+      &NAUXVARS,
+      &NCLAUSESEXTERN,
+      &NCARDINALITIESEXTERN,
+      &NGENERALSEXTERN,
+      &EXTERNLENGTHAVG,
+      &EXTERNDEGREEAVG,
+      &EXTERNSTRENGTHAVG,
+      &NCLAUSESLEARNED,
+      &NCARDINALITIESLEARNED,
+      &NGENERALSLEARNED,
+      &LEARNEDLENGTHAVG,
+      &LEARNEDDEGREEAVG,
+      &LEARNEDSTRENGTHAVG,
+      &LEARNEDLBDAVG,
+      &NUNITS,
+      &NHARDENINGS,
+      &NPURELITS,
+      &NSATISFIEDSREMOVED,
+      &NPROBINGLITS,
+      &NPROBINGS,
+      &PROBETIME,
+      &ATMOSTONES,
+      &NATMOSTONEUNITS,
+      &NWATCHED,
+      &NCOUNTING,
+      &NRESOLVESTEPS,
+      &NSUBSUMESTEPS,
+      &NGCD,
+      &NCARDDETECT,
+      &NWEAKENEDNONIMPLIED,
+      &NWEAKENEDNONIMPLYING,
+      &NPROPCLAUSE,
+      &NPROPCARD,
+      &NPROPWATCH,
+      &NPROPCOUNTING,
+      &NWATCHLOOKUPS,
+      &NWATCHLOOKUPSBJ,
+      &NWATCHCHECKS,
+      &NPROPCHECKS,
+      &NADDEDLITERALS,
+      &NSATURATESTEPS,
+      &NTRAILPOPS,
+      &NCONSFORMULA,
+      &NCONSDOMBREAKER,
+      &NCONSLEARNED,
+      &NCONSBOUND,
+      &NCONSCOREGUIDED,
+      &NCONSREDUCED,
+      &NENCFORMULA,
+      &NENCDOMBREAKER,
+      &NENCLEARNED,
+      &NENCBOUND,
+      &NENCCOREGUIDED,
+      &NENCREDUCED,
+      &NENCDETECTEDAMO,
+      &NLPADDEDROWS,
+      &NLPDELETEDROWS,
+      &NLPPIVOTS,
+      &NLPOPERATIONS,
+      &NLPADDEDLITERALS,
+      &NLPCALLS,
+      &NLPOPTIMAL,
+      &NLPNOPIVOT,
+      &NLPINFEAS,
+      &NLPFARKAS,
+      &NLPDUAL,
+      &NLPRESETBASIS,
+      &NLPCYCLING,
+      &NLPSINGULAR,
+      &NLPNOPRIMAL,
+      &NLPNODUAL,
+      &NLPNOFARKAS,
+      &NLPOTHER,
+      &NLPGOMORYCUTS,
+      &NLPLEARNEDCUTS,
+      &NLPDELETEDCUTS,
+      &NLPENCGOMORY,
+      &NLPENCFARKAS,
+      &NLPENCDUAL,
+      &NCGUNITCORES,
+      &NCGNONCLAUSALCORES,
+      &NCGCOREREUSES,
+      &TABUSOLS,
+      &TABUFLIPS,
+      &NTABUUNITS,
+  };
+
+  [[nodiscard]] inline long double getTime() const { return aux::cpuTime() - STARTTIME; }
+  [[nodiscard]] inline long double getRunTime() const { return aux::cpuTime() - RUNSTARTTIME; }
+  [[nodiscard]] inline long double getSolveTime() const { return SOLVETIMEFREE + SOLVETIMEASSUMP; }
+  // NOTE: below linear relations were determined by regression tests on experimental data,
+  // so that the deterministic time correlates as closely as possible with the cpu time
+  [[nodiscard]] inline long double getLpDetTime() const { return 1 + NLPOPERATIONS + 113.4 * NLPADDEDLITERALS; }
+  [[nodiscard]] inline long double getNonLpDetTime() const {
+    return 1 + 3.4 * NWATCHCHECKS + 4.1 * NPROPCHECKS + 17.7 * (NADDEDLITERALS - NLPADDEDLITERALS) + 72.5 * NTRAILPOPS;
+  }
+  [[nodiscard]] inline long double getDetTime() const { return getLpDetTime() + getNonLpDetTime(); }
+
+  void print() {
+    setDerivedStats();
+    for (Stat* s : statsToDisplay) {
+      std::cout << "c " << *s << std::endl;
+    }
+  }
+
+  void printCsvLine() {
+    setDerivedStats();
+    std::cout << "c csvline";
+    for (Stat* s : statsToDisplay) {
+      aux::prettyPrint(std::cout << ",", s->z);
+    }
+    std::cout << std::endl;
+  }
+
+  void printCsvHeader() {
+    setDerivedStats();
+    std::cout << "c csvheader";
+    for (Stat* s : statsToDisplay) {
+      std::cout << "," << s->name;
+    }
+    std::cout << std::endl;
   }
 };
 

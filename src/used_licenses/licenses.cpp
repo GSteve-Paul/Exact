@@ -1,3 +1,13 @@
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
 /***********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2020, Jo Devriendt
@@ -29,87 +39,65 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ***********************************************************************/
 
 #include "licenses.hpp"
+#include <cassert>
 #include <iomanip>
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include "EPL.hpp"
 #include "MIT.hpp"
 #include "boost.hpp"
-#include "gpl_3_0.hpp"
-#include "lgpl_3_0.hpp"
 #include "roundingsat.hpp"
 #include "zib_academic.hpp"
 
 namespace licenses {
-class LicenseStore {
- private:
-  std::unordered_map<std::string, const char*> map;
 
- public:
-  LicenseStore() {
-    map.insert({
-        {"GPL-3.0", gpl_3_0},
-        {"LGPL-3.0", lgpl_3_0},
-        {"GMP", lgpl_3_0},
-        {"MIT", MIT},
-        {"RoundingSAT", roundingsat},
-        {"Boost", boost},
-        {"ZIB_Academic", zib_academic},
-        {"Soplex", zib_academic},
-    });
-  }
-
-  const char* get(std::string licenseName) {
-    auto result = map.find(licenseName);
-    if (result != map.end()) {
-      return result->second;
-    }
-    return "License not found, note that license names are case sensitive.";
-  }
-};
-
-class Tool {
- public:
+struct Codebase {
   std::string shortName;
   std::string info;
   std::string licenseName;
 };
 
-std::vector<Tool> usedTools() {
-  std::vector<Tool> result = {
-      {"RoundingSAT", "The source code of RoundingSAT", "MIT"},
-#ifdef WITHGMP
-      {"GMP", "GNU Multiple Precision Arithmetic Library", "LGPL-3.0"},
-#endif
-      {"Boost", "Boost", "Boost"},
+std::vector<Codebase> usedCodebases = {
+    {"Exact", "The source code of Exact", "MIT"},
+    {"RoundingSat", "The source code of RoundingSat", "RS, MIT"},
+    {"Boost", "Boost library", "Boost"},
 #ifdef WITHSOPLEX
-      {"Soplex", "Soplex", "ZIB_Academic"},
+    {"SoPlex", "SoPlex LP solver", "ZIB"},
 #endif
-  };
-  return result;
-}
+#ifdef WITHCOINUTILS
+    {"Coin-OR Utils", "Coin-OR Utils library", "EPL"},
+#endif
+};
 
-void printLicense(std::string licenseName) {
-  LicenseStore store;
-  std::cout << store.get(licenseName) << std::endl;
+void printLicense(const std::string& lic) {
+  std::unordered_map<std::string, const char*> lic2text;
+  lic2text.insert({
+      {"RS", roundingsat},
+      {"MIT", MIT},
+      {"Boost", boost},
+#ifdef WITHSOPLEX
+      {"ZIB", zib_academic},
+#endif
+#ifdef WITHCOINUTILS
+      {"EPL", EPL},
+#endif
+  });
+
+  assert(lic2text.find(lic) != lic2text.end());
+  std::cout << lic2text.find(lic)->second << std::endl;
 }
 
 void printUsed() {
-  std::vector<Tool> used = usedTools();
-  std::cout << "The following libraries / tools are contained." << std::endl;
-  std::cout << "Use --license=[toolName] or --license=[licenseName]  "
-            << "to display the license text. " << std::endl;
-  std::cout << "Note that the license that applies to the binary depends on "
-            << "the tools used. Please refer to the license text to deterimin "
-            << "which license applies." << std::endl;
-
-  std::cout << std::setw(20) << "Library / Tool" << std::setw(15) << "License"
+  std::cout << "The following codebases are used in this binary." << std::endl;
+  std::cout << std::setw(20) << "Codebase" << std::setw(15) << "License(s)"
             << "   "
             << "Information" << std::endl;
-
-  for (Tool tool : used) {
-    std::cout << std::setw(20) << tool.shortName << std::setw(15) << tool.licenseName << "   " << tool.info
-              << std::endl;
+  for (Codebase& cb : usedCodebases) {
+    std::cout << std::setw(20) << cb.shortName << std::setw(15) << cb.licenseName << "   " << cb.info << std::endl;
   }
+  std::cout << "Note that the license that applies to this binary depends on the tools used.\n"
+               "Use --license=[license name] to display the corresponding license text."
+            << std::endl;
 }
 }  // namespace licenses

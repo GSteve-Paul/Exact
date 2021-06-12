@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,7 +37,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
@@ -58,13 +68,13 @@ enum class LpStatus { INFEASIBLE, OPTIMAL, PIVOTLIMIT, UNDETERMINED };
 struct RowData {
   ID id;
   bool removable;
-  RowData(){};
+  RowData() = default;
   RowData(ID i, bool r) : id(i), removable(r){};
 };
 
 struct AdditionData {
   ConstrSimple64 cs;
-  bool removable;
+  bool removable = false;
 };
 
 struct BoundData {
@@ -81,10 +91,10 @@ struct CandidateCut {
   double norm = 1;
   double ratSlack = 0;
 
-  CandidateCut(){};
-  CandidateCut(CeSuper in, const std::vector<double>& sol);
+  CandidateCut() = default;
+  CandidateCut(const CeSuper& in, const std::vector<double>& sol);
   CandidateCut(const Constr& in, CRef cr, const std::vector<double>& sol, ConstrExpPools& pools);
-  double cosOfAngleTo(const CandidateCut& other) const;
+  [[nodiscard]] double cosOfAngleTo(const CandidateCut& other) const;
 
  private:
   void initialize(const std::vector<double>& sol);
@@ -101,7 +111,15 @@ class LpSolver {
 
   double lpPivotMult = 1;
   constexpr static double INFTY = 1e100;
-  constexpr static double maxMult = 1e15;  // sufficiently large to reduce rounding errors
+  constexpr static double maxMult = 1e22;  // fits in 74 bits
+  // we use 128 bit coefficients to calculate dual constraints.
+  // 1 sign bit
+  // 52 bits for the coefficients
+  // x bits for the number of non-zero multiplied constraints
+  // 74-x bits for the max dual multiplier
+  // +++ 127 bits total, 1 to preempt off-by-one errors
+  bool madeInternalCall = false;
+  bool canInProcess() const { return madeInternalCall && (options.lpGomoryCuts || options.lpLearnedCuts); }
 
   soplex::DVectorReal lpSol;
   std::vector<double> lpSolution;
@@ -119,13 +137,13 @@ class LpSolver {
   std::vector<CandidateCut> candidateCuts;
 
  public:
-  LpSolver(Solver& solver, const CeArb objective);
+  explicit LpSolver(Solver& solver);
   void setNbVariables(int n);
 
-  std::pair<LpStatus, CeSuper> checkFeasibility(bool inProcessing = false);  // TODO: don't use objective function here?
+  LpStatus checkFeasibility(bool inProcessing);  // TODO: don't use objective function here?
   void inProcess();
 
-  void addConstraint(CeSuper c, bool removable, bool upperbound = false, bool lowerbound = false);
+  void addConstraint(const CeSuper& c, bool removable, bool upperbound = false, bool lowerbound = false);
   void addConstraint(CRef cr, bool removable, bool upperbound = false, bool lowerbound = false);
 
  private:
@@ -138,7 +156,7 @@ class LpSolver {
   void resetBasis();
   CeSuper createLinearCombinationFarkas(soplex::DVectorReal& mults);
   CandidateCut createLinearCombinationGomory(soplex::DVectorReal& mults);
-  double getScaleFactor(soplex::DVectorReal& mults, bool removeNegatives);
+  static double getScaleFactor(soplex::DVectorReal& mults, bool removeNegatives);
   Ce64 rowToConstraint(int row);
   void constructGomoryCandidates();
   void constructLearnedCandidates();
@@ -152,25 +170,25 @@ class LpSolver {
 
 #else
 
-// TODO: check correspondence to above
 class LpSolver {
  public:
   // LpSolver([[maybe_unused]] Solver& slvr, [[maybe_unused]] const CeArb objective){
   // See https://stackoverflow.com/questions/52263141/maybe-unused-and-constructors
-  LpSolver(Solver& slvr, const CeArb objective) {
+  LpSolver(Solver& slvr, const CeArb& objective) {
     _unused(slvr);
     _unused(objective);
   };
   void setNbVariables([[maybe_unused]] int n){};
 
-  std::pair<LpStatus, CeSuper> checkFeasibility([[maybe_unused]] bool inProcessing = false) {
+  LpStatus checkFeasibility([[maybe_unused]] bool inProcessing) {
     assert(false);
-    return {LpStatus::UNDETERMINED, CeNull()};
+    return LpStatus::UNDETERMINED;
   }
   void inProcess() {}
+  bool canInProcess() { return false; }
 
-  void addConstraint([[maybe_unused]] CeSuper c, [[maybe_unused]] bool removable, [[maybe_unused]] bool upperbound,
-                     [[maybe_unused]] bool lowerbound) {}
+  void addConstraint([[maybe_unused]] const CeSuper& c, [[maybe_unused]] bool removable,
+                     [[maybe_unused]] bool upperbound, [[maybe_unused]] bool lowerbound) {}
   void addConstraint([[maybe_unused]] CRef cr, [[maybe_unused]] bool removable, [[maybe_unused]] bool upperbound,
                      [[maybe_unused]] bool lowerbound) {}
 };

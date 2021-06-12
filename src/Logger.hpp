@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,7 +37,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
@@ -44,13 +54,39 @@ struct Logger {
   ID last_proofID = 0;
   std::vector<ID> unitIDs;
 
-  Logger(const std::string& proof_log_name) {
+  template <typename T>
+  static std::ostream& proofMult(std::ostream& o, const T& m) {
+    assert(m > 0);
+    if (m != 1) o << m << " * ";
+    return o;
+  }
+  template <typename T>
+  static std::ostream& proofDiv(std::ostream& o, const T& d) {
+    assert(d > 0);
+    if (d != 1) o << d << " d ";
+    return o;
+  }
+  template <typename T>
+  static std::ostream& proofWeaken(std::ostream& o, Lit l, const T& m) {
+    assert(m != 0);
+    if ((m < 0) != (l < 0)) {
+      o << "~";
+    }
+    return proofMult(o << "x" << toVar(l) << " ", aux::abs(m)) << "+ ";
+  }
+  template <typename T>
+  static std::ostream& proofWeakenFalseUnit(std::ostream& o, ID id, const T& m) {
+    assert(m < 0);
+    return proofMult(o << id << " ", -m) << "+ ";
+  }
+
+  explicit Logger(const std::string& proof_log_name) {
     formula_out = std::ofstream(proof_log_name + ".formula");
     formula_out << "* #variable= 0 #constraint= 0\n";
     formula_out << " >= 0 ;\n";
     ++last_formID;
     proof_out = std::ofstream(proof_log_name + ".proof");
-    proof_out << "pseudo-Boolean proof version 1.0\n";
+    proof_out << "pseudo-Boolean proof version 1.1\n";
     proof_out << "l 1\n";
     ++last_proofID;
   }

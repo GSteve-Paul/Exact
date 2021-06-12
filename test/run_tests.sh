@@ -1,9 +1,8 @@
 #!/bin/bash
 
-time=$1
-logfolder="/tmp/roundingsat/$2"
+logfolder="/tmp/Exact/$2"
 binary=$3
-options=$4
+options="--timeout=$1 --test=1 $4"
 
 
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -16,7 +15,6 @@ echo "###########################"
 echo "########## START ##########"
 echo "###########################"
 echo ""
-echo "timeout: $time"
 echo "data: $logfolder"
 echo "binary: $binary"
 echo "options: $options"
@@ -31,30 +29,30 @@ declare -a arr_dec=(
 "opb/dec/22array_alg_ineq7.opb*UNSATISFIABLE"
 "opb/dec/21array_alg_ineq7.opb*UNSATISFIABLE"
 "opb/dec/32array_alg_ineq5.opb*UNSATISFIABLE"
-"opb/dec/air01.0.s.opb*SATISFIABLE"
+"opb/dec/air01.0.s.opb*OPTIMUM"
 "opb/dec/air01.0.u.opb*UNSATISFIABLE"
-"opb/dec/air02.0.s.opb*SATISFIABLE"
+"opb/dec/air02.0.s.opb*OPTIMUM"
 "opb/dec/air02.0.u.opb*UNSATISFIABLE"
-"opb/dec/air06.0.s.opb*SATISFIABLE"
+"opb/dec/air06.0.s.opb*OPTIMUM"
 "opb/dec/air06.0.u.opb*UNSATISFIABLE"
-"opb/dec/bm23.0.s.opb*SATISFIABLE"
+"opb/dec/bm23.0.s.opb*OPTIMUM"
 "opb/dec/bm23.0.u.opb*UNSATISFIABLE"
-"opb/dec/cracpb1.0.s.opb*SATISFIABLE"
+"opb/dec/cracpb1.0.s.opb*OPTIMUM"
 "opb/dec/cracpb1.0.u.opb*UNSATISFIABLE"
 "opb/dec/diamond.0.d.opb*UNSATISFIABLE"
-"opb/dec/lp4l.0.s.opb*SATISFIABLE"
+"opb/dec/lp4l.0.s.opb*OPTIMUM"
 "opb/dec/lp4l.0.u.opb*UNSATISFIABLE"
-"opb/dec/p0040.0.s.opb*SATISFIABLE"
+"opb/dec/p0040.0.s.opb*OPTIMUM"
 "opb/dec/p0040.0.u.opb*UNSATISFIABLE"
-"opb/dec/p0291.0.s.opb*SATISFIABLE"
+"opb/dec/p0291.0.s.opb*OPTIMUM"
 "opb/dec/p0291.0.u.opb*UNSATISFIABLE"
-"opb/dec/pipex.0.s.opb*SATISFIABLE"
+"opb/dec/pipex.0.s.opb*OPTIMUM"
 "opb/dec/pipex.0.u.opb*UNSATISFIABLE"
-"opb/dec/sentoy.0.s.opb*SATISFIABLE"
+"opb/dec/sentoy.0.s.opb*OPTIMUM"
 "opb/dec/sentoy.0.u.opb*UNSATISFIABLE"
-"opb/dec/stein9.0.s.opb*SATISFIABLE"
+"opb/dec/stein9.0.s.opb*OPTIMUM"
 "opb/dec/stein9.0.u.opb*UNSATISFIABLE"
-"opb/dec/stein15.0.s.opb*SATISFIABLE"
+"opb/dec/stein15.0.s.opb*OPTIMUM"
 "opb/dec/stein15.0.u.opb*UNSATISFIABLE"
 )
 
@@ -74,14 +72,14 @@ for j in "${arr_dec[@]}"; do
     fi
     obj="$(cut -d'*' -f2 <<<$j)"
     echo "running $binary $formula $options --proof-log=$logfile"
-    output=`timeout $time $binary $formula $options --proof-log=$logfile 2>&1 | awk '/^o|SATISFIABLE|.*Assertion.*/ {print $2}'`
+    output=`$binary $formula $options --proof-log=$logfile 2>&1 | awk '/UNSATISFIABLE|OPTIMUM|Error:|.*Assertion.*/ {print $2}'`
     if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
         errors=`expr 1000 + $errors`
         echo "wrong output: $output vs $obj"
     fi
     echo "verifying $logfile"
     wc -l $logfile.proof
-    veripb $logfile.formula $logfile.proof -d --arbitraryPrecision
+    veripb $logfile.formula $logfile.proof -d --arbitraryPrecision --no-requireUnsat
     errors=`expr $? + $errors`
     echo $errors
     tested=`expr 1 + $tested`
@@ -105,14 +103,14 @@ for j in "${arr_dec[@]}"; do
     fi
     obj="$(cut -d'*' -f2 <<<$j)"
     echo "running $binary $formula $options --bits-learned=0 --bits-overflow=0 --bits-reduced=0 --proof-log=$logfile"
-    output=`timeout $time $binary $formula $options --bits-learned=0 --bits-overflow=0 --bits-reduced=0 --proof-log=$logfile 2>&1 | awk '/^o|Error:|SATISFIABLE|.*Assertion.*/ {print $2}'`
+    output=`$binary $formula $options --bits-learned=0 --bits-overflow=0 --bits-reduced=0 --proof-log=$logfile 2>&1 | awk '/UNSATISFIABLE|OPTIMUM|Error:|.*Assertion.*/ {print $2}'`
     if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
         errors=`expr 1000 + $errors`
         echo "wrong output: $output vs $obj"
     fi
     echo "verifying $logfile"
     wc -l $logfile.proof
-    veripb $logfile.formula $logfile.proof -d --arbitraryPrecision
+    veripb $logfile.formula $logfile.proof -d --arbitraryPrecision --no-requireUnsat
     errors=`expr $? + $errors`
     echo $errors
     tested=`expr 1 + $tested`
@@ -120,21 +118,7 @@ for j in "${arr_dec[@]}"; do
     echo ""
 done
 
-declare -a arr_modes=(
-linear
-coreguided
-coreguided
-coreguided
-hybrid
-hybrid
-hybrid
-)
-
 declare -a arr_lazy=(
-sum
-sum
-lazysum
-reified
 sum
 lazysum
 reified
@@ -142,6 +126,8 @@ reified
 
 declare -a arr_opt=(
 "wcnf/driverlog01bc.wcsp.dir.wcnf*2245"
+"lp/hole.lp*2917/2"
+"mps/mod008.mps*307"
 "opb/opt/normalized-single-obj-f47-DC-Side1.seq-B-2-1-EDCBAir.opb*-1593213266"
 "opb/opt/enigma.opb*0"
 "opb/opt/stein9.opb*5"
@@ -169,10 +155,9 @@ declare -a arr_opt=(
 "opb/opt/cracpb1.opb*22199"
 )
 
-for idx in "${!arr_modes[@]}"; do
-    mode=${arr_modes[$idx]}
+for idx in "${!arr_lazy[@]}"; do
     lazy=${arr_lazy[$idx]}
-    echo "########## $mode lazy=$lazy ##########"
+    echo "########## lazy=$lazy ##########"
     echo ""
     for j in "${arr_opt[@]}"; do
         formula="$(cut -d'*' -f1 <<<$j)"
@@ -186,15 +171,15 @@ for idx in "${!arr_modes[@]}"; do
             exit 1
         fi
         obj="$(cut -d'*' -f2 <<<$j)"
-        echo "running $binary $formula $options --opt-mode=$mode --cg-encoding=$lazy --proof-log=$logfile"
-        output=`timeout $time $binary $formula $options --opt-mode=$mode --cg-encoding=$lazy --proof-log=$logfile 2>&1 | awk '/^o|Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
+        echo "running $binary $formula $options --cg-encoding=$lazy --proof-log=$logfile"
+        output=`$binary $formula $options --cg-encoding=$lazy --proof-log=$logfile 2>&1 | awk '/^o|Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
         if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
             errors=`expr 1000 + $errors`
             echo "wrong output: $output vs $obj"
         fi
         echo "verifying $logfile"
         wc -l $logfile.proof
-        veripb $logfile.formula $logfile.proof -d --arbitraryPrecision
+        veripb $logfile.formula $logfile.proof -d --arbitraryPrecision --no-requireUnsat
         errors=`expr $? + $errors`
         echo $errors
         tested=`expr 1 + $tested`
@@ -217,8 +202,8 @@ for j in "${arr_opt[@]}"; do
         exit 1
     fi
     obj="$(cut -d'*' -f2 <<<$j)"
-    echo "running $binary $formula $options --opt-mode=hybrid"
-    output=`timeout $time $binary $formula $options --opt-mode=hybrid 2>&1 | awk '/^o|Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
+    echo "running $binary $formula $options"
+    output=`$binary $formula $options 2>&1 | awk '/^o|Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
     if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
         errors=`expr 1000 + $errors`
         echo "wrong output: $output vs $obj"

@@ -17,8 +17,8 @@ Non-linear terms are not supported.
 An OPB file consists of a header line `* #variable= <N> #constraint= <M>`, comment lines (lines starting with `*`)
 and linear inequalities as defined above (using the variables `x1` to `xN`). The number of constraints is ignored by the solver; it reads until EOF.
 
-For more information, see the [OPB description](http://www.cril.univ-artois.fr/PB16/format.pdf) for the SAT competition.
-Note that RoundingSat only supports linear OPB constraints.
+For more information, see the [OPB description](http://www.cril.univ-artois.fr/PB16/format.pdf) for the PB competition.
+Note that Exact only supports linear OPB constraints.
 
 ### Example OPB file
 
@@ -47,8 +47,8 @@ A clause `x1 v ~x2` can be encoded as `1 x1 1 ~x2 >= 1;`.
 
 ### Optimization problems
 
-It is possible to add an objective function to the OPB file. Roundingsat will then optimization this function.
-The objective function has to be specified before all constraints. The format is
+It is possible to add an objective function to the OPB file, which has to be specified before all constraints.
+The format is
 
 ```
 min: 1 x1 1 -x2 2 ~x3 ;
@@ -105,3 +105,11 @@ p cnf 12 22
 ### WCNF format
 
 An extension of the CNF format to allow for soft (weighted) clauses. See the [WCNF description](https://maxsat-evaluations.github.io/2018/rules.html#input) for the MaxSAT competition.
+
+### MPS format
+
+https://www.gurobi.com/documentation/9.1/refman/mps_format.html
+
+### LP format
+
+https://www.gurobi.com/documentation/9.1/refman/lp_format.html

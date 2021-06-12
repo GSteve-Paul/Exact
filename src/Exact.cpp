@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,11 +37,10 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #include <csignal>
 #include <fstream>
-#include <memory>
 #include "aux.hpp"
 #include "globals.hpp"
 #include "parsing.hpp"
@@ -48,43 +57,40 @@ Stats stats;
 static void SIGINT_interrupt([[maybe_unused]] int signum) { rs::asynch_interrupt = true; }
 
 static void SIGINT_exit([[maybe_unused]] int signum) {
-  printf("\n*** INTERRUPTED ***\n");
-  exit(1);
+  std::cout << "*** INTERRUPTED ***" << std::endl;
+  rs::aux::flushexit(1);
 }
 
 int main(int argc, char** argv) {
-  rs::stats.STARTTIME = rs::aux::cpuTime();
+  rs::stats.STARTTIME.z = rs::aux::cpuTime();
   rs::asynch_interrupt = false;
 
   signal(SIGINT, SIGINT_exit);
   signal(SIGTERM, SIGINT_exit);
   signal(SIGXCPU, SIGINT_exit);
+  signal(SIGINT, SIGINT_interrupt);
+  signal(SIGTERM, SIGINT_interrupt);
+  signal(SIGXCPU, SIGINT_interrupt);
 
   rs::options.parseCommandLine(argc, argv);
 
+  rs::aux::rng::seed = rs::options.randomSeed.get();
+
   if (rs::options.verbosity.get() > 0) {
-    std::cout << "c RoundingSat 2\n";
+    std::cout << "c Exact 2021\n";
     std::cout << "c branch " << EXPANDED(GIT_BRANCH) << "\n";
     std::cout << "c commit " << EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
 
   rs::run::solver.init();
-  rs::CeArb objective = rs::run::solver.cePools.takeArb();
-
-  if (!rs::options.formulaName.empty()) {
-    std::ifstream fin(rs::options.formulaName);
-    if (!fin) rs::quit::exit_ERROR({"Could not open ", rs::options.formulaName});
-    rs::parsing::file_read(fin, rs::run::solver, objective);
-  } else {
-    if (rs::options.verbosity.get() > 0) std::cout << "c No filename given, reading from standard input" << std::endl;
-    rs::parsing::file_read(std::cin, rs::run::solver, objective);
+  rs::aux::timeCallVoid([&] { rs::parsing::file_read(rs::run::solver); }, rs::stats.PARSETIME);
+  if (rs::run::solver.hasPureCnf()) {
+    // optimize settings for CNF, as all constraints will be clausal
+    rs::options.lpTimeRatio.parse("0");
+    rs::options.bitsOverflow.parse("1");
+    rs::options.bitsReduced.parse("1");
+    rs::options.bitsLearned.parse("1");
   }
 
-  signal(SIGINT, SIGINT_interrupt);
-  signal(SIGTERM, SIGINT_interrupt);
-  signal(SIGXCPU, SIGINT_interrupt);
-
-  rs::run::solver.initLP(objective);
-
-  rs::run::run(objective);
+  rs::run::run();
 }

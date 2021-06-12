@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,13 +37,14 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include "aux.hpp"
 #include "typedefs.hpp"
 
 namespace rs {
@@ -44,7 +55,7 @@ class ConstrExpPools;
 struct ConstrSimpleSuper {
   Origin orig = Origin::UNKNOWN;
 
-  virtual ~ConstrSimpleSuper() {}
+  virtual ~ConstrSimpleSuper() = default;
 
   virtual CeSuper toExpanded(ConstrExpPools& cePools) const = 0;
   virtual void copyTo(ConstrSimple32& out) const = 0;
@@ -60,16 +71,17 @@ struct ConstrSimple final : public ConstrSimpleSuper {
   DG rhs;
   std::string proofLine;
 
-  ConstrSimple(const std::vector<Term<CF>>& t = {}, const DG& r = 0, const Origin& o = Origin::UNKNOWN,
-               const std::string& p = (std::to_string(ID_Trivial) + " "))
+  explicit ConstrSimple(const std::vector<Term<CF>>& t = {}, const DG& r = 0, const Origin& o = Origin::UNKNOWN,
+                        const std::string& p = (std::to_string(ID_Trivial) + " "))
       : terms(t), rhs(r), proofLine(p) {
     orig = o;
   }
 
-  CeSuper toExpanded(ConstrExpPools& cePools) const;
+  CeSuper toExpanded(ConstrExpPools& cePools) const override;
 
   void toNormalFormLit();
   void toNormalFormVar();
+  void reset();
 
  private:
   template <typename C, typename D>
@@ -85,14 +97,12 @@ struct ConstrSimple final : public ConstrSimpleSuper {
   }
 
  public:
-  void copyTo(ConstrSimple32& out) const { copy_(out); }
-  void copyTo(ConstrSimple64& out) const { copy_(out); }
-  void copyTo(ConstrSimple96& out) const { copy_(out); }
-  void copyTo(ConstrSimple128& out) const { copy_(out); }
-  void copyTo(ConstrSimpleArb& out) const { copy_(out); }
+  void copyTo(ConstrSimple32& out) const override { copy_(out); }
+  void copyTo(ConstrSimple64& out) const override { copy_(out); }
+  void copyTo(ConstrSimple96& out) const override { copy_(out); }
+  void copyTo(ConstrSimple128& out) const override { copy_(out); }
+  void copyTo(ConstrSimpleArb& out) const override { copy_(out); }
 };
-
-std::ostream& operator<<(std::ostream& os, const __int128& x);
 
 template <typename CF, typename DG>
 std::ostream& operator<<(std::ostream& o, const ConstrSimple<CF, DG>& sc) {

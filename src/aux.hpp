@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,7 +37,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
@@ -42,6 +52,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <list>
 #include <numeric>
 #include <unordered_map>
 #include <unordered_set>
@@ -51,25 +62,31 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace rs {
 
 template <typename T, typename U>
-std::ostream& operator<<(std::ostream& os, const std::pair<T, U>& p) {
-  os << p.first << "," << p.second;
-  return os;
+std::ostream& operator<<(std::ostream& o, const std::pair<T, U>& p) {
+  o << p.first << "," << p.second;
+  return o;
 }
 template <typename T, typename U>
-std::ostream& operator<<(std::ostream& os, const std::unordered_map<T, U>& m) {
-  for (const auto& e : m) os << e << ";";
-  return os;
+std::ostream& operator<<(std::ostream& o, const std::unordered_map<T, U>& m) {
+  for (const auto& e : m) o << e << ";";
+  return o;
 }
 template <typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& m) {
-  for (const auto& e : m) os << e << " ";
-  return os;
+std::ostream& operator<<(std::ostream& o, const std::vector<T>& m) {
+  for (const auto& e : m) o << e << " ";
+  return o;
+}
+template <typename T>
+std::ostream& operator<<(std::ostream& o, const std::list<T>& m) {
+  for (const auto& e : m) o << e << " ";
+  return o;
 }
 
-inline std::ostream& operator<<(std::ostream& os, const __int128& x) {
-  if (x < 0) return os << "-" << -x;
-  if (x < 10) return os << (char)(x + '0');
-  return os << x / 10 << (char)(x % 10 + '0');
+inline std::ostream& operator<<(std::ostream& o, const __int128& x) {
+  if (x == std::numeric_limits<__int128>::min()) return o << "-170141183460469231731687303715884105728";
+  if (x < 0) return o << "-" << -x;
+  if (x < 10) return o << (char)(x + '0');
+  return o << x / 10 << (char)(x % 10 + '0');
 }
 
 namespace aux {
@@ -88,15 +105,6 @@ inline std::string sto(const std::string& s) {
 }
 
 template <typename T>
-std::string tos(const T& t) {
-  return std::to_string(t);
-}
-template <>
-inline std::string tos(const std::string& s) {
-  return s;
-}
-
-template <typename T>
 void swapErase(T& indexable, size_t index) {
   indexable[index] = std::move(indexable.back());
   indexable.pop_back();
@@ -111,8 +119,8 @@ template <typename T>
 T ceildiv(const T& p, const T& q) {
   assert(q > 0);
   assert(p >= 0);
-  return (p + q - 1) / q;
-}  // NOTE: potential overflow
+  return p / q + (p % q != 0);
+}
 template <typename T>
 T floordiv(const T& p, const T& q) {
   assert(q > 0);
@@ -122,20 +130,21 @@ T floordiv(const T& p, const T& q) {
 template <typename T>
 T ceildiv_safe(const T& p, const T& q) {
   assert(q > 0);
-  return (p < 0) ? (-floordiv<T>(-p, q)) : ceildiv(p, q);
+  return p / q + (p % q != 0 && p > 0);
 }
 template <typename T>
 T floordiv_safe(const T& p, const T& q) {
   assert(q > 0);
-  return (p < 0) ? (-ceildiv<T>(-p, q)) : floordiv(p, q);
+  return p / q - (p % q != 0 && p < 0);
 }
-template <typename T>
-T mod_safe(const T& p, const T& q) {
+template <typename T, typename S>
+S mod_safe(const T& p, const S& q) {
   assert(q > 0);
-  if (p < 0)
-    return q - (-p % q);
-  else
-    return p % q;
+  if (p < 0) {
+    return static_cast<S>(q - (-p % q));
+  } else {
+    return static_cast<S>(p % q);
+  }
 }
 
 // Minisat cpuTime function
@@ -146,17 +155,20 @@ static inline double cpuTime() {
 }
 
 template <typename T>
-void resizeIntMap(std::vector<T>& _map, typename std::vector<T>::iterator& map, int size, int resize_factor, T init) {
-  assert(size < (1 << 28));
+void resizeIntMap(std::vector<T>& _map, typename std::vector<T>::iterator& map, int size, int resize_factor,
+                  const T& init) {
+  assert(size >= 0);
   int oldsize = (_map.size() - 1) / 2;
   if (oldsize >= size) return;
-  int newsize = oldsize;
-  while (newsize < size) newsize = newsize * resize_factor + 1;
+  long long newsize = std::max(0, oldsize);  // oldsize could be -1...
+  while (newsize < size) {
+    newsize = newsize * resize_factor + 1;
+  }
   _map.resize(2 * newsize + 1);
   map = _map.begin() + newsize;
-  int i = _map.size() - 1;
+  long long i = _map.size() - 1;
   for (; i > newsize + oldsize; --i) _map[i] = init;
-  for (; i >= newsize - oldsize; --i) _map[i] = _map[i - newsize + oldsize];
+  for (; i >= newsize - oldsize; --i) _map[i] = std::move(_map[i - newsize + oldsize]);
   for (; i >= 0; --i) _map[i] = init;
 }
 
@@ -164,24 +176,29 @@ template <typename T>
 T median(std::vector<T>& v) {
   assert(v.size() > 0);
   size_t n = v.size() / 2;
-  std::nth_element(v.begin(), v.begin() + n, v.end());
+  std::nth_element(v.cbegin(), v.cbegin() + n, v.cend());
   return v[n];
 }
 
 template <typename T>
 double average(const std::vector<T>& v) {
   assert(v.size() > 0);
-  return std::accumulate(v.begin(), v.end(), 0.0) / (double)v.size();
+  return std::accumulate(v.cbegin(), v.cend(), 0.0) / (double)v.size();
 }
 
 template <typename T>
 T min(const std::vector<T>& v) {
-  return *std::min_element(v.begin(), v.end());
+  return *std::min_element(v.cbegin(), v.cend());
 }
 
 template <typename T>
 T max(const std::vector<T>& v) {
-  return *std::max_element(v.begin(), v.end());
+  return *std::max_element(v.cbegin(), v.cend());
+}
+
+template <typename T>
+int sgn(const T& x) {
+  return (0 < x) - (x < 0);
 }
 
 template <typename T>
@@ -193,12 +210,12 @@ inline bigint abs(const bigint& x) {
   return boost::multiprecision::abs(x);
 }
 template <>
-inline boost::multiprecision::int128_t abs(const boost::multiprecision::int128_t& x) {
-  return boost::multiprecision::abs(x);
-}
-template <>
 inline int256 abs(const int256& x) {
   return boost::multiprecision::abs(x);
+}
+template <typename S, typename R, typename U>
+inline bigint abs(const boost::multiprecision::detail::expression<S, R, U>& x) {  // boost expression template fix
+  return boost::multiprecision::abs(bigint(x));
 }
 
 template <typename T>
@@ -210,31 +227,39 @@ inline bigint gcd(const bigint& x, const bigint& y) {
   return boost::multiprecision::gcd(x, y);
 }
 template <>
-inline boost::multiprecision::int128_t gcd(const boost::multiprecision::int128_t& x,
-                                           const boost::multiprecision::int128_t& y) {
-  return boost::multiprecision::gcd(x, y);
-}
-template <>
 inline int256 gcd(const int256& x, const int256& y) {
   return boost::multiprecision::gcd(x, y);
 }
 
 template <typename T>
-T lcm(const T& x, const T& y) {
-  return std::lcm(x, y);
+double toDouble(const T& x) {
+  double res = static_cast<double>(x);
+  assert(isfinite(res));
+  return res;
 }
+
 template <>
-inline bigint lcm(const bigint& x, const bigint& y) {
-  return boost::multiprecision::lcm(x, y);
+inline double toDouble(const bigint& x) {
+  double res = static_cast<double>(x);
+  if (!isfinite(res)) {
+    res = x < 0 ? std::numeric_limits<double>::lowest() : std::numeric_limits<double>::max();
+  }
+  assert(isfinite(res));
+  return res;
 }
-template <>
-inline boost::multiprecision::int128_t lcm(const boost::multiprecision::int128_t& x,
-                                           const boost::multiprecision::int128_t& y) {
-  return boost::multiprecision::lcm(x, y);
+
+template <typename T>
+double divToDouble(const T& num, const T& denom) {
+  double res = static_cast<double>(num) / static_cast<double>(denom);
+  assert(isfinite(res));
+  return res;
 }
+
 template <>
-inline int256 lcm(const int256& x, const int256& y) {
-  return boost::multiprecision::lcm(x, y);
+inline double divToDouble(const bigint& num, const bigint& denom) {
+  double res = static_cast<double>(static_cast<ratio>(num) / static_cast<ratio>(denom));
+  assert(isfinite(res));
+  return res;
 }
 
 template <typename T>
@@ -245,11 +270,6 @@ unsigned msb(const T& x) {
 }
 template <>
 inline unsigned msb(const bigint& x) {
-  assert(x > 0);
-  return boost::multiprecision::msb(x);
-}
-template <>
-inline unsigned msb(const boost::multiprecision::int128_t& x) {
   assert(x > 0);
   return boost::multiprecision::msb(x);
 }
@@ -268,23 +288,19 @@ inline bigint pow(const bigint& x, unsigned y) {
   return boost::multiprecision::pow(x, y);
 }
 template <>
-inline boost::multiprecision::int128_t pow(const boost::multiprecision::int128_t& x, unsigned y) {
-  return boost::multiprecision::pow(x, y);
-}
-template <>
 inline int256 pow(const int256& x, unsigned y) {
   return boost::multiprecision::pow(x, y);
 }
 
-template <typename T>
-T timeCall(const std::function<T(void)>& f, double& to) {
+template <typename T, typename U>
+T timeCall(const std::function<T(void)>& f, U& to) {
   double start = cpuTime();
   T result = f();
   to += cpuTime() - start;
   return result;
 }
-template <>
-inline void timeCall(const std::function<void(void)>& f, double& to) {
+template <typename U>
+void timeCallVoid(const std::function<void(void)>& f, U& to) {
   double start = cpuTime();
   f();
   to += cpuTime() - start;
@@ -318,6 +334,39 @@ template <typename T, typename S>
 bool fitsIn([[maybe_unused]] const S& x) {
   return fits<T>(bigint(x));
 }
+
+inline void flushexit(int status) {
+  std::cout.flush();
+  std::cerr.flush();
+  exit(status);
+}
+
+inline std::ostream& prettyPrint(std::ostream& o, const long double& z) {
+  long long iz = static_cast<long long>(z);
+  if (iz == z) {
+    return o << iz;
+  } else {
+    return o << z;
+  }
+}
+
+template <typename SMALL, typename LARGE>
+SMALL cast(const LARGE& x) {
+  if (std::numeric_limits<SMALL>::is_specialized) {
+    assert(std::numeric_limits<SMALL>::max() == 0 || static_cast<LARGE>(std::numeric_limits<SMALL>::max()) >= x);
+    assert(std::numeric_limits<SMALL>::lowest() == 0 || static_cast<LARGE>(std::numeric_limits<SMALL>::lowest()) <= x);
+  }
+  return static_cast<SMALL>(x);
+}
+
+namespace rng {
+extern uint32_t seed; /* The seed must be initialized to non-zero */
+uint32_t xorshift32();
+}  // namespace rng
+
+uint32_t getRand(uint32_t min, uint32_t max);
+uint64_t hash(uint64_t x);
+uint64_t hashForSet(const std::vector<int>& ints);
 
 }  // namespace aux
 

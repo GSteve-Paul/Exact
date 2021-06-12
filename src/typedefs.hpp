@@ -1,4 +1,14 @@
-/***********************************************************************
+/**********************************************************************
+This file is part of the Exact program
+
+Copyright (c) 2021 Jo Devriendt, KU Leuven
+
+Exact is distributed under the terms of the MIT License.
+You should have received a copy of the MIT License along with Exact.
+See the file LICENSE or run with the flag --license=MIT.
+**********************************************************************/
+
+/**********************************************************************
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt
 Copyright (c) 2020-2021, Stephan Gocht
@@ -27,14 +37,11 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-***********************************************************************/
+**********************************************************************/
 
 #pragma once
 
 #include <boost/multiprecision/cpp_int.hpp>
-#if WITHGMP
-#include <boost/multiprecision/gmp.hpp>
-#endif  // WITHGMP
 #include <cassert>
 #include <exception>
 #include <iostream>
@@ -44,16 +51,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-#if WITHGMP
-using int128 = boost::multiprecision::int128_t;  // NOTE: a bit slower than __int128, but plays nice with mpz_int
-using bigint = boost::multiprecision::mpz_int;   // NOTE: requires GMP
-#else
 using int128 = __int128;
-using bigint = boost::multiprecision::cpp_int;
-#endif  // WITHGMP
 using int256 = boost::multiprecision::int256_t;
-using BigCoef = bigint;
-using BigVal = bigint;
+using bigint = boost::multiprecision::cpp_int;
+using ratio = boost::multiprecision::cpp_rational;
 
 using ID = uint64_t;
 const ID ID_Undef = std::numeric_limits<ID>::max();
@@ -66,51 +67,66 @@ inline Var toVar(Lit l) { return std::abs(l); }
 
 const int resize_factor = 2;
 
-const int INF = 1e9 + 1;  // 1e9 is the maximum number of variables in the system, anything beyond is infinity
-const long long INFLPINT = 1e15 + 1;  // based on max long range captured by double
+const int INF = 1e9 + 1;  // 1e9 < 30 bits is the maximum number of variables in the system, anything beyond is infinity
+// NOTE: 31 bits is not possible due to the idx entry in the Watch struct
+const long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long long range captured by double
 
-const int limit32 = 1e9;         // 2^29-2^30
+const int limit32bit = 29;
+const int limit32 = 1e9;  // 2^29-2^30
+const int limit64bit = 60;
 const long long limit64 = 2e18;  // 2^60-2^61
-const double limit96 = 8e27;     // 2^92-2^93, so 46 bits is less than half
-const double limit128 = 32e36;   // 2^124-2^125, so 62 bits is less than half
-const double limit256 = 1e76;    // 2^252-2^253, so 126 bits is less than half
-const int conflLimit32 = 14;
-const int conflLimit64 = 30;
-const int conflLimit96 = 46;
-const int conflLimit128 = 62;
+const int limit96bit = 92;
+const double limit96 = 8e27;  // 2^92-2^93
+const int limit128bit = 124;
+const double limit128 = 32e36;  // 2^124-2^125
+const int limit256bit = 252;
+const double limit256 = 1e76;  // 2^252-2^253
+
+const int conflLimit32 = limit32bit / 2;
+const int conflLimit64 = limit64bit / 2;
+const int conflLimit96 = limit96bit / 2;
+const int conflLimit128 = limit128bit / 2;
 
 using IntVecIt = std::vector<int>::iterator;
 
 using ActValV = long double;
 const ActValV actLimitV = (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 *
                           (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300;  // ~1e2400 << 2^(2^13)
-using ActValC = float;
-const ActValC actLimitC = 1e30;  // ~1e30 << 2^(2^7)
 
-/*
- * UNKNOWN: uninitialized value
- * FORMULA: original input formula constraints
- * LEARNED: learned from regular conflict analysis
- * BOUND: upper and lower bounds on the objective function
- * COREGUIDED: extension constraints from coreguided optimization
- * FARKAS: LP solver infeasibility witness
- * LEARNEDFARKAS: constraint learned from conflict analysis on FARKAS
- * GOMORY: Gomory cut
- *
- * max number of types is 16, as the type is stored with 4 bits in Constr
- */
+// NOTE: max number of types is 32, as the type is stored with 5 bits in Constr
 enum class Origin {
-  UNKNOWN,
-  FORMULA,
-  LEARNED,
-  COREGUIDED,
-  FARKAS,
-  LEARNEDFARKAS,
-  GOMORY,
-  UPPERBOUND,
-  LOWERBOUND,
-  HARDENEDBOUND,
+  UNKNOWN,        // uninitialized
+  FORMULA,        // original input formula
+  DOMBREAKER,     // dominance breaking
+  PURE,           // pure unit literal
+  PROBING,        // probing unit literal
+  COREGUIDED,     // extension constraints from coreguided optimization
+  HARDENEDBOUND,  // unit constraint due to upper bound on the objective function
+  UPPERBOUND,     // upper bound on the objective function
+  LOWERBOUND,     // lower bound on the objective function
+  INVALIDATOR,    // solution-invalidating constraint
+  LEARNED,        // learned from regular conflict analysis
+  FARKAS,         // LP solver infeasibility witness
+  DUAL,           // LP solver feasibility dual constraint
+  GOMORY,         // Gomory cut
+  DETECTEDAMO,    // detected cardinality constraint
+  REDUCED,        // reduced constraint
 };
+
+inline bool isNonImplied(Origin o) {
+  return o == Origin::FORMULA || o == Origin::DOMBREAKER || o == Origin::INVALIDATOR;
+}
+inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
+inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED; }
+inline bool isInput(Origin o) {
+  return isNonImplied(o) || isExternal(o) || o == Origin::PURE || o == Origin::PROBING || o == Origin::HARDENEDBOUND;
+}
+// inline bool isLearned(Origin o) {
+//  return o == Origin::LEARNED || o == Origin::FARKAS || o == Origin::DUAL || o == Origin::GOMORY ||
+//         o == Origin::REDUCED;
+//}
+inline bool isLearned(Origin o) { return o >= Origin::LEARNED; }
+inline bool usedInTabu(Origin o) { return isNonImplied(o) || o == Origin::UPPERBOUND; }
 
 template <typename SMALL, typename LARGE>
 struct ConstrExp;
@@ -147,30 +163,22 @@ struct Cardinality;
 template <typename CF, typename DG>
 struct Counting;
 using Counting32 = Counting<int, long long>;
-// using Counting64 = Counting<long long, int128>;
-// using Counting96 = Counting<int128, int128>;
-// using CountingArb = Counting<bigint, bigint>;
+template <typename CF, typename DG>
+struct CountingSafe;
+using Counting64 = CountingSafe<long long, int128>;
+using Counting96 = CountingSafe<int128, int128>;
+using Counting128 = CountingSafe<int128, int256>;
+using CountingArb = CountingSafe<bigint, bigint>;
 
 template <typename CF, typename DG>
 struct Watched;
 using Watched32 = Watched<int, long long>;
-// using Watched64 = Watched<long long, int128>;
-// using Watched96 = Watched<int128, int128>;
-// using WatchedArb = Watched<bigint, bigint>;
-
-template <typename CF, typename DG>
-struct CountingSafe;
-// using CountingSafe32 = CountingSafe<int, long long>;
-using CountingSafe64 = CountingSafe<long long, int128>;
-using CountingSafe96 = CountingSafe<int128, int128>;
-using CountingSafeArb = CountingSafe<bigint, bigint>;
-
 template <typename CF, typename DG>
 struct WatchedSafe;
-// using WatchedSafe32 = WatchedSafe<int, long long>;
-using WatchedSafe64 = WatchedSafe<long long, int128>;
-using WatchedSafe96 = WatchedSafe<int128, int128>;
-using WatchedSafeArb = WatchedSafe<bigint, bigint>;
+using Watched64 = WatchedSafe<long long, int128>;
+using Watched96 = WatchedSafe<int128, int128>;
+using Watched128 = WatchedSafe<int128, int256>;
+using WatchedArb = WatchedSafe<bigint, bigint>;
 
 template <typename CF>
 struct Term {
@@ -187,7 +195,9 @@ std::ostream& operator<<(std::ostream& o, const Term<CF>& t) {
 
 inline class AsynchronousInterrupt : public std::exception {
  public:
-  virtual const char* what() const throw() { return "Program interrupted by user."; }
+  [[nodiscard]] const char* what() const throw() override { return "Program interrupted by user."; }
 } asynchInterrupt;
+
+using TabuRank = long long;
 
 }  // namespace rs

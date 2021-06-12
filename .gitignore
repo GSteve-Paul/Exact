@@ -2,4 +2,10 @@
 .idea/*
 
 # soplex
-/soplex-5.0.1*
+/soplex-*
+
+# cmake
+/cmake-*
+
+# build directories
+/build*

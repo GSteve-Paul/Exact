@@ -2,6 +2,8 @@
 #include "MIT.hpp"
 namespace licenses {
 const char* MIT =
+    "The MIT License (MIT)\n"
+    "\n"
     "Copyright (c) <year> <copyright holders>\n"
     "\n"
     "Permission is hereby granted, free of charge, to any person obtaining\n"
@@ -21,5 +23,5 @@ const char* MIT =
     "IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY\n"
     "CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,\n"
     "TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE\n"
-    "SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
+    "SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n";
 }

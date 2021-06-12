@@ -39,61 +39,51 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
-#include "ConstrSimple.hpp"
-#include "ConstrExp.hpp"
+#pragma once
+
+#include "SolverStructs.hpp"
 
 namespace rs {
 
-template <typename CF, typename DG>
-CeSuper ConstrSimple<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
-  // TODO: make this the minimal bitwidth expanded constraint?
-  CePtr<ConstrExp<CF, DG>> ce = cePools.take<CF, DG>();
-  ce->addRhs(rhs);
-  for (const Term<CF>& t : terms) {
-    ce->addLhs(t.c, t.l);
-  }
-  ce->orig = orig;
-  if (ce->plogger) {
-    ce->proofBuffer.str(std::string());
-    ce->proofBuffer << proofLine;
-  }
-  return ce;
-}
+struct OrderHeap {  // segment tree (fast implementation of priority queue).
+  std::vector<ActValV>& activity;
+  int cap = 0;
+  std::vector<Var> tree = {-1, -1};
 
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toNormalFormLit() {
-  for (Term<CF>& t : terms) {
-    if (t.c < 0) {
-      rhs -= t.c;
-      t.c = -t.c;
-      t.l = -t.l;
-    }
-  }
-}
+  explicit OrderHeap(std::vector<ActValV>& a) : activity(a) {}
 
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toNormalFormVar() {
-  for (Term<CF>& t : terms) {
-    if (t.l < 0) {
-      rhs -= t.c;
-      t.c = -t.c;
-      t.l = -t.l;
-    }
-  }
-}
+  void resize(int newsize);
+  void recalculate();
+  void percolateUp(Var x);
+  [[nodiscard]] bool empty() const;
+  [[nodiscard]] bool inHeap(Var x) const;
+  void insert(Var x);
+  Var removeMax();
+};
 
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::reset() {
-  orig = Origin::UNKNOWN;
-  terms.clear();
-  rhs = 0;
-  proofLine = (std::to_string(ID_Trivial) + " ");
-}
+class Heuristic {
+ public:
+  std::vector<Lit> phase;
+  std::vector<ActValV> activity;
+  ActValV v_vsids_inc = 1.0;
+  OrderHeap heap;
 
-template struct ConstrSimple<int, long long>;
-template struct ConstrSimple<long long, int128>;
-template struct ConstrSimple<int128, int128>;
-template struct ConstrSimple<int128, int256>;
-template struct ConstrSimple<bigint, bigint>;
+  int nVars() const;
+
+ public:
+  Heuristic();
+  void resize(int n);
+
+  void undoOne(Var v, Lit l);
+  void setPhase(Var v, Lit l);
+  Lit getPhase(Var v) const;
+
+  ActValV getActivity(Var v) const;
+  void vDecayActivity();
+  void vBumpActivity(Var v);
+  void vBumpActivity(const std::vector<Lit>& lits);
+
+  Lit pickBranchLit(const std::vector<int>& position);
+};
 
 }  // namespace rs
