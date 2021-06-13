@@ -1263,7 +1263,6 @@ bool Solver::runTabuOnce() {
     int high = c.nTabuLits();
     int low = 0;
     while (low < high && !c.isSatisfiedByTabu(tabuSol)) {
-      ++stats.TABUDETTIME;
       int idx = aux::getRand(low, high);
       Lit l = tabuLits[idx];
       Var v = toVar(l);
@@ -1288,7 +1287,6 @@ bool Solver::runTabuOnce() {
     assert(c.isSatisfiedByTabu(tabuSol) || high == low);
     high = c.nTabuLits();
     while (!c.isSatisfiedByTabu(tabuSol)) {
-      ++stats.TABUDETTIME;
       int idx = aux::getRand(low, high);
       Lit l = tabuLits[idx];
       assert(!isUnit(getLevel(), l));
@@ -1345,7 +1343,6 @@ void Solver::flipTabu(Lit l) {
   ranks[v] = next;
   ++next;
   for (const std::pair<const CRef, int>& cri : lit2cons[l]) {
-    ++stats.TABUDETTIME;
     CRef cr = cri.first;
     Constr& c = ca[cr];
     c.increaseTabuSlack(cri.second);
@@ -1356,7 +1353,6 @@ void Solver::flipTabu(Lit l) {
     eraseFromTabu(cr);
   }
   for (const std::pair<const CRef, int>& cri : lit2cons[-l]) {
-    ++stats.TABUDETTIME;
     CRef cr = cri.first;
     Constr& c = ca[cr];
     c.decreaseTabuSlack(cri.second);
