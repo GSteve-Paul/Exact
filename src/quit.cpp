@@ -111,12 +111,17 @@ void quit::exit_SUCCESS(Solver& solver) {
   if (solver.logger) solver.logger->flush();
   if (solver.foundSolution()) {
     if (options.printUnits) printLits(solver.getUnits(), 'u', false);
-    if (options.printSol) printLits(solver.getLastSolution(), 'v', true);
-    if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew"))
+    if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew")) {
+      printFinalStats(solver);
+      std::cout << "o " << solver.getBestObjSoFar() << "\n";
+      std::cout << "s OPTIMUM FOUND" << std::endl;
       printLitsMaxsat(solver.getLastSolution(), solver);
-    std::cout << "o " << solver.getBestObjSoFar() << "\n";
-    printFinalStats(solver);
-    std::cout << "s OPTIMUM FOUND" << std::endl;
+    } else {
+      if (options.printSol) printLits(solver.getLastSolution(), 'v', true);
+      printFinalStats(solver);
+      std::cout << "o " << solver.getBestObjSoFar() << "\n";
+      std::cout << "s OPTIMUM FOUND" << std::endl;
+    }
     rs::aux::flushexit(30);
   } else {
     printFinalStats(solver);
@@ -129,14 +134,15 @@ void quit::exit_INDETERMINATE(Solver& solver) {
   if (solver.logger) solver.logger->flush();
   if (options.printUnits) printLits(solver.getUnits(), 'u', false);
   if (solver.foundSolution()) {
-    if (options.printSol) printLits(solver.getLastSolution(), 'v', true);
-    std::cout << "c best so far " << solver.getBestObjSoFar() << "\n";
-    printFinalStats(solver);
     if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew")) {
-      printLitsMaxsat(solver.getLastSolution(), solver);
+      printFinalStats(solver);
       std::cout << "o " << solver.getBestObjSoFar() << "\n";
       std::cout << "s UNKNOWN" << std::endl;
+      printLitsMaxsat(solver.getLastSolution(), solver);
     } else {
+      if (options.printSol) printLits(solver.getLastSolution(), 'v', true);
+      printFinalStats(solver);
+      std::cout << "c best so far " << solver.getBestObjSoFar() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;
     }
     rs::aux::flushexit(10);
@@ -156,8 +162,9 @@ void quit::exit_ERROR(const std::initializer_list<std::string>& messages) {
 
 void quit::checkInterrupt() {
   if (asynch_interrupt || (options.timeout.get() > 0 && stats.getTime() > options.timeout.get()) ||
-      (options.timeoutDet.get() > 0 && stats.getDetTime() > options.timeoutDet.get()))
+      (options.timeoutDet.get() > 0 && stats.getDetTime() > options.timeoutDet.get())) {
     throw asynchInterrupt;
+  }
 }
 
 }  // namespace rs

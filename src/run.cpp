@@ -560,7 +560,9 @@ void run() {
       optim.optimize();
     }
   } catch (const AsynchronousInterrupt& ai) {
-    std::cout << "c " << ai.what() << std::endl;
+    if (options.outputMode.is("default")) {
+      std::cout << "c " << ai.what() << std::endl;
+    }
     quit::exit_INDETERMINATE(solver);
   }
 }
