@@ -823,6 +823,7 @@ void Solver::inProcess() {
   removeSatisfiedNonImpliedsAtRoot();
   if (options.domBreakLim.get() != 0) dominanceBreaking();
   if (options.inpAMO.get() != 0) aux::timeCallVoid([&] { runAtMostOneDetection(); }, stats.ATMOSTONETIME);
+    // TODO: timing methods should be done via wrapper methods
 
 #if WITHSOPLEX
   if (firstRun && options.lpTimeRatio.get() > 0) {
@@ -1100,7 +1101,7 @@ void Solver::probeRestart(Lit next) {
   }
 }
 
-AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered) {
+AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe) {
   assert(decisionLevel() == 0);
   if (considered.count(seed)) {
     return AMODetectState::FAILED;
@@ -1116,7 +1117,21 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
     candidates.push_back(trail[i]);
   }
   backjumpTo(0, false);
-  if (candidates.size() < 2) return AMODetectState::FAILED;
+
+  if (!previousProbe.empty()) {
+    assert(tmpSet.isEmpty());  // TODO: fix tmpSet abuse
+    for (Lit l : previousProbe) {
+      tmpSet.add(l);
+    }
+    for (Lit l : candidates) {
+      if (tmpSet.has(l)) {
+        addConstraintChecked(ConstrSimple32({{1, l}}, 1), Origin::PROBING);
+      }
+    }
+    tmpSet.clear();
+  } else {
+    previousProbe = candidates;
+  }
 
   // check whether at least three of them form a clique
   while (candidates.size() > 1) {
@@ -1192,15 +1207,16 @@ void Solver::runAtMostOneDetection() {
   long double currentDetTime = stats.getDetTime();
   long double oldDetTime = currentDetTime;
   std::vector<Var> readd;
+  std::vector<Lit> previous;
   std::unordered_set<Lit> considered;
   Lit next = heur->pickBranchLit(getPos());
   readd.push_back(toVar(next));
   while (next != 0 &&
-         (aux::abs(options.inpAMO.get()) == 1 ||
+         (options.inpAMO.get() == 1 ||
           stats.ATMOSTONEDETTIME < options.inpAMO.get() * std::max(options.basetime.get(), currentDetTime))) {
-    AMODetectState stat1 = detectAtMostOne(-next, considered);
-    AMODetectState stat2 = detectAtMostOne(next, considered);
-    if (options.inpAMO.get() == -1 && stat1 == AMODetectState::FAILED && stat2 == AMODetectState::FAILED) break;
+    previous.clear();
+    detectAtMostOne(-next, considered, previous);
+    detectAtMostOne(next, considered, previous);
     next = heur->pickBranchLit(getPos());
     readd.push_back(toVar(next));
     oldDetTime = currentDetTime;

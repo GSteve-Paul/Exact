@@ -240,7 +240,7 @@ class Solver {
   Var lastRestartNext = 0;
   void probeRestart(Lit next);
 
-  AMODetectState detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered);
+  AMODetectState detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
   std::unordered_set<uint64_t> atMostOneHashes;
   void runAtMostOneDetection();
 

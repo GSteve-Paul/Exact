@@ -302,10 +302,9 @@ struct Options {
   ValOption<double> tabuLim{"inp-localsearch", "Ratio of time spent on local search (0 means none, 1 means unlimited)",
                             0.02, "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   BoolOption inpProbing{"inp-probing", "Perform probing", true};
-  ValOption<double> inpAMO{
-      "inp-atmostone",
-      "Ratio of time spent detecting at-most-ones (0 means none, 1 means unlimited, -1 means custom heuristic limit)",
-      0.1, "0 =< float <= 1 or -1", [](const double& x) -> bool { return x == -1 || (1 >= x && x >= 0); }};
+  ValOption<double> inpAMO{"inp-atmostone",
+                           "Ratio of time spent detecting at-most-ones (0 means none, 1 means unlimited)", 0.1,
+                           "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   ValOption<long double> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1e8,
                                   "0=< float", [](const long double& x) -> bool { return x >= 0; }};
 
