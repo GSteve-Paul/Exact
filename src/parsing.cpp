@@ -489,7 +489,7 @@ void ILP::addTo(Solver& solver, bool nameAsId) {
     }
   }
   obj.toConstrExp(solver.objective, true);
-  CeArb input = solver.cePools.takeArb();
+  CeArb input = cePools.takeArb();
   for (const std::unique_ptr<IntConstraint>& c : constrs) {
     if (c->lowerBoundSet) {
       c->toConstrExp(input, true);

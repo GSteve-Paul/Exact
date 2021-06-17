@@ -41,6 +41,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include "ConstrExpPools.hpp"
 #include "IntSet.hpp"
 #include "Options.hpp"
 #include "Stats.hpp"
@@ -55,5 +56,7 @@ extern IntSet tmpSet;
 extern IntSet actSet;
 extern IntSet lbdSet;
 extern IntSet saturatedLits;
+
+extern ConstrExpPools cePools;
 
 }  // namespace rs

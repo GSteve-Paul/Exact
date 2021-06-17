@@ -77,7 +77,6 @@ class Solver {
  public:
   parsing::ILP ilp;
   std::shared_ptr<Logger> logger;
-  ConstrExpPools cePools;
   std::vector<Lit> lastSol = {0};
   bool foundSolution() const { return getNbOrigVars() == 0 || lastSol.size() > 1; }
   CeSuper lastCore;
@@ -152,7 +151,7 @@ class Solver {
   }
   void dropExternal(ID id, bool erasable, bool forceDelete);
   int getNbConstraints() const { return constraints.size(); }
-  CeSuper getIthConstraint(int i) { return ca[constraints[i]].toExpanded(cePools); }
+  CeSuper getIthConstraint(int i) const;
   const std::vector<CRef>& getRawConstraints() const { return constraints; }
   const ConstraintAllocator& getCA() const { return ca; }
   bool hasPureCnf() const;

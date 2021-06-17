@@ -52,4 +52,6 @@ IntSet actSet;
 IntSet lbdSet;
 IntSet saturatedLits;
 
+ConstrExpPools cePools;
+
 }  // namespace rs

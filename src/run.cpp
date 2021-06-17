@@ -129,7 +129,7 @@ Optimization<SMALL, LARGE>::Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj) : o
   lower_bound = -origObj->getDegree();
   upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
 
-  reformObj = solver.cePools.take<SMALL, LARGE>();
+  reformObj = cePools.take<SMALL, LARGE>();
   reformObj->stopLogging();
   origObj->copyTo(reformObj);
 };
@@ -178,7 +178,7 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::addLowerBound() {
-  CePtr<ConstrExp<SMALL, LARGE>> aux = solver.cePools.take<SMALL, LARGE>();
+  CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->addRhs(lower_bound);
   solver.dropExternal(lastLowerBound, true, true);
@@ -191,14 +191,14 @@ void Optimization<SMALL, LARGE>::addLowerBound() {
 
 template <typename SMALL, typename LARGE>
 Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // does not modify core
-  CeSuper card = core->clone(solver.cePools);
-  CeSuper cloneCoefOrder = card->clone(solver.cePools);
+  CeSuper card = core->clone(cePools);
+  CeSuper cloneCoefOrder = card->clone(cePools);
   cloneCoefOrder->sortInDecreasingCoefOrder(solver.getHeuristic());
   cloneCoefOrder->reverseOrder();  // *IN*creasing coef order
   card->sortWithCoefTiebreaker(
       [&](Var v1, Var v2) { return aux::sgn(aux::abs(reformObj->coefs[v1]) - aux::abs(reformObj->coefs[v2])); });
 
-  CeSuper clone = card->clone(solver.cePools);
+  CeSuper clone = card->clone(cePools);
   assert(clone->nVars() > 0);
   LARGE bestLowerBound = 0;
   int bestNbVars = clone->nVars();
@@ -233,7 +233,7 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // 
   assert(bestCardDegree == card->getCardinalityDegree());
   card->simplifyToCardinality(false, bestCardDegree);
 
-  Ce32 result = solver.cePools.take32();
+  Ce32 result = cePools.take32();
   card->copyTo(result);
   return result;
 }
@@ -364,7 +364,7 @@ void Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol) 
     std::pair<ID, ID> res = solver.addConstraint(invalidator, Origin::INVALIDATOR);
     if (res.second == ID_Unsat) quit::exit_SUCCESS(solver);
   } else {
-    CePtr<ConstrExp<SMALL, LARGE>> aux = solver.cePools.take<SMALL, LARGE>();
+    CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
     origObj->copyTo(aux);
     aux->invert();
     aux->addRhs(-upper_bound + 1);
@@ -385,8 +385,8 @@ void Optimization<SMALL, LARGE>::logProof() {
   assert(lastUpperBound != ID_Unsat);
   assert(lastLowerBound != ID_Undef);
   assert(lastLowerBound != ID_Unsat);
-  CePtr<ConstrExp<SMALL, LARGE>> coreAggregate = solver.cePools.take<SMALL, LARGE>();
-  CePtr<ConstrExp<SMALL, LARGE>> aux = solver.cePools.take<SMALL, LARGE>();
+  CePtr<ConstrExp<SMALL, LARGE>> coreAggregate = cePools.take<SMALL, LARGE>();
+  CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->invert();
   aux->addRhs(1 - upper_bound);
@@ -534,27 +534,27 @@ void run() {
     solver.objective->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     bigint maxVal = solver.objective->getCutoffVal();
     if (maxVal <= limit32) {  // TODO: try to internalize this check in ConstrExp
-      Ce32 result = solver.cePools.take32();
+      Ce32 result = cePools.take32();
       solver.objective->copyTo(result);
       Optimization optim(result);
       optim.optimize();
     } else if (maxVal <= limit64) {
-      Ce64 result = solver.cePools.take64();
+      Ce64 result = cePools.take64();
       solver.objective->copyTo(result);
       Optimization optim(result);
       optim.optimize();
     } else if (maxVal <= static_cast<bigint>(limit96)) {
-      Ce96 result = solver.cePools.take96();
+      Ce96 result = cePools.take96();
       solver.objective->copyTo(result);
       Optimization optim(result);
       optim.optimize();
     } else if (maxVal <= static_cast<bigint>(limit128)) {
-      Ce128 result = solver.cePools.take128();
+      Ce128 result = cePools.take128();
       solver.objective->copyTo(result);
       Optimization optim(result);
       optim.optimize();
     } else {
-      CeArb result = solver.cePools.takeArb();
+      CeArb result = cePools.takeArb();
       solver.objective->copyTo(result);
       Optimization<bigint, bigint> optim(result);
       optim.optimize();

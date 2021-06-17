@@ -104,8 +104,8 @@ struct CePtr {
 };
 
 template <typename SMALL, typename LARGE>
-class ConstrExp;
-class Logger;
+struct ConstrExp;
+struct Logger;
 
 template <typename SMALL, typename LARGE>
 class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessible to ConstrExpPool?
@@ -115,42 +115,12 @@ class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessib
   std::shared_ptr<Logger> plogger;
 
  public:
-  ~ConstrExpPool() {
-    for (ConstrExp<SMALL, LARGE>* ce : ces) delete ce;
-  }
+  ~ConstrExpPool();
 
-  void resize(size_t newn) {
-    assert(n <= INF);
-    n = newn;
-    for (ConstrExp<SMALL, LARGE>* ce : ces) ce->resize(n);
-  }
-
-  void initializeLogging(std::shared_ptr<Logger>& lgr) {
-    plogger = lgr;
-    for (ConstrExp<SMALL, LARGE>* ce : ces) ce->initializeLogging(lgr);
-  }
-
-  CePtr<ConstrExp<SMALL, LARGE>> take() {
-    assert(ces.size() < 20);  // Sanity check that no large amounts of ConstrExps are created
-    if (availables.size() == 0) {
-      ces.emplace_back(new ConstrExp<SMALL, LARGE>(*this));
-      ces.back()->resize(n);
-      ces.back()->initializeLogging(plogger);
-      availables.push_back(ces.back());
-    }
-    ConstrExp<SMALL, LARGE>* result = availables.back();
-    availables.pop_back();
-    assert(result->isReset());
-    assert(result->coefs.size() == n);
-    return CePtr<ConstrExp<SMALL, LARGE>>(result);
-  }
-
-  void release(ConstrExp<SMALL, LARGE>* ce) {
-    assert(std::any_of(ces.cbegin(), ces.cend(), [&](ConstrExp<SMALL, LARGE>* i) { return i == ce; }));
-    assert(std::none_of(availables.cbegin(), availables.cend(), [&](ConstrExp<SMALL, LARGE>* i) { return i == ce; }));
-    ce->reset(false);
-    availables.push_back(ce);
-  }
+  void resize(size_t newn);
+  void initializeLogging(std::shared_ptr<Logger>& lgr);
+  CePtr<ConstrExp<SMALL, LARGE>> take();
+  void release(ConstrExp<SMALL, LARGE>* ce);
 };
 
 class ConstrExpPools {

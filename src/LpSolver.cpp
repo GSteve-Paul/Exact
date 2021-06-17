@@ -182,7 +182,7 @@ CeSuper LpSolver::createLinearCombinationFarkas(soplex::DVectorReal& mults) {
   if (scale == 0) return CeNull();
   assert(scale > 0);
 
-  Ce128 out = solver.cePools.take128();
+  Ce128 out = cePools.take128();
   for (int r = 0; r < mults.dim(); ++r) {
     int128 factor = aux::cast<int128, double>(mults[r] * scale);
     if (factor <= 0) continue;
@@ -203,7 +203,7 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
   double scale = getScaleFactor(mults, false);
   if (scale == 0) return CandidateCut();
   assert(scale > 0);
-  Ce128 lcc = solver.cePools.take128();
+  Ce128 lcc = cePools.take128();
 
   std::vector<std::pair<int128, int>> slacks;
   for (int r = 0; r < mults.dim(); ++r) {
@@ -306,7 +306,7 @@ void LpSolver::constructLearnedCandidates() {
         // for now, getNbVariables() == solver.getNbOrigVars().nbOrigVars+1
       }
       if (containsNewVars) continue;
-      candidateCuts.emplace_back(c, cr, lpSolution, solver.cePools);
+      candidateCuts.emplace_back(c, cr, lpSolution, cePools);
       if (candidateCuts.back().ratSlack >= -options.lpIntolerance.get()) candidateCuts.pop_back();
     }
   }
@@ -334,7 +334,7 @@ void LpSolver::addFilteredCuts() {
 
   for (int i : keptCuts) {
     CandidateCut& cc = candidateCuts[i];
-    CeSuper ce = cc.simpcons.toExpanded(solver.cePools);
+    CeSuper ce = cc.simpcons.toExpanded(cePools);
     ce->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, stats);
     assert(ce->fitsInDouble());
     assert(!ce->isTautology());
@@ -373,7 +373,7 @@ double LpSolver::getScaleFactor(soplex::DVectorReal& mults, bool removeNegatives
 }
 
 Ce64 LpSolver::rowToConstraint(int row) {
-  Ce64 ce = solver.cePools.take64();
+  Ce64 ce = cePools.take64();
   double rhs = lp.lhsReal(row);
   assert(aux::abs(rhs) != INFTY);
   assert(validVal(rhs));
@@ -550,7 +550,7 @@ void LpSolver::addConstraint(const CeSuper& c, bool removable, bool upperbound, 
 
 void LpSolver::addConstraint(CRef cr, bool removable, bool upperbound, bool lowerbound) {
   assert(cr != CRef_Undef);
-  addConstraint(solver.ca[cr].toExpanded(solver.cePools), removable, upperbound, lowerbound);
+  addConstraint(solver.ca[cr].toExpanded(cePools), removable, upperbound, lowerbound);
 }
 
 void LpSolver::flushConstraints() {

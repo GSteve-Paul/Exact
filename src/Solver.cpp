@@ -623,6 +623,8 @@ void Solver::dropExternal(ID id, bool erasable, bool forceDelete) {
   if (forceDelete) removeConstraint(cr);
 }
 
+CeSuper Solver::getIthConstraint(int i) const { return ca[constraints[i]].toExpanded(cePools); }
+
 bool Solver::hasPureCnf() const {
   // TODO: make this a dynamic check based on the constraints added to the constraint database?
   if (hasObjective() || (rs::options.lpTimeRatio.get() != 0 && rs::options.lpGomoryCuts)) return false;

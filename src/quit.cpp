@@ -94,7 +94,7 @@ void quit::printFormula(Solver& solver) {
   for (const CRef& cr : solver.getRawConstraints()) {
     const Constr& c = solver.getCA()[cr];
     if (c.getOrigin() == Origin::FORMULA && !c.isMarkedForDelete() && !c.isSatisfiedAtRoot(solver.getLevel())) {
-      CeSuper ce = c.toExpanded(solver.cePools);
+      CeSuper ce = c.toExpanded(cePools);
       ce->toStreamAsOPB(std::cout);
       std::cout << "\n";
     }

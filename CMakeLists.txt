@@ -73,6 +73,7 @@ add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 set(source_files
+    src/globals.cpp
     src/Constr.cpp
     src/ConstrExp.cpp
     src/ConstrSimple.cpp
@@ -86,7 +87,6 @@ set(source_files
     src/run.cpp
     src/Heuristic.cpp
     src/aux.cpp
-    src/globals.cpp
 
     src/used_licenses/licenses.cpp
     src/used_licenses/zib_academic.cpp
@@ -96,6 +96,7 @@ set(source_files
     src/used_licenses/EPL.cpp)
 
 set(header_files
+    src/globals.hpp
     src/Constr.hpp
     src/ConstrExp.hpp
     src/ConstrSimple.hpp
@@ -109,7 +110,6 @@ set(header_files
     src/Solver.hpp
     src/typedefs.hpp
     src/aux.hpp
-    src/globals.hpp
     src/parsing.hpp
     src/quit.hpp
     src/run.hpp
