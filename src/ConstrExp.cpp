@@ -1546,47 +1546,4 @@ template struct ConstrExp<int128, int128>;
 template struct ConstrExp<int128, int256>;
 template struct ConstrExp<bigint, bigint>;
 
-void ConstrExpPools::resize(size_t newn) {
-  ce32s.resize(newn);
-  ce64s.resize(newn);
-  ce96s.resize(newn);
-  ce128s.resize(newn);
-  ceArbs.resize(newn);
-}
-
-void ConstrExpPools::initializeLogging(std::shared_ptr<Logger> lgr) {
-  ce32s.initializeLogging(lgr);
-  ce64s.initializeLogging(lgr);
-  ce96s.initializeLogging(lgr);
-  ce128s.initializeLogging(lgr);
-  ceArbs.initializeLogging(lgr);
-}
-
-template <>
-Ce32 ConstrExpPools::take<int, long long>() {
-  return ce32s.take();
-}
-template <>
-Ce64 ConstrExpPools::take<long long, int128>() {
-  return ce64s.take();
-}
-template <>
-Ce96 ConstrExpPools::take<int128, int128>() {
-  return ce96s.take();
-}
-template <>
-Ce128 ConstrExpPools::take<int128, int256>() {
-  return ce128s.take();
-}
-template <>
-CeArb ConstrExpPools::take<bigint, bigint>() {
-  return ceArbs.take();
-}
-
-Ce32 ConstrExpPools::take32() { return take<int, long long>(); }
-Ce64 ConstrExpPools::take64() { return take<long long, int128>(); }
-Ce96 ConstrExpPools::take96() { return take<int128, int128>(); }
-Ce128 ConstrExpPools::take128() { return take<int128, int256>(); }
-CeArb ConstrExpPools::takeArb() { return take<bigint, bigint>(); }
-
 }  // namespace rs

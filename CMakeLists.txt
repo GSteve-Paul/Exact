@@ -76,6 +76,7 @@ set(source_files
     src/Constr.cpp
     src/ConstrExp.cpp
     src/ConstrSimple.cpp
+    src/ConstrExpPools.cpp
     src/LpSolver.cpp
     src/Solver.cpp
     src/SolverStructs.cpp
@@ -99,6 +100,7 @@ set(header_files
     src/ConstrExp.hpp
     src/ConstrSimple.hpp
     src/SolverStructs.hpp
+    src/ConstrExpPools.hpp
     src/Logger.hpp
     src/Stats.hpp
     src/LpSolver.hpp
