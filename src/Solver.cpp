@@ -54,6 +54,12 @@ Solver::Solver() : n(0), orig_n(0), assumptions_lim({0}), nconfl_to_reduce(0), n
   objective = cePools.takeArb();
 }
 
+Solver::~Solver() {
+  for (CRef cr : constraints) {
+    ca[cr].freeUp();
+  }
+}
+
 void Solver::setNbVars(int nvars, bool orig) {
   assert(nvars > 0);
   assert(nvars < INF);

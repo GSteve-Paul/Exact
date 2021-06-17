@@ -127,6 +127,7 @@ class Solver {
 
  public:
   Solver();
+  ~Solver();
   void init();  // call after having read options
 
   int getNbVars() const { return n; }
