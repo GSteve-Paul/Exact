@@ -79,6 +79,7 @@ set(source_files
     src/ConstrSimple.cpp
     src/ConstrExpPools.cpp
     src/LpSolver.cpp
+    src/IntSet.cpp
     src/Solver.cpp
     src/SolverStructs.cpp
     src/parsing.cpp
@@ -93,7 +94,8 @@ set(source_files
     src/used_licenses/roundingsat.cpp
     src/used_licenses/MIT.cpp
     src/used_licenses/boost.cpp
-    src/used_licenses/EPL.cpp)
+    src/used_licenses/EPL.cpp
+)
 
 set(header_files
     src/globals.hpp

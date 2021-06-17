@@ -39,40 +39,77 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
-#pragma once
-
-#include "aux.hpp"
+#include "IntSet.hpp"
 
 namespace rs {
 
-struct IntSet {  // TODO: template to long long, int128, ...?
- private:
-  std::vector<int> keys;
-  std::vector<int> _index;
-  std::vector<int>::iterator index = _index.begin();
-  static constexpr int _unused_() { return -1; }
-  const int resize_factor = 2;
+[[nodiscard]] bool IntSet::check() const {
+  for (int i = 0; i < (int)_index.size() / 2; ++i) {
+    assert(index[i] == _unused_() || i == keys[index[i]]);
+    assert(index[-i] == _unused_() || -i == keys[index[-i]]);
+  }
+  for (int i = 0; i < (int)keys.size(); ++i) assert(index[keys[i]] == i);
+  return true;
+}
 
-  [[nodiscard]] bool check() const;
+IntSet::IntSet(int size, const std::vector<int>& ints) {
+  resize(size);
+  for (int i : ints) add(i);
+}
+IntSet::IntSet(const IntSet& other) {
+  keys = other.keys;
+  _index = other._index;
+  index = _index.begin() + _index.size() / 2;
+}
+IntSet& IntSet::operator=(const IntSet& other) {
+  if (&other == this) return *this;
+  clear();
+  for (int k : other.getKeys()) {
+    add(k);
+  }
+  return *this;
+}
 
- public:
-  IntSet() = default;
-  IntSet(int size, const std::vector<int>& ints);
-  IntSet(const IntSet& other);
-  IntSet& operator=(const IntSet& other);
+void IntSet::resize(int size) { aux::resizeIntMap(_index, index, size, resize_factor, _unused_()); }
+[[nodiscard]] size_t IntSet::size() const { return keys.size(); }
+[[nodiscard]] bool IntSet::isEmpty() const { return size() == 0; }
 
-  void resize(int size);
-  [[nodiscard]] size_t size() const;
-  [[nodiscard]] bool isEmpty() const;
+void IntSet::clear() {
+  //    assert(check());  // test
+  for (int k : keys) index[k] = _unused_();
+  keys.clear();
+}
 
-  void clear();
-  [[nodiscard]] const std::vector<int>& getKeys() const;
+[[nodiscard]] const std::vector<int>& IntSet::getKeys() const { return keys; }
 
-  [[nodiscard]] bool has(int key) const;
-  void add(int key);
-  void remove(int key);
-};
+[[nodiscard]] bool IntSet::has(int key) const {
+  return _index.size() > (unsigned int)2 * std::abs(key) && index[key] != _unused_();
+}
 
-std::ostream& operator<<(std::ostream& o, const IntSet& s);
+void IntSet::add(int key) {
+  if (_index.size() <= (unsigned int)2 * std::abs(key)) resize(std::abs(key));
+  if (index[key] != _unused_()) return;
+  assert(!aux::contains(keys, key));
+  index[key] = keys.size();
+  keys.push_back(key);
+}
+
+void IntSet::remove(int key) {
+  if (!has(key)) return;
+  int idx = index[key];
+  index[keys.back()] = idx;
+  aux::swapErase(keys, idx);
+  index[key] = _unused_();
+  assert(!has(key));
+}
+
+std::ostream& operator<<(std::ostream& o, const IntSet& s) {
+  for (int k : s.getKeys()) {
+    if (s.has(k)) {
+      o << k << " ";
+    }
+  }
+  return o;
+}
 
 }  // namespace rs
