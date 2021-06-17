@@ -284,12 +284,13 @@ CeSuper Solver::analyze(const CeSuper& conflict) {
   CeSuper confl = getAnalysisCE(conflict, options.bitsOverflow.get(), cePools);
   conflict->reset(false);
 
-  assert(actSet.isEmpty());  // will hold the literals that need their activity bumped
+  IntSet& actSet = isPool.take();  // will hold the literals that need their activity bumped
   for (Var v : confl->getVars()) {
-    if (options.bumpLits)
+    if (options.bumpLits) {
       actSet.add(confl->getLit(v));
-    else if (!options.bumpOnlyFalse || isFalse(level, confl->getLit(v)))
+    } else if (!options.bumpOnlyFalse || isFalse(level, confl->getLit(v))) {
       actSet.add(v);
+    }
   }
 
 resolve:
@@ -309,30 +310,33 @@ resolve:
       assert(isPropagated(reason, l));
       Constr& reasonC = ca[reason[toVar(l)]];
 
-      int lbd = reasonC.resolveWith(confl, l, *this);
+      int lbd = reasonC.resolveWith(confl, l, *this, actSet);
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered();
     }
     undoOne();
   }
   if (options.learnedMin && decisionLevel() > 0) {
-    minimize(confl);
+    minimize(confl, actSet);
     if (confl->isAssertingBefore(level, decisionLevel()) != AssertionStatus::ASSERTING) goto resolve;
   }
 
   heur->vBumpActivity(actSet.getKeys());
-  actSet.clear();
+  isPool.release(actSet);
 
   assert(confl->hasNegativeSlack(level));
   return confl;
 }
 
-void Solver::minimize(const CeSuper& conflict) {
+void Solver::minimize(const CeSuper& conflict, IntSet& actSet) {
   assert(conflict->isAssertingBefore(getLevel(), decisionLevel()) == AssertionStatus::ASSERTING);
-  assert(saturatedLits.isEmpty());
+  IntSet& saturatedLits = isPool.take();
   conflict->removeZeroes();
   conflict->getSaturatedLits(saturatedLits);
-  if (saturatedLits.isEmpty()) return;
+  if (saturatedLits.isEmpty()) {
+    isPool.release(saturatedLits);
+    return;
+  }
 
   std::vector<std::pair<int, Lit>> litsToSubsume;
   litsToSubsume.reserve(conflict->nVars());
@@ -349,7 +353,8 @@ void Solver::minimize(const CeSuper& conflict) {
     Lit l = pr.second;
     assert(conflict->getLit(toVar(l)) != 0);
     Constr& reasonC = ca[reason[toVar(l)]];
-    int lbd = aux::timeCall<bool>([&] { return reasonC.subsumeWith(conflict, -l, *this); }, stats.MINTIME);
+    int lbd = aux::timeCall<bool>([&] { return reasonC.subsumeWith(conflict, -l, *this, actSet, saturatedLits); },
+                                  stats.MINTIME);
     if (lbd > 0) {
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered();
@@ -357,7 +362,7 @@ void Solver::minimize(const CeSuper& conflict) {
     if (saturatedLits.isEmpty()) break;
   }
   conflict->removeZeroes();  // remove weakened literals
-  saturatedLits.clear();
+  isPool.release(saturatedLits);
 }
 
 void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
@@ -399,7 +404,7 @@ void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   conflict->reset(false);
 
   // analyze conflict to the point where we have a decision core
-  assert(actSet.isEmpty());
+  IntSet& actSet = isPool.take();
   while (decisionLevel() > 0 && isPropagated(reason, trail.back())) {
     quit::checkInterrupt();
     Lit l = trail.back();
@@ -407,14 +412,14 @@ void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
       assert(isPropagated(reason, l));
       Constr& reasonC = ca[reason[toVar(l)]];
 
-      int lbd = reasonC.resolveWith(lastCore, l, *this);
+      int lbd = reasonC.resolveWith(lastCore, l, *this, actSet);
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered();
     }
     undoOne();
   }
   heur->vBumpActivity(actSet.getKeys());
-  actSet.clear();
+  isPool.release(actSet);
 
   // weaken non-falsifieds
   assert(lastCore->hasNegativeSlack(assumptions));
@@ -882,6 +887,8 @@ void Solver::derivePureLits() {
 
 void Solver::dominanceBreaking() {
   std::unordered_set<Lit> inUnsaturatableConstraint;
+  IntSet& tmpSet = isPool.take();
+  IntSet& actSet = isPool.take();
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {
     assert(tmpSet.isEmpty());
     if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l)) continue;
@@ -934,6 +941,7 @@ void Solver::dominanceBreaking() {
           inUnsaturatableConstraint.insert(c.lit(i));
         }
       }
+      assert(actSet.isEmpty());
       for (unsigned int i = 0; i < unsatIdx; ++i) {
         quit::checkInterrupt();
         Lit ll = c.lit(i);
@@ -954,6 +962,8 @@ void Solver::dominanceBreaking() {
     }
     tmpSet.clear();
   }
+  isPool.release(tmpSet);
+  isPool.release(actSet);
 }
 
 SolveState Solver::solve() {
@@ -1068,7 +1078,7 @@ void Solver::probeRestart(Lit next) {
   lastRestartNext = toVar(next);
   int oldUnits = trail.size();
   if (probe(-next)) {
-    assert(tmpSet.isEmpty());
+    IntSet& tmpSet = isPool.take();
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       tmpSet.add(trail[i]);
     }
@@ -1091,7 +1101,7 @@ void Solver::probeRestart(Lit next) {
         }
       }
     }
-    tmpSet.clear();
+    isPool.release(tmpSet);  // TODO: rename tmpSet, actSet to something more meaningful
   }
   stats.NPROBINGLITS += (decisionLevel() == 0 ? trail.size() : trail_lim[0]) - oldUnits;
   if (decisionLevel() == 0 && isUnknown(getPos(), next)) {
@@ -1122,7 +1132,7 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
   backjumpTo(0, false);
 
   if (!previousProbe.empty()) {
-    assert(tmpSet.isEmpty());  // TODO: fix tmpSet abuse
+    IntSet& tmpSet = isPool.take();
     for (Lit l : previousProbe) {
       tmpSet.add(l);
     }
@@ -1131,7 +1141,7 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
         addConstraintChecked(ConstrSimple32({{1, l}}, 1), Origin::PROBING);
       }
     }
-    tmpSet.clear();
+    isPool.release(tmpSet);
   } else {
     previousProbe = candidates;
   }
@@ -1147,8 +1157,11 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
     }
     Lit current = candidates[0];
     aux::swapErase(candidates, 0);
-    assert(tmpSet.isEmpty());
-    if (isKnown(getPos(), current) || !probe(-current)) continue;
+    IntSet& tmpSet = isPool.take();
+    if (isKnown(getPos(), current) || !probe(-current)) {
+      isPool.release(tmpSet);
+      continue;
+    }
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       Lit l = trail[i];
       tmpSet.add(l);
@@ -1157,7 +1170,7 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
     for (Lit l : cardLits) {
       if (tmpSet.has(-l)) {
         addConstraintChecked(ConstrSimple32({{1, current}}, 1), Origin::PROBING);
-        tmpSet.clear();
+        isPool.release(tmpSet);
         continue;
       }
     }
@@ -1174,7 +1187,7 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
       }
       assert(candidatesLeft == (int)candidates.size());
     }
-    tmpSet.clear();
+    isPool.release(tmpSet);
   }
   for (Lit l : candidates) {
     cardLits.push_back(l);
@@ -1320,7 +1333,7 @@ bool Solver::runTabuOnce() {
     assert(c.isSatisfiedByTabu(tabuSol));
     assert(!violatedPtrs.count(cr));
 
-    assert(tmpSet.isEmpty());
+    IntSet& tmpSet = isPool.take();
     for (Lit l : changeds) {
       if (!tmpSet.has(toVar(l)) && !isUnit(getLevel(), l) && !isUnit(getLevel(), -l) && probe(l)) {
         // NOTE: l may have become unit by previous probing...
@@ -1338,7 +1351,7 @@ bool Solver::runTabuOnce() {
         backjumpTo(0, false);
       }
     }
-    tmpSet.clear();
+    isPool.release(tmpSet);
     oldDetTime = currentDetTime;
     currentDetTime = stats.getDetTime();
     stats.TABUDETTIME += currentDetTime - oldDetTime;

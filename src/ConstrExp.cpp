@@ -426,14 +426,14 @@ bool ConstrExp<SMALL, LARGE>::isSatisfied(const std::vector<Lit>& assignment) co
 
 template <typename SMALL, typename LARGE>
 unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntVecIt& level) const {
-  assert(lbdSet.isEmpty());
+  IntSet& lbdSet = isPool.take();
   for (Var v : vars) {
     assert(getLit(v) != 0);
     lbdSet.add(level[-getLit(v)] % INF);
   }
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   unsigned int lbd = lbdSet.size();
-  lbdSet.clear();
+  isPool.release(lbdSet);
   return lbd;
 }
 
@@ -1335,7 +1335,7 @@ void ConstrExp<SMALL, LARGE>::toStreamWithAssignment(std::ostream& o, const IntV
 
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos) {
+                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) {
   assert(getCoef(-l) > 0);
   assert(hasNoZeroes());
   stats.NADDEDLITERALS += size;
@@ -1413,20 +1413,21 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
   assert(getCoef(-l) == 0);
   assert(hasNegativeSlack(level));
 
-  assert(lbdSet.isEmpty());
+  IntSet& lbdSet = isPool.take();
   for (int i = 0; i < (int)size; ++i) {
     lbdSet.add(level[-data[i]] % INF);
   }
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   int lbd = lbdSet.size();
-  lbdSet.clear();
+  isPool.release(lbdSet);
   return lbd;
 }
 
 //@post: variable vector vars is not changed, but coefs[toVar(toSubsume)] may become 0
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit toSubsume,
-                                         const IntVecIt& level, const std::vector<int>& pos) {
+                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         IntSet& saturatedLits) {
   assert(getCoef(-toSubsume) > 0);
   stats.NADDEDLITERALS += size;
 
@@ -1474,7 +1475,8 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
   if (options.bumpLits || options.bumpCanceling) {
     actSet.add(toSubsume);
   }
-  assert(lbdSet.isEmpty());
+
+  IntSet& lbdSet = isPool.take();
   for (int i = 0; i < (int)size; ++i) {
     Lit l = data[i];
     if (l == toSubsume || saturatedLits.has(l)) {
@@ -1483,61 +1485,71 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
   }
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   int lbd = lbdSet.size();
-  lbdSet.clear();
   assert(lbd > 0);
+  isPool.release(lbdSet);
   return lbd;
 }
 
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos) {
-  return genericResolve(terms, size, degr, id, o, l, level, pos);
+                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         IntSet& actSet) {
+  return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos) {
-  return genericResolve(terms, size, degr, id, o, l, level, pos);
+                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         IntSet& actSet) {
+  return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos) {
-  return genericResolve(terms, size, degr, id, o, l, level, pos);
+                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         IntSet& actSet) {
+  return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos) {
-  return genericResolve(terms, size, degr, id, o, l, level, pos);
+                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         IntSet& actSet) {
+  return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos) {
-  return genericResolve(terms, size, degr, id, o, l, level, pos);
+                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         IntSet& actSet) {
+  return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos) {
-  return genericSubsume(terms, size, degr, id, l, level, pos);
+                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         IntSet& saturatedLits) {
+  return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id,
-                                         Lit l, const IntVecIt& level, const std::vector<int>& pos) {
-  return genericSubsume(terms, size, degr, id, l, level, pos);
+                                         Lit l, const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         IntSet& saturatedLits) {
+  return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos) {
-  return genericSubsume(terms, size, degr, id, l, level, pos);
+                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         IntSet& saturatedLits) {
+  return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos) {
-  return genericSubsume(terms, size, degr, id, l, level, pos);
+                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         IntSet& saturatedLits) {
+  return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos) {
-  return genericSubsume(terms, size, degr, id, l, level, pos);
+                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         IntSet& saturatedLits) {
+  return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 
 template struct ConstrExp<int, long long>;

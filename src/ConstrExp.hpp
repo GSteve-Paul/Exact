@@ -156,29 +156,34 @@ struct ConstrExpSuper {
   virtual void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const = 0;
 
   virtual int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
-                          const std::vector<int>& pos) = 0;
+                          const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
-                          const std::vector<int>& pos) = 0;
+                          const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos) = 0;
+                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          IntSet& saturatedLits) = 0;
 };
 std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce);
 std::ostream& operator<<(std::ostream& o, const CeSuper& ce);
@@ -379,29 +384,29 @@ struct ConstrExp final : public ConstrExpSuper {
   void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const;
 
   int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos);
+                  const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos);
+                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos);
+                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos);
+                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos);
+                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos);
+                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
   int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos);
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
   int subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos);
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
   int subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos);
+                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
   int subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos);
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
   int subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos);
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
   int subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos);
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
 
  private:
   template <typename CF, typename DG>
@@ -464,7 +469,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
   template <typename CF, typename DG>
   int genericResolve(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o, Lit asserting,
-                     const IntVecIt& level, const std::vector<int>& pos) {
+                     const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) {
     assert(getCoef(-asserting) > 0);
     assert(hasNoZeroes());
 
@@ -545,7 +550,7 @@ struct ConstrExp final : public ConstrExpSuper {
   //@post: variable vector vars is not changed, but coefs[toVar(toSubsume)] may become 0
   template <typename CF, typename DG>
   int genericSubsume(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Lit toSubsume,
-                     const IntVecIt& level, const std::vector<int>& pos) {
+                     const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits) {
     assert(getCoef(-toSubsume) > 0);
 
     DG weakenedDeg = degr;
@@ -587,7 +592,8 @@ struct ConstrExp final : public ConstrExpSuper {
     if (options.bumpLits || options.bumpCanceling) {
       actSet.add(toSubsume);
     }
-    assert(lbdSet.isEmpty());
+
+    IntSet& lbdSet = isPool.take();
     for (unsigned int i = 0; i < size; ++i) {
       Lit l = terms[i].l;
       if (l == toSubsume || saturatedLits.has(l)) {
@@ -596,8 +602,8 @@ struct ConstrExp final : public ConstrExpSuper {
     }
     lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
     int lbd = lbdSet.size();
-    lbdSet.clear();
     assert(lbd > 0);
+    isPool.release(lbdSet);
     return lbd;
   }
 

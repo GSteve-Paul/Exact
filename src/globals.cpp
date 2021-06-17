@@ -47,11 +47,7 @@ bool asynch_interrupt;
 Options options;
 Stats stats;
 
-IntSet tmpSet;  // used for dominance breaking, local search, probing
-IntSet actSet;
-IntSet lbdSet;
-IntSet saturatedLits;
-
 ConstrExpPools cePools;
+IntSetPool isPool;
 
 }  // namespace rs

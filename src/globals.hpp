@@ -52,11 +52,7 @@ extern bool asynch_interrupt;
 extern Options options;
 extern Stats stats;
 
-extern IntSet tmpSet;
-extern IntSet actSet;
-extern IntSet lbdSet;
-extern IntSet saturatedLits;
-
 extern ConstrExpPools cePools;
+extern IntSetPool isPool;
 
 }  // namespace rs

@@ -75,4 +75,15 @@ struct IntSet {  // TODO: template to long long, int128, ...?
 
 std::ostream& operator<<(std::ostream& o, const IntSet& s);
 
+class IntSetPool {
+  std::vector<IntSet*> intsets;
+  std::vector<IntSet*> availables;
+
+ public:
+  ~IntSetPool();
+
+  IntSet& take();
+  void release(IntSet& intset);
+};
+
 }  // namespace rs

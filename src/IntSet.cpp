@@ -112,4 +112,27 @@ std::ostream& operator<<(std::ostream& o, const IntSet& s) {
   return o;
 }
 
+IntSetPool::~IntSetPool() {
+  for (IntSet* is : intsets) delete is;
+}
+
+IntSet& IntSetPool::take() {
+  assert(intsets.size() < 5);  // Sanity check that no large amounts of IntSets are created
+  if (availables.size() == 0) {
+    intsets.emplace_back(new IntSet());
+    availables.push_back(intsets.back());
+  }
+  IntSet* result = availables.back();
+  availables.pop_back();
+  assert(result->isEmpty());
+  return *result;
+}
+
+void IntSetPool::release(IntSet& is) {
+  assert(std::any_of(intsets.cbegin(), intsets.cend(), [&](IntSet* i) { return i == &is; }));
+  assert(std::none_of(availables.cbegin(), availables.cend(), [&](IntSet* i) { return i == &is; }));
+  is.clear();
+  availables.push_back(&is);
+}
+
 }  // namespace rs

@@ -176,11 +176,11 @@ WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver
   return WatchStatus::KEEPWATCH;
 }
 
-int Clause::resolveWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->resolveWith(data, size, 1, id, l, solver.getLevel(), solver.getPos());
+int Clause::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const {
+  return confl->resolveWith(data, size, 1, id, l, solver.getLevel(), solver.getPos(), actSet);
 }
-int Clause::subsumeWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->subsumeWith(data, size, 1, id, l, solver.getLevel(), solver.getPos());
+int Clause::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const {
+  return confl->subsumeWith(data, size, 1, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
 }
 
 CeSuper Clause::toExpanded(ConstrExpPools& cePools) const {
@@ -318,11 +318,11 @@ WatchStatus Cardinality::checkForPropagation(CRef cr, int& idx, [[maybe_unused]]
   return WatchStatus::KEEPWATCH;
 }
 
-int Cardinality::resolveWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->resolveWith(data, size, degr, id, l, solver.getLevel(), solver.getPos());
+int Cardinality::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const {
+  return confl->resolveWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), actSet);
 }
-int Cardinality::subsumeWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos());
+int Cardinality::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const {
+  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
 }
 
 CeSuper Cardinality::toExpanded(ConstrExpPools& cePools) const {
@@ -444,12 +444,12 @@ void Counting<CF, DG>::undoFalsified(int i) {
 }
 
 template <typename CF, typename DG>
-int Counting<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->resolveWith(data, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos());
+int Counting<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const {
+  return confl->resolveWith(data, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
-int Counting<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos());
+int Counting<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const {
+  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
 }
 
 template <typename CF, typename DG>
@@ -628,12 +628,12 @@ void Watched<CF, DG>::undoFalsified(int i) {
 }
 
 template <typename CF, typename DG>
-int Watched<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->resolveWith(data, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos());
+int Watched<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const {
+  return confl->resolveWith(data, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
-int Watched<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos());
+int Watched<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const {
+  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
 }
 
 template <typename CF, typename DG>
@@ -767,12 +767,13 @@ void CountingSafe<CF, DG>::undoFalsified(int i) {
 }
 
 template <typename CF, typename DG>
-int CountingSafe<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->resolveWith(terms, size, *degr, id, getOrigin(), l, solver.getLevel(), solver.getPos());
+int CountingSafe<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const {
+  return confl->resolveWith(terms, size, *degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
-int CountingSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos());
+int CountingSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet,
+                                      IntSet& saturatedLits) const {
+  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
 }
 
 template <typename CF, typename DG>
@@ -953,12 +954,13 @@ void WatchedSafe<CF, DG>::undoFalsified(int i) {
 }
 
 template <typename CF, typename DG>
-int WatchedSafe<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->resolveWith(terms, size, *degr, id, getOrigin(), l, solver.getLevel(), solver.getPos());
+int WatchedSafe<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const {
+  return confl->resolveWith(terms, size, *degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
-int WatchedSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver) const {
-  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos());
+int WatchedSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet,
+                                     IntSet& saturatedLits) const {
+  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
 }
 
 template <typename CF, typename DG>
