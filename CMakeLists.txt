@@ -85,14 +85,14 @@ set(source_files
     src/run.cpp
     src/Heuristic.cpp
     src/aux.cpp
+    src/globals.cpp
 
     src/used_licenses/licenses.cpp
     src/used_licenses/zib_academic.cpp
     src/used_licenses/roundingsat.cpp
     src/used_licenses/MIT.cpp
     src/used_licenses/boost.cpp
-    src/used_licenses/EPL.cpp
-)
+    src/used_licenses/EPL.cpp)
 
 set(header_files
     src/Constr.hpp

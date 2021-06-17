@@ -39,50 +39,17 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
-#include <csignal>
-#include <fstream>
-#include "aux.hpp"
 #include "globals.hpp"
-#include "parsing.hpp"
-#include "run.hpp"
 
-static void SIGINT_interrupt([[maybe_unused]] int signum) { rs::asynch_interrupt = true; }
+namespace rs {
 
-static void SIGINT_exit([[maybe_unused]] int signum) {
-  std::cout << "*** INTERRUPTED ***" << std::endl;
-  rs::aux::flushexit(1);
-}
+bool asynch_interrupt;
+Options options;
+Stats stats;
 
-int main(int argc, char** argv) {
-  rs::stats.STARTTIME.z = rs::aux::cpuTime();
-  rs::asynch_interrupt = false;
+IntSet tmpSet;  // used for dominance breaking, local search, probing
+IntSet actSet;
+IntSet lbdSet;
+IntSet saturatedLits;
 
-  signal(SIGINT, SIGINT_exit);
-  signal(SIGTERM, SIGINT_exit);
-  signal(SIGXCPU, SIGINT_exit);
-  signal(SIGINT, SIGINT_interrupt);
-  signal(SIGTERM, SIGINT_interrupt);
-  signal(SIGXCPU, SIGINT_interrupt);
-
-  rs::options.parseCommandLine(argc, argv);
-
-  rs::aux::rng::seed = rs::options.randomSeed.get();
-
-  if (rs::options.verbosity.get() > 0) {
-    std::cout << "c Exact 2021\n";
-    std::cout << "c branch " << EXPANDED(GIT_BRANCH) << "\n";
-    std::cout << "c commit " << EXPANDED(GIT_COMMIT_HASH) << std::endl;
-  }
-
-  rs::run::solver.init();
-  rs::aux::timeCallVoid([&] { rs::parsing::file_read(rs::run::solver); }, rs::stats.PARSETIME);
-  if (rs::run::solver.hasPureCnf()) {
-    // optimize settings for CNF, as all constraints will be clausal
-    rs::options.lpTimeRatio.parse("0");
-    rs::options.bitsOverflow.parse("1");
-    rs::options.bitsReduced.parse("1");
-    rs::options.bitsLearned.parse("1");
-  }
-
-  rs::run::run();
-}
+}  // namespace rs

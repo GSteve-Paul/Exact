@@ -46,11 +46,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-IntSet tmpSet;  // used for dominance breaking, local search, probing
-IntSet actSet;
-IntSet lbdSet;
-IntSet saturatedLits;
-
 // ---------------------------------------------------------------------
 // Initialization
 
