@@ -201,8 +201,10 @@ struct Options {
   VoidOption printSol{"print-sol", "Print the solution if found"};
   VoidOption printUnits{"print-units", "Print unit literals"};
   VoidOption printCsvData{"print-csv", "Print statistics in a comma-separated value format"};
-  EnumOption outputMode{
-      "output", "Output format to be adhered to (for competitions)", "default", {"default", "maxsat", "maxsatnew"}};
+  EnumOption outputMode{"output",
+                        "Output format to be adhered to (for competitions)",
+                        "default",
+                        {"default", "maxsat", "maxsatnew", "miplib"}};
   ValOption<int> verbosity{"verbosity", "Verbosity of the output", 1, "0 =< int",
                            [](const int& x) -> bool { return x >= 0; }};
   ValOption<std::string> proofLog{"proof-log", "Filename for the proof logs, left unspecified disables proof logging",

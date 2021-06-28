@@ -68,7 +68,7 @@ struct IntVar {
   std::string name;
   bigint lowerBound = 0;
   bigint upperBound = 1;
-  // TODO: keep track of offset after normalization?
+  bigint offset = 0;
   bool logEncoding = false;
 
   std::vector<Var> encoding;
@@ -118,6 +118,7 @@ struct ILP {
   IntVar* getVarFor(const std::string& name);
   void addTo(Solver& s, bool nameAsId);
   void normalize(Solver& s);
+  void printOrigSol(const std::vector<Lit>& sol);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 
