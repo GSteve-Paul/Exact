@@ -292,7 +292,7 @@ struct Options {
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
   ValOption<int> intEncoding{
       "int-orderenc",
-      "Upper bound on the range size of order-encoded integer variables, any larger will be encoded binary-wise", 3,
+      "Upper bound on the range size of order-encoded integer variables, any larger will be encoded binary-wise", 12,
       "2 =< int", [](const int& x) -> bool { return x >= 2; }};
   ValOption<double> intDefaultBound{"int-infinity", "Bound used for unbounded integer variables", limit32, "0 < double",
                                     [](const double& x) -> bool { return x > 0; }};
