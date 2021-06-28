@@ -845,6 +845,12 @@ void Solver::inProcess() {
 
 void Solver::presolve() {
   if (options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
+  // TODO: turn below helper code to paste a solution into a proper option
+  //  std::vector<Var> tmp{};
+  //  std::unordered_set<Var> trueVars(tmp.cbegin(), tmp.cend());
+  //  for (Var v = 1; v < getNbVars(); ++v) {
+  //    addUnitConstraint(trueVars.count(v) ? v : -v, Origin::PURE);
+  //  }
   aux::timeCallVoid([&] { inProcess(); }, stats.INPROCESSTIME);
   firstRun = false;
 }
