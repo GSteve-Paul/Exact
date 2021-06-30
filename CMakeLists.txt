@@ -78,6 +78,7 @@ set(source_files
     src/ConstrExp.cpp
     src/ConstrSimple.cpp
     src/ConstrExpPools.cpp
+    src/Logger.cpp
     src/LpSolver.cpp
     src/IntSet.cpp
     src/Solver.cpp

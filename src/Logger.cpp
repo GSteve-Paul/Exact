@@ -39,71 +39,34 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
-#pragma once
-
-#include <fstream>
-#include "Stats.hpp"
-#include "typedefs.hpp"
+#include "Logger.hpp"
 
 namespace rs {
+ActualLogger::ActualLogger(const std::string& proof_log_name) {
+  formula_out = std::ofstream(proof_log_name + ".formula");
+  formula_out << "* #variable= 0 #constraint= 0\n";
+  formula_out << " >= 0 ;\n";
+  ++last_formID;
+  proof_out = std::ofstream(proof_log_name + ".proof");
+  proof_out << "pseudo-Boolean proof version 1.1\n";
+  proof_out << "l 1\n";
+  ++last_proofID;
+}
 
-class Logger {
- public:
-  virtual void flush() = 0;
-  virtual void logComment(const std::string& comment, const Stats& sts) = 0;
-  virtual void logComment(const std::string& comment) = 0;
-  virtual ~Logger(){};
+void ActualLogger::flush() {
+  formula_out.flush();
+  proof_out.flush();
+}
 
-  template <typename T>
-  static std::ostream& proofMult(std::ostream& o, const T& m) {
-    assert(m > 0);
-    if (m != 1) o << m << " * ";
-    return o;
-  }
-  template <typename T>
-  static std::ostream& proofDiv(std::ostream& o, const T& d) {
-    assert(d > 0);
-    if (d != 1) o << d << " d ";
-    return o;
-  }
-  template <typename T>
-  static std::ostream& proofWeaken(std::ostream& o, Lit l, const T& m) {
-    assert(m != 0);
-    if ((m < 0) != (l < 0)) {
-      o << "~";
-    }
-    return proofMult(o << "x" << toVar(l) << " ", aux::abs(m)) << "+ ";
-  }
-  template <typename T>
-  static std::ostream& proofWeakenFalseUnit(std::ostream& o, ID id, const T& m) {
-    assert(m < 0);
-    return proofMult(o << id << " ", -m) << "+ ";
-  }
-};
+void ActualLogger::logComment([[maybe_unused]] const std::string& comment, [[maybe_unused]] const Stats& sts) {
+#if !NDEBUG
+  proof_out << "* " << sts.getDetTime() << " " << comment << "\n";
+#endif
+}
 
-class DummyLogger : public Logger {
- public:
-  ID last_formID = 0;
-  ID last_proofID = 0;
-
-  virtual void flush() {}
-  virtual void logComment([[maybe_unused]] const std::string& comment, [[maybe_unused]] const Stats& sts) {}
-  virtual void logComment([[maybe_unused]] const std::string& comment) {}
-};
-
-class ActualLogger : public Logger {
- public:
-  ID last_formID = 0;
-  ID last_proofID = 0;
-  std::ofstream formula_out;
-  std::ofstream proof_out;
-  std::vector<ID> unitIDs;
-
-  explicit ActualLogger(const std::string& proof_log_name);
-
-  virtual void flush();
-  virtual void logComment([[maybe_unused]] const std::string& comment, [[maybe_unused]] const Stats& sts);
-  virtual void logComment([[maybe_unused]] const std::string& comment);
-};
-
+void ActualLogger::logComment([[maybe_unused]] const std::string& comment) {
+#if !NDEBUG
+  proof_out << "* " << comment << "\n";
+#endif
+}
 }  // namespace rs

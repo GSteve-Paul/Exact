@@ -85,7 +85,7 @@ struct ConstrExpSuper {
 
   virtual void resize(size_t s) = 0;
   virtual void resetBuffer(ID proofID) = 0;
-  virtual void initializeLogging(std::shared_ptr<Logger>& l) = 0;
+  virtual void initializeLogging(std::shared_ptr<ActualLogger>& l) = 0;
   virtual void stopLogging() = 0;
   virtual bool isReset() const = 0;
   virtual void reset(bool partial) = 0;
@@ -199,7 +199,7 @@ struct ConstrExp final : public ConstrExpSuper {
   LARGE rhs = 0;
   std::vector<SMALL> coefs;
   std::stringstream proofBuffer;
-  std::shared_ptr<Logger> plogger;
+  std::shared_ptr<ActualLogger> plogger;
 
  private:
   void add(Var v, SMALL c, bool removeZeroes = false);
@@ -236,7 +236,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
   void resize(size_t s);
   void resetBuffer(ID proofID);
-  void initializeLogging(std::shared_ptr<Logger>& l);
+  void initializeLogging(std::shared_ptr<ActualLogger>& l);
   void stopLogging();
 
   bool isReset() const;

@@ -90,7 +90,7 @@ void Solver::setNbVars(int nvars, bool orig) {
 }
 
 void Solver::init() {
-  if (!options.proofLog.get().empty()) logger = std::make_shared<Logger>(options.proofLog.get());
+  if (!options.proofLog.get().empty()) logger = std::make_shared<ActualLogger>(options.proofLog.get());
   cePools.initializeLogging(logger);
   objective->stopLogging();
   nconfl_to_restart = options.lubyMult.get();
@@ -1102,7 +1102,7 @@ void Solver::probeRestart(Lit next) {
         for (Lit l : newUnits) {
           assert(!isUnit(getLevel(), -l));
           if (!isUnit(getLevel(), l)) {
-            addConstraintChecked(ConstrSimple32({{1, l}}, 1), Origin::PROBING);
+            addUnitConstraint(l, Origin::PROBING);
           }
         }
       }
@@ -1144,7 +1144,7 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
     }
     for (Lit l : candidates) {
       if (tmpSet.has(l)) {
-        addConstraintChecked(ConstrSimple32({{1, l}}, 1), Origin::PROBING);
+        addUnitConstraint(l, Origin::PROBING);
       }
     }
     isPool.release(tmpSet);
@@ -1175,7 +1175,7 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
     backjumpTo(0, false);
     for (Lit l : cardLits) {
       if (tmpSet.has(-l)) {
-        addConstraintChecked(ConstrSimple32({{1, current}}, 1), Origin::PROBING);
+        addUnitConstraint(current, Origin::PROBING);
         isPool.release(tmpSet);
         continue;
       }

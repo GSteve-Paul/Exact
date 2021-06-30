@@ -254,7 +254,7 @@ void ConstrExp<SMALL, LARGE>::resetBuffer(ID proofID) {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::initializeLogging(std::shared_ptr<Logger>& l) {
+void ConstrExp<SMALL, LARGE>::initializeLogging(std::shared_ptr<ActualLogger>& l) {
   assert(isReset());
   plogger = l;
   if (plogger) {

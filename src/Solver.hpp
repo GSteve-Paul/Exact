@@ -52,7 +52,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-struct Logger;
+class ActualLogger;
 
 enum class SolveState { SAT, UNSAT, INCONSISTENT, INPROCESSED };
 enum class AMODetectState { FAILED, FOUNDUNIT, SUCCESS };
@@ -76,7 +76,7 @@ class Solver {
 
  public:
   parsing::ILP ilp;
-  std::shared_ptr<Logger> logger;
+  std::shared_ptr<ActualLogger> logger;
   std::vector<Lit> lastSol = {0};
   bool foundSolution() const { return getNbOrigVars() == 0 || lastSol.size() > 1; }
   CeSuper lastCore;
