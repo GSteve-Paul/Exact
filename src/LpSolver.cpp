@@ -339,7 +339,7 @@ void LpSolver::addFilteredCuts() {
     assert(ce->fitsInDouble());
     assert(!ce->isTautology());
     if (cc.cr == CRef_Undef) {  // Gomory cut
-      aux::timeCallVoid([&] { solver.learnConstraint(ce, Origin::GOMORY); }, stats.LEARNTIME);
+      solver.learnConstraint(ce, Origin::GOMORY);
     } else {  // learned cut
       ++stats.NLPLEARNEDCUTS;
     }
@@ -444,7 +444,7 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
       if (options.lpLearnDuals && lp.getDual(lpMultipliers)) {
         CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
         if (confl) {
-          aux::timeCallVoid([&] { solver.learnConstraint(confl, Origin::DUAL); }, stats.LEARNTIME);
+          solver.learnConstraint(confl, Origin::DUAL);
         }
       } else {
         ++stats.NLPNODUAL;
@@ -486,7 +486,7 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
 
   CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
   if (confl) {
-    aux::timeCallVoid([&] { solver.learnConstraint(confl, Origin::FARKAS); }, stats.LEARNTIME);
+    solver.learnConstraint(confl, Origin::FARKAS);
   }
   return LpStatus::INFEASIBLE;
 }

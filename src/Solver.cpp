@@ -179,7 +179,7 @@ bool Solver::probe(Lit l) {
   CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(false); }, stats.PROPTIME);
   if (confl) {
     CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, stats.CATIME);
-    aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, stats.LEARNTIME);
+    learnConstraint(analyzed, Origin::LEARNED);
   }
   return decisionLevel() != 0;
 }
@@ -432,8 +432,7 @@ void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
     }
   }
   assert(lastCore->hasNegativeSlack(assumptions));
-  aux::timeCallVoid([&] { learnConstraint(lastCore, Origin::LEARNED); },
-                    stats.LEARNTIME);  // NOTE: takes care of inconsistency
+  learnConstraint(lastCore, Origin::LEARNED);  // NOTE: takes care of inconsistency
   backjumpTo(0);
   lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true);
   if (!lastCore->hasNegativeSlack(assumptions)) {  // apparently unit clauses were propagated during learnConstraint
@@ -534,6 +533,8 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
  * If conflicting at level 0, calls quit::exit_SUCCESS.
  */
 void Solver::learnConstraint(const CeSuper& c, Origin orig) {
+  double start = aux::cpuTime();
+
   assert(c);
   assert(isLearned(orig));
   CeSuper learned = c->clone(cePools);
@@ -558,6 +559,29 @@ void Solver::learnConstraint(const CeSuper& c, Origin orig) {
     ca[cr].decreaseLBD(isAsserting ? learned->getLBD(level) : learned->nVars());
     // the LBD of non-asserting constraints is undefined, so we take a safe upper bound
   }
+
+  stats.LEARNTIME += aux::cpuTime() - start;
+}
+
+void Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
+  double start = aux::cpuTime();
+
+  assert(isLearned(orig));
+  assert(!isUnit(getLevel(), l));
+  assert(!isUnit(getLevel(), -l));
+
+  backjumpTo(0);
+  Ce32 unit = cePools.take32();
+  unit->orig = orig;
+  unit->addRhs(1);
+  unit->addLhs(1, l);
+  if (id != ID_Undef) {
+    unit->resetBuffer(id);
+  }
+  CRef cr = attachConstraint(unit, false);
+  ca[cr].decreaseLBD(1);
+
+  stats.LEARNTIME += aux::cpuTime() - start;
 }
 
 std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
@@ -1015,7 +1039,7 @@ SolveState Solver::solve() {
         assert(analyzed);
         assert(analyzed->hasNegativeSlack(getLevel()));
         assert(analyzed->isSaturated());
-        aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, stats.LEARNTIME);
+        learnConstraint(analyzed, Origin::LEARNED);
       } else {
         aux::timeCallVoid([&] { extractCore(confl); }, stats.CATIME);
         assert(!lastCore || lastCore->hasNegativeSlack(assumptions));
@@ -1110,7 +1134,7 @@ void Solver::probeRestart(Lit next) {
         for (Lit l : newUnits) {
           assert(!isUnit(getLevel(), -l));
           if (!isUnit(getLevel(), l)) {
-            addUnitConstraint(l, Origin::PROBING);
+            learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(next, l) : ID_Undef);
           }
         }
       }
@@ -1152,7 +1176,7 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
     }
     for (Lit l : candidates) {
       if (tmpSet.has(l)) {
-        addUnitConstraint(l, Origin::PROBING);
+        learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(seed, l) : ID_Undef);
       }
     }
     isPool.release(tmpSet);
@@ -1183,7 +1207,7 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
     backjumpTo(0, false);
     for (Lit l : cardLits) {
       if (tmpSet.has(-l)) {
-        addUnitConstraint(current, Origin::PROBING);
+        learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(l, current) : ID_Undef);
         isPool.release(tmpSet);
         continue;
       }

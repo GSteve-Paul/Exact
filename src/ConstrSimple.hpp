@@ -83,6 +83,8 @@ struct ConstrSimple final : public ConstrSimpleSuper {
   void toNormalFormVar();
   void reset();
 
+  void toStreamAsOPB(std::ostream& o) const;
+
  private:
   template <typename C, typename D>
   void copy_(ConstrSimple<C, D>& out) const {

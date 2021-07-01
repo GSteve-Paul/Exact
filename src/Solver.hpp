@@ -136,10 +136,9 @@ class Solver {
   int decisionLevel() const { return trail_lim.size(); }
   int assumptionLevel() const { return assumptions_lim.size() - 1; }
 
-  [[nodiscard]] std::pair<ID, ID> addConstraint(const CeSuper& c,
-                                                Origin orig);  // result: formula line id, processed id
-  [[nodiscard]] std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c,
-                                                Origin orig);  // result: formula line id, processed id
+  // result: formula line id, processed id
+  [[nodiscard]] std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
+  [[nodiscard]] std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
   void addUnitConstraint(Lit l, Origin orig);
   template <typename T>
   void addConstraintChecked(const T& c, Origin orig) {
@@ -210,6 +209,7 @@ class Solver {
 
   CRef attachConstraint(const CeSuper& constraint, bool locked);
   void learnConstraint(const CeSuper& c, Origin orig);
+  void learnUnitConstraint(Lit l, Origin orig, ID id = ID_Undef);
   std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
   void removeConstraint(const CRef& cr, bool override = false);
 

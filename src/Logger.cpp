@@ -65,7 +65,7 @@ void Logger::flush() {
 
 void Logger::logComment([[maybe_unused]] const std::string& comment) {
 #if !NDEBUG
-  proof_out << "* " << stats.getDetTime() << " " << comment << "\n";
+  proof_out << "* " << comment << " " << stats.getDetTime() << "\n";
 #endif
 }
 
@@ -88,7 +88,7 @@ ID Logger::logProofLine(const CeSuper& ce) {
   ID id;
   if (spacecount > 1) {  // non-trivial line
     id = ++last_proofID;
-    proof_out << "p " << buffer << "0\n";
+    proof_out << "p " << buffer << "\n";
     ce->resetBuffer(id);
   } else {  // line is just one id, don't print it
     id = std::stoll(buffer);
@@ -109,12 +109,32 @@ ID Logger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::s
 void Logger::logInconsistency(const CeSuper& ce) {
   assert(ce->isInconsistency());
   ID id = logProofLineWithInfo(ce, "Inconsistency");
-  proof_out << "c " << id << " 0" << std::endl;
+  proof_out << "c " << id << "" << std::endl;
 }
 
 void Logger::logUnit(const CeSuper& ce) {
   assert(ce->isUnitConstraint());
   unitIDs.push_back(logProofLineWithInfo(ce, "Unit"));
+}
+
+ID Logger::logRUP(const ConstrSimple32& c) {
+  proof_out << "u ";
+  c.toStreamAsOPB(proof_out);
+  proof_out << "\n";
+  return ++last_proofID;
+}
+
+ID Logger::logImpliedUnit(Lit implying, Lit implied) {
+#if !NDEBUG
+  logComment("Implied");
+#endif
+  ID id1 = logRUP(ConstrSimple32({{1, implying}, {1, implied}}, 1));
+  ID id2 = logRUP(ConstrSimple32({{1, -implying}, {1, implied}}, 1));
+  proof_out << "p " << id1 << " " << id2 << " + s\n";
+#if !NDEBUG
+  proof_out << "e " << last_proofID + 1 << " +1 " << (implied < 0 ? "~x" : "x") << toVar(implied) << " >= 1 ;\n";
+#endif
+  return ++last_proofID;
 }
 
 }  // namespace rs

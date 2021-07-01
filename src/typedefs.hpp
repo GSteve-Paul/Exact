@@ -99,7 +99,6 @@ enum class Origin {
   FORMULA,        // original input formula
   DOMBREAKER,     // dominance breaking
   PURE,           // pure unit literal
-  PROBING,        // probing unit literal
   COREGUIDED,     // extension constraints from coreguided optimization
   HARDENEDBOUND,  // unit constraint due to upper bound on the objective function
   UPPERBOUND,     // upper bound on the objective function
@@ -109,6 +108,7 @@ enum class Origin {
   FARKAS,         // LP solver infeasibility witness
   DUAL,           // LP solver feasibility dual constraint
   GOMORY,         // Gomory cut
+  PROBING,        // probing unit literal
   DETECTEDAMO,    // detected cardinality constraint
   REDUCED,        // reduced constraint
 };
@@ -119,7 +119,7 @@ inline bool isNonImplied(Origin o) {
 inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
 inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED; }
 inline bool isInput(Origin o) {
-  return isNonImplied(o) || isExternal(o) || o == Origin::PURE || o == Origin::PROBING || o == Origin::HARDENEDBOUND;
+  return isNonImplied(o) || isExternal(o) || o == Origin::PURE || o == Origin::HARDENEDBOUND;
 }
 // inline bool isLearned(Origin o) {
 //  return o == Origin::LEARNED || o == Origin::FARKAS || o == Origin::DUAL || o == Origin::GOMORY ||
