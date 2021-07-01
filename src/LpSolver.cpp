@@ -537,7 +537,8 @@ void LpSolver::addConstraint(const CeSuper& c, bool removable, bool upperbound, 
   assert(!upperbound || c->orig == Origin::UPPERBOUND);
   assert(!lowerbound || c->orig == Origin::LOWERBOUND);
   c->saturateAndFixOverflowRational(lpSolution);
-  ID id = logger ? logger->logProofLineWithInfo(c, "LP") : ++solver.crefID;  // TODO: fix this kind of logger check
+  // TODO: fix below kind of logger check
+  ID id = logger ? logger->logProofLineWithInfo(c, "LP") : ++Logger::last_proofID;
   if (upperbound || lowerbound) {
     boundsToAdd[lowerbound].id = id;
     c->toSimple()->copyTo(boundsToAdd[lowerbound].cs);

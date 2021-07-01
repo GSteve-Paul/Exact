@@ -454,7 +454,8 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   assert(!constraint->hasNegativeSlack(getLevel()));
   assert(constraint->orig != Origin::UNKNOWN);
 
-  CRef cr = constraint->toConstr(ca, locked, logger ? logger->logProofLineWithInfo(constraint, "Attach") : ++crefID);
+  CRef cr = constraint->toConstr(ca, locked,
+                                 logger ? logger->logProofLineWithInfo(constraint, "Attach") : ++Logger::last_proofID);
   Constr& c = ca[cr];
   c.initializeWatches(cr, *this);
   constraints.push_back(cr);

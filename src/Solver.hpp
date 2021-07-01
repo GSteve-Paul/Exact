@@ -87,7 +87,6 @@ class Solver {
  private:
   int n;
   int orig_n;
-  ID crefID = ID_Trivial;
 
   ConstraintAllocator ca;
   Heuristic freeHeur;

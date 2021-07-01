@@ -53,8 +53,8 @@ class Logger {
   std::vector<ID> unitIDs;
 
  public:
-  ID last_formID = 0;
-  ID last_proofID = 0;
+  static ID last_formID;
+  static ID last_proofID;
 
   explicit Logger(const std::string& proof_log_name);
 

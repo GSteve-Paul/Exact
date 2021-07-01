@@ -44,6 +44,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
+ID Logger::last_proofID = 0;
+ID Logger::last_formID = 0;
+
 Logger::Logger(const std::string& proof_log_name) {
   formula_out = std::ofstream(proof_log_name + ".formula");
   formula_out << "* #variable= 0 #constraint= 0\n";
