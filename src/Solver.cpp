@@ -566,7 +566,7 @@ void Solver::learnConstraint(const CeSuper& c, Origin orig) {
 void Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
   double start = aux::cpuTime();
 
-  assert(isLearned(orig));
+  assert(isLearned(orig) || orig == Origin::PURE);
   assert(!isUnit(getLevel(), l));
   assert(!isUnit(getLevel(), -l));
 
@@ -859,7 +859,6 @@ void Solver::inProcess() {
   assert(decisionLevel() == 0);
   removeSatisfiedNonImpliedsAtRoot();
   if (options.pureLits) derivePureLits();
-  removeSatisfiedNonImpliedsAtRoot();
   if (options.domBreakLim.get() != 0) dominanceBreaking();
   if (options.inpAMO.get() != 0) aux::timeCallVoid([&] { runAtMostOneDetection(); }, stats.ATMOSTONETIME);
     // TODO: timing methods should be done via wrapper methods
@@ -917,7 +916,9 @@ void Solver::derivePureLits() {
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {  // NOTE: core-guided variables will not be eliminated
     quit::checkInterrupt();
     if (l != 0 && isUnknown(getPos(), l) && !objective->hasLit(l) && lit2cons[-l].empty()) {
+      // learnUnitConstraint(l, Origin::PURE, logger ? logger->logPure(l) : ID_Undef); // TODO use when VeriPB allows
       addUnitConstraint(l, Origin::PURE);
+      removeSatisfiedNonImpliedsAtRoot();
     }
   }
 }
@@ -931,13 +932,15 @@ void Solver::dominanceBreaking() {
     if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l)) continue;
     std::unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
+      // learnUnitConstraint(l, Origin::PURE, logger ? logger->logPure(l) : ID_Undef); // TODO use when VeriPB allows
       addUnitConstraint(l, Origin::PURE);
       removeSatisfiedNonImpliedsAtRoot();
       continue;
     }
     if ((options.domBreakLim.get() != -1 && (int)col.size() >= options.domBreakLim.get()) ||
-        (int)col.size() >= lit2consOldSize[-l] || inUnsaturatableConstraint.count(-l))
+        (int)col.size() >= lit2consOldSize[-l] || inUnsaturatableConstraint.count(-l)) {
       continue;
+    }
 
     lit2consOldSize[-l] = col.size();
     Constr* first = &ca[col.cbegin()->first];

@@ -68,6 +68,7 @@ class Logger {
   void logUnit(const CeSuper& ce);
   ID logRUP(const ConstrSimple32& c);
   ID logImpliedUnit(Lit implying, Lit implied);
+  ID logPure(Lit l);
 
   ID getUnitID(int trailIdx) { return unitIDs[trailIdx]; }
   int getNbUnitIDs() { return unitIDs.size(); }

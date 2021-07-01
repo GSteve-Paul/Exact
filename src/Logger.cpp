@@ -126,7 +126,7 @@ ID Logger::logRUP(const ConstrSimple32& c) {
 
 ID Logger::logImpliedUnit(Lit implying, Lit implied) {
 #if !NDEBUG
-  logComment("Implied");
+  logComment("Implied unit");
 #endif
   ID id1 = logRUP(ConstrSimple32({{1, implying}, {1, implied}}, 1));
   ID id2 = logRUP(ConstrSimple32({{1, -implying}, {1, implied}}, 1));
@@ -134,6 +134,14 @@ ID Logger::logImpliedUnit(Lit implying, Lit implied) {
 #if !NDEBUG
   proof_out << "e " << last_proofID + 1 << " +1 " << (implied < 0 ? "~x" : "x") << toVar(implied) << " >= 1 ;\n";
 #endif
+  return ++last_proofID;
+}
+
+ID Logger::logPure(Lit l) {
+#if !NDEBUG
+  logComment("Pure");
+#endif
+  proof_out << "u w " << l << " ; +1 " << (l < 0 ? "~x" : "x") << toVar(l) << " >= 1 ;\n";
   return ++last_proofID;
 }
 
