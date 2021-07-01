@@ -44,18 +44,18 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-ID Logger::last_proofID = 0;
-ID Logger::last_formID = 0;
+ID Logger::last_proofID = ID_Trivial;
+ID Logger::last_formID = ID_Trivial;
 
 Logger::Logger(const std::string& proof_log_name) {
   formula_out = std::ofstream(proof_log_name + ".formula");
   formula_out << "* #variable= 0 #constraint= 0\n";
   formula_out << " >= 0 ;\n";
-  ++last_formID;
+  assert(last_formID == ID_Trivial);
   proof_out = std::ofstream(proof_log_name + ".proof");
   proof_out << "pseudo-Boolean proof version 1.1\n";
   proof_out << "l 1\n";
-  ++last_proofID;
+  assert(last_proofID == ID_Trivial);
 }
 
 void Logger::flush() {
