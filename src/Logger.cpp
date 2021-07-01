@@ -43,7 +43,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConstrExp.hpp"
 
 namespace rs {
-ActualLogger::ActualLogger(const std::string& proof_log_name) {
+
+Logger::Logger(const std::string& proof_log_name) {
   formula_out = std::ofstream(proof_log_name + ".formula");
   formula_out << "* #variable= 0 #constraint= 0\n";
   formula_out << " >= 0 ;\n";
@@ -54,18 +55,18 @@ ActualLogger::ActualLogger(const std::string& proof_log_name) {
   ++last_proofID;
 }
 
-void ActualLogger::flush() {
+void Logger::flush() {
   formula_out.flush();
   proof_out.flush();
 }
 
-void ActualLogger::logComment([[maybe_unused]] const std::string& comment) {
+void Logger::logComment([[maybe_unused]] const std::string& comment) {
 #if !NDEBUG
   proof_out << "* " << stats.getDetTime() << " " << comment << "\n";
 #endif
 }
 
-ID ActualLogger::logAsInput(const CeSuper& ce) {
+ID Logger::logAsInput(const CeSuper& ce) {
   formula_out << *ce << "\n";
   proof_out << "l " << ++last_formID << "\n";
   ID id = ++last_proofID;
@@ -73,7 +74,7 @@ ID ActualLogger::logAsInput(const CeSuper& ce) {
   return id;
 }
 
-ID ActualLogger::logProofLine(const CeSuper& ce) {
+ID Logger::logProofLine(const CeSuper& ce) {
   std::string buffer = ce->proofBuffer.str();
   assert(buffer.back() == ' ');
   long long spacecount = 0;
@@ -95,20 +96,20 @@ ID ActualLogger::logProofLine(const CeSuper& ce) {
   return id;
 }
 
-ID ActualLogger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info) {
+ID Logger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info) {
 #if !NDEBUG
   logComment(info);
 #endif
   return logProofLine(ce);
 }
 
-void ActualLogger::logInconsistency(const CeSuper& ce) {
+void Logger::logInconsistency(const CeSuper& ce) {
   assert(ce->isInconsistency());
   ID id = logProofLineWithInfo(ce, "Inconsistency");
   proof_out << "c " << id << " 0" << std::endl;
 }
 
-void ActualLogger::logUnit(const CeSuper& ce) {
+void Logger::logUnit(const CeSuper& ce) {
   assert(ce->isUnitConstraint());
   unitIDs.push_back(logProofLineWithInfo(ce, "Unit"));
 }

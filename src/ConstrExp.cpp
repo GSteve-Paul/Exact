@@ -57,7 +57,7 @@ void ConstrExpSuper::resetBuffer(ID proofID) {
   proofBuffer << proofID << " ";
 }
 
-void ConstrExpSuper::initializeLogging(std::shared_ptr<ActualLogger>& l) {
+void ConstrExpSuper::initializeLogging(std::shared_ptr<Logger>& l) {
   assert(isReset());
   plogger = l;
   if (plogger) {

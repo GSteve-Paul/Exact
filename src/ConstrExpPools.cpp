@@ -52,7 +52,7 @@ void ConstrExpPools::resize(size_t newn) {
   ceArbs.resize(newn);
 }
 
-void ConstrExpPools::initializeLogging(std::shared_ptr<ActualLogger> lgr) {
+void ConstrExpPools::initializeLogging(std::shared_ptr<Logger> lgr) {
   ce32s.initializeLogging(lgr);
   ce64s.initializeLogging(lgr);
   ce96s.initializeLogging(lgr);
@@ -100,7 +100,7 @@ void ConstrExpPool<SMALL, LARGE>::resize(size_t newn) {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExpPool<SMALL, LARGE>::initializeLogging(std::shared_ptr<ActualLogger>& lgr) {
+void ConstrExpPool<SMALL, LARGE>::initializeLogging(std::shared_ptr<Logger>& lgr) {
   plogger = lgr;
   for (ConstrExp<SMALL, LARGE>* ce : ces) ce->initializeLogging(lgr);
 }

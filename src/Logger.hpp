@@ -49,10 +49,24 @@ namespace rs {
 
 class Logger {
  public:
-  virtual void flush() = 0;
-  virtual void logComment(const std::string& comment) = 0;
-  virtual ~Logger(){};
+  ID last_formID = 0;
+  ID last_proofID = 0;
+  std::ofstream formula_out;
+  std::ofstream proof_out;
+  std::vector<ID> unitIDs;
 
+  explicit Logger(const std::string& proof_log_name);
+
+  void flush();
+  void logComment([[maybe_unused]] const std::string& comment);
+
+  ID logAsInput(const CeSuper& ce);
+  ID logProofLine(const CeSuper& ce);
+  ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
+  void logInconsistency(const CeSuper& ce);
+  void logUnit(const CeSuper& ce);
+
+ public:
   template <typename T>
   static std::ostream& proofMult(std::ostream& o, const T& m) {
     assert(m > 0);
@@ -78,35 +92,6 @@ class Logger {
     assert(m < 0);
     return proofMult(o << id << " ", -m) << "+ ";
   }
-};
-
-class DummyLogger : public Logger {
- public:
-  ID last_formID = 0;
-  ID last_proofID = 0;
-
-  virtual void flush() {}
-  virtual void logComment([[maybe_unused]] const std::string& comment) {}
-};
-
-class ActualLogger : public Logger {
- public:
-  ID last_formID = 0;
-  ID last_proofID = 0;
-  std::ofstream formula_out;
-  std::ofstream proof_out;
-  std::vector<ID> unitIDs;
-
-  explicit ActualLogger(const std::string& proof_log_name);
-
-  virtual void flush();
-  virtual void logComment([[maybe_unused]] const std::string& comment);
-
-  ID logAsInput(const CeSuper& ce);
-  ID logProofLine(const CeSuper& ce);
-  ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
-  void logInconsistency(const CeSuper& ce);
-  void logUnit(const CeSuper& ce);
 };
 
 }  // namespace rs

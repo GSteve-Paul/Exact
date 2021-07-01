@@ -53,7 +53,7 @@ extern bool asynch_interrupt;
 extern Options options;
 extern Stats stats;
 
-extern std::shared_ptr<ActualLogger> logger;
+extern std::shared_ptr<Logger> logger;
 
 extern ConstrExpPools cePools;
 extern IntSetPool isPool;

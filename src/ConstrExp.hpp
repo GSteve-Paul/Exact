@@ -68,10 +68,10 @@ struct ConstrExpSuper {
  public:
   Origin orig = Origin::UNKNOWN;
   std::stringstream proofBuffer;
-  std::shared_ptr<ActualLogger> plogger;
+  std::shared_ptr<Logger> plogger;
 
   void resetBuffer(ID proofID);
-  void initializeLogging(std::shared_ptr<ActualLogger>& l);
+  void initializeLogging(std::shared_ptr<Logger>& l);
   void stopLogging();
 
   virtual ~ConstrExpSuper() = default;

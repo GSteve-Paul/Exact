@@ -105,20 +105,20 @@ struct CePtr {
 
 template <typename SMALL, typename LARGE>
 struct ConstrExp;
-class ActualLogger;
+class Logger;
 
 template <typename SMALL, typename LARGE>
 class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessible to ConstrExpPool?
   size_t n = 0;
   std::vector<ConstrExp<SMALL, LARGE>*> ces;
   std::vector<ConstrExp<SMALL, LARGE>*> availables;
-  std::shared_ptr<ActualLogger> plogger;
+  std::shared_ptr<Logger> plogger;
 
  public:
   ~ConstrExpPool();
 
   void resize(size_t newn);
-  void initializeLogging(std::shared_ptr<ActualLogger>& lgr);
+  void initializeLogging(std::shared_ptr<Logger>& lgr);
   CePtr<ConstrExp<SMALL, LARGE>> take();
   void release(ConstrExp<SMALL, LARGE>* ce);
 };
@@ -132,7 +132,7 @@ class ConstrExpPools {
 
  public:
   void resize(size_t newn);
-  void initializeLogging(std::shared_ptr<ActualLogger> lgr);
+  void initializeLogging(std::shared_ptr<Logger> lgr);
 
   template <typename SMALL, typename LARGE>
   CePtr<ConstrExp<SMALL, LARGE>> take();  // NOTE: only call specializations
