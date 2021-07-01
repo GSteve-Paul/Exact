@@ -90,7 +90,6 @@ void Solver::setNbVars(int nvars, bool orig) {
 }
 
 void Solver::init() {
-  if (!options.proofLog.get().empty()) logger = std::make_shared<ActualLogger>(options.proofLog.get());
   cePools.initializeLogging(logger);
   objective->stopLogging();
   nconfl_to_restart = options.lubyMult.get();
@@ -106,7 +105,9 @@ void Solver::enqueueUnit(Lit l, Var v, CRef r) {
   ++stats.NUNITS;
   reason[v] = CRef_Undef;  // no need to keep track of reasons for unit literals
   if (logger) {
-    ca[r].toExpanded(cePools)->logUnit(level, position, v, stats);
+    CeSuper tmp = ca[r].toExpanded(cePools);
+    tmp->simplifyToUnit(level, position, v);
+    logger->logUnit(tmp, stats);
     assert(logger->unitIDs.size() == trail.size() + 1);
   }
   if (options.tabuLim.get() != 0 && v <= getNbOrigVars() && tabuSol[v] != l) {
@@ -453,7 +454,8 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   assert(!constraint->hasNegativeSlack(getLevel()));
   assert(constraint->orig != Origin::UNKNOWN);
 
-  CRef cr = constraint->toConstr(ca, locked, logger ? constraint->logProofLineWithInfo("Attach", stats) : ++crefID);
+  CRef cr =
+      constraint->toConstr(ca, locked, logger ? logger->logProofLineWithInfo(constraint, "Attach", stats) : ++crefID);
   Constr& c = ca[cr];
   c.initializeWatches(cr, *this);
   constraints.push_back(cr);
@@ -515,7 +517,10 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
     CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(false); }, stats.PROPTIME);
     if (confl) {
       assert(confl->hasNegativeSlack(getLevel()));
-      if (logger) confl->logInconsistency(level, position, stats);
+      if (logger) {
+        confl->removeUnitsAndZeroes(level, position);
+        logger->logInconsistency(confl, stats);
+      }
       quit::exit_SUCCESS(*this);
     }
   }
@@ -540,7 +545,7 @@ void Solver::learnConstraint(const CeSuper& c, Origin orig) {
   if (assertionLevel < 0) {
     backjumpTo(0);
     assert(learned->isInconsistency());
-    if (logger) learned->logInconsistency(getLevel(), getPos(), stats);
+    if (logger) logger->logInconsistency(learned, stats);
     quit::exit_SUCCESS(*this);
   }
   backjumpTo(assertionLevel);
@@ -559,18 +564,20 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
   assert(isInput(ce->orig) || ce->orig == Origin::DETECTEDAMO);
   assert(decisionLevel() == 0);
   ID input = ID_Undef;
-  if (logger) input = ce->logAsInput();
+  if (logger) input = logger->logAsInput(ce);
   ce->postProcess(getLevel(), getPos(), getHeuristic(), true, stats);
   if (ce->isTautology()) {
     return {input, ID_Undef};  // already satisfied.
   }
 
   if (ce->hasNegativeSlack(level)) {
+    assert(decisionLevel() == 0);
+    assert(ce->hasNoUnits(level));
+    assert(ce->isInconsistency());
     if (options.verbosity.get() > 0) {
       std::cout << "c Conflicting input constraint" << std::endl;
     }
-    if (logger) ce->logInconsistency(level, position, stats);
-    assert(decisionLevel() == 0);
+    if (logger) logger->logInconsistency(ce, stats);
     return {input, ID_Unsat};
   }
 
@@ -999,7 +1006,8 @@ SolveState Solver::solve() {
       }
       if (decisionLevel() == 0) {
         if (logger) {
-          confl->logInconsistency(level, position, stats);
+          confl->removeUnitsAndZeroes(level, position);
+          logger->logInconsistency(confl, stats);
         }
         return SolveState::UNSAT;
       } else if (decisionLevel() > assumptionLevel()) {

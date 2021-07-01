@@ -108,7 +108,7 @@ void quit::printFinalStats(Solver& solver) {
 }
 
 void quit::exit_SUCCESS(Solver& solver) {
-  if (solver.logger) solver.logger->flush();
+  if (logger) logger->flush();
   if (options.printUnits) printLits(solver.getUnits(), 'u', false);
   if (solver.foundSolution()) {
     if (options.outputMode.is("miplib")) {
@@ -138,7 +138,7 @@ void quit::exit_SUCCESS(Solver& solver) {
 }
 
 void quit::exit_INDETERMINATE(Solver& solver) {
-  if (solver.logger) solver.logger->flush();
+  if (logger) logger->flush();
   if (options.printUnits) printLits(solver.getUnits(), 'u', false);
   if (solver.foundSolution()) {
     if (options.outputMode.is("miplib")) {

@@ -74,6 +74,7 @@ int main(int argc, char** argv) {
     std::cout << "c commit " << EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
 
+  if (!rs::options.proofLog.get().empty()) rs::logger = std::make_shared<rs::ActualLogger>(rs::options.proofLog.get());
   rs::run::solver.init();
   rs::aux::timeCallVoid([&] { rs::parsing::file_read(rs::run::solver); }, rs::stats.PARSETIME);
   if (rs::run::solver.hasPureCnf()) {

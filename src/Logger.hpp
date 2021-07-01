@@ -104,6 +104,13 @@ class ActualLogger : public Logger {
   virtual void flush();
   virtual void logComment([[maybe_unused]] const std::string& comment, [[maybe_unused]] const Stats& sts);
   virtual void logComment([[maybe_unused]] const std::string& comment);
+
+  ID logAsInput(const CeSuper& ce);
+  ID logProofLine(const CeSuper& ce);
+  ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info,
+                          [[maybe_unused]] const Stats& sts);
+  void logInconsistency(const CeSuper& ce, const Stats& sts);
+  void logUnit(const CeSuper& ce, const Stats& sts);
 };
 
 }  // namespace rs

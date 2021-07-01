@@ -380,7 +380,7 @@ void Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol) 
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::logProof() {
-  if (!solver.logger) return;
+  if (!logger) return;
   assert(lastUpperBound != ID_Undef);
   assert(lastUpperBound != ID_Unsat);
   assert(lastLowerBound != ID_Undef);
@@ -399,7 +399,8 @@ void Optimization<SMALL, LARGE>::logProof() {
   coreAggregate->addUp(aux);
   assert(coreAggregate->hasNegativeSlack(solver.getLevel()));
   assert(solver.decisionLevel() == 0);
-  coreAggregate->logInconsistency(solver.getLevel(), solver.getPos(), stats);
+  coreAggregate->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  logger->logInconsistency(coreAggregate, stats);
 }
 
 template <typename SMALL, typename LARGE>

@@ -67,6 +67,12 @@ struct ConstrExpSuper {
 
  public:
   Origin orig = Origin::UNKNOWN;
+  std::stringstream proofBuffer;
+  std::shared_ptr<ActualLogger> plogger;
+
+  void resetBuffer(ID proofID);
+  void initializeLogging(std::shared_ptr<ActualLogger>& l);
+  void stopLogging();
 
   virtual ~ConstrExpSuper() = default;
 
@@ -84,9 +90,6 @@ struct ConstrExpSuper {
   virtual std::unique_ptr<ConstrSimpleSuper> toSimple() const = 0;
 
   virtual void resize(size_t s) = 0;
-  virtual void resetBuffer(ID proofID) = 0;
-  virtual void initializeLogging(std::shared_ptr<ActualLogger>& l) = 0;
-  virtual void stopLogging() = 0;
   virtual bool isReset() const = 0;
   virtual void reset(bool partial) = 0;
 
@@ -139,18 +142,14 @@ struct ConstrExpSuper {
   virtual int getCardinalityDegreeWithZeroes() = 0;
   virtual void simplifyToClause() = 0;
   virtual bool isClause() const = 0;
+  virtual void simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit) = 0;
+  virtual bool isUnitConstraint() const = 0;
 
   virtual bool isSortedInDecreasingCoefOrder() const = 0;
   virtual void sortInDecreasingCoefOrder(const Heuristic& heur) = 0;
   virtual void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) = 0;
   virtual void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) = 0;
   virtual void reverseOrder() = 0;
-
-  virtual ID logAsInput() = 0;
-  virtual ID logProofLine() = 0;
-  virtual ID logProofLineWithInfo([[maybe_unused]] std::string&& info, [[maybe_unused]] const Stats& sts) = 0;
-  virtual void logUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit, const Stats& sts) = 0;
-  virtual void logInconsistency(const IntVecIt& level, const std::vector<int>& pos, const Stats& sts) = 0;
 
   virtual void toStreamAsOPB(std::ostream& o) const = 0;
   virtual void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const = 0;
@@ -198,8 +197,6 @@ struct ConstrExp final : public ConstrExpSuper {
   LARGE degree = 0;
   LARGE rhs = 0;
   std::vector<SMALL> coefs;
-  std::stringstream proofBuffer;
-  std::shared_ptr<ActualLogger> plogger;
 
  private:
   void add(Var v, SMALL c, bool removeZeroes = false);
@@ -235,10 +232,6 @@ struct ConstrExp final : public ConstrExpSuper {
   std::unique_ptr<ConstrSimpleSuper> toSimple() const;
 
   void resize(size_t s);
-  void resetBuffer(ID proofID);
-  void initializeLogging(std::shared_ptr<ActualLogger>& l);
-  void stopLogging();
-
   bool isReset() const;
   void reset(bool partial);
 
@@ -366,19 +359,14 @@ struct ConstrExp final : public ConstrExpSuper {
   int getCardinalityDegreeWithZeroes();
   void simplifyToClause();
   bool isClause() const;
+  void simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit);
+  bool isUnitConstraint() const;
 
   bool isSortedInDecreasingCoefOrder() const;
   void sortInDecreasingCoefOrder(const Heuristic& heur);
   void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);
   void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
   void reverseOrder();
-
-  ID logAsInput();
-  ID logProofLine();
-  ID logProofLineWithInfo([[maybe_unused]] std::string&& info, [[maybe_unused]] const Stats& sts);
-  // @pre: reducible to unit over v
-  void logUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit, const Stats& sts);
-  void logInconsistency(const IntVecIt& level, const std::vector<int>& pos, const Stats& sts);
 
   void toStreamAsOPB(std::ostream& o) const;
   void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const;

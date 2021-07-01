@@ -239,7 +239,7 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
     stats.NLPADDEDLITERALS += ce->nVars();
     lcc->addUp(ce, aux::abs(factor));
   }
-  if (lcc->plogger) lcc->logAsInput();
+  if (lcc->plogger) lcc->plogger->logAsInput(lcc);
   // TODO: fix logging for Gomory cuts
 
   lcc->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -406,7 +406,7 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
       return LpStatus::PIVOTLIMIT;  // time ratio exceeded
     }
   }
-  if (solver.logger) solver.logger->logComment("Checking LP", stats);
+  if (logger) logger->logComment("Checking LP", stats);
   madeInternalCall = !inProcessing;
   flushConstraints();
 
@@ -508,7 +508,7 @@ void LpSolver::inProcess() {
     aux::prettyPrint(std::cout << "c rational objective ", lp.objValueReal()) << std::endl;
   }
   candidateCuts.clear();
-  if (solver.logger && (options.lpGomoryCuts || options.lpLearnedCuts)) solver.logger->logComment("cutting", stats);
+  if (logger && (options.lpGomoryCuts || options.lpLearnedCuts)) logger->logComment("cutting", stats);
   if (options.lpLearnedCuts) constructLearnedCandidates();  // first to avoid adding gomory cuts twice
   if (options.lpGomoryCuts) constructGomoryCandidates();
   addFilteredCuts();
@@ -538,7 +538,7 @@ void LpSolver::addConstraint(const CeSuper& c, bool removable, bool upperbound, 
   assert(!lowerbound || c->orig == Origin::LOWERBOUND);
   c->saturateAndFixOverflowRational(lpSolution);
   ID id =
-      solver.logger ? c->logProofLineWithInfo("LP", stats) : ++solver.crefID;  // TODO: fix this kind of logger check
+      logger ? logger->logProofLineWithInfo(c, "LP", stats) : ++solver.crefID;  // TODO: fix this kind of logger check
   if (upperbound || lowerbound) {
     boundsToAdd[lowerbound].id = id;
     c->toSimple()->copyTo(boundsToAdd[lowerbound].cs);

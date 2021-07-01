@@ -48,6 +48,28 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
+void ConstrExpSuper::resetBuffer(ID proofID) {
+  assert(plogger);
+  assert(proofID != ID_Undef);
+  assert(proofID != ID_Unsat);
+  proofBuffer.clear();
+  proofBuffer.str(std::string());
+  proofBuffer << proofID << " ";
+}
+
+void ConstrExpSuper::initializeLogging(std::shared_ptr<ActualLogger>& l) {
+  assert(isReset());
+  plogger = l;
+  if (plogger) {
+    resetBuffer(ID_Trivial);
+  }
+}
+
+void ConstrExpSuper::stopLogging() {
+  proofBuffer.clear();
+  plogger.reset();
+}
+
 std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce) {
   ce.toStreamAsOPB(o);
   return o;
@@ -241,31 +263,6 @@ void ConstrExp<SMALL, LARGE>::resize(size_t s) {
     coefs.resize(s, 0);
     index.resize(s, -1);
   }
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::resetBuffer(ID proofID) {
-  assert(plogger);
-  assert(proofID != ID_Undef);
-  assert(proofID != ID_Unsat);
-  proofBuffer.clear();
-  proofBuffer.str(std::string());
-  proofBuffer << proofID << " ";
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::initializeLogging(std::shared_ptr<ActualLogger>& l) {
-  assert(isReset());
-  plogger = l;
-  if (plogger) {
-    resetBuffer(ID_Trivial);
-  }
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::stopLogging() {
-  proofBuffer.clear();
-  plogger.reset();
 }
 
 template <typename SMALL, typename LARGE>
@@ -1168,6 +1165,24 @@ bool ConstrExp<SMALL, LARGE>::isClause() const {
 }
 
 template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit) {
+  removeUnitsAndZeroes(level, pos);
+  saturate(true, false);
+  assert(getLit(v_unit) != 0);
+  for (Var v : vars) {
+    if (v != v_unit) weaken(v);
+  }
+  assert(degree > 0);
+  divideRoundUp(std::max<LARGE>(aux::abs(coefs[v_unit]), degree));
+  assert(isUnitConstraint());
+}
+
+template <typename SMALL, typename LARGE>
+bool ConstrExp<SMALL, LARGE>::isUnitConstraint() const {
+  return isClause() && nVars() == 1;
+}
+
+template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isSortedInDecreasingCoefOrder() const {
   if (vars.size() <= 1) return true;
   SMALL first = aux::abs(coefs[vars[0]]);
@@ -1220,89 +1235,11 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
 }
 
+// TODO: below method, and lots of others, could be placed in parent, which might be more efficient
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::reverseOrder() {
   std::reverse(vars.begin(), vars.end());
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
-}
-
-template <typename SMALL, typename LARGE>
-ID ConstrExp<SMALL, LARGE>::logAsInput() {
-  assert(plogger);
-  plogger->formula_out << *this << "\n";
-  plogger->proof_out << "l " << ++plogger->last_formID << "\n";
-  ID id = ++plogger->last_proofID;
-  resetBuffer(id);  // ensure consistent proofBuffer
-  return id;
-}
-
-template <typename SMALL, typename LARGE>
-ID ConstrExp<SMALL, LARGE>::logProofLine() {
-  assert(plogger);
-  std::string buffer = proofBuffer.str();
-  assert(buffer.back() == ' ');
-  long long spacecount = 0;
-  for (char const& c : buffer) {
-    spacecount += (c == ' ');
-    if (spacecount > 1) break;
-  }
-  ID id;
-  if (spacecount > 1) {  // non-trivial line
-    id = ++plogger->last_proofID;
-    plogger->proof_out << "p " << buffer << "0\n";
-    resetBuffer(id);
-  } else {  // line is just one id, don't print it
-    id = std::stoll(buffer);
-  }
-#if !NDEBUG
-  plogger->proof_out << "e " << id << " " << *this << "\n";
-#endif
-  return id;
-}
-
-template <typename SMALL, typename LARGE>
-ID ConstrExp<SMALL, LARGE>::logProofLineWithInfo([[maybe_unused]] std::string&& info,
-                                                 [[maybe_unused]] const Stats& sts) {
-  assert(plogger);
-#if !NDEBUG
-  plogger->logComment(info, sts);
-#endif
-  return logProofLine();
-}
-
-// @pre: reducible to unit over v
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::logUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit,
-                                      const Stats& sts) {
-  assert(plogger);
-  // reduce to unit over v
-  removeUnitsAndZeroes(level, pos);
-  saturate(true, false);
-  assert(getLit(v_unit) != 0);
-  for (Var v : vars)
-    if (v != v_unit) weaken(v);
-  assert(degree > 0);
-  LARGE d = std::max<LARGE>(aux::abs(coefs[v_unit]), degree);
-  Logger::proofDiv(proofBuffer, d);
-  if (coefs[v_unit] > 0) {
-    coefs[v_unit] = 1;
-    rhs = 1;
-  } else {
-    coefs[v_unit] = -1;
-    rhs = 0;
-  }
-  degree = 1;
-  plogger->unitIDs.push_back(logProofLineWithInfo("Unit", sts));
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::logInconsistency(const IntVecIt& level, const std::vector<int>& pos, const Stats& sts) {
-  assert(plogger);
-  removeUnitsAndZeroes(level, pos);
-  saturate(true, false);
-  assert(hasNegativeSlack(level));
-  ID id = logProofLineWithInfo("Inconsistency", sts);
-  plogger->proof_out << "c " << id << " 0" << std::endl;
 }
 
 template <typename SMALL, typename LARGE>

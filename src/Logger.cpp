@@ -40,6 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Logger.hpp"
+#include "ConstrExp.hpp"
 
 namespace rs {
 ActualLogger::ActualLogger(const std::string& proof_log_name) {
@@ -69,4 +70,54 @@ void ActualLogger::logComment([[maybe_unused]] const std::string& comment) {
   proof_out << "* " << comment << "\n";
 #endif
 }
+
+ID ActualLogger::logAsInput(const CeSuper& ce) {
+  formula_out << *ce << "\n";
+  proof_out << "l " << ++last_formID << "\n";
+  ID id = ++last_proofID;
+  ce->resetBuffer(id);  // ensure consistent proofBuffer
+  return id;
+}
+
+ID ActualLogger::logProofLine(const CeSuper& ce) {
+  std::string buffer = ce->proofBuffer.str();
+  assert(buffer.back() == ' ');
+  long long spacecount = 0;
+  for (char const& c : buffer) {
+    spacecount += (c == ' ');
+    if (spacecount > 1) break;
+  }
+  ID id;
+  if (spacecount > 1) {  // non-trivial line
+    id = ++last_proofID;
+    proof_out << "p " << buffer << "0\n";
+    ce->resetBuffer(id);
+  } else {  // line is just one id, don't print it
+    id = std::stoll(buffer);
+  }
+#if !NDEBUG
+  proof_out << "e " << id << " " << *ce << "\n";
+#endif
+  return id;
+}
+
+ID ActualLogger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info,
+                                      [[maybe_unused]] const Stats& sts) {
+#if !NDEBUG
+  logComment(info, sts);
+#endif
+  return logProofLine(ce);
+}
+
+void ActualLogger::logInconsistency(const CeSuper& ce, const Stats& sts) {
+  assert(ce->isInconsistency());
+  ID id = logProofLineWithInfo(ce, "Inconsistency", sts);
+  proof_out << "c " << id << " 0" << std::endl;
+}
+
+void ActualLogger::logUnit(const CeSuper& ce, const Stats& sts) {
+  assert(ce->isUnitConstraint());
+  unitIDs.push_back(logProofLineWithInfo(ce, "Unit", sts));
+}
+
 }  // namespace rs
