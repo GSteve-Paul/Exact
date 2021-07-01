@@ -78,17 +78,17 @@ set(source_files
     src/ConstrExp.cpp
     src/ConstrSimple.cpp
     src/ConstrExpPools.cpp
-    src/Logger.cpp
     src/LpSolver.cpp
-    src/IntSet.cpp
     src/Solver.cpp
     src/SolverStructs.cpp
+    src/Logger.cpp
+    src/IntSet.cpp
     src/parsing.cpp
-    src/quit.cpp
-    src/Exact.cpp
-    src/run.cpp
     src/Heuristic.cpp
     src/aux.cpp
+    src/run.cpp
+    src/quit.cpp
+    src/Exact.cpp
 
     src/used_licenses/licenses.cpp
     src/used_licenses/zib_academic.cpp
@@ -105,18 +105,18 @@ set(header_files
     src/ConstrSimple.hpp
     src/SolverStructs.hpp
     src/ConstrExpPools.hpp
-    src/Logger.hpp
-    src/Stats.hpp
     src/LpSolver.hpp
-    src/Options.hpp
-    src/IntSet.hpp
     src/Solver.hpp
+    src/Logger.hpp
+    src/IntSet.hpp
     src/typedefs.hpp
-    src/aux.hpp
     src/parsing.hpp
+    src/Heuristic.hpp
+    src/Stats.hpp
+    src/Options.hpp
+    src/aux.hpp
     src/quit.hpp
     src/run.hpp
-    src/Heuristic.hpp
 
     src/used_licenses/licenses.hpp
     src/used_licenses/zib_academic.hpp
