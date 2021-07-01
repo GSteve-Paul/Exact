@@ -852,7 +852,7 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
 // NOTE: only equivalence preserving operations!
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur,
-                                          bool sortFirst, Stats& sts) {
+                                          bool sortFirst) {
   removeUnitsAndZeroes(level, pos);
   assert(sortFirst || isSortedInDecreasingCoefOrder());  // NOTE: check this only after removing units and zeroes
   saturate(true, !sortFirst);
@@ -861,10 +861,10 @@ void ConstrExp<SMALL, LARGE>::postProcess(const IntVecIt& level, const std::vect
     sortInDecreasingCoefOrder(heur);
   }
   if (divideByGCD()) {
-    ++sts.NGCD;
+    ++stats.NGCD;
   }
   if (simplifyToCardinality(true, getCardinalityDegree())) {
-    ++sts.NCARDDETECT;
+    ++stats.NCARDDETECT;
   }
 }
 
@@ -934,7 +934,7 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntVecIt&
 
 // @post: preserves order after removeZeroes()
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntVecIt& level, const LARGE& slack, Stats& sts) {
+void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntVecIt& level, const LARGE& slack) {
   int weakenings = 0;
   for (Var v : vars) {
     if (coefs[v] != 0 && aux::abs(coefs[v]) <= slack && !falsified(level, v)) {
@@ -942,14 +942,13 @@ void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntVecIt& level, const LARG
       ++weakenings;
     }
   }
-  sts.NWEAKENEDNONIMPLIED += weakenings;
+  stats.NWEAKENEDNONIMPLIED += weakenings;
 }
 
 // @post: preserves order after removeZeroes()
 // TODO: return modified slack?
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack,
-                                                Stats& sts) {
+bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack) {
   LARGE slk = slack;
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
@@ -962,13 +961,13 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntVecIt& level, const SMA
       ++weakenings;
     }
   }
-  sts.NWEAKENEDNONIMPLYING += weakenings;
+  stats.NWEAKENEDNONIMPLYING += weakenings;
   return weakenings != 0;
 }
 
 // @post: preserves order after removeZeroes()
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos, Stats& sts) {
+void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos) {
   assert(isSortedInDecreasingCoefOrder());
   if (aux::abs(coefs[vars[0]]) == aux::abs(coefs[vars.back()])) return;
   LARGE slk = getSlack(level);
@@ -983,12 +982,12 @@ void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntVecIt& level, const st
   }
   if (v_prop == -1) return;  // no propagation, no idea what to weaken
   if (options.weakenNonImplying) {
-    if (weakenNonImplying(level, aux::abs(coefs[v_prop]), slk, sts)) {
+    if (weakenNonImplying(level, aux::abs(coefs[v_prop]), slk)) {
       slk = getSlack(level);  // slack changed
     }
   }
   assert(slk < aux::abs(coefs[v_prop]));
-  weakenNonImplied(level, slk, sts);
+  weakenNonImplied(level, slk);
 }
 
 template <typename SMALL, typename LARGE>
@@ -1167,11 +1166,12 @@ bool ConstrExp<SMALL, LARGE>::isClause() const {
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit) {
   removeUnitsAndZeroes(level, pos);
-  saturate(true, false);
   assert(getLit(v_unit) != 0);
   for (Var v : vars) {
     if (v != v_unit) weaken(v);
   }
+  removeZeroes();
+  saturate(true, false);
   assert(degree > 0);
   divideRoundUp(std::max<LARGE>(aux::abs(coefs[v_unit]), degree));
   assert(isUnitConstraint());

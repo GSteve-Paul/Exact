@@ -400,7 +400,7 @@ void Optimization<SMALL, LARGE>::logProof() {
   assert(coreAggregate->hasNegativeSlack(solver.getLevel()));
   assert(solver.decisionLevel() == 0);
   coreAggregate->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  logger->logInconsistency(coreAggregate, stats);
+  logger->logInconsistency(coreAggregate);
 }
 
 template <typename SMALL, typename LARGE>

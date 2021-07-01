@@ -59,15 +59,9 @@ void ActualLogger::flush() {
   proof_out.flush();
 }
 
-void ActualLogger::logComment([[maybe_unused]] const std::string& comment, [[maybe_unused]] const Stats& sts) {
-#if !NDEBUG
-  proof_out << "* " << sts.getDetTime() << " " << comment << "\n";
-#endif
-}
-
 void ActualLogger::logComment([[maybe_unused]] const std::string& comment) {
 #if !NDEBUG
-  proof_out << "* " << comment << "\n";
+  proof_out << "* " << stats.getDetTime() << " " << comment << "\n";
 #endif
 }
 
@@ -101,23 +95,22 @@ ID ActualLogger::logProofLine(const CeSuper& ce) {
   return id;
 }
 
-ID ActualLogger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info,
-                                      [[maybe_unused]] const Stats& sts) {
+ID ActualLogger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info) {
 #if !NDEBUG
-  logComment(info, sts);
+  logComment(info);
 #endif
   return logProofLine(ce);
 }
 
-void ActualLogger::logInconsistency(const CeSuper& ce, const Stats& sts) {
+void ActualLogger::logInconsistency(const CeSuper& ce) {
   assert(ce->isInconsistency());
-  ID id = logProofLineWithInfo(ce, "Inconsistency", sts);
+  ID id = logProofLineWithInfo(ce, "Inconsistency");
   proof_out << "c " << id << " 0" << std::endl;
 }
 
-void ActualLogger::logUnit(const CeSuper& ce, const Stats& sts) {
+void ActualLogger::logUnit(const CeSuper& ce) {
   assert(ce->isUnitConstraint());
-  unitIDs.push_back(logProofLineWithInfo(ce, "Unit", sts));
+  unitIDs.push_back(logProofLineWithInfo(ce, "Unit"));
 }
 
 }  // namespace rs

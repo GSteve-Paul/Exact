@@ -107,7 +107,7 @@ void Solver::enqueueUnit(Lit l, Var v, CRef r) {
   if (logger) {
     CeSuper tmp = ca[r].toExpanded(cePools);
     tmp->simplifyToUnit(level, position, v);
-    logger->logUnit(tmp, stats);
+    logger->logUnit(tmp);
     assert(logger->unitIDs.size() == trail.size() + 1);
   }
   if (options.tabuLim.get() != 0 && v <= getNbOrigVars() && tabuSol[v] != l) {
@@ -277,7 +277,7 @@ CeSuper getAnalysisCE(const CeSuper& conflict, int bitsOverflow, ConstrExpPools&
 }
 
 CeSuper Solver::analyze(const CeSuper& conflict) {
-  if (logger) logger->logComment("Analyze", stats);
+  if (logger) logger->logComment("Analyze");
   assert(conflict->hasNegativeSlack(level));
   conflict->removeUnitsAndZeroes(level, position);
   conflict->saturateAndFixOverflow(getLevel(), options.bitsOverflow.get(), options.bitsReduced.get(), 0);
@@ -435,7 +435,7 @@ void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   aux::timeCallVoid([&] { learnConstraint(lastCore, Origin::LEARNED); },
                     stats.LEARNTIME);  // NOTE: takes care of inconsistency
   backjumpTo(0);
-  lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true, stats);
+  lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true);
   if (!lastCore->hasNegativeSlack(assumptions)) {  // apparently unit clauses were propagated during learnConstraint
     lastCore.makeNull();
   }
@@ -454,8 +454,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   assert(!constraint->hasNegativeSlack(getLevel()));
   assert(constraint->orig != Origin::UNKNOWN);
 
-  CRef cr =
-      constraint->toConstr(ca, locked, logger ? logger->logProofLineWithInfo(constraint, "Attach", stats) : ++crefID);
+  CRef cr = constraint->toConstr(ca, locked, logger ? logger->logProofLineWithInfo(constraint, "Attach") : ++crefID);
   Constr& c = ca[cr];
   c.initializeWatches(cr, *this);
   constraints.push_back(cr);
@@ -519,7 +518,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
       assert(confl->hasNegativeSlack(getLevel()));
       if (logger) {
         confl->removeUnitsAndZeroes(level, position);
-        logger->logInconsistency(confl, stats);
+        logger->logInconsistency(confl);
       }
       quit::exit_SUCCESS(*this);
     }
@@ -545,13 +544,13 @@ void Solver::learnConstraint(const CeSuper& c, Origin orig) {
   if (assertionLevel < 0) {
     backjumpTo(0);
     assert(learned->isInconsistency());
-    if (logger) logger->logInconsistency(learned, stats);
+    if (logger) logger->logInconsistency(learned);
     quit::exit_SUCCESS(*this);
   }
   backjumpTo(assertionLevel);
   assert(!learned->hasNegativeSlack(level));
-  if (isAsserting) learned->heuristicWeakening(level, position, stats);
-  learned->postProcess(getLevel(), getPos(), getHeuristic(), false, stats);
+  if (isAsserting) learned->heuristicWeakening(level, position);
+  learned->postProcess(getLevel(), getPos(), getHeuristic(), false);
   assert(learned->isSaturated());
   if (!learned->isTautology()) {
     CRef cr = attachConstraint(learned, false);
@@ -565,7 +564,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
   assert(decisionLevel() == 0);
   ID input = ID_Undef;
   if (logger) input = logger->logAsInput(ce);
-  ce->postProcess(getLevel(), getPos(), getHeuristic(), true, stats);
+  ce->postProcess(getLevel(), getPos(), getHeuristic(), true);
   if (ce->isTautology()) {
     return {input, ID_Undef};  // already satisfied.
   }
@@ -577,7 +576,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
     if (options.verbosity.get() > 0) {
       std::cout << "c Conflicting input constraint" << std::endl;
     }
-    if (logger) logger->logInconsistency(ce, stats);
+    if (logger) logger->logInconsistency(ce);
     return {input, ID_Unsat};
   }
 
@@ -1007,7 +1006,7 @@ SolveState Solver::solve() {
       if (decisionLevel() == 0) {
         if (logger) {
           confl->removeUnitsAndZeroes(level, position);
-          logger->logInconsistency(confl, stats);
+          logger->logInconsistency(confl);
         }
         return SolveState::UNSAT;
       } else if (decisionLevel() > assumptionLevel()) {

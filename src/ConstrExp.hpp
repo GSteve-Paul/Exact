@@ -128,11 +128,11 @@ struct ConstrExpSuper {
   virtual bool largestCoefFitsIn(int bits) const = 0;
 
   virtual bool divideByGCD() = 0;
-  virtual void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst,
-                           Stats& sts) = 0;
+  virtual void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur,
+                           bool sortFirst) = 0;
   virtual AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const = 0;
   virtual std::pair<int, bool> getAssertionStatus(const IntVecIt& level, const std::vector<int>& pos) const = 0;
-  virtual void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos, Stats& sts) = 0;
+  virtual void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos) = 0;
 
   virtual bool simplifyToCardinality(bool equivalencePreserving, int cardDegree) = 0;
   virtual bool isCardinality() const = 0;
@@ -324,18 +324,17 @@ struct ConstrExp final : public ConstrExpSuper {
 
   bool divideByGCD();
   // NOTE: only equivalence preserving operations!
-  void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst,
-                   Stats& sts);
+  void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
   AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level
   std::pair<int, bool> getAssertionStatus(const IntVecIt& level, const std::vector<int>& pos) const;
   // @post: preserves order after removeZeroes()
-  void weakenNonImplied(const IntVecIt& level, const LARGE& slack, Stats& sts);
+  void weakenNonImplied(const IntVecIt& level, const LARGE& slack);
   // @post: preserves order after removeZeroes()
-  bool weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack, Stats& sts);
+  bool weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack);
   // @post: preserves order after removeZeroes()
-  void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos, Stats& sts);
+  void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos);
 
   // @post: preserves order
   template <typename T>

@@ -50,7 +50,6 @@ namespace rs {
 class Logger {
  public:
   virtual void flush() = 0;
-  virtual void logComment(const std::string& comment, const Stats& sts) = 0;
   virtual void logComment(const std::string& comment) = 0;
   virtual ~Logger(){};
 
@@ -87,7 +86,6 @@ class DummyLogger : public Logger {
   ID last_proofID = 0;
 
   virtual void flush() {}
-  virtual void logComment([[maybe_unused]] const std::string& comment, [[maybe_unused]] const Stats& sts) {}
   virtual void logComment([[maybe_unused]] const std::string& comment) {}
 };
 
@@ -102,15 +100,13 @@ class ActualLogger : public Logger {
   explicit ActualLogger(const std::string& proof_log_name);
 
   virtual void flush();
-  virtual void logComment([[maybe_unused]] const std::string& comment, [[maybe_unused]] const Stats& sts);
   virtual void logComment([[maybe_unused]] const std::string& comment);
 
   ID logAsInput(const CeSuper& ce);
   ID logProofLine(const CeSuper& ce);
-  ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info,
-                          [[maybe_unused]] const Stats& sts);
-  void logInconsistency(const CeSuper& ce, const Stats& sts);
-  void logUnit(const CeSuper& ce, const Stats& sts);
+  ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
+  void logInconsistency(const CeSuper& ce);
+  void logUnit(const CeSuper& ce);
 };
 
 }  // namespace rs
