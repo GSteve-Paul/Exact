@@ -74,6 +74,20 @@ struct ConstrExpSuper {
   void initializeLogging(std::shared_ptr<Logger>& l);
   void stopLogging();
 
+  int nVars() const { return vars.size(); }
+  const std::vector<Var>& getVars() const { return vars; }
+  bool used(Var v) const { return index[v] >= 0; }
+  void reverseOrder();
+
+  unsigned int getLBD(const IntVecIt& level) const;
+  void weakenLast();
+  void popLast();
+
+  bool hasNoUnits(const IntVecIt& level) const;
+  bool isUnitConstraint() const;
+  // NOTE: only equivalence preserving operations!
+  void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
+
   virtual ~ConstrExpSuper() = default;
 
   virtual void increaseUsage() = 0;
@@ -94,27 +108,22 @@ struct ConstrExpSuper {
   virtual void reset(bool partial) = 0;
 
   virtual double getStrength() const = 0;
-  virtual int nVars() const { return vars.size(); }
-  virtual const std::vector<Var>& getVars() const { return vars; };
 
   virtual Lit getLit(Lit l) const = 0;
   virtual bool hasLit(Lit l) const = 0;
-  bool used(Var v) const { return index[v] >= 0; }
+  virtual bool hasVar(Var v) const = 0;
   virtual bool saturatedLit(Lit l) const = 0;
   virtual bool saturatedVar(Var v) const = 0;
 
   virtual void weaken(Var v) = 0;
-  virtual void weakenLast() = 0;
 
   virtual bool hasNegativeSlack(const IntVecIt& level) const = 0;
   virtual bool hasNegativeSlack(const IntSet& assumptions) const = 0;
   virtual bool isTautology() const = 0;
   virtual bool isInconsistency() const = 0;
   virtual bool isSatisfied(const std::vector<Lit>& assignment) const = 0;
-  virtual unsigned int getLBD(const IntVecIt& level) const = 0;
 
   virtual void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos) = 0;
-  virtual bool hasNoUnits(const IntVecIt& level) const = 0;
   virtual void removeZeroes() = 0;
   virtual bool hasNoZeroes() const = 0;
 
@@ -128,8 +137,6 @@ struct ConstrExpSuper {
   virtual bool largestCoefFitsIn(int bits) const = 0;
 
   virtual bool divideByGCD() = 0;
-  virtual void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur,
-                           bool sortFirst) = 0;
   virtual AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const = 0;
   virtual std::pair<int, bool> getAssertionStatus(const IntVecIt& level, const std::vector<int>& pos) const = 0;
   virtual void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos) = 0;
@@ -143,13 +150,11 @@ struct ConstrExpSuper {
   virtual void simplifyToClause() = 0;
   virtual bool isClause() const = 0;
   virtual void simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit) = 0;
-  virtual bool isUnitConstraint() const = 0;
 
   virtual bool isSortedInDecreasingCoefOrder() const = 0;
   virtual void sortInDecreasingCoefOrder(const Heuristic& heur) = 0;
   virtual void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) = 0;
   virtual void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) = 0;
-  virtual void reverseOrder() = 0;
 
   virtual void toStreamAsOPB(std::ostream& o) const = 0;
   virtual void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const = 0;
@@ -245,6 +250,7 @@ struct ConstrExp final : public ConstrExpSuper {
   LARGE getCutoffVal() const;
   Lit getLit(Lit l) const;
   bool hasLit(Lit l) const;
+  bool hasVar(Var v) const;
   bool saturatedLit(Lit l) const;
   bool saturatedVar(Var v) const;
 
@@ -252,8 +258,6 @@ struct ConstrExp final : public ConstrExpSuper {
   void addLhs(const SMALL& cf, Lit l);  // TODO: Term?
   void weaken(const SMALL& m, Var v);
   void weaken(Var v);
-  void weakenLast();
-  void popLast();
 
   LARGE getSlack(const IntVecIt& level) const;
   bool hasNegativeSlack(const IntVecIt& level) const;
@@ -262,11 +266,9 @@ struct ConstrExp final : public ConstrExpSuper {
   bool isTautology() const;
   bool isInconsistency() const;
   bool isSatisfied(const std::vector<Lit>& assignment) const;
-  unsigned int getLBD(const IntVecIt& level) const;
 
   // @post: preserves order of vars
   void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos);
-  bool hasNoUnits(const IntVecIt& level) const;
   // @post: mutates order of vars
   void removeZeroes();
   bool hasNoZeroes() const;
@@ -323,8 +325,6 @@ struct ConstrExp final : public ConstrExpSuper {
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
-  // NOTE: only equivalence preserving operations!
-  void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
   AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level
@@ -359,13 +359,11 @@ struct ConstrExp final : public ConstrExpSuper {
   void simplifyToClause();
   bool isClause() const;
   void simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit);
-  bool isUnitConstraint() const;
 
   bool isSortedInDecreasingCoefOrder() const;
   void sortInDecreasingCoefOrder(const Heuristic& heur);
   void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);
   void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
-  void reverseOrder();
 
   void toStreamAsOPB(std::ostream& o) const;
   void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const;

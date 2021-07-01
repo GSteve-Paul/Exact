@@ -358,6 +358,12 @@ bool ConstrExp<SMALL, LARGE>::hasLit(Lit l) const {
 }
 
 template <typename SMALL, typename LARGE>
+bool ConstrExp<SMALL, LARGE>::hasVar(Var v) const {
+  assert(v > 0);
+  return coefs[v] != 0;
+}
+
+template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::saturatedLit(Lit l) const {
   Var v = toVar(l);
   return (coefs[v] < 0) == (l < 0) && aux::abs(coefs[v]) >= degree;
@@ -421,8 +427,7 @@ bool ConstrExp<SMALL, LARGE>::isSatisfied(const std::vector<Lit>& assignment) co
   return eval >= 0;
 }
 
-template <typename SMALL, typename LARGE>
-unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntVecIt& level) const {
+unsigned int ConstrExpSuper::getLBD(const IntVecIt& level) const {
   IntSet& lbdSet = isPool.take();
   for (Var v : vars) {
     assert(getLit(v) != 0);
@@ -475,17 +480,15 @@ void ConstrExp<SMALL, LARGE>::weaken(Var v) {  // fully weaken v
   weaken(-coefs[v], v);
 }
 
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenLast() {
+void ConstrExpSuper::weakenLast() {
   if (vars.empty()) return;
   weaken(vars.back());
   popLast();
 }
 
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::popLast() {
+void ConstrExpSuper::popLast() {
   assert(!vars.empty());
-  assert(coefs[vars.back()] == 0);
+  assert(!hasVar(vars.back()));
   index[vars.back()] = -1;
   vars.pop_back();
 }
@@ -527,8 +530,7 @@ void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntVecIt& level, const 
   vars.resize(j);
 }
 
-template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::hasNoUnits(const IntVecIt& level) const {
+bool ConstrExpSuper::hasNoUnits(const IntVecIt& level) const {
   return std::all_of(vars.cbegin(), vars.cend(), [&](Var v) { return !isUnit(level, v) && !isUnit(level, -v); });
 }
 
@@ -680,7 +682,7 @@ void ConstrExp<SMALL, LARGE>::saturateAndFixOverflowRational(const std::vector<d
 
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::fitsInDouble() const {
-  return isSaturated() && getDegree() < INFLPINT && getRhs() < INFLPINT;
+  return isSaturated() && degree < INFLPINT && rhs < INFLPINT;
 }
 
 template <typename SMALL, typename LARGE>
@@ -850,9 +852,8 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
 }
 
 // NOTE: only equivalence preserving operations!
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur,
-                                          bool sortFirst) {
+void ConstrExpSuper::postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur,
+                                 bool sortFirst) {
   removeUnitsAndZeroes(level, pos);
   assert(sortFirst || isSortedInDecreasingCoefOrder());  // NOTE: check this only after removing units and zeroes
   saturate(true, !sortFirst);
@@ -1177,10 +1178,7 @@ void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntVecIt& level, const std::v
   assert(isUnitConstraint());
 }
 
-template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::isUnitConstraint() const {
-  return isClause() && nVars() == 1;
-}
+bool ConstrExpSuper::isUnitConstraint() const { return isClause() && nVars() == 1 && !isInconsistency(); }
 
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isSortedInDecreasingCoefOrder() const {
@@ -1235,9 +1233,7 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
 }
 
-// TODO: below method, and lots of others, could be placed in parent, which might be more efficient
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::reverseOrder() {
+void ConstrExpSuper::reverseOrder() {
   std::reverse(vars.begin(), vars.end());
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
 }
