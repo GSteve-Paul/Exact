@@ -500,7 +500,7 @@ void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntVecIt& level, const 
         if (isUnit(level, l)) {
           Logger::proofWeaken(proofBuffer, l, -getCoef(l));
         } else if (isUnit(level, -l)) {
-          Logger::proofWeakenFalseUnit(proofBuffer, plogger->unitIDs[pos[toVar(l)]], -getCoef(l));
+          Logger::proofWeakenFalseUnit(proofBuffer, plogger->getUnitID(pos[toVar(l)]), -getCoef(l));
         }
       }
     }
@@ -1299,7 +1299,7 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
       if (isUnit(level, ll)) {
         Logger::proofWeaken(proofBuffer, ll, -cmult);
       } else if (isUnit(level, -ll)) {
-        Logger::proofWeakenFalseUnit(proofBuffer, plogger->unitIDs[pos[toVar(ll)]], -cmult);
+        Logger::proofWeakenFalseUnit(proofBuffer, plogger->getUnitID(pos[toVar(ll)]), -cmult);
       }
     }
   }
@@ -1396,7 +1396,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
       if (isUnit(level, l)) {
         Logger::proofWeaken(proofBuffer, l, -1);
       } else if (isUnit(level, -l)) {
-        Logger::proofWeakenFalseUnit(proofBuffer, plogger->unitIDs[pos[toVar(l)]], -1);
+        Logger::proofWeakenFalseUnit(proofBuffer, plogger->getUnitID(pos[toVar(l)]), -1);
       }
     }
     for (int i = 0; i < (int)size; ++i) {

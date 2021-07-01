@@ -116,7 +116,7 @@ void file_read(Solver& solver) {
       }
     }
   }
-  if (logger) logger->formula_out << "* INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW\n";
+  if (logger) logger->logComment("INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW");
 }
 
 void opb_read(std::istream& in, Solver& solver) {

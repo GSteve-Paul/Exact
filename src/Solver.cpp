@@ -108,7 +108,7 @@ void Solver::enqueueUnit(Lit l, Var v, CRef r) {
     CeSuper tmp = ca[r].toExpanded(cePools);
     tmp->simplifyToUnit(level, position, v);
     logger->logUnit(tmp);
-    assert(logger->unitIDs.size() == trail.size() + 1);
+    assert(logger->getNbUnitIDs() == (int)trail.size() + 1);
   }
   if (options.tabuLim.get() != 0 && v <= getNbOrigVars() && tabuSol[v] != l) {
     cutoff = ranks[v];

@@ -48,12 +48,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace rs {
 
 class Logger {
- public:
-  ID last_formID = 0;
-  ID last_proofID = 0;
   std::ofstream formula_out;
   std::ofstream proof_out;
   std::vector<ID> unitIDs;
+
+ public:
+  ID last_formID = 0;
+  ID last_proofID = 0;
 
   explicit Logger(const std::string& proof_log_name);
 
@@ -65,6 +66,9 @@ class Logger {
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
   void logInconsistency(const CeSuper& ce);
   void logUnit(const CeSuper& ce);
+
+  ID getUnitID(int trailIdx) { return unitIDs[trailIdx]; }
+  int getNbUnitIDs() { return unitIDs.size(); }
 
  public:
   template <typename T>
