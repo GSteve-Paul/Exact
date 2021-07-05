@@ -483,7 +483,6 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
     stats.LEARNEDLENGTHSUM += c.size;
     stats.LEARNEDDEGREESUM += c.degree();
     stats.LEARNEDSTRENGTHSUM += c.strength;
-    stats.LEARNEDLBDSUM += c.lbd();
   } else {
     stats.EXTERNLENGTHSUM += c.size;
     stats.EXTERNDEGREESUM += c.degree();
@@ -556,8 +555,10 @@ void Solver::learnConstraint(const CeSuper& c, Origin orig) {
   assert(learned->isSaturated());
   if (!learned->isTautology()) {
     CRef cr = attachConstraint(learned, false);
-    ca[cr].decreaseLBD(isAsserting ? learned->getLBD(level) : learned->nVars());
+    Constr& c = ca[cr];
+    c.decreaseLBD(isAsserting ? learned->getLBD(level) : learned->nVars());
     // the LBD of non-asserting constraints is undefined, so we take a safe upper bound
+    stats.LEARNEDLBDSUM += c.lbd();
   }
 
   stats.LEARNTIME += aux::cpuTime() - start;
