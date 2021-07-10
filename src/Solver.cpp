@@ -790,7 +790,9 @@ void Solver::reduceDB() {
     int res = (int)ca[x].lbd() - (int)ca[y].lbd();
     return res < 0 || (res == 0 && ca[x].strength > ca[y].strength);
   });
-  for (size_t i = learnts.size() * options.dbKeptRatio.get(); i < learnts.size(); ++i) {
+  long long limit =
+      options.dbPow ? std::pow(learnts.size(), options.dbKeptRatio.get()) : learnts.size() * options.dbKeptRatio.get();
+  for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
   }
 

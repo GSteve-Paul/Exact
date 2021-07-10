@@ -229,8 +229,9 @@ struct Options {
                             [](const int& x) -> bool { return 1 <= x; }};
   ValOption<int> dbDecayLBD{"db-decay", "Decay term for the LBD of constraints", 1, "0 (no decay) =< int",
                             [](const int& x) -> bool { return 0 <= x; }};
-  ValOption<double> dbKeptRatio{"db-keep", "Ratio of learned constraints to keep during database cleanup", 0.5,
+  ValOption<double> dbKeptRatio{"db-keep", "Parameter of learned constraints to keep during database cleanup", 0.5,
                                 "0 =< float =< 1", [](const int& x) -> bool { return 0 <= x && x <= 1; }};
+  BoolOption dbPow{"db-pow", "Use power instead of ratio to determine number of kept constraints.", true};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
   ValOption<double> propCounting{"prop-counting", "Counting propagation instead of watched propagation", 0.6,
