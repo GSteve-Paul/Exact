@@ -69,12 +69,19 @@ void Logger::logComment([[maybe_unused]] const std::string& comment) {
 #endif
 }
 
-ID Logger::logAsInput(const CeSuper& ce) {
+ID Logger::logInput(const CeSuper& ce) {
   formula_out << *ce << "\n";
   proof_out << "l " << ++last_formID << "\n";
-  ID id = ++last_proofID;
-  ce->resetBuffer(id);  // ensure consistent proofBuffer
-  return id;
+  ++last_proofID;
+  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
+}
+
+ID Logger::logAssumption(const CeSuper& ce) {
+  proof_out << "a " << *ce << "\n";
+  ++last_proofID;
+  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
 }
 
 ID Logger::logProofLine(const CeSuper& ce) {
@@ -137,12 +144,30 @@ ID Logger::logImpliedUnit(Lit implying, Lit implied) {
   return ++last_proofID;
 }
 
-ID Logger::logPure(Lit l) {
+ID Logger::logPure(const CeSuper& ce) {
+  assert(ce->vars.size() == 1);
 #if !NDEBUG
   logComment("Pure");
 #endif
-  proof_out << "u w " << l << " ; +1 " << (l < 0 ? "~x" : "x") << toVar(l) << " >= 1 ;\n";
-  return ++last_proofID;
+  Lit l = ce->getLit(ce->vars[0]);
+  proof_out << "red +1 " << (l < 0 ? "~x" : "x") << toVar(l) << " >= 1 ; x" << toVar(l) << " " << (l > 0) << "\n";
+  ++last_proofID;
+  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
+}
+
+ID Logger::logDomBreaker(const CeSuper& ce) {
+  assert(ce->vars.size() == 2);
+#if !NDEBUG
+  logComment("Dominance breaking");
+#endif
+  Lit a = ce->getLit(ce->vars[0]);
+  Lit b = ce->getLit(ce->vars[1]);
+  proof_out << "red +1 " << (a < 0 ? "~x" : "x") << toVar(a) << " +1 " << (b < 0 ? "~x" : "x") << toVar(b)
+            << " >= 1 ; x" << toVar(b) << " " << (b > 0) << "\n";
+  ++last_proofID;
+  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
 }
 
 }  // namespace rs

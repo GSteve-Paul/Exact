@@ -567,7 +567,7 @@ void Solver::learnConstraint(const CeSuper& c, Origin orig) {
 void Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
   double start = aux::cpuTime();
 
-  assert(isLearned(orig) || orig == Origin::PURE);
+  assert(isLearned(orig));
   assert(!isUnit(getLevel(), l));
   assert(!isUnit(getLevel(), -l));
 
@@ -589,7 +589,21 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
   assert(isInput(ce->orig) || ce->orig == Origin::DETECTEDAMO);
   assert(decisionLevel() == 0);
   ID input = ID_Undef;
-  if (logger) input = logger->logAsInput(ce);
+  if (logger) {
+    switch (ce->orig) {
+      case Origin::FORMULA:
+        input = logger->logInput(ce);
+        break;
+      case Origin::PURE:
+        input = logger->logPure(ce);
+        break;
+      case Origin::DOMBREAKER:
+        input = logger->logDomBreaker(ce);
+        break;
+      default:
+        input = logger->logAssumption(ce);
+    }
+  }
   ce->postProcess(getLevel(), getPos(), getHeuristic(), true);
   if (ce->isTautology()) {
     return {input, ID_Undef};  // already satisfied.
@@ -919,7 +933,6 @@ void Solver::derivePureLits() {
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {  // NOTE: core-guided variables will not be eliminated
     quit::checkInterrupt();
     if (l != 0 && isUnknown(getPos(), l) && !objective->hasLit(l) && lit2cons[-l].empty()) {
-      // learnUnitConstraint(l, Origin::PURE, logger ? logger->logPure(l) : ID_Undef); // TODO use when VeriPB allows
       addUnitConstraint(l, Origin::PURE);
       removeSatisfiedNonImpliedsAtRoot();
     }
@@ -928,14 +941,13 @@ void Solver::derivePureLits() {
 
 void Solver::dominanceBreaking() {
   std::unordered_set<Lit> inUnsaturatableConstraint;
-  IntSet& tmpSet = isPool.take();
-  IntSet& actSet = isPool.take();
+  IntSet& saturating = isPool.take();
+  IntSet& intersection = isPool.take();
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {
-    assert(tmpSet.isEmpty());
+    assert(saturating.isEmpty());
     if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l)) continue;
     std::unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
-      // learnUnitConstraint(l, Origin::PURE, logger ? logger->logPure(l) : ID_Undef); // TODO use when VeriPB allows
       addUnitConstraint(l, Origin::PURE);
       removeSatisfiedNonImpliedsAtRoot();
       continue;
@@ -967,16 +979,16 @@ void Solver::dominanceBreaking() {
       Lit ll = first->lit(i);
       assert(!isTrue(getLevel(), ll));  // otherwise the constraint would be satisfied and hence removed at the root
       if (!isFalse(getLevel(), ll)) {
-        tmpSet.add(first->lit(i));
+        saturating.add(first->lit(i));
       }
     }
-    tmpSet.remove(-l);  // if l is false, then we can not pick it to be true ;)
+    saturating.remove(-l);  // if l is false, then we can not pick it to be true ;)
     auto range = binaryImplicants.equal_range(-l);
     for (auto it = range.first; it != range.second; ++it) {
-      tmpSet.remove(-it->second);  // not interested in anything that already implies l
+      saturating.remove(-it->second);  // not interested in anything that already implies l TODO: is this needed?
     }
     for (const std::pair<const CRef, int>& pr : col) {
-      if (tmpSet.isEmpty()) break;
+      if (saturating.isEmpty()) break;
       Constr& c = ca[pr.first];
       unsigned int unsatIdx = c.getUnsaturatedIdx();
       if (unsatIdx == 0) {
@@ -984,29 +996,29 @@ void Solver::dominanceBreaking() {
           inUnsaturatableConstraint.insert(c.lit(i));
         }
       }
-      assert(actSet.isEmpty());
+      assert(intersection.isEmpty());
       for (unsigned int i = 0; i < unsatIdx; ++i) {
         quit::checkInterrupt();
         Lit ll = c.lit(i);
-        if (tmpSet.has(ll)) actSet.add(ll);
+        if (saturating.has(ll)) intersection.add(ll);
       }
-      tmpSet = actSet;
-      actSet.clear();
+      saturating = intersection;
+      intersection.clear();
     }
-    if (tmpSet.isEmpty()) continue;
+    if (saturating.isEmpty()) continue;
 
-    // tmpSet contains the intersection of the saturating literals for all constraints,
-    // so asserting any literal in tmpSet makes l pure,
+    // saturating contains the intersection of the saturating literals for all constraints,
+    // so asserting any literal in saturating makes l pure,
     // so we can add all these binary implicants as dominance breakers.
-    for (Lit ll : tmpSet.getKeys()) {
+    for (Lit ll : saturating.getKeys()) {
       binaryImplicants.insert({ll, l});
       binaryImplicants.insert({-l, -ll});
-      addConstraintChecked(ConstrSimple32{{{1, l}, {1, -ll}}, 1}, Origin::DOMBREAKER);
+      addConstraintChecked(ConstrSimple32{{{1, -ll}, {1, l}}, 1}, Origin::DOMBREAKER);
     }
-    tmpSet.clear();
+    saturating.clear();
   }
-  isPool.release(tmpSet);
-  isPool.release(actSet);
+  isPool.release(saturating);
+  isPool.release(intersection);
 }
 
 SolveState Solver::solve() {
@@ -1122,16 +1134,16 @@ void Solver::probeRestart(Lit next) {
   lastRestartNext = toVar(next);
   int oldUnits = trail.size();
   if (probe(-next)) {
-    IntSet& tmpSet = isPool.take();
+    IntSet& trailSet = isPool.take();
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
-      tmpSet.add(trail[i]);
+      trailSet.add(trail[i]);
     }
     backjumpTo(0, false);
     std::vector<Lit> newUnits;
     if (probe(next)) {
       for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
         Lit l = trail[i];
-        if (tmpSet.has(l)) {
+        if (trailSet.has(l)) {
           newUnits.push_back(l);
         }
       }
@@ -1145,7 +1157,7 @@ void Solver::probeRestart(Lit next) {
         }
       }
     }
-    isPool.release(tmpSet);  // TODO: rename tmpSet, actSet to something more meaningful
+    isPool.release(trailSet);
   }
   stats.NPROBINGLITS += (decisionLevel() == 0 ? trail.size() : trail_lim[0]) - oldUnits;
   if (decisionLevel() == 0 && isUnknown(getPos(), next)) {
@@ -1176,16 +1188,16 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
   backjumpTo(0, false);
 
   if (!previousProbe.empty()) {
-    IntSet& tmpSet = isPool.take();
+    IntSet& previous = isPool.take();
     for (Lit l : previousProbe) {
-      tmpSet.add(l);
+      previous.add(l);
     }
     for (Lit l : candidates) {
-      if (tmpSet.has(l)) {
+      if (previous.has(l)) {
         learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(seed, l) : ID_Undef);
       }
     }
-    isPool.release(tmpSet);
+    isPool.release(previous);
   } else {
     previousProbe = candidates;
   }
@@ -1201,37 +1213,36 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
     }
     Lit current = candidates[0];
     aux::swapErase(candidates, 0);
-    IntSet& tmpSet = isPool.take();
+    IntSet& trailSet = isPool.take();
     if (isKnown(getPos(), current) || !probe(-current)) {
-      isPool.release(tmpSet);
+      isPool.release(trailSet);
       continue;
     }
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
-      Lit l = trail[i];
-      tmpSet.add(l);
+      trailSet.add(trail[i]);
     }
     backjumpTo(0, false);
     for (Lit l : cardLits) {
-      if (tmpSet.has(-l)) {
+      if (trailSet.has(-l)) {
         learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(l, current) : ID_Undef);
-        isPool.release(tmpSet);
+        isPool.release(trailSet);
         continue;
       }
     }
     int candidatesLeft = 0;
     for (Lit l : candidates) {
-      candidatesLeft += tmpSet.has(l);
+      candidatesLeft += trailSet.has(l);
     }
     if (candidatesLeft > 0) {
       cardLits.push_back(current);  // found an additional cardinality lit
       for (int i = 0; i < (int)candidates.size(); ++i) {
-        if (!tmpSet.has(candidates[i])) {
+        if (!trailSet.has(candidates[i])) {
           aux::swapErase(candidates, i--);
         }
       }
       assert(candidatesLeft == (int)candidates.size());
     }
-    isPool.release(tmpSet);
+    isPool.release(trailSet);
   }
   for (Lit l : candidates) {
     cardLits.push_back(l);
@@ -1377,15 +1388,15 @@ bool Solver::runTabuOnce() {
     assert(c.isSatisfiedByTabu(tabuSol));
     assert(!violatedPtrs.count(cr));
 
-    IntSet& tmpSet = isPool.take();
+    IntSet& impliedSet = isPool.take();
     for (Lit l : changeds) {
-      if (!tmpSet.has(toVar(l)) && !isUnit(getLevel(), l) && !isUnit(getLevel(), -l) && probe(l)) {
+      if (!impliedSet.has(toVar(l)) && !isUnit(getLevel(), l) && !isUnit(getLevel(), -l) && probe(l)) {
         // NOTE: l may have become unit by previous probing...
         for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
           Lit ll = trail[i];
           Var vv = toVar(ll);
           if (vv <= getNbOrigVars()) {
-            tmpSet.add(vv);
+            impliedSet.add(vv);
             if (tabuSol[vv] != ll) {
               cutoff = std::max(cutoff, ranks[vv]);
               flipTabu(ll);
@@ -1395,7 +1406,7 @@ bool Solver::runTabuOnce() {
         backjumpTo(0, false);
       }
     }
-    isPool.release(tmpSet);
+    isPool.release(impliedSet);
     oldDetTime = currentDetTime;
     currentDetTime = stats.getDetTime();
     stats.TABUDETTIME += currentDetTime - oldDetTime;

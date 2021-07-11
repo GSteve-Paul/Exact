@@ -239,7 +239,9 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
     stats.NLPADDEDLITERALS += ce->nVars();
     lcc->addUp(ce, aux::abs(factor));
   }
-  if (lcc->plogger) lcc->plogger->logAsInput(lcc);
+  if (lcc->plogger) {
+    lcc->plogger->logAssumption(lcc);
+  }
   // TODO: fix logging for Gomory cuts
 
   lcc->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
