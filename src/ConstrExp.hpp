@@ -79,7 +79,6 @@ struct ConstrExpSuper {
   bool used(Var v) const { return index[v] >= 0; }
   void reverseOrder();
 
-  unsigned int getLBD(const IntVecIt& level) const;
   void weakenLast();
   void popLast();
 
@@ -109,7 +108,7 @@ struct ConstrExpSuper {
 
   virtual double getStrength() const = 0;
 
-  virtual Lit getLit(Lit l) const = 0;
+  virtual Lit getLit(Var) const = 0;
   virtual bool hasLit(Lit l) const = 0;
   virtual bool hasVar(Var v) const = 0;
   virtual bool saturatedLit(Lit l) const = 0;
@@ -122,6 +121,7 @@ struct ConstrExpSuper {
   virtual bool isTautology() const = 0;
   virtual bool isInconsistency() const = 0;
   virtual bool isSatisfied(const std::vector<Lit>& assignment) const = 0;
+  virtual unsigned int getLBD(const IntVecIt& level) const = 0;
 
   virtual void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos) = 0;
   virtual void removeZeroes() = 0;
@@ -248,7 +248,7 @@ struct ConstrExp final : public ConstrExpSuper {
   SMALL getLargestCoef() const;
   SMALL getSmallestCoef() const;
   LARGE getCutoffVal() const;
-  Lit getLit(Lit l) const;
+  Lit getLit(Var v) const;
   bool hasLit(Lit l) const;
   bool hasVar(Var v) const;
   bool saturatedLit(Lit l) const;
@@ -266,6 +266,7 @@ struct ConstrExp final : public ConstrExpSuper {
   bool isTautology() const;
   bool isInconsistency() const;
   bool isSatisfied(const std::vector<Lit>& assignment) const;
+  unsigned int getLBD(const IntVecIt& level) const;
 
   // @post: preserves order of vars
   void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos);
@@ -529,7 +530,7 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 
-    return getLBD(level);
+    return reason->getLBD(level);
   }
 
   //@post: variable vector vars is not changed, but coefs[toVar(toSubsume)] may become 0

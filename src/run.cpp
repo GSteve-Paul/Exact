@@ -460,7 +460,7 @@ void Optimization<SMALL, LARGE>::optimize() {
         });
         std::vector<Lit> assumps;
         assumps.reserve(litcoefs.size());
-        for (const Term<double>& t : litcoefs) assumps.push_back(-reformObj->getLit(t.l));
+        for (const Term<double>& t : litcoefs) assumps.push_back(-reformObj->getLit(toVar(t.l)));
         solver.setAssumptions(assumps);
       }
     } else {

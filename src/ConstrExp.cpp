@@ -344,8 +344,8 @@ LARGE ConstrExp<SMALL, LARGE>::getCutoffVal() const {
 }
 
 template <typename SMALL, typename LARGE>
-Lit ConstrExp<SMALL, LARGE>::getLit(Lit l) const {  // NOTE: answer of 0 means coef 0
-  Var v = toVar(l);
+Lit ConstrExp<SMALL, LARGE>::getLit(Var v) const {  // NOTE: answer of 0 means coef 0
+  assert(v >= 0);
   assert(v < (Var)coefs.size());
   return (coefs[v] == 0) ? 0 : (coefs[v] < 0 ? -v : v);
 }
@@ -427,11 +427,32 @@ bool ConstrExp<SMALL, LARGE>::isSatisfied(const std::vector<Lit>& assignment) co
   return eval >= 0;
 }
 
-unsigned int ConstrExpSuper::getLBD(const IntVecIt& level) const {
+template <typename SMALL, typename LARGE>
+unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntVecIt& level) const {
+  // calculate delete-lbd-e according to "On Dedicated CDCL Strategies for PB Solvers" - Le Berre & Wallon - 2021
+  assert(isSortedInDecreasingCoefOrder());
+  LARGE weakenedDeg = degree;
+  for (Var v : vars) {  // weaken all non-falsifieds
+    if (!isFalse(level, getLit(v))) {
+      weakenedDeg -= aux::abs(coefs[v]);
+      if (weakenedDeg <= 0) break;
+    }
+  }
+  int i = vars.size() - 1;
+  if (weakenedDeg > 0) {
+    for (; i >= 0; --i) {  // weaken all smallest falsifieds
+      Var v = vars[i];
+      Lit l = getLit(v);
+      if (isFalse(level, l)) {
+        weakenedDeg -= aux::abs(coefs[v]);
+        if (weakenedDeg <= 0) break;
+      }
+    }
+  }
+  assert(i >= 0);  // constraint is asserting or conflicting
   IntSet& lbdSet = isPool.take();
-  for (Var v : vars) {
-    assert(getLit(v) != 0);
-    lbdSet.add(level[-getLit(v)] % INF);
+  for (; i >= 0; --i) {  // gather all levels
+    lbdSet.add(level[-getLit(vars[i])] % INF);
   }
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   unsigned int lbd = lbdSet.size();
