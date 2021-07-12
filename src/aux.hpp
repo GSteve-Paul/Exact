@@ -48,6 +48,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <sys/resource.h>
 #include <algorithm>
+#include <boost/multiprecision/cpp_int.hpp>
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
@@ -57,9 +58,20 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "typedefs.hpp"
 
 namespace rs {
+
+using int128 = __int128;
+using int256 = boost::multiprecision::int256_t;
+using bigint = boost::multiprecision::cpp_int;
+using ratio = boost::multiprecision::cpp_rational;
+
+inline std::ostream& operator<<(std::ostream& o, const __int128& x) {
+  if (x == std::numeric_limits<__int128>::min()) return o << "-170141183460469231731687303715884105728";
+  if (x < 0) return o << "-" << -x;
+  if (x < 10) return o << (char)(x + '0');
+  return o << x / 10 << (char)(x % 10 + '0');
+}
 
 template <typename T, typename U>
 std::ostream& operator<<(std::ostream& o, const std::pair<T, U>& p) {
@@ -80,13 +92,6 @@ template <typename T>
 std::ostream& operator<<(std::ostream& o, const std::list<T>& m) {
   for (const auto& e : m) o << e << " ";
   return o;
-}
-
-inline std::ostream& operator<<(std::ostream& o, const __int128& x) {
-  if (x == std::numeric_limits<__int128>::min()) return o << "-170141183460469231731687303715884105728";
-  if (x < 0) return o << "-" << -x;
-  if (x < 10) return o << (char)(x + '0');
-  return o << x / 10 << (char)(x % 10 + '0');
 }
 
 namespace aux {
@@ -306,35 +311,6 @@ void timeCallVoid(const std::function<void(void)>& f, U& to) {
   to += cpuTime() - start;
 }
 
-template <typename T>
-bool fits([[maybe_unused]] const bigint& x) {
-  return false;
-}
-template <>
-inline bool fits<int>(const bigint& x) {
-  return aux::abs(x) <= bigint(limit32);
-}
-template <>
-inline bool fits<long long>(const bigint& x) {
-  return aux::abs(x) <= bigint(limit64);
-}
-template <>
-inline bool fits<int128>(const bigint& x) {
-  return aux::abs(x) <= bigint(limit128);
-}
-template <>
-inline bool fits<int256>(const bigint& x) {
-  return aux::abs(x) <= bigint(limit256);
-}
-template <>
-inline bool fits<bigint>([[maybe_unused]] const bigint& x) {
-  return true;
-}
-template <typename T, typename S>
-bool fitsIn([[maybe_unused]] const S& x) {
-  return fits<T>(bigint(x));
-}
-
 inline void flushexit(int status) {
   std::cout.flush();
   std::cerr.flush();
@@ -360,6 +336,7 @@ SMALL cast(const LARGE& x) {
 }
 
 namespace rng {
+
 extern uint32_t seed; /* The seed must be initialized to non-zero */
 uint32_t xorshift32();
 }  // namespace rng

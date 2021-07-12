@@ -288,8 +288,8 @@ struct Counting final : public Constr {
         degr(static_cast<DG>(constraint->getDegree())),
         slack(0) {
     assert(_id > ID_Trivial);
-    assert(aux::fitsIn<DG>(constraint->getDegree()));
-    assert(aux::fitsIn<CF>(constraint->getLargestCoef()));
+    assert(fitsIn<DG>(constraint->getDegree()));
+    assert(fitsIn<CF>(constraint->getLargestCoef()));
     ++stats.NCOUNTING;
 
     for (unsigned int i = 0; i < size; ++i) {
@@ -369,8 +369,8 @@ struct Watched final : public Constr {
         degr(static_cast<DG>(constraint->getDegree())),
         watchslack(0) {
     assert(_id > ID_Trivial);
-    assert(aux::fitsIn<DG>(constraint->getDegree()));
-    assert(aux::fitsIn<CF>(constraint->getLargestCoef()));
+    assert(fitsIn<DG>(constraint->getDegree()));
+    assert(fitsIn<CF>(constraint->getLargestCoef()));
     ++stats.NWATCHED;
 
     for (unsigned int i = 0; i < size; ++i) {
@@ -452,8 +452,8 @@ struct CountingSafe final : public Constr {
         slack(new DG(0)),
         terms(new Term<CF>[constraint->nVars()]) {
     assert(_id > ID_Trivial);
-    assert(aux::fitsIn<DG>(constraint->getDegree()));
-    assert(aux::fitsIn<CF>(constraint->getLargestCoef()));
+    assert(fitsIn<DG>(constraint->getDegree()));
+    assert(fitsIn<CF>(constraint->getLargestCoef()));
     ++stats.NCOUNTING;
 
     for (unsigned int i = 0; i < size; ++i) {
@@ -537,8 +537,8 @@ struct WatchedSafe final : public Constr {
         watchslack(new DG(0)),
         terms(new Term<CF>[constraint->nVars()]) {
     assert(_id > ID_Trivial);
-    assert(aux::fitsIn<DG>(constraint->getDegree()));
-    assert(aux::fitsIn<CF>(constraint->getLargestCoef()));
+    assert(fitsIn<DG>(constraint->getDegree()));
+    assert(fitsIn<CF>(constraint->getLargestCoef()));
     ++stats.NWATCHED;
 
     for (unsigned int i = 0; i < size; ++i) {

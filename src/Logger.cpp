@@ -125,7 +125,7 @@ void Logger::logUnit(const CeSuper& ce) {
 }
 
 ID Logger::logRUP(Lit l, Lit ll) {
-  proof_out << "u " << StreamLit{l} << " " << StreamLit{ll} << " >= 1 ;\n";
+  proof_out << "u " << std::pair<int, Lit>{1, l} << " " << std::pair<int, Lit>{1, ll} << " >= 1 ;\n";
   return ++last_proofID;
 }
 

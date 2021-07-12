@@ -41,20 +41,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include <boost/multiprecision/cpp_int.hpp>
-#include <cassert>
-#include <exception>
-#include <iostream>
-#include <limits>
-#include <unordered_map>
-#include <vector>
+#include "aux.hpp"
 
 namespace rs {
-
-using int128 = __int128;
-using int256 = boost::multiprecision::int256_t;
-using bigint = boost::multiprecision::cpp_int;
-using ratio = boost::multiprecision::cpp_rational;
 
 using ID = uint64_t;
 const ID ID_Undef = std::numeric_limits<ID>::max();
@@ -64,12 +53,6 @@ const ID ID_Trivial = 1;  // represents constraint 0 >= 0
 using Var = int;
 using Lit = int;
 inline Var toVar(Lit l) { return std::abs(l); }
-struct StreamLit {
-  Lit l;
-};
-inline std::ostream& operator<<(std::ostream& o, const StreamLit& sl) {
-  return o << "+1 " << (sl.l < 0 ? "~x" : "x") << toVar(sl.l);
-}
 
 const int resize_factor = 2;
 
@@ -92,6 +75,35 @@ const int conflLimit32 = limit32bit / 2;
 const int conflLimit64 = limit64bit / 2;
 const int conflLimit96 = limit96bit / 2;
 const int conflLimit128 = limit128bit / 2;
+
+template <typename T>
+bool fits([[maybe_unused]] const bigint& x) {
+  return false;
+}
+template <>
+inline bool fits<int>(const bigint& x) {
+  return aux::abs(x) <= bigint(limit32);
+}
+template <>
+inline bool fits<long long>(const bigint& x) {
+  return aux::abs(x) <= bigint(limit64);
+}
+template <>
+inline bool fits<int128>(const bigint& x) {
+  return aux::abs(x) <= bigint(limit128);
+}
+template <>
+inline bool fits<int256>(const bigint& x) {
+  return aux::abs(x) <= bigint(limit256);
+}
+template <>
+inline bool fits<bigint>([[maybe_unused]] const bigint& x) {
+  return true;
+}
+template <typename T, typename S>
+bool fitsIn([[maybe_unused]] const S& x) {
+  return fits<T>(bigint(x));
+}
 
 using IntVecIt = std::vector<int>::iterator;
 
@@ -197,6 +209,11 @@ struct Term {
 template <typename CF>
 std::ostream& operator<<(std::ostream& o, const Term<CF>& t) {
   return o << t.c << "x" << t.l;
+}
+
+template <typename CF>
+std::ostream& operator<<(std::ostream& o, const std::pair<CF, Lit>& cl) {
+  return o << (cl.first < 0 ? "" : "+") << cl.first << (cl.second < 0 ? " ~x" : " x") << toVar(cl.second);
 }
 
 inline class AsynchronousInterrupt : public std::exception {

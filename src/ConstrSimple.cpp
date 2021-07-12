@@ -93,7 +93,7 @@ void ConstrSimple<CF, DG>::reset() {
 template <typename CF, typename DG>
 void ConstrSimple<CF, DG>::toStreamAsOPB(std::ostream& o) const {
   for (const Term<CF>& t : terms) {
-    o << (t.c < 0 ? "" : "+") << t.c << " " << (t.l < 0 ? "~x" : "x") << toVar(t.l) << " ";
+    o << std::pair<CF, Lit>{t.c, t.l} << " ";
   }
   o << ">= " << rhs << " ;";
 }
