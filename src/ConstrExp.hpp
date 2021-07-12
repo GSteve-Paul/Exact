@@ -304,7 +304,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void addUp(CePtr<ConstrExp<S, L>> c, const SMALL& cmult = 1) {
     stats.NADDEDLITERALS += c->nVars();
     assert(cmult >= 1);
-    if (plogger) Logger::proofMult(proofBuffer << c->proofBuffer.str(), cmult) << "+ ";
+    if (plogger) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
     rhs += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->rhs);
     degree += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->degree);
     for (Var v : c->vars) {
@@ -610,7 +610,7 @@ struct ConstrExp final : public ConstrExpSuper {
     }
     if (plogger) {
       out->proofBuffer.str(std::string());
-      out->proofBuffer << proofBuffer.str();
+      out->proofBuffer << proofBuffer.rdbuf();
     }
   }
 
