@@ -594,10 +594,10 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
       case Origin::FORMULA:
         input = logger->logInput(ce);
         break;
-      case Origin::PURE:
-        input = logger->logPure(ce);
-        break;
         // TODO: reactivate below when VeriPB's redundant rule becomes stronger
+        //      case Origin::PURE:
+        //        input = logger->logPure(ce);
+        //        break;
         //      case Origin::DOMBREAKER:
         //        input = logger->logDomBreaker(ce);
         //        break;
@@ -1206,7 +1206,8 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
       previous.add(l);
     }
     for (Lit l : candidates) {
-      if (previous.has(l)) {
+      if (previous.has(l) && !isKnown(getPos(), l)) {
+        assert(decisionLevel() == 0);
         learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(seed, l) : ID_Undef);
       }
     }
@@ -1236,7 +1237,8 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
     }
     backjumpTo(0, false);
     for (Lit l : cardLits) {
-      if (trailSet.has(-l)) {
+      if (trailSet.has(-l) && !isKnown(getPos(), l)) {
+        assert(decisionLevel() == 0);
         learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(l, current) : ID_Undef);
         isPool.release(trailSet);
         continue;
