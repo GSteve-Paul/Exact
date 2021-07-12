@@ -1266,7 +1266,7 @@ void ConstrExp<SMALL, LARGE>::toStreamAsOPB(std::ostream& o) const {
   for (Var v : vs) {
     Lit l = getLit(v);
     if (l == 0) continue;
-    o << "+" << getCoef(l) << (l < 0 ? " ~x" : " x") << v << " ";
+    o << std::pair<SMALL, Lit>{getCoef(l), l} << " ";
   }
   o << ">= " << degree << " ;";
 }

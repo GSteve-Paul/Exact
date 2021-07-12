@@ -88,8 +88,7 @@ void quit::printFormula(Solver& solver) {
   }
   for (Lit l : solver.getUnits()) {
     if (toVar(l) > solver.getNbOrigVars()) continue;
-    std::cout << "+1 " << (l < 0 ? "~x" : "x") << toVar(l) << " >= 1 ;"
-              << "\n";
+    std::cout << std::pair<int, Lit>{1, l} << " >= 1 ;\n";
   }
   for (const CRef& cr : solver.getRawConstraints()) {
     const Constr& c = solver.getCA()[cr];
