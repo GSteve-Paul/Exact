@@ -788,6 +788,7 @@ void Solver::reduceDB() {
   learnts.reserve(constraints.size() / 2);
 
   removeSatisfiedNonImpliedsAtRoot();
+  long long safeLBD = 0;
   for (const CRef& cr : constraints) {
     Constr& c = ca[cr];
     if (c.isMarkedForDelete() || c.isLocked() || external.count(c.id)) continue;
@@ -797,6 +798,8 @@ void Solver::reduceDB() {
       removeConstraint(cr);
     } else if ((int)c.lbd() > options.dbSafeLBD.get()) {
       learnts.push_back(cr);  // Don't erase glue constraints
+    } else {
+      ++safeLBD;
     }
   }
 
@@ -807,6 +810,7 @@ void Solver::reduceDB() {
   });
   long long limit =
       options.dbPow ? std::pow(learnts.size(), options.dbKeptRatio.get()) : learnts.size() * options.dbKeptRatio.get();
+  std::cout << "learnts.size() " << learnts.size() << " limit " << limit << std::endl;
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
   }
@@ -820,9 +824,11 @@ void Solver::reduceDB() {
   }
 
   std::vector<int> cardPoints;
-  for (size_t i = learnts.size() / 2; i < learnts.size(); ++i) {
+  long long reduced = 0;
+  for (size_t i = limit; i < learnts.size(); ++i) {
     Constr& c = ca[learnts[i]];
     if (!c.isClauseOrCard()) {
+      ++reduced;
       CeSuper ce = c.toExpanded(cePools);
       ce->removeUnitsAndZeroes(getLevel(), getPos());
       assert(ce->getCardinalityDegree() > 0);
@@ -830,6 +836,7 @@ void Solver::reduceDB() {
       learnConstraint(ce, Origin::REDUCED);
     }
   }
+  std::cout << "safe LBD " << safeLBD << " reduced " << reduced << std::endl;
 
   size_t j = 0;
   unsigned int decay = (unsigned int)options.dbDecayLBD.get();
