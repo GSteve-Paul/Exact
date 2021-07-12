@@ -1024,6 +1024,9 @@ void Solver::dominanceBreaking() {
 
 SolveState Solver::solve() {
   if (firstRun) presolve();
+  long double lastPropTime = stats.PROPTIME.z;
+  long double lastCATime = stats.CATIME.z;
+  long double lastNProp = stats.NPROP.z;
   bool runLP = false;
   while (true) {
     quit::checkInterrupt();
@@ -1072,7 +1075,16 @@ SolveState Solver::solve() {
         nconfl_to_restart = (long long)rest_base * options.lubyMult.get();
       }
       if (stats.NCONFL >= (stats.NCLEANUP + 1) * nconfl_to_reduce) {
-        if (options.verbosity.get() > 0) std::cout << "c INPROCESSING" << std::endl;
+        if (options.verbosity.get() > 0) {
+          long double propDiff = stats.PROPTIME.z - lastPropTime;
+          long double cADiff = stats.CATIME.z - lastCATime;
+          long double nPropDiff = stats.NPROP.z - lastNProp;
+          std::cout << "c INPROCESSING " << propDiff << " proptime " << nPropDiff / propDiff << " prop/sec "
+                    << propDiff / cADiff << " prop/ca" << std::endl;
+          lastPropTime = stats.PROPTIME.z;
+          lastCATime = stats.CATIME.z;
+          lastNProp = stats.NPROP.z;
+        }
         ++stats.NCLEANUP;
         aux::timeCallVoid([&] { reduceDB(); }, stats.CLEANUPTIME);
         while (stats.NCONFL >= stats.NCLEANUP * nconfl_to_reduce) nconfl_to_reduce += options.dbCleanInc.get();
