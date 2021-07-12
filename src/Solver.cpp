@@ -474,7 +474,9 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
     for (unsigned int i = 0; i < c.size; ++i) {
       hash ^= aux::hash(c.lit(i));
     }
-    atMostOneHashes.insert(hash);
+    if (auto bestsize = atMostOneHashes.find(hash); bestsize == atMostOneHashes.end() || bestsize->second < c.size) {
+      atMostOneHashes[hash] = c.size;
+    }
   }
 
   Origin orig = c.getOrigin();
@@ -789,11 +791,21 @@ void Solver::reduceDB() {
 
   removeSatisfiedNonImpliedsAtRoot();
   long long safeLBD = 0;
+  long long marked = 0;
+  long long locked = 0;
+  long long externals = 0;
+  long long satisfiedAtRoot = 0;
   for (const CRef& cr : constraints) {
     Constr& c = ca[cr];
-    if (c.isMarkedForDelete() || c.isLocked() || external.count(c.id)) continue;
+    if (c.isMarkedForDelete() || c.isLocked() || external.count(c.id)) {
+      marked += c.isMarkedForDelete();
+      locked += c.isLocked();
+      externals += external.count(c.id);
+      continue;
+    }
     assert(!usedInTabu(c.getOrigin()));
     if (c.isSatisfiedAtRoot(getLevel())) {
+      ++satisfiedAtRoot;
       ++stats.NSATISFIEDSREMOVED;
       removeConstraint(cr);
     } else if ((int)c.lbd() > options.dbSafeLBD.get()) {
@@ -836,7 +848,8 @@ void Solver::reduceDB() {
       learnConstraint(ce, Origin::REDUCED);
     }
   }
-  std::cout << "safe LBD " << safeLBD << " reduced " << reduced << std::endl;
+  std::cout << "safe LBD " << safeLBD << " reduced " << reduced << " marked " << marked << " locked " << locked
+            << " externals " << externals << " satisfiedAtRoot " << satisfiedAtRoot << std::endl;
 
   size_t j = 0;
   unsigned int decay = (unsigned int)options.dbDecayLBD.get();
@@ -1279,15 +1292,21 @@ AMODetectState Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& consid
   }
   if (cardLits.size() > 2) {
     uint64_t hash = aux::hashForSet(cardLits);
-    if (atMostOneHashes.count(hash)) return AMODetectState::FAILED;
-    atMostOneHashes.insert(hash);
+    if (auto bestsize = atMostOneHashes.find(hash);
+        bestsize != atMostOneHashes.end() && bestsize->second >= cardLits.size()) {
+      return AMODetectState::FAILED;
+    }
+    atMostOneHashes[hash] = cardLits.size();
     ConstrSimple32 card{{}, (int)cardLits.size() - 1};
     for (Lit l : cardLits) {
       card.terms.push_back({1, l});
     }
     ++stats.ATMOSTONES;
-    // learnConstraint(card.toExpanded(cePools), Origin::DETECTEDAMO);
-    addConstraintChecked(card, Origin::DETECTEDAMO);  // TODO: add proof logging and add as a learned constraint
+    CeSuper ce = card.toExpanded(cePools);
+    if (logger) {
+      ce->resetBuffer(logger->logAtMostOne(card));
+    }
+    learnConstraint(ce, Origin::DETECTEDAMO);
     return AMODetectState::SUCCESS;
   } else {
     return AMODetectState::FAILED;

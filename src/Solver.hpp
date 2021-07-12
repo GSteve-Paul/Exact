@@ -237,7 +237,7 @@ class Solver {
   void probeRestart(Lit next);
 
   AMODetectState detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
-  std::unordered_set<uint64_t> atMostOneHashes;
+  std::unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
   void runAtMostOneDetection();
 
   // ---------------------------------------------------------------------

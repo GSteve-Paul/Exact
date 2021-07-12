@@ -124,10 +124,8 @@ void Logger::logUnit(const CeSuper& ce) {
   unitIDs.push_back(logProofLineWithInfo(ce, "Unit"));
 }
 
-ID Logger::logRUP(const ConstrSimple32& c) {
-  proof_out << "u ";
-  c.toStreamAsOPB(proof_out);
-  proof_out << "\n";
+ID Logger::logRUP(Lit l, Lit ll) {
+  proof_out << "u " << StreamLit{l} << " " << StreamLit{ll} << " >= 1 ;\n";
   return ++last_proofID;
 }
 
@@ -135,8 +133,8 @@ ID Logger::logImpliedUnit(Lit implying, Lit implied) {
 #if !NDEBUG
   logComment("Implied unit");
 #endif
-  ID id1 = logRUP(ConstrSimple32({{1, implying}, {1, implied}}, 1));
-  ID id2 = logRUP(ConstrSimple32({{1, -implying}, {1, implied}}, 1));
+  ID id1 = logRUP(implying, implied);
+  ID id2 = logRUP(-implying, implied);
   proof_out << "p " << id1 << " " << id2 << " + s\n";
 #if !NDEBUG
   proof_out << "e " << last_proofID + 1 << " +1 " << (implied < 0 ? "~x" : "x") << toVar(implied) << " >= 1 ;\n";
@@ -167,6 +165,31 @@ ID Logger::logDomBreaker(const CeSuper& ce) {
             << " >= 1 ; x" << toVar(a) << " " << (a < 0) << " x" << toVar(b) << " " << (b > 0) << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
+}
+
+ID Logger::logAtMostOne(const ConstrSimple32& c) {
+  assert(c.terms.size() > 1);
+#if !NDEBUG
+  logComment("Implied at-most-one");
+#endif
+  std::stringstream buffer;
+  ID previous = ID_Trivial;
+  for (int i = 1; i < (int)c.terms.size(); ++i) {
+    buffer << "p " << previous << " ";
+    if (i > 2) buffer << i - 1 << " * ";
+    for (int j = 0; j < i; ++j) {
+      buffer << logRUP(c.terms[i].l, c.terms[j].l) << " + ";
+    }
+    if (i > 1) buffer << i << " d";
+    proof_out << buffer.rdbuf() << "\n";
+    previous = ++last_proofID;
+  }
+#if !NDEBUG
+  proof_out << "e " << last_proofID << " ";
+  c.toStreamAsOPB(proof_out);
+  proof_out << "\n";
+#endif
   return last_proofID;
 }
 

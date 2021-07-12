@@ -67,10 +67,11 @@ class Logger {
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
   void logInconsistency(const CeSuper& ce);
   void logUnit(const CeSuper& ce);
-  ID logRUP(const ConstrSimple32& c);
+  ID logRUP(Lit l, Lit ll);
   ID logImpliedUnit(Lit implying, Lit implied);
   ID logPure(const CeSuper& ce);
   ID logDomBreaker(const CeSuper& ce);  // second lit is the witness
+  ID logAtMostOne(const ConstrSimple32& c);
 
   ID getUnitID(int trailIdx) { return unitIDs[trailIdx]; }
   int getNbUnitIDs() { return unitIDs.size(); }

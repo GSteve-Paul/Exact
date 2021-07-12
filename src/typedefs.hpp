@@ -64,6 +64,12 @@ const ID ID_Trivial = 1;  // represents constraint 0 >= 0
 using Var = int;
 using Lit = int;
 inline Var toVar(Lit l) { return std::abs(l); }
+struct StreamLit {
+  Lit l;
+};
+inline std::ostream& operator<<(std::ostream& o, const StreamLit& sl) {
+  return o << "+1 " << (sl.l < 0 ? "~x" : "x") << toVar(sl.l);
+}
 
 const int resize_factor = 2;
 
@@ -98,12 +104,12 @@ enum class Origin {
   UNKNOWN,        // uninitialized
   FORMULA,        // original input formula
   DOMBREAKER,     // dominance breaking
+  INVALIDATOR,    // solution-invalidating constraint
   PURE,           // pure unit literal
   COREGUIDED,     // extension constraints from coreguided optimization
   HARDENEDBOUND,  // unit constraint due to upper bound on the objective function
   UPPERBOUND,     // upper bound on the objective function
   LOWERBOUND,     // lower bound on the objective function
-  INVALIDATOR,    // solution-invalidating constraint
   LEARNED,        // learned from regular conflict analysis
   FARKAS,         // LP solver infeasibility witness
   DUAL,           // LP solver feasibility dual constraint
