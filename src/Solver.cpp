@@ -597,9 +597,10 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
       case Origin::PURE:
         input = logger->logPure(ce);
         break;
-      case Origin::DOMBREAKER:
-        input = logger->logDomBreaker(ce);
-        break;
+        // TODO: reactivate below when VeriPB's redundant rule becomes stronger
+        //      case Origin::DOMBREAKER:
+        //        input = logger->logDomBreaker(ce);
+        //        break;
       default:
         input = logger->logAssumption(ce);
     }

@@ -164,7 +164,7 @@ ID Logger::logDomBreaker(const CeSuper& ce) {
   Lit a = ce->getLit(ce->vars[0]);
   Lit b = ce->getLit(ce->vars[1]);
   proof_out << "red +1 " << (a < 0 ? "~x" : "x") << toVar(a) << " +1 " << (b < 0 ? "~x" : "x") << toVar(b)
-            << " >= 1 ; x" << toVar(b) << " " << (b > 0) << "\n";
+            << " >= 1 ; x" << toVar(a) << " " << (a < 0) << " x" << toVar(b) << " " << (b > 0) << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
