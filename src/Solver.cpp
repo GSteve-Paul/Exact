@@ -787,31 +787,20 @@ void Solver::garbage_collect() {
 void Solver::reduceDB() {
   backjumpTo(0);  // otherwise reason CRefs need to be taken care of
   std::vector<CRef> learnts;
-  learnts.reserve(constraints.size() / 2);
+  learnts.reserve(constraints.size());
 
   removeSatisfiedNonImpliedsAtRoot();
-  long long safeLBD = 0;
-  long long marked = 0;
-  long long locked = 0;
-  long long externals = 0;
-  long long satisfiedAtRoot = 0;
   for (const CRef& cr : constraints) {
     Constr& c = ca[cr];
     if (c.isMarkedForDelete() || c.isLocked() || external.count(c.id)) {
-      marked += c.isMarkedForDelete();
-      locked += c.isLocked();
-      externals += external.count(c.id);
       continue;
     }
     assert(!usedInTabu(c.getOrigin()));
     if (c.isSatisfiedAtRoot(getLevel())) {
-      ++satisfiedAtRoot;
       ++stats.NSATISFIEDSREMOVED;
       removeConstraint(cr);
     } else if ((int)c.lbd() > options.dbSafeLBD.get()) {
       learnts.push_back(cr);  // Don't erase glue constraints
-    } else {
-      ++safeLBD;
     }
   }
 
@@ -822,7 +811,6 @@ void Solver::reduceDB() {
   });
   long long limit =
       options.dbPow ? std::pow(learnts.size(), options.dbKeptRatio.get()) : learnts.size() * options.dbKeptRatio.get();
-  std::cout << "learnts.size() " << learnts.size() << " limit " << limit << std::endl;
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
   }
@@ -848,8 +836,6 @@ void Solver::reduceDB() {
       learnConstraint(ce, Origin::REDUCED);
     }
   }
-  std::cout << "safe LBD " << safeLBD << " reduced " << reduced << " marked " << marked << " locked " << locked
-            << " externals " << externals << " satisfiedAtRoot " << satisfiedAtRoot << std::endl;
 
   size_t j = 0;
   unsigned int decay = (unsigned int)options.dbDecayLBD.get();
