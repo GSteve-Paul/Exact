@@ -297,6 +297,8 @@ inline int256 pow(const int256& x, unsigned y) {
   return boost::multiprecision::pow(x, y);
 }
 
+inline double log(double base, double arg) { return std::log(arg) / std::log(base); }
+
 template <typename T, typename U>
 T timeCall(const std::function<T(void)>& f, U& to) {
   double start = cpuTime();

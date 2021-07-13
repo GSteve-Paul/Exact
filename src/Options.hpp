@@ -225,13 +225,12 @@ struct Options {
   BoolOption varOrder{"var-order", "Use fixed variable order instead of VSIDS", false};
   BoolOption varSeparate{"var-separate", "Use separate phase and activity for linear and core-guided phases", true};
   BoolOption varInitAct{"var-init", "Initialize activity based on watches and initial local search call", false};
-  ValOption<int> dbCleanInc{"db-inc", "Database cleanup interval increment", 100, "1 =< int",
-                            [](const int& x) -> bool { return 1 <= x; }};
   ValOption<int> dbDecayLBD{"db-decay", "Decay term for the LBD of constraints", 1, "0 (no decay) =< int",
                             [](const int& x) -> bool { return 0 <= x; }};
-  ValOption<double> dbKeptRatio{"db-keep", "Parameter of learned constraints to keep during database cleanup", 0.5,
-                                "0 =< float =< 1", [](const int& x) -> bool { return 0 <= x && x <= 1; }};
-  BoolOption dbPow{"db-pow", "Use power instead of ratio to determine number of kept constraints.", false};
+  ValOption<double> dbExp{"db-exp",
+                          "Exponent of the growth of the learned clause database and the inprocessing intervals, "
+                          "with log(#conflicts) as base",
+                          3.5, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
   ValOption<double> propCounting{"prop-counting", "Counting propagation instead of watched propagation", 0.6,
@@ -336,10 +335,8 @@ struct Options {
       &varOrder,
       &varSeparate,
       &varInitAct,
-      &dbCleanInc,
       &dbDecayLBD,
-      &dbKeptRatio,
-      &dbPow,
+      &dbExp,
       &dbSafeLBD,
       &propCounting,
       &lpTimeRatio,

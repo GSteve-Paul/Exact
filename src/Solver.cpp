@@ -93,7 +93,7 @@ void Solver::init() {
   cePools.initializeLogging(logger);
   objective->stopLogging();
   nconfl_to_restart = options.lubyMult.get();
-  nconfl_to_reduce += 10 * options.dbCleanInc.get();
+  nconfl_to_reduce = 100;
 }
 
 // ---------------------------------------------------------------------
@@ -804,13 +804,11 @@ void Solver::reduceDB() {
     }
   }
 
-  nconfl_to_reduce += options.dbCleanInc.get();
   std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) {
     int res = (int)ca[x].lbd() - (int)ca[y].lbd();
     return res < 0 || (res == 0 && ca[x].strength > ca[y].strength);
   });
-  long long limit =
-      options.dbPow ? std::pow(learnts.size(), options.dbKeptRatio.get()) : learnts.size() * options.dbKeptRatio.get();
+  long long limit = std::pow(std::log(stats.NCONFL.z), options.dbExp.get());
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
   }
@@ -1080,7 +1078,10 @@ SolveState Solver::solve() {
         double rest_base = luby(options.lubyBase.get(), static_cast<int>(stats.NRESTARTS.z));
         nconfl_to_restart = (long long)rest_base * options.lubyMult.get();
       }
-      if (stats.NCONFL >= (stats.NCLEANUP + 1) * nconfl_to_reduce) {
+      if (stats.NCONFL >= nconfl_to_reduce) {
+        ++stats.NCLEANUP;
+        nconfl_to_reduce += 1 + std::pow(std::log(stats.NCONFL.z), options.dbExp.get());
+
         if (options.verbosity.get() > 0) {
           long double propDiff = stats.PROPTIME.z - lastPropTime;
           long double cADiff = stats.CATIME.z - lastCATime;
@@ -1091,9 +1092,7 @@ SolveState Solver::solve() {
           lastCATime = stats.CATIME.z;
           lastNProp = stats.NPROP.z;
         }
-        ++stats.NCLEANUP;
         aux::timeCallVoid([&] { reduceDB(); }, stats.CLEANUPTIME);
-        while (stats.NCONFL >= stats.NCLEANUP * nconfl_to_reduce) nconfl_to_reduce += options.dbCleanInc.get();
         aux::timeCallVoid([&] { inProcess(); }, stats.INPROCESSTIME);
         return SolveState::INPROCESSED;
       }
