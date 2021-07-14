@@ -1414,25 +1414,26 @@ bool Solver::runTabuOnce() {
     assert(c.isSatisfiedByTabu(tabuSol));
     assert(!violatedPtrs.count(cr));
 
-    IntSet& impliedSet = isPool.take();
-    for (Lit l : changeds) {
-      if (!impliedSet.has(toVar(l)) && !isUnit(getLevel(), l) && !isUnit(getLevel(), -l) && probe(l)) {
-        // NOTE: l may have become unit by previous probing...
-        for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
-          Lit ll = trail[i];
-          Var vv = toVar(ll);
-          if (vv <= getNbOrigVars()) {
-            impliedSet.add(vv);
-            if (tabuSol[vv] != ll) {
-              cutoff = std::max(cutoff, ranks[vv]);
-              flipTabu(ll);
-            }
-          }
-        }
-        backjumpTo(0, false);
-      }
-    }
-    isPool.release(impliedSet);
+    // uncomment below to probe during local search
+    //    IntSet& impliedSet = isPool.take();
+    //    for (Lit l : changeds) {
+    //      if (!impliedSet.has(toVar(l)) && !isUnit(getLevel(), l) && !isUnit(getLevel(), -l) && probe(l)) {
+    //        // NOTE: l may have become unit by previous probing...
+    //        for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
+    //          Lit ll = trail[i];
+    //          Var vv = toVar(ll);
+    //          if (vv <= getNbOrigVars()) {
+    //            impliedSet.add(vv);
+    //            if (tabuSol[vv] != ll) {
+    //              cutoff = std::max(cutoff, ranks[vv]);
+    //              flipTabu(ll);
+    //            }
+    //          }
+    //        }
+    //        backjumpTo(0, false);
+    //      }
+    //    }
+    //    isPool.release(impliedSet);
     oldDetTime = currentDetTime;
     currentDetTime = stats.getDetTime();
     stats.TABUDETTIME += currentDetTime - oldDetTime;
