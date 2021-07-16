@@ -13,3 +13,25 @@ See the file LICENSE or run with the flag --license=MIT.
 #include <string>
 
 int main_python();
+
+// addVariable() ?
+// bool addObjective();
+// getObjective();
+// bool addConstraint();
+// getConstraints();
+// bool getUnits();
+// SOLVERESULT solve(assumptions);
+// getBest();
+
+/* exit_SUCCESS:
+ *
+- attachConstraint
+- learnConstraint
+- addConstraint
+- addConstraintChecked
+- ILP::normalize
+- addLowerBound
+- handleNewSolution x 2
+- optimize (UNSAT and SAT)
+ *
+ */

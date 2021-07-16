@@ -66,7 +66,7 @@ CandidateCut::CandidateCut(const Constr& in, CRef cref, const std::vector<double
   tmp->toSimple()->copyTo(simpcons);
   // NOTE: simpcons is already in var-normal form
   initialize(sol);
-  assert(cr != CRef_Undef);
+  assert(isValid(cr));
 }
 
 void CandidateCut::initialize(const std::vector<double>& sol) {
@@ -314,7 +314,7 @@ void LpSolver::constructLearnedCandidates() {
   }
 }
 
-void LpSolver::addFilteredCuts() {
+State LpSolver::addFilteredCuts() {
   for ([[maybe_unused]] const CandidateCut& cc : candidateCuts) {
     assert(cc.norm != 0);
   }
@@ -341,12 +341,15 @@ void LpSolver::addFilteredCuts() {
     assert(ce->fitsInDouble());
     assert(!ce->isTautology());
     if (cc.cr == CRef_Undef) {  // Gomory cut
-      solver.learnConstraint(ce, Origin::GOMORY);
+      ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(ce, Origin::GOMORY); }, stats.LEARNTIME);
+      if (res == ID_Unsat) return State::UNSAT;
     } else {  // learned cut
       ++stats.NLPLEARNEDCUTS;
     }
     addConstraint(ce, true);
   }
+
+  return State::SUCCESS;
 }
 
 void LpSolver::pruneCuts() {
@@ -446,7 +449,8 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
       if (options.lpLearnDuals && lp.getDual(lpMultipliers)) {
         CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
         if (confl) {
-          solver.learnConstraint(confl, Origin::DUAL);
+          ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(confl, Origin::DUAL); }, stats.LEARNTIME);
+          if (res == ID_Unsat) return LpStatus::UNSAT;
         }
       } else {
         ++stats.NLPNODUAL;
@@ -488,16 +492,19 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
 
   CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
   if (confl) {
-    solver.learnConstraint(confl, Origin::FARKAS);
+    ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(confl, Origin::FARKAS); }, stats.LEARNTIME);
+    if (res == ID_Unsat) return LpStatus::UNSAT;
   }
   return LpStatus::INFEASIBLE;
 }
 
-void LpSolver::inProcess() {
+State LpSolver::inProcess() {
   solver.backjumpTo(0);
-  LpStatus lpstat = checkFeasibility(true);
-  if (lpstat != LpStatus::OPTIMAL) return;  // Any unsatisfiability will be handled by adding the Farkas constraint
-  if (!lp.hasSol()) return;
+  LpStatus lpstat = aux::timeCall<LpStatus>([&] { return checkFeasibility(true); }, stats.LPTOTALTIME);
+  if (lpstat == LpStatus::UNSAT) return State::UNSAT;
+  if (lpstat != LpStatus::OPTIMAL)
+    return State::SUCCESS;  // Any unsatisfiability will be handled by adding the Farkas constraint
+  if (!lp.hasSol()) return State::FAIL;
   lp.getPrimal(lpSol);
   assert(lpSol.dim() == (int)lpSolution.size());
   for (int i = 0; i < lpSol.dim(); ++i) lpSolution[i] = lpSol[i];
@@ -513,8 +520,9 @@ void LpSolver::inProcess() {
   if (logger && (options.lpGomoryCuts || options.lpLearnedCuts)) logger->logComment("cutting");
   if (options.lpLearnedCuts) constructLearnedCandidates();  // first to avoid adding gomory cuts twice
   if (options.lpGomoryCuts) constructGomoryCandidates();
-  addFilteredCuts();
+  if (addFilteredCuts() == State::UNSAT) return State::UNSAT;
   pruneCuts();
+  return State::SUCCESS;
 }
 
 void LpSolver::resetBasis() {
@@ -551,7 +559,7 @@ void LpSolver::addConstraint(const CeSuper& c, bool removable, bool upperbound, 
 }
 
 void LpSolver::addConstraint(CRef cr, bool removable, bool upperbound, bool lowerbound) {
-  assert(cr != CRef_Undef);
+  assert(isValid(cr));
   addConstraint(solver.ca[cr].toExpanded(cePools), removable, upperbound, lowerbound);
 }
 
