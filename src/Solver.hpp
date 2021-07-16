@@ -138,11 +138,17 @@ class Solver {
   // result: formula line id, processed id
   [[nodiscard]] std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
   [[nodiscard]] std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
-  void addUnitConstraint(Lit l, Origin orig);
+  [[nodiscard]] ID addUnitConstraint(Lit l, Origin orig);
   template <typename T>
   void addConstraintChecked(const T& c, Origin orig) {
     // NOTE: logging of the inconsistency happened in addInputConstraint
     if (addConstraint(c, orig).second == ID_Unsat) quit::exit_SUCCESS(*this);
+  }
+  template <typename T>
+  void addConstraintUnchecked(const T& c, Origin orig) {
+    // NOTE: logging of the inconsistency happened in addInputConstraint
+    [[maybe_unused]] auto [_, id] = addConstraint(c, orig);
+    assert(id != ID_Unsat);
   }
   void dropExternal(ID id, bool erasable, bool forceDelete);
   int getNbConstraints() const { return constraints.size(); }
@@ -210,7 +216,7 @@ class Solver {
   [[nodiscard]] CRef attachConstraint(const CeSuper& constraint,
                                       bool locked);  // returns CRef_Unsat in case of inconsistency
   [[nodiscard]] ID learnConstraint(const CeSuper& c, Origin orig);
-  void learnUnitConstraint(Lit l, Origin orig, ID id = ID_Undef);
+  [[nodiscard]] ID learnUnitConstraint(Lit l, Origin orig, ID id = ID_Undef);
   std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
   void removeConstraint(const CRef& cr, bool override = false);
 

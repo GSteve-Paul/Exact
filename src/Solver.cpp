@@ -581,7 +581,7 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   return c.id;
 }
 
-void Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
+ID Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
   double start = aux::cpuTime();
 
   assert(isLearned(orig));
@@ -598,10 +598,12 @@ void Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
     unit->resetBuffer(id);
   }
   CRef cr = attachConstraint(unit, false);
-  assert(isValid(cr));
-  ca[cr].decreaseLBD(1);
+  if (cr == CRef_Unsat) return ID_Unsat;
+  Constr& c = ca[cr];
+  c.decreaseLBD(1);
 
   stats.LEARNTIME += aux::cpuTime() - start;
+  return c.id;
 }
 
 std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
@@ -670,9 +672,7 @@ std::pair<ID, ID> Solver::addConstraint(const ConstrSimpleSuper& c, Origin orig)
   return result;
 }
 
-void Solver::addUnitConstraint(Lit l, Origin orig) {
-  if (addConstraint(ConstrSimple32({{1, l}}, 1), orig).second == ID_Unsat) quit::exit_SUCCESS(*this);
-}
+ID Solver::addUnitConstraint(Lit l, Origin orig) { return addConstraint(ConstrSimple32({{1, l}}, 1), orig).second; }
 
 void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
   Constr& c = ca[cr];
@@ -1049,7 +1049,7 @@ void Solver::dominanceBreaking() {
     for (Lit ll : saturating.getKeys()) {
       binaryImplicants.insert({ll, l});
       binaryImplicants.insert({-l, -ll});
-      addConstraintChecked(ConstrSimple32{{{1, -ll}, {1, l}}, 1}, Origin::DOMBREAKER);
+      addConstraintUnchecked(ConstrSimple32{{{1, -ll}, {1, l}}, 1}, Origin::DOMBREAKER);
     }
     saturating.clear();
   }
@@ -1228,7 +1228,10 @@ State Solver::probeRestart(Lit next) {
         for (Lit l : newUnits) {
           assert(!isUnit(getLevel(), -l));
           if (!isUnit(getLevel(), l)) {
-            learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(next, l) : ID_Undef);
+            if (learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(next, l) : ID_Undef) ==
+                ID_Unsat) {
+              return State::UNSAT;
+            }
           }
         }
       }
@@ -1279,7 +1282,9 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     for (Lit l : candidates) {
       if (previous.has(l) && !isKnown(getPos(), l)) {
         assert(decisionLevel() == 0);
-        learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(seed, l) : ID_Undef);
+        if (learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(seed, l) : ID_Undef) == ID_Unsat) {
+          return State::UNSAT;
+        }
       }
     }
     isPool.release(previous);
@@ -1317,8 +1322,11 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     for (Lit l : cardLits) {
       if (trailSet.has(-l) && !isKnown(getPos(), l)) {
         assert(decisionLevel() == 0);
-        learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(l, current) : ID_Undef);
         isPool.release(trailSet);
+        if (learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(l, current) : ID_Undef) ==
+            ID_Unsat) {
+          return State::UNSAT;
+        }
         continue;
       }
     }
