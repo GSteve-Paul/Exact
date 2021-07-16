@@ -365,7 +365,7 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
       invalidator.terms.push_back({1, -l});
     }
     std::pair<ID, ID> res = solver.addConstraint(invalidator, Origin::INVALIDATOR);
-    if (res.second == ID_Unsat) quit::exit_SUCCESS(solver);
+    if (res.second == ID_Unsat) return State::UNSAT;
   } else {
     CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
     origObj->copyTo(aux);
@@ -491,7 +491,7 @@ State Optimization<SMALL, LARGE>::optimize() {
       stats.DETTIMEFREE += stats.getDetTime() - current_time;
     }
     if (reply == SolveState::UNSAT) {
-      quit::exit_SUCCESS(solver);
+      return State::UNSAT;
     } else if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
       ++stats.NSOLS;
@@ -525,7 +525,7 @@ State Optimization<SMALL, LARGE>::optimize() {
     }
     if (lower_bound >= upper_bound && options.enumerate.get() != 0 && solutionsFound >= options.enumerate.get()) {
       logProof();
-      quit::exit_SUCCESS(solver);
+      return State::SUCCESS;
     }
   }
 }
@@ -550,30 +550,15 @@ void run() {
     solver.objective->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     bigint maxVal = solver.objective->getCutoffVal();
     if (maxVal <= limit32) {  // TODO: try to internalize this check in ConstrExp
-      Ce32 result = cePools.take32();
-      solver.objective->copyTo(result);
-      Optimization optim(result);
-      optim.optimize();
+      runOptimize(cePools.take32());
     } else if (maxVal <= limit64) {
-      Ce64 result = cePools.take64();
-      solver.objective->copyTo(result);
-      Optimization optim(result);
-      optim.optimize();
+      runOptimize(cePools.take64());
     } else if (maxVal <= static_cast<bigint>(limit96)) {
-      Ce96 result = cePools.take96();
-      solver.objective->copyTo(result);
-      Optimization optim(result);
-      optim.optimize();
+      runOptimize(cePools.take96());
     } else if (maxVal <= static_cast<bigint>(limit128)) {
-      Ce128 result = cePools.take128();
-      solver.objective->copyTo(result);
-      Optimization optim(result);
-      optim.optimize();
+      runOptimize(cePools.take128());
     } else {
-      CeArb result = cePools.takeArb();
-      solver.objective->copyTo(result);
-      Optimization<bigint, bigint> optim(result);
-      optim.optimize();
+      runOptimize(cePools.takeArb());
     }
   } catch (const AsynchronousInterrupt& ai) {
     if (options.outputMode.is("default")) {
