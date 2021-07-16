@@ -121,7 +121,7 @@ template <typename T>
 void runOptimize(const T& obj) {
   solver.objective->copyTo(obj);
   Optimization optim(obj);
-  State state = optim.optimize();
+  [[maybe_unused]] State state = optim.optimize();
   assert(state != State::FAIL);
   quit::exit_SUCCESS(
       solver);  // TODO: fix this return value, as the value does not matter and in this case may not always be correct

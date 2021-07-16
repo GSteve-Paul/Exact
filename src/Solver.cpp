@@ -969,7 +969,8 @@ void Solver::derivePureLits() {
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {  // NOTE: core-guided variables will not be eliminated
     quit::checkInterrupt();
     if (l != 0 && isUnknown(getPos(), l) && !objective->hasLit(l) && lit2cons[-l].empty()) {
-      addUnitConstraint(l, Origin::PURE);
+      [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
+      assert(id!=ID_Unsat);
       removeSatisfiedNonImpliedsAtRoot();
     }
   }
@@ -984,7 +985,8 @@ void Solver::dominanceBreaking() {
     if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l)) continue;
     std::unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
-      addUnitConstraint(l, Origin::PURE);
+      [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
+      assert(id!=ID_Unsat);
       removeSatisfiedNonImpliedsAtRoot();
       continue;
     }
