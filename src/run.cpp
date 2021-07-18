@@ -54,7 +54,7 @@ LazyVar::LazyVar(Solver& slvr, const Ce32& cardCore, int cardUpperBound, Var sta
   atLeast.toNormalFormLit();
   assert(atLeast.rhs == cardCore->getDegree());
   atMost.rhs = -atLeast.rhs;
-  atMost.terms.reserve(atLeast.terms.size());
+  atMost.terms.reserve(atLeast.size());
   for (auto& t : atLeast.terms) {
     atMost.terms.emplace_back(-t.c, t.l);
   }

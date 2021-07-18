@@ -169,13 +169,13 @@ ID Logger::logDomBreaker(const CeSuper& ce) {
 }
 
 ID Logger::logAtMostOne(const ConstrSimple32& c) {
-  assert(c.terms.size() > 1);
+  assert(c.size() > 1);
 #if !NDEBUG
   logComment("Implied at-most-one");
 #endif
   std::stringstream buffer;
   ID previous = ID_Trivial;
-  for (int i = 1; i < (int)c.terms.size(); ++i) {
+  for (int i = 1; i < (int)c.size(); ++i) {
     buffer << "p " << previous << " ";
     if (i > 2) buffer << i - 1 << " * ";
     for (int j = 0; j < i; ++j) {

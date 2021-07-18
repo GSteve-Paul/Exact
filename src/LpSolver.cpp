@@ -93,7 +93,7 @@ double CandidateCut::cosOfAngleTo(const CandidateCut& other) const {
   double cos = 0;
   int i = 0;
   int j = 0;
-  while (i < (int)simpcons.terms.size() && j < (int)other.simpcons.terms.size()) {
+  while (i < (int)simpcons.size() && j < (int)other.simpcons.size()) {
     int x = simpcons.terms[i].l;
     int y = other.simpcons.terms[j].l;
     if (x < y)
@@ -319,8 +319,7 @@ State LpSolver::addFilteredCuts() {
     assert(cc.norm != 0);
   }
   std::sort(candidateCuts.begin(), candidateCuts.end(), [](const CandidateCut& x1, const CandidateCut& x2) {
-    return x1.ratSlack > x2.ratSlack ||
-           (x1.ratSlack == x2.ratSlack && x1.simpcons.terms.size() < x2.simpcons.terms.size());
+    return x1.ratSlack > x2.ratSlack || (x1.ratSlack == x2.ratSlack && x1.simpcons.size() < x2.simpcons.size());
   });
 
   // filter the candidate cuts
@@ -531,7 +530,7 @@ void LpSolver::resetBasis() {
 }
 
 void LpSolver::convertConstraint(const ConstrSimple64& c, soplex::DSVectorReal& row, double& rhs) {
-  assert(row.max() >= (int)c.terms.size());
+  assert(row.max() >= (int)c.size());
   for (auto& t : c.terms) {
     if (t.c == 0) continue;
     assert(t.l > 0);
@@ -587,7 +586,7 @@ void LpSolver::flushConstraints() {
     row2data.reserve(row2data.size() + toAdd.size());
     for (auto& p : toAdd) {
       double rhs;
-      soplex::DSVectorReal row(p.second.cs.terms.size());
+      soplex::DSVectorReal row(p.second.cs.size());
       convertConstraint(p.second.cs, row, rhs);
       rowsToAdd.add(soplex::LPRowReal(row, soplex::LPRowReal::Type::GREATER_EQUAL, rhs));
       row2data.emplace_back(p.first, p.second.removable);
@@ -600,7 +599,7 @@ void LpSolver::flushConstraints() {
   for (int i = 0; i < 2; ++i) {
     if (boundsToAdd[i].id == row2data[i].id) continue;
     double rhs;
-    soplex::DSVectorReal row(boundsToAdd[i].cs.terms.size());
+    soplex::DSVectorReal row(boundsToAdd[i].cs.size());
     convertConstraint(boundsToAdd[i].cs, row, rhs);
     lp.changeRowReal(i, soplex::LPRowReal(row, soplex::LPRowReal::Type::GREATER_EQUAL, rhs));
     row2data[i] = {boundsToAdd[i].id, false};  // so upper bound resides in row[0]

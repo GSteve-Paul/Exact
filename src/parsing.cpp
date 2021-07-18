@@ -209,12 +209,33 @@ void wcnf_read(std::istream& in, Solver& solver) {
       while (is >> l, l) {
         input.terms.push_back({1, l});
       }
-      if (weight < top) {                                // soft clause
-        solver.setNbVars(solver.getNbVars() + 1, true);  // increases n to n+1
-        solver.objective->addLhs(weight, solver.getNbVars());
-        input.terms.push_back({1, solver.getNbVars()});
-      }  // else hard clause
-      solver.addConstraintChecked(input, Origin::FORMULA);
+      if (weight < top) {         // soft clause
+        if (input.size() == 1) {  // no need to introduce auxiliary variable
+          solver.objective->addLhs(weight, -input.terms[0].l);
+        } else {
+          Var aux = solver.getNbVars() + 1;
+          solver.setNbVars(aux, true);  // increases n to n+1
+          solver.objective->addLhs(weight, aux);
+          if (options.test) {
+            for (const Term<int>& t : input.terms) {  // reverse implication as binary clauses
+              solver.addConstraintChecked(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
+            }
+          } else {  // reverse implication as single constraint
+            ConstrSimple32 reverse;
+            reverse.rhs = input.size();
+            reverse.terms.reserve(input.size() + 1);
+            reverse.terms.push_back({input.size(), -aux});
+            for (const Term<int>& t : input.terms) {
+              reverse.terms.push_back({1, -t.l});
+            }
+            solver.addConstraintChecked(reverse, Origin::FORMULA);
+          }
+          input.terms.push_back({1, aux});
+          solver.addConstraintChecked(input, Origin::FORMULA);  // implication
+        }
+      } else {  // hard clause
+        solver.addConstraintChecked(input, Origin::FORMULA);
+      }
       quit::checkInterrupt();
     }
   }

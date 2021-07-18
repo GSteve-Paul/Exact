@@ -78,6 +78,7 @@ struct ConstrSimple final : public ConstrSimpleSuper {
   }
 
   CeSuper toExpanded(ConstrExpPools& cePools) const override;
+  unsigned int size() const { return terms.size(); }
 
   void toNormalFormLit();
   void toNormalFormVar();
@@ -90,8 +91,8 @@ struct ConstrSimple final : public ConstrSimpleSuper {
   void copy_(ConstrSimple<C, D>& out) const {
     out.orig = orig;
     out.rhs = static_cast<D>(rhs);
-    out.terms.resize(terms.size());
-    for (unsigned int i = 0; i < terms.size(); ++i) {
+    out.terms.resize(size());
+    for (unsigned int i = 0; i < size(); ++i) {
       out.terms[i].l = terms[i].l;
       out.terms[i].c = static_cast<C>(terms[i].c);
     }
