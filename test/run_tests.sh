@@ -77,9 +77,9 @@ for j in "${arr_dec[@]}"; do
         errors=`expr 1000 + $errors`
         echo "wrong output: $output vs $obj"
     fi
-    echo "verifying $logfile"
+    echo "verifying veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat"
     wc -l $logfile.proof
-    veripb $logfile.formula $logfile.proof -d --arbitraryPrecision --no-requireUnsat
+    veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat
     errors=`expr $? + $errors`
     echo $errors
     tested=`expr 1 + $tested`
@@ -108,9 +108,9 @@ for j in "${arr_dec[@]}"; do
         errors=`expr 1000 + $errors`
         echo "wrong output: $output vs $obj"
     fi
-    echo "verifying $logfile"
+    echo "verifying $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat"
     wc -l $logfile.proof
-    veripb $logfile.formula $logfile.proof -d --arbitraryPrecision --no-requireUnsat
+    veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat
     errors=`expr $? + $errors`
     echo $errors
     tested=`expr 1 + $tested`
@@ -177,9 +177,9 @@ for idx in "${!arr_lazy[@]}"; do
             errors=`expr 1000 + $errors`
             echo "wrong output: $output vs $obj"
         fi
-        echo "verifying $logfile"
+        echo "verifying veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat"
         wc -l $logfile.proof
-        veripb $logfile.formula $logfile.proof -d --arbitraryPrecision --no-requireUnsat
+        veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat
         errors=`expr $? + $errors`
         echo $errors
         tested=`expr 1 + $tested`

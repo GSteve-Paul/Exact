@@ -43,6 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "ConstrExpPools.hpp"
 #include "IntSet.hpp"
+#include "Logger.hpp"
 #include "Options.hpp"
 #include "Stats.hpp"
 
@@ -51,6 +52,8 @@ namespace rs {
 extern bool asynch_interrupt;
 extern Options options;
 extern Stats stats;
+
+extern std::shared_ptr<Logger> logger;
 
 extern ConstrExpPools cePools;
 extern IntSetPool isPool;

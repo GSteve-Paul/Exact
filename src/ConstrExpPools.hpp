@@ -105,7 +105,7 @@ struct CePtr {
 
 template <typename SMALL, typename LARGE>
 struct ConstrExp;
-struct Logger;
+class Logger;
 
 template <typename SMALL, typename LARGE>
 class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessible to ConstrExpPool?

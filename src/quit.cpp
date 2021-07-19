@@ -88,8 +88,7 @@ void quit::printFormula(Solver& solver) {
   }
   for (Lit l : solver.getUnits()) {
     if (toVar(l) > solver.getNbOrigVars()) continue;
-    std::cout << "+1 " << (l < 0 ? "~x" : "x") << toVar(l) << " >= 1 ;"
-              << "\n";
+    std::cout << std::pair<int, Lit>{1, l} << " >= 1 ;\n";
   }
   for (const CRef& cr : solver.getRawConstraints()) {
     const Constr& c = solver.getCA()[cr];
@@ -108,9 +107,13 @@ void quit::printFinalStats(Solver& solver) {
 }
 
 void quit::exit_SUCCESS(Solver& solver) {
-  if (solver.logger) solver.logger->flush();
+  if (logger) logger->flush();
+  if (options.printUnits) printLits(solver.getUnits(), 'u', false);
   if (solver.foundSolution()) {
-    if (options.printUnits) printLits(solver.getUnits(), 'u', false);
+    if (options.outputMode.is("miplib")) {
+      std::cout << "=obj= " << solver.getBestObjSoFar() << "\n";
+      solver.ilp.printOrigSol(solver.getLastSolution());
+    }
     if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew")) {
       printFinalStats(solver);
       std::cout << "o " << solver.getBestObjSoFar() << "\n";
@@ -124,6 +127,9 @@ void quit::exit_SUCCESS(Solver& solver) {
     }
     rs::aux::flushexit(30);
   } else {
+    if (options.outputMode.is("miplib")) {
+      std::cout << "=infeas=\n";
+    }
     printFinalStats(solver);
     std::cout << "s UNSATISFIABLE" << std::endl;
     rs::aux::flushexit(20);
@@ -131,9 +137,13 @@ void quit::exit_SUCCESS(Solver& solver) {
 }
 
 void quit::exit_INDETERMINATE(Solver& solver) {
-  if (solver.logger) solver.logger->flush();
+  if (logger) logger->flush();
   if (options.printUnits) printLits(solver.getUnits(), 'u', false);
   if (solver.foundSolution()) {
+    if (options.outputMode.is("miplib")) {
+      std::cout << "=obj= " << solver.getBestObjSoFar() << "\n";
+      solver.ilp.printOrigSol(solver.getLastSolution());
+    }
     if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew")) {
       printFinalStats(solver);
       std::cout << "o " << solver.getBestObjSoFar() << "\n";
@@ -147,6 +157,9 @@ void quit::exit_INDETERMINATE(Solver& solver) {
     }
     rs::aux::flushexit(10);
   } else {
+    if (options.outputMode.is("miplib")) {
+      std::cout << "=unkn=\n";
+    }
     printFinalStats(solver);
     if (!options.noSolve) std::cout << "s UNKNOWN" << std::endl;
     rs::aux::flushexit(0);

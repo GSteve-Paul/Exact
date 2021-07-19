@@ -52,10 +52,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-struct Logger;
-
 enum class SolveState { SAT, UNSAT, INCONSISTENT, INPROCESSED };
-enum class AMODetectState { FAILED, FOUNDUNIT, SUCCESS };
 
 class Solver {
   friend class LpSolver;
@@ -76,7 +73,6 @@ class Solver {
 
  public:
   parsing::ILP ilp;
-  std::shared_ptr<Logger> logger;
   std::vector<Lit> lastSol = {0};
   bool foundSolution() const { return getNbOrigVars() == 0 || lastSol.size() > 1; }
   CeSuper lastCore;
@@ -90,7 +86,6 @@ class Solver {
  private:
   int n;
   int orig_n;
-  ID crefID = ID_Trivial;
 
   ConstraintAllocator ca;
   Heuristic freeHeur;
@@ -140,15 +135,20 @@ class Solver {
   int decisionLevel() const { return trail_lim.size(); }
   int assumptionLevel() const { return assumptions_lim.size() - 1; }
 
-  [[nodiscard]] std::pair<ID, ID> addConstraint(const CeSuper& c,
-                                                Origin orig);  // result: formula line id, processed id
-  [[nodiscard]] std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c,
-                                                Origin orig);  // result: formula line id, processed id
-  void addUnitConstraint(Lit l, Origin orig);
+  // result: formula line id, processed id
+  [[nodiscard]] std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
+  [[nodiscard]] std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
+  [[nodiscard]] ID addUnitConstraint(Lit l, Origin orig);
   template <typename T>
   void addConstraintChecked(const T& c, Origin orig) {
     // NOTE: logging of the inconsistency happened in addInputConstraint
     if (addConstraint(c, orig).second == ID_Unsat) quit::exit_SUCCESS(*this);
+  }
+  template <typename T>
+  void addConstraintUnchecked(const T& c, Origin orig) {
+    // NOTE: logging of the inconsistency happened in addInputConstraint
+    [[maybe_unused]] auto [_, id] = addConstraint(c, orig);
+    assert(id != ID_Unsat);
   }
   void dropExternal(ID id, bool erasable, bool forceDelete);
   int getNbConstraints() const { return constraints.size(); }
@@ -179,7 +179,7 @@ class Solver {
    * 	INPROCESSING if solver just finished a cleanup phase
    */
   // TODO: use a coroutine / yield instead of a SolveAnswer return value
-  SolveState solve();
+  [[nodiscard]] SolveState solve();
 
   bool checkSAT(const std::vector<Lit>& assignment);
 
@@ -193,27 +193,30 @@ class Solver {
   void backjumpTo(int lvl, bool updateHeur = true);
   void decide(Lit l);
   void propagate(Lit l, CRef r);
-  bool probe(Lit l);
+  [[nodiscard]] State probe(Lit l);
   /**
    * Unit propagation with watched literals.
    * @post: all constraints have been checked for propagation under trail[0..qhead[
    * @return: true if inconsistency is detected, false otherwise. The inconsistency is stored in confl->
    */
-  CeSuper runPropagation(bool onlyUnitPropagation);
+  [[nodiscard]] CeSuper runPropagation();
+  [[nodiscard]] std::pair<CeSuper, State> runPropagationWithLP();
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p);
 
   // ---------------------------------------------------------------------
   // Conflict analysis
 
-  CeSuper analyze(const CeSuper& confl);
+  [[nodiscard]] CeSuper analyze(const CeSuper& confl);
   void minimize(const CeSuper& conflict, IntSet& actSet);
-  void extractCore(const CeSuper& confl, Lit l_assump = 0);
+  [[nodiscard]] State extractCore(const CeSuper& confl, Lit l_assump = 0);
 
   // ---------------------------------------------------------------------
   // Constraint management
 
-  CRef attachConstraint(const CeSuper& constraint, bool locked);
-  void learnConstraint(const CeSuper& c, Origin orig);
+  [[nodiscard]] CRef attachConstraint(const CeSuper& constraint,
+                                      bool locked);  // returns CRef_Unsat in case of inconsistency
+  [[nodiscard]] ID learnConstraint(const CeSuper& c, Origin orig);
+  [[nodiscard]] ID learnUnitConstraint(Lit l, Origin orig, ID id = ID_Undef);
   std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
   void removeConstraint(const CRef& cr, bool override = false);
 
@@ -230,19 +233,19 @@ class Solver {
 
   // ---------------------------------------------------------------------
   // Inprocessing
-  void presolve();
-  void inProcess();
+  [[nodiscard]] State presolve();
+  [[nodiscard]] State inProcess();
   void removeSatisfiedNonImpliedsAtRoot();
   void derivePureLits();
   void dominanceBreaking();
   void rebuildLit2Cons();
 
   Var lastRestartNext = 0;
-  void probeRestart(Lit next);
+  [[nodiscard]] State probeRestart(Lit next);
 
-  AMODetectState detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
-  std::unordered_set<uint64_t> atMostOneHashes;
-  void runAtMostOneDetection();
+  [[nodiscard]] State detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
+  std::unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
+  [[nodiscard]] State runAtMostOneDetection();
 
   // ---------------------------------------------------------------------
   // Tabu search

@@ -63,7 +63,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-enum class LpStatus { INFEASIBLE, OPTIMAL, PIVOTLIMIT, UNDETERMINED };
+enum class LpStatus { INFEASIBLE, OPTIMAL, PIVOTLIMIT, UNDETERMINED, UNSAT };
 
 struct RowData {
   ID id;
@@ -140,8 +140,8 @@ class LpSolver {
   explicit LpSolver(Solver& solver);
   void setNbVariables(int n);
 
-  LpStatus checkFeasibility(bool inProcessing);  // TODO: don't use objective function here?
-  void inProcess();
+  [[nodiscard]] LpStatus checkFeasibility(bool inProcessing);  // TODO: don't use objective function here?
+  [[nodiscard]] State inProcess();
 
   void addConstraint(const CeSuper& c, bool removable, bool upperbound = false, bool lowerbound = false);
   void addConstraint(CRef cr, bool removable, bool upperbound = false, bool lowerbound = false);
@@ -160,7 +160,7 @@ class LpSolver {
   Ce64 rowToConstraint(int row);
   void constructGomoryCandidates();
   void constructLearnedCandidates();
-  void addFilteredCuts();
+  [[nodiscard]] State addFilteredCuts();
   void pruneCuts();
 
   inline static double nonIntegrality(double a) { return aux::abs(std::round(a) - a); }
@@ -184,7 +184,7 @@ class LpSolver {
     assert(false);
     return LpStatus::UNDETERMINED;
   }
-  void inProcess() {}
+  State inProcess() { return State::FAIL; }
   bool canInProcess() { return false; }
 
   void addConstraint([[maybe_unused]] const CeSuper& c, [[maybe_unused]] bool removable,

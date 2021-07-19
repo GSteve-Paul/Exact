@@ -116,7 +116,7 @@ void file_read(Solver& solver) {
       }
     }
   }
-  if (solver.logger) solver.logger->formula_out << "* INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW\n";
+  if (logger) logger->logComment("INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW");
 }
 
 void opb_read(std::istream& in, Solver& solver) {
@@ -209,12 +209,33 @@ void wcnf_read(std::istream& in, Solver& solver) {
       while (is >> l, l) {
         input.terms.push_back({1, l});
       }
-      if (weight < top) {                                // soft clause
-        solver.setNbVars(solver.getNbVars() + 1, true);  // increases n to n+1
-        solver.objective->addLhs(weight, solver.getNbVars());
-        input.terms.push_back({1, solver.getNbVars()});
-      }  // else hard clause
-      solver.addConstraintChecked(input, Origin::FORMULA);
+      if (weight < top) {         // soft clause
+        if (input.size() == 1) {  // no need to introduce auxiliary variable
+          solver.objective->addLhs(weight, -input.terms[0].l);
+        } else {
+          Var aux = solver.getNbVars() + 1;
+          solver.setNbVars(aux, true);  // increases n to n+1
+          solver.objective->addLhs(weight, aux);
+          if (options.test) {
+            for (const Term<int>& t : input.terms) {  // reverse implication as binary clauses
+              solver.addConstraintChecked(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
+            }
+          } else {  // reverse implication as single constraint
+            ConstrSimple32 reverse;
+            reverse.rhs = input.size();
+            reverse.terms.reserve(input.size() + 1);
+            reverse.terms.push_back({input.size(), -aux});
+            for (const Term<int>& t : input.terms) {
+              reverse.terms.push_back({1, -t.l});
+            }
+            solver.addConstraintChecked(reverse, Origin::FORMULA);
+          }
+          input.terms.push_back({1, aux});
+          solver.addConstraintChecked(input, Origin::FORMULA);  // implication
+        }
+      } else {  // hard clause
+        solver.addConstraintChecked(input, Origin::FORMULA);
+      }
       quit::checkInterrupt();
     }
   }
@@ -280,7 +301,7 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
   bool unboundedVars = false;
   for (int c = 0; c < coinutils.getNumCols(); ++c) {
     continuousVars = continuousVars || !coinutils.isInteger(c);
-    IntVar* iv = ilp.getVarFor(std::to_string(c + 1));
+    IntVar* iv = ilp.getVarFor(coinutils.columnName(c));
     double lower = coinutils.getColLower()[c];
     if (aux::abs(lower) == coinutils.getInfinity()) {
       unboundedVars = true;
@@ -301,7 +322,7 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
   for (int c = 0; c < coinutils.getNumCols(); ++c) {
     double objcoef = coinutils.getObjCoefficients()[c];
     if (objcoef == 0) continue;
-    ilp.obj.lhs.emplace_back(objcoef, ilp.getVarFor(std::to_string(c + 1)), false);
+    ilp.obj.lhs.emplace_back(objcoef, ilp.getVarFor(coinutils.columnName(c)), false);
   }
   if (wasMaximization) {
     ilp.obj.setLowerBound(coinutils.objectiveOffset());
@@ -319,7 +340,7 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
     IntConstraint* input = ilp.newConstraint();
     input->lhs.reserve(cpm->getVectorLengths()[r]);
     for (int c = cpm->getVectorFirst(r); c < cpm->getVectorLast(r); ++c) {
-      input->lhs.emplace_back(cpm->getElements()[c], ilp.getVarFor(std::to_string(cpm->getIndices()[c] + 1)), false);
+      input->lhs.emplace_back(cpm->getElements()[c], ilp.getVarFor(coinutils.columnName(cpm->getIndices()[c])), false);
     }
     if (rowSense == 'G' || rowSense == 'E' || rowSense == 'R') {
       input->setLowerBound(coinutils.getRowLower()[r]);
@@ -404,11 +425,11 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
     if (t.v->upperBound == 0) continue;
     assert(!t.v->encoding.empty());
     if (t.v->logEncoding) {
-      int i = 0;
+      bigint base = 1;
       for (const Var v : t.v->encoding) {
         assert(boost::multiprecision::denominator(t.c) == 1);
-        input->addLhs(aux::pow((bigint)2, i) * boost::multiprecision::numerator(t.c), v);
-        ++i;
+        input->addLhs(base * boost::multiprecision::numerator(t.c), v);
+        base *= 2;
       }
     } else {
       for (const Var v : t.v->encoding) {
@@ -471,12 +492,12 @@ void ILP::addTo(Solver& solver, bool nameAsId) {
         iv->encoding.push_back(var);
       }
       if (iv->logEncoding) {  // upper bound constraint
-        int i = 0;
         std::vector<Term<bigint>> lhs;
         lhs.reserve(iv->encoding.size());
+        bigint base = 1;
         for (const Var v : iv->encoding) {
-          lhs.emplace_back(-aux::pow((bigint)2, i), v);
-          ++i;
+          lhs.emplace_back(-base, v);
+          base *= 2;
         }
         solver.addConstraintChecked(ConstrSimpleArb({lhs}, -iv->upperBound), Origin::FORMULA);
         quit::checkInterrupt();
@@ -518,12 +539,43 @@ void ILP::normalize(Solver& solver) {
   }
   for (const std::unique_ptr<IntVar>& iv : vars) {
     if (iv->lowerBound != 0) {
+      iv->offset = iv->lowerBound;
       iv->upperBound -= iv->lowerBound;
       iv->lowerBound = 0;
     }
     if (iv->upperBound < 0) {
       std::cout << "Conflicting bound on integer variable" << std::endl;
       quit::exit_SUCCESS(solver);
+    }
+  }
+}
+
+void ILP::printOrigSol(const std::vector<Lit>& sol) {
+  std::unordered_set<Var> trueVars;
+  for (Lit l : sol) {
+    if (l > 0) {
+      trueVars.insert(l);
+    }
+  }
+  for (const std::unique_ptr<IntVar>& iv : vars) {
+    bigint val = iv->offset;
+    if (iv->logEncoding) {
+      bigint base = 1;
+      for (Var v : iv->encoding) {
+        if (trueVars.count(v)) {
+          val += base;
+        }
+        base *= 2;
+      }
+    } else {
+      int sum = 0;
+      for (Var v : iv->encoding) {
+        sum += trueVars.count(v);
+      }
+      val += sum;
+    }
+    if (val != 0) {
+      std::cout << iv->name << " " << val << "\n";
     }
   }
 }

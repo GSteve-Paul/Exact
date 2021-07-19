@@ -90,6 +90,14 @@ void ConstrSimple<CF, DG>::reset() {
   proofLine = (std::to_string(ID_Trivial) + " ");
 }
 
+template <typename CF, typename DG>
+void ConstrSimple<CF, DG>::toStreamAsOPB(std::ostream& o) const {
+  for (const Term<CF>& t : terms) {
+    o << std::pair<CF, Lit>{t.c, t.l} << " ";
+  }
+  o << ">= " << rhs << " ;";
+}
+
 template struct ConstrSimple<int, long long>;
 template struct ConstrSimple<long long, int128>;
 template struct ConstrSimple<int128, int128>;

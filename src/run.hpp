@@ -103,19 +103,29 @@ class Optimization {
 
   void printObjBounds();
   void checkLazyVariables();
-  void addLowerBound();
+  [[nodiscard]] State addLowerBound();
 
-  Ce32 reduceToCardinality(const CeSuper& core);  // does not modify core
-  void reformObjective(const CeSuper& core);      // modifies core
-  void handleInconsistency(const CeSuper& core);  // modifies core
-  void handleNewSolution(const std::vector<Lit>& sol);
+  Ce32 reduceToCardinality(const CeSuper& core);                 // does not modify core
+  [[nodiscard]] State reformObjective(const CeSuper& core);      // modifies core
+  [[nodiscard]] State handleInconsistency(const CeSuper& core);  // modifies core
+  [[nodiscard]] State handleNewSolution(const std::vector<Lit>& sol);
 
   void logProof();
-  void harden();
-  void runTabu();
+  [[nodiscard]] State harden();
+  [[nodiscard]] State runTabu();
 
-  void optimize();
+  [[nodiscard]] State optimize();
 };
+
+template <typename T>
+void runOptimize(const T& obj) {
+  solver.objective->copyTo(obj);
+  Optimization optim(obj);
+  [[maybe_unused]] State state = optim.optimize();
+  assert(state != State::FAIL);
+  quit::exit_SUCCESS(
+      solver);  // TODO: fix this return value, as the value does not matter and in this case may not always be correct
+}
 
 void run();
 

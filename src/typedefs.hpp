@@ -41,20 +41,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include <boost/multiprecision/cpp_int.hpp>
-#include <cassert>
-#include <exception>
-#include <iostream>
-#include <limits>
-#include <unordered_map>
-#include <vector>
+#include "aux.hpp"
 
 namespace rs {
-
-using int128 = __int128;
-using int256 = boost::multiprecision::int256_t;
-using bigint = boost::multiprecision::cpp_int;
-using ratio = boost::multiprecision::cpp_rational;
 
 using ID = uint64_t;
 const ID ID_Undef = std::numeric_limits<ID>::max();
@@ -87,28 +76,59 @@ const int conflLimit64 = limit64bit / 2;
 const int conflLimit96 = limit96bit / 2;
 const int conflLimit128 = limit128bit / 2;
 
+template <typename T>
+bool fits([[maybe_unused]] const bigint& x) {
+  return false;
+}
+template <>
+inline bool fits<int>(const bigint& x) {
+  return aux::abs(x) <= bigint(limit32);
+}
+template <>
+inline bool fits<long long>(const bigint& x) {
+  return aux::abs(x) <= bigint(limit64);
+}
+template <>
+inline bool fits<int128>(const bigint& x) {
+  return aux::abs(x) <= bigint(limit128);
+}
+template <>
+inline bool fits<int256>(const bigint& x) {
+  return aux::abs(x) <= bigint(limit256);
+}
+template <>
+inline bool fits<bigint>([[maybe_unused]] const bigint& x) {
+  return true;
+}
+template <typename T, typename S>
+bool fitsIn([[maybe_unused]] const S& x) {
+  return fits<T>(bigint(x));
+}
+
 using IntVecIt = std::vector<int>::iterator;
 
 using ActValV = long double;
 const ActValV actLimitV = (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 *
                           (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300;  // ~1e2400 << 2^(2^13)
 
+enum class State { SUCCESS, FAIL, UNSAT };
+
 // NOTE: max number of types is 32, as the type is stored with 5 bits in Constr
 enum class Origin {
   UNKNOWN,        // uninitialized
   FORMULA,        // original input formula
   DOMBREAKER,     // dominance breaking
+  INVALIDATOR,    // solution-invalidating constraint
   PURE,           // pure unit literal
-  PROBING,        // probing unit literal
   COREGUIDED,     // extension constraints from coreguided optimization
   HARDENEDBOUND,  // unit constraint due to upper bound on the objective function
   UPPERBOUND,     // upper bound on the objective function
   LOWERBOUND,     // lower bound on the objective function
-  INVALIDATOR,    // solution-invalidating constraint
   LEARNED,        // learned from regular conflict analysis
   FARKAS,         // LP solver infeasibility witness
   DUAL,           // LP solver feasibility dual constraint
   GOMORY,         // Gomory cut
+  PROBING,        // probing unit literal
   DETECTEDAMO,    // detected cardinality constraint
   REDUCED,        // reduced constraint
 };
@@ -119,7 +139,7 @@ inline bool isNonImplied(Origin o) {
 inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
 inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED; }
 inline bool isInput(Origin o) {
-  return isNonImplied(o) || isExternal(o) || o == Origin::PURE || o == Origin::PROBING || o == Origin::HARDENEDBOUND;
+  return isNonImplied(o) || isExternal(o) || o == Origin::PURE || o == Origin::HARDENEDBOUND;
 }
 // inline bool isLearned(Origin o) {
 //  return o == Origin::LEARNED || o == Origin::FARKAS || o == Origin::DUAL || o == Origin::GOMORY ||
@@ -191,6 +211,11 @@ struct Term {
 template <typename CF>
 std::ostream& operator<<(std::ostream& o, const Term<CF>& t) {
   return o << t.c << "x" << t.l;
+}
+
+template <typename CF>
+std::ostream& operator<<(std::ostream& o, const std::pair<CF, Lit>& cl) {
+  return o << (cl.first < 0 ? "" : "+") << cl.first << (cl.second < 0 ? " ~x" : " x") << toVar(cl.second);
 }
 
 inline class AsynchronousInterrupt : public std::exception {

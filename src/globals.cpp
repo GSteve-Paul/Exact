@@ -47,6 +47,8 @@ bool asynch_interrupt;
 Options options;
 Stats stats;
 
+std::shared_ptr<Logger> logger;
+
 ConstrExpPools cePools;
 IntSetPool isPool;
 

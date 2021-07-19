@@ -47,13 +47,36 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-struct Logger {
+class Logger {
   std::ofstream formula_out;
   std::ofstream proof_out;
-  ID last_formID = 0;
-  ID last_proofID = 0;
   std::vector<ID> unitIDs;
 
+ public:
+  static ID last_formID;
+  static ID last_proofID;
+
+  explicit Logger(const std::string& proof_log_name);
+
+  void flush();
+  void logComment([[maybe_unused]] const std::string& comment);
+
+  ID logInput(const CeSuper& ce);
+  ID logAssumption(const CeSuper& ce);
+  ID logProofLine(const CeSuper& ce);
+  ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
+  void logInconsistency(const CeSuper& ce);
+  void logUnit(const CeSuper& ce);
+  ID logRUP(Lit l, Lit ll);
+  ID logImpliedUnit(Lit implying, Lit implied);
+  ID logPure(const CeSuper& ce);
+  ID logDomBreaker(const CeSuper& ce);  // second lit is the witness
+  ID logAtMostOne(const ConstrSimple32& c);
+
+  ID getUnitID(int trailIdx) { return unitIDs[trailIdx]; }
+  int getNbUnitIDs() { return unitIDs.size(); }
+
+ public:
   template <typename T>
   static std::ostream& proofMult(std::ostream& o, const T& m) {
     assert(m > 0);
@@ -78,35 +101,6 @@ struct Logger {
   static std::ostream& proofWeakenFalseUnit(std::ostream& o, ID id, const T& m) {
     assert(m < 0);
     return proofMult(o << id << " ", -m) << "+ ";
-  }
-
-  explicit Logger(const std::string& proof_log_name) {
-    formula_out = std::ofstream(proof_log_name + ".formula");
-    formula_out << "* #variable= 0 #constraint= 0\n";
-    formula_out << " >= 0 ;\n";
-    ++last_formID;
-    proof_out = std::ofstream(proof_log_name + ".proof");
-    proof_out << "pseudo-Boolean proof version 1.1\n";
-    proof_out << "l 1\n";
-    ++last_proofID;
-  }
-
-  void flush() {
-    formula_out.flush();
-    proof_out.flush();
-  }
-
-  void logComment([[maybe_unused]] const std::string& comment, [[maybe_unused]] const Stats& sts) {
-#if !NDEBUG
-    proof_out << "* " << sts.getDetTime() << " " << comment << "\n";
-#endif
-  }
-
-  void logComment([[maybe_unused]] const std::string& comment) {
-#if !NDEBUG
-    proof_out << "* "
-              << " " << comment << "\n";
-#endif
   }
 };
 

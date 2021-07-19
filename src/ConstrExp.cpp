@@ -48,6 +48,28 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
+void ConstrExpSuper::resetBuffer(ID proofID) {
+  assert(plogger);
+  assert(proofID != ID_Undef);
+  assert(proofID != ID_Unsat);
+  proofBuffer.clear();
+  proofBuffer.str(std::string());
+  proofBuffer << proofID << " ";
+}
+
+void ConstrExpSuper::initializeLogging(std::shared_ptr<Logger>& l) {
+  assert(isReset());
+  plogger = l;
+  if (plogger) {
+    resetBuffer(ID_Trivial);
+  }
+}
+
+void ConstrExpSuper::stopLogging() {
+  proofBuffer.clear();
+  plogger.reset();
+}
+
 std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce) {
   ce.toStreamAsOPB(o);
   return o;
@@ -244,31 +266,6 @@ void ConstrExp<SMALL, LARGE>::resize(size_t s) {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::resetBuffer(ID proofID) {
-  assert(plogger);
-  assert(proofID != ID_Undef);
-  assert(proofID != ID_Unsat);
-  proofBuffer.clear();
-  proofBuffer.str(std::string());
-  proofBuffer << proofID << " ";
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::initializeLogging(std::shared_ptr<Logger>& l) {
-  assert(isReset());
-  plogger = l;
-  if (plogger) {
-    resetBuffer(ID_Trivial);
-  }
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::stopLogging() {
-  proofBuffer.clear();
-  plogger.reset();
-}
-
-template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isReset() const {
   return vars.empty() && rhs == 0 && degree == 0;
 }
@@ -347,8 +344,8 @@ LARGE ConstrExp<SMALL, LARGE>::getCutoffVal() const {
 }
 
 template <typename SMALL, typename LARGE>
-Lit ConstrExp<SMALL, LARGE>::getLit(Lit l) const {  // NOTE: answer of 0 means coef 0
-  Var v = toVar(l);
+Lit ConstrExp<SMALL, LARGE>::getLit(Var v) const {  // NOTE: answer of 0 means coef 0
+  assert(v >= 0);
   assert(v < (Var)coefs.size());
   return (coefs[v] == 0) ? 0 : (coefs[v] < 0 ? -v : v);
 }
@@ -358,6 +355,12 @@ bool ConstrExp<SMALL, LARGE>::hasLit(Lit l) const {
   Var v = toVar(l);
   assert(v < (Var)coefs.size());
   return coefs[v] != 0 && (coefs[v] < 0) == (l < 0);
+}
+
+template <typename SMALL, typename LARGE>
+bool ConstrExp<SMALL, LARGE>::hasVar(Var v) const {
+  assert(v > 0);
+  return coefs[v] != 0;
 }
 
 template <typename SMALL, typename LARGE>
@@ -426,10 +429,30 @@ bool ConstrExp<SMALL, LARGE>::isSatisfied(const std::vector<Lit>& assignment) co
 
 template <typename SMALL, typename LARGE>
 unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntVecIt& level) const {
+  // calculate delete-lbd-e according to "On Dedicated CDCL Strategies for PB Solvers" - Le Berre & Wallon - 2021
+  assert(isSortedInDecreasingCoefOrder());
+  LARGE weakenedDeg = degree;
+  for (Var v : vars) {  // weaken all non-falsifieds
+    if (!isFalse(level, getLit(v))) {
+      weakenedDeg -= aux::abs(coefs[v]);
+      if (weakenedDeg <= 0) break;
+    }
+  }
+  int i = vars.size() - 1;
+  if (weakenedDeg > 0) {
+    for (; i >= 0; --i) {  // weaken all smallest falsifieds
+      Var v = vars[i];
+      Lit l = getLit(v);
+      if (isFalse(level, l)) {
+        weakenedDeg -= aux::abs(coefs[v]);
+        if (weakenedDeg <= 0) break;
+      }
+    }
+  }
+  assert(i >= 0);  // constraint is asserting or conflicting
   IntSet& lbdSet = isPool.take();
-  for (Var v : vars) {
-    assert(getLit(v) != 0);
-    lbdSet.add(level[-getLit(v)] % INF);
+  for (; i >= 0; --i) {  // gather all levels
+    lbdSet.add(level[-getLit(vars[i])] % INF);
   }
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   unsigned int lbd = lbdSet.size();
@@ -478,17 +501,15 @@ void ConstrExp<SMALL, LARGE>::weaken(Var v) {  // fully weaken v
   weaken(-coefs[v], v);
 }
 
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenLast() {
+void ConstrExpSuper::weakenLast() {
   if (vars.empty()) return;
   weaken(vars.back());
   popLast();
 }
 
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::popLast() {
+void ConstrExpSuper::popLast() {
   assert(!vars.empty());
-  assert(coefs[vars.back()] == 0);
+  assert(!hasVar(vars.back()));
   index[vars.back()] = -1;
   vars.pop_back();
 }
@@ -503,7 +524,7 @@ void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntVecIt& level, const 
         if (isUnit(level, l)) {
           Logger::proofWeaken(proofBuffer, l, -getCoef(l));
         } else if (isUnit(level, -l)) {
-          Logger::proofWeakenFalseUnit(proofBuffer, plogger->unitIDs[pos[toVar(l)]], -getCoef(l));
+          Logger::proofWeakenFalseUnit(proofBuffer, plogger->getUnitID(pos[toVar(l)]), -getCoef(l));
         }
       }
     }
@@ -530,8 +551,7 @@ void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntVecIt& level, const 
   vars.resize(j);
 }
 
-template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::hasNoUnits(const IntVecIt& level) const {
+bool ConstrExpSuper::hasNoUnits(const IntVecIt& level) const {
   return std::all_of(vars.cbegin(), vars.cend(), [&](Var v) { return !isUnit(level, v) && !isUnit(level, -v); });
 }
 
@@ -683,7 +703,7 @@ void ConstrExp<SMALL, LARGE>::saturateAndFixOverflowRational(const std::vector<d
 
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::fitsInDouble() const {
-  return isSaturated() && getDegree() < INFLPINT && getRhs() < INFLPINT;
+  return isSaturated() && degree < INFLPINT && rhs < INFLPINT;
 }
 
 template <typename SMALL, typename LARGE>
@@ -853,9 +873,8 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
 }
 
 // NOTE: only equivalence preserving operations!
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur,
-                                          bool sortFirst, Stats& sts) {
+void ConstrExpSuper::postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur,
+                                 bool sortFirst) {
   removeUnitsAndZeroes(level, pos);
   assert(sortFirst || isSortedInDecreasingCoefOrder());  // NOTE: check this only after removing units and zeroes
   saturate(true, !sortFirst);
@@ -864,10 +883,10 @@ void ConstrExp<SMALL, LARGE>::postProcess(const IntVecIt& level, const std::vect
     sortInDecreasingCoefOrder(heur);
   }
   if (divideByGCD()) {
-    ++sts.NGCD;
+    ++stats.NGCD;
   }
   if (simplifyToCardinality(true, getCardinalityDegree())) {
-    ++sts.NCARDDETECT;
+    ++stats.NCARDDETECT;
   }
 }
 
@@ -937,7 +956,7 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntVecIt&
 
 // @post: preserves order after removeZeroes()
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntVecIt& level, const LARGE& slack, Stats& sts) {
+void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntVecIt& level, const LARGE& slack) {
   int weakenings = 0;
   for (Var v : vars) {
     if (coefs[v] != 0 && aux::abs(coefs[v]) <= slack && !falsified(level, v)) {
@@ -945,14 +964,13 @@ void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntVecIt& level, const LARG
       ++weakenings;
     }
   }
-  sts.NWEAKENEDNONIMPLIED += weakenings;
+  stats.NWEAKENEDNONIMPLIED += weakenings;
 }
 
 // @post: preserves order after removeZeroes()
 // TODO: return modified slack?
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack,
-                                                Stats& sts) {
+bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack) {
   LARGE slk = slack;
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
@@ -965,13 +983,13 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntVecIt& level, const SMA
       ++weakenings;
     }
   }
-  sts.NWEAKENEDNONIMPLYING += weakenings;
+  stats.NWEAKENEDNONIMPLYING += weakenings;
   return weakenings != 0;
 }
 
 // @post: preserves order after removeZeroes()
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos, Stats& sts) {
+void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos) {
   assert(isSortedInDecreasingCoefOrder());
   if (aux::abs(coefs[vars[0]]) == aux::abs(coefs[vars.back()])) return;
   LARGE slk = getSlack(level);
@@ -986,12 +1004,12 @@ void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntVecIt& level, const st
   }
   if (v_prop == -1) return;  // no propagation, no idea what to weaken
   if (options.weakenNonImplying) {
-    if (weakenNonImplying(level, aux::abs(coefs[v_prop]), slk, sts)) {
+    if (weakenNonImplying(level, aux::abs(coefs[v_prop]), slk)) {
       slk = getSlack(level);  // slack changed
     }
   }
   assert(slk < aux::abs(coefs[v_prop]));
-  weakenNonImplied(level, slk, sts);
+  weakenNonImplied(level, slk);
 }
 
 template <typename SMALL, typename LARGE>
@@ -1168,6 +1186,22 @@ bool ConstrExp<SMALL, LARGE>::isClause() const {
 }
 
 template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit) {
+  removeUnitsAndZeroes(level, pos);
+  assert(getLit(v_unit) != 0);
+  for (Var v : vars) {
+    if (v != v_unit) weaken(v);
+  }
+  removeZeroes();
+  saturate(true, false);
+  assert(degree > 0);
+  divideRoundUp(std::max<LARGE>(aux::abs(coefs[v_unit]), degree));
+  assert(isUnitConstraint());
+}
+
+bool ConstrExpSuper::isUnitConstraint() const { return isClause() && nVars() == 1 && !isInconsistency(); }
+
+template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isSortedInDecreasingCoefOrder() const {
   if (vars.size() <= 1) return true;
   SMALL first = aux::abs(coefs[vars[0]]);
@@ -1220,89 +1254,9 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
 }
 
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::reverseOrder() {
+void ConstrExpSuper::reverseOrder() {
   std::reverse(vars.begin(), vars.end());
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
-}
-
-template <typename SMALL, typename LARGE>
-ID ConstrExp<SMALL, LARGE>::logAsInput() {
-  assert(plogger);
-  plogger->formula_out << *this << "\n";
-  plogger->proof_out << "l " << ++plogger->last_formID << "\n";
-  ID id = ++plogger->last_proofID;
-  resetBuffer(id);  // ensure consistent proofBuffer
-  return id;
-}
-
-template <typename SMALL, typename LARGE>
-ID ConstrExp<SMALL, LARGE>::logProofLine() {
-  assert(plogger);
-  std::string buffer = proofBuffer.str();
-  assert(buffer.back() == ' ');
-  long long spacecount = 0;
-  for (char const& c : buffer) {
-    spacecount += (c == ' ');
-    if (spacecount > 1) break;
-  }
-  ID id;
-  if (spacecount > 1) {  // non-trivial line
-    id = ++plogger->last_proofID;
-    plogger->proof_out << "p " << buffer << "0\n";
-    resetBuffer(id);
-  } else {  // line is just one id, don't print it
-    id = std::stoll(buffer);
-  }
-#if !NDEBUG
-  plogger->proof_out << "e " << id << " " << *this << "\n";
-#endif
-  return id;
-}
-
-template <typename SMALL, typename LARGE>
-ID ConstrExp<SMALL, LARGE>::logProofLineWithInfo([[maybe_unused]] std::string&& info,
-                                                 [[maybe_unused]] const Stats& sts) {
-  assert(plogger);
-#if !NDEBUG
-  plogger->logComment(info, sts);
-#endif
-  return logProofLine();
-}
-
-// @pre: reducible to unit over v
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::logUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit,
-                                      const Stats& sts) {
-  assert(plogger);
-  // reduce to unit over v
-  removeUnitsAndZeroes(level, pos);
-  saturate(true, false);
-  assert(getLit(v_unit) != 0);
-  for (Var v : vars)
-    if (v != v_unit) weaken(v);
-  assert(degree > 0);
-  LARGE d = std::max<LARGE>(aux::abs(coefs[v_unit]), degree);
-  Logger::proofDiv(proofBuffer, d);
-  if (coefs[v_unit] > 0) {
-    coefs[v_unit] = 1;
-    rhs = 1;
-  } else {
-    coefs[v_unit] = -1;
-    rhs = 0;
-  }
-  degree = 1;
-  plogger->unitIDs.push_back(logProofLineWithInfo("Unit", sts));
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::logInconsistency(const IntVecIt& level, const std::vector<int>& pos, const Stats& sts) {
-  assert(plogger);
-  removeUnitsAndZeroes(level, pos);
-  saturate(true, false);
-  assert(hasNegativeSlack(level));
-  ID id = logProofLineWithInfo("Inconsistency", sts);
-  plogger->proof_out << "c " << id << " 0" << std::endl;
 }
 
 template <typename SMALL, typename LARGE>
@@ -1312,7 +1266,7 @@ void ConstrExp<SMALL, LARGE>::toStreamAsOPB(std::ostream& o) const {
   for (Var v : vs) {
     Lit l = getLit(v);
     if (l == 0) continue;
-    o << "+" << getCoef(l) << (l < 0 ? " ~x" : " x") << v << " ";
+    o << std::pair<SMALL, Lit>{getCoef(l), l} << " ";
   }
   o << ">= " << degree << " ;";
 }
@@ -1362,7 +1316,7 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
       if (isUnit(level, ll)) {
         Logger::proofWeaken(proofBuffer, ll, -cmult);
       } else if (isUnit(level, -ll)) {
-        Logger::proofWeakenFalseUnit(proofBuffer, plogger->unitIDs[pos[toVar(ll)]], -cmult);
+        Logger::proofWeakenFalseUnit(proofBuffer, plogger->getUnitID(pos[toVar(ll)]), -cmult);
       }
     }
   }
@@ -1459,7 +1413,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
       if (isUnit(level, l)) {
         Logger::proofWeaken(proofBuffer, l, -1);
       } else if (isUnit(level, -l)) {
-        Logger::proofWeakenFalseUnit(proofBuffer, plogger->unitIDs[pos[toVar(l)]], -1);
+        Logger::proofWeakenFalseUnit(proofBuffer, plogger->getUnitID(pos[toVar(l)]), -1);
       }
     }
     for (int i = 0; i < (int)size; ++i) {

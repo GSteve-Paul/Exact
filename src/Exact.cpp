@@ -74,6 +74,7 @@ int main(int argc, char** argv) {
     std::cout << "c commit " << EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
 
+  if (!rs::options.proofLog.get().empty()) rs::logger = std::make_shared<rs::Logger>(rs::options.proofLog.get());
   rs::run::solver.init();
   rs::aux::timeCallVoid([&] { rs::parsing::file_read(rs::run::solver); }, rs::stats.PARSETIME);
   if (rs::run::solver.hasPureCnf()) {
@@ -85,4 +86,19 @@ int main(int argc, char** argv) {
   }
 
   rs::run::run();
+}
+
+#include <stdio.h>
+#include <string.h>
+
+int main_python() {
+  char first[100] = "Exact";
+  char second[100] = "/home/jod/Tmp/trivial.opb";
+  //  std::strcpy(second, path.c_str());
+  char* inp[2];
+  inp[0] = first;
+  inp[1] = second;
+  //  strcpy(inp[0],first);
+  //  strcpy(inp[1],path.c_str());
+  return main(2, inp);
 }

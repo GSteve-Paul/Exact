@@ -67,6 +67,25 @@ struct ConstrExpSuper {
 
  public:
   Origin orig = Origin::UNKNOWN;
+  std::stringstream proofBuffer;
+  std::shared_ptr<Logger> plogger;
+
+  void resetBuffer(ID proofID);
+  void initializeLogging(std::shared_ptr<Logger>& l);
+  void stopLogging();
+
+  int nVars() const { return vars.size(); }
+  const std::vector<Var>& getVars() const { return vars; }
+  bool used(Var v) const { return index[v] >= 0; }
+  void reverseOrder();
+
+  void weakenLast();
+  void popLast();
+
+  bool hasNoUnits(const IntVecIt& level) const;
+  bool isUnitConstraint() const;
+  // NOTE: only equivalence preserving operations!
+  void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
 
   virtual ~ConstrExpSuper() = default;
 
@@ -84,24 +103,18 @@ struct ConstrExpSuper {
   virtual std::unique_ptr<ConstrSimpleSuper> toSimple() const = 0;
 
   virtual void resize(size_t s) = 0;
-  virtual void resetBuffer(ID proofID) = 0;
-  virtual void initializeLogging(std::shared_ptr<Logger>& l) = 0;
-  virtual void stopLogging() = 0;
   virtual bool isReset() const = 0;
   virtual void reset(bool partial) = 0;
 
   virtual double getStrength() const = 0;
-  virtual int nVars() const { return vars.size(); }
-  virtual const std::vector<Var>& getVars() const { return vars; };
 
-  virtual Lit getLit(Lit l) const = 0;
+  virtual Lit getLit(Var) const = 0;
   virtual bool hasLit(Lit l) const = 0;
-  bool used(Var v) const { return index[v] >= 0; }
+  virtual bool hasVar(Var v) const = 0;
   virtual bool saturatedLit(Lit l) const = 0;
   virtual bool saturatedVar(Var v) const = 0;
 
   virtual void weaken(Var v) = 0;
-  virtual void weakenLast() = 0;
 
   virtual bool hasNegativeSlack(const IntVecIt& level) const = 0;
   virtual bool hasNegativeSlack(const IntSet& assumptions) const = 0;
@@ -111,7 +124,6 @@ struct ConstrExpSuper {
   virtual unsigned int getLBD(const IntVecIt& level) const = 0;
 
   virtual void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos) = 0;
-  virtual bool hasNoUnits(const IntVecIt& level) const = 0;
   virtual void removeZeroes() = 0;
   virtual bool hasNoZeroes() const = 0;
 
@@ -125,11 +137,9 @@ struct ConstrExpSuper {
   virtual bool largestCoefFitsIn(int bits) const = 0;
 
   virtual bool divideByGCD() = 0;
-  virtual void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst,
-                           Stats& sts) = 0;
   virtual AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const = 0;
   virtual std::pair<int, bool> getAssertionStatus(const IntVecIt& level, const std::vector<int>& pos) const = 0;
-  virtual void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos, Stats& sts) = 0;
+  virtual void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos) = 0;
 
   virtual bool simplifyToCardinality(bool equivalencePreserving, int cardDegree) = 0;
   virtual bool isCardinality() const = 0;
@@ -139,18 +149,12 @@ struct ConstrExpSuper {
   virtual int getCardinalityDegreeWithZeroes() = 0;
   virtual void simplifyToClause() = 0;
   virtual bool isClause() const = 0;
+  virtual void simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit) = 0;
 
   virtual bool isSortedInDecreasingCoefOrder() const = 0;
   virtual void sortInDecreasingCoefOrder(const Heuristic& heur) = 0;
   virtual void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) = 0;
   virtual void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) = 0;
-  virtual void reverseOrder() = 0;
-
-  virtual ID logAsInput() = 0;
-  virtual ID logProofLine() = 0;
-  virtual ID logProofLineWithInfo([[maybe_unused]] std::string&& info, [[maybe_unused]] const Stats& sts) = 0;
-  virtual void logUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit, const Stats& sts) = 0;
-  virtual void logInconsistency(const IntVecIt& level, const std::vector<int>& pos, const Stats& sts) = 0;
 
   virtual void toStreamAsOPB(std::ostream& o) const = 0;
   virtual void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const = 0;
@@ -198,8 +202,6 @@ struct ConstrExp final : public ConstrExpSuper {
   LARGE degree = 0;
   LARGE rhs = 0;
   std::vector<SMALL> coefs;
-  std::stringstream proofBuffer;
-  std::shared_ptr<Logger> plogger;
 
  private:
   void add(Var v, SMALL c, bool removeZeroes = false);
@@ -235,10 +237,6 @@ struct ConstrExp final : public ConstrExpSuper {
   std::unique_ptr<ConstrSimpleSuper> toSimple() const;
 
   void resize(size_t s);
-  void resetBuffer(ID proofID);
-  void initializeLogging(std::shared_ptr<Logger>& l);
-  void stopLogging();
-
   bool isReset() const;
   void reset(bool partial);
 
@@ -250,8 +248,9 @@ struct ConstrExp final : public ConstrExpSuper {
   SMALL getLargestCoef() const;
   SMALL getSmallestCoef() const;
   LARGE getCutoffVal() const;
-  Lit getLit(Lit l) const;
+  Lit getLit(Var v) const;
   bool hasLit(Lit l) const;
+  bool hasVar(Var v) const;
   bool saturatedLit(Lit l) const;
   bool saturatedVar(Var v) const;
 
@@ -259,8 +258,6 @@ struct ConstrExp final : public ConstrExpSuper {
   void addLhs(const SMALL& cf, Lit l);  // TODO: Term?
   void weaken(const SMALL& m, Var v);
   void weaken(Var v);
-  void weakenLast();
-  void popLast();
 
   LARGE getSlack(const IntVecIt& level) const;
   bool hasNegativeSlack(const IntVecIt& level) const;
@@ -273,7 +270,6 @@ struct ConstrExp final : public ConstrExpSuper {
 
   // @post: preserves order of vars
   void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos);
-  bool hasNoUnits(const IntVecIt& level) const;
   // @post: mutates order of vars
   void removeZeroes();
   bool hasNoZeroes() const;
@@ -308,7 +304,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void addUp(CePtr<ConstrExp<S, L>> c, const SMALL& cmult = 1) {
     stats.NADDEDLITERALS += c->nVars();
     assert(cmult >= 1);
-    if (plogger) Logger::proofMult(proofBuffer << c->proofBuffer.str(), cmult) << "+ ";
+    if (plogger) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
     rhs += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->rhs);
     degree += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->degree);
     for (Var v : c->vars) {
@@ -330,19 +326,16 @@ struct ConstrExp final : public ConstrExpSuper {
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
-  // NOTE: only equivalence preserving operations!
-  void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst,
-                   Stats& sts);
   AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level
   std::pair<int, bool> getAssertionStatus(const IntVecIt& level, const std::vector<int>& pos) const;
   // @post: preserves order after removeZeroes()
-  void weakenNonImplied(const IntVecIt& level, const LARGE& slack, Stats& sts);
+  void weakenNonImplied(const IntVecIt& level, const LARGE& slack);
   // @post: preserves order after removeZeroes()
-  bool weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack, Stats& sts);
+  bool weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack);
   // @post: preserves order after removeZeroes()
-  void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos, Stats& sts);
+  void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos);
 
   // @post: preserves order
   template <typename T>
@@ -366,19 +359,12 @@ struct ConstrExp final : public ConstrExpSuper {
   int getCardinalityDegreeWithZeroes();
   void simplifyToClause();
   bool isClause() const;
+  void simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit);
 
   bool isSortedInDecreasingCoefOrder() const;
   void sortInDecreasingCoefOrder(const Heuristic& heur);
   void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);
   void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
-  void reverseOrder();
-
-  ID logAsInput();
-  ID logProofLine();
-  ID logProofLineWithInfo([[maybe_unused]] std::string&& info, [[maybe_unused]] const Stats& sts);
-  // @pre: reducible to unit over v
-  void logUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit, const Stats& sts);
-  void logInconsistency(const IntVecIt& level, const std::vector<int>& pos, const Stats& sts);
 
   void toStreamAsOPB(std::ostream& o) const;
   void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const;
@@ -544,7 +530,7 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 
-    return getLBD(level);
+    return reason->getLBD(level);
   }
 
   //@post: variable vector vars is not changed, but coefs[toVar(toSubsume)] may become 0
@@ -580,7 +566,7 @@ struct ConstrExp final : public ConstrExpSuper {
         Lit l = terms[i].l;
         if (isUnit(level, -l)) {
           assert(l != toSubsume);
-          Logger::proofWeakenFalseUnit(proofBuffer, plogger->unitIDs[pos[toVar(l)]], -aux::abs(terms[i].c));
+          Logger::proofWeakenFalseUnit(proofBuffer, plogger->getUnitID(pos[toVar(l)]), -aux::abs(terms[i].c));
         } else if (l != toSubsume && !saturatedLits.has(l) && !isUnit(level, -l)) {
           Logger::proofWeaken(proofBuffer, l, -aux::abs(terms[i].c));
         }
@@ -624,7 +610,7 @@ struct ConstrExp final : public ConstrExpSuper {
     }
     if (plogger) {
       out->proofBuffer.str(std::string());
-      out->proofBuffer << proofBuffer.str();
+      out->proofBuffer << proofBuffer.rdbuf();
     }
   }
 
