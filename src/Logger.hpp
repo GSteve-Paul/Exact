@@ -72,6 +72,7 @@ class Logger {
   ID logPure(const CeSuper& ce);
   ID logDomBreaker(const CeSuper& ce);  // second lit is the witness
   ID logAtMostOne(const ConstrSimple32& c);
+  ID logResolvent(ID id1, ID id2);
 
   ID getUnitID(int trailIdx) { return unitIDs[trailIdx]; }
   int getNbUnitIDs() { return unitIDs.size(); }

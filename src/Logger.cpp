@@ -133,13 +133,11 @@ ID Logger::logImpliedUnit(Lit implying, Lit implied) {
 #if !NDEBUG
   logComment("Implied unit");
 #endif
-  ID id1 = logRUP(implying, implied);
-  ID id2 = logRUP(-implying, implied);
-  proof_out << "p " << id1 << " " << id2 << " + s\n";
+  ID result = logResolvent(logRUP(implying, implied), logRUP(-implying, implied));
 #if !NDEBUG
-  proof_out << "e " << last_proofID + 1 << " " << std::pair<int, Lit>{1, implied} << " >= 1 ;\n";
+  proof_out << "e " << result << " " << std::pair<int, Lit>{1, implied} << " >= 1 ;\n";
 #endif
-  return ++last_proofID;
+  return result;
 }
 
 ID Logger::logPure(const CeSuper& ce) {
@@ -191,6 +189,14 @@ ID Logger::logAtMostOne(const ConstrSimple32& c) {
   proof_out << "\n";
 #endif
   return last_proofID;
+}
+
+ID Logger::logResolvent(ID id1, ID id2) {
+#if !NDEBUG
+  logComment("Resolve");
+#endif
+  proof_out << "p " << id1 << " " << id2 << " + s\n";
+  return ++last_proofID;
 }
 
 }  // namespace rs
