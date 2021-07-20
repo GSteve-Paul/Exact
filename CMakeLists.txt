@@ -108,6 +108,7 @@ set(header_files
     src/LpSolver.hpp
     src/Solver.hpp
     src/Logger.hpp
+    src/IntMap.hpp
     src/IntSet.hpp
     src/typedefs.hpp
     src/parsing.hpp

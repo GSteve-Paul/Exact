@@ -82,10 +82,10 @@ struct ConstrExpSuper {
   void weakenLast();
   void popLast();
 
-  bool hasNoUnits(const IntVecIt& level) const;
+  bool hasNoUnits(const IntMap<int>& level) const;
   bool isUnitConstraint() const;
   // NOTE: only equivalence preserving operations!
-  void postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
+  void postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
 
   virtual ~ConstrExpSuper() = default;
 
@@ -116,14 +116,14 @@ struct ConstrExpSuper {
 
   virtual void weaken(Var v) = 0;
 
-  virtual bool hasNegativeSlack(const IntVecIt& level) const = 0;
+  virtual bool hasNegativeSlack(const IntMap<int>& level) const = 0;
   virtual bool hasNegativeSlack(const IntSet& assumptions) const = 0;
   virtual bool isTautology() const = 0;
   virtual bool isInconsistency() const = 0;
   virtual bool isSatisfied(const std::vector<Lit>& assignment) const = 0;
-  virtual unsigned int getLBD(const IntVecIt& level) const = 0;
+  virtual unsigned int getLBD(const IntMap<int>& level) const = 0;
 
-  virtual void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual void removeUnitsAndZeroes(const IntMap<int>& level, const std::vector<int>& pos) = 0;
   virtual void removeZeroes() = 0;
   virtual bool hasNoZeroes() const = 0;
 
@@ -131,15 +131,15 @@ struct ConstrExpSuper {
   virtual void saturate(bool check, bool sorted) = 0;
   virtual bool isSaturated() const = 0;
   virtual void getSaturatedLits(IntSet& out) const = 0;
-  virtual void saturateAndFixOverflow(const IntVecIt& level, int bitOverflow, int bitReduce, Lit asserting) = 0;
+  virtual void saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, Lit asserting) = 0;
   virtual void saturateAndFixOverflowRational(const std::vector<double>& lpSolution) = 0;
   virtual bool fitsInDouble() const = 0;
   virtual bool largestCoefFitsIn(int bits) const = 0;
 
   virtual bool divideByGCD() = 0;
-  virtual AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const = 0;
-  virtual std::pair<int, bool> getAssertionStatus(const IntVecIt& level, const std::vector<int>& pos) const = 0;
-  virtual void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos) = 0;
+  virtual AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const = 0;
+  virtual std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos) const = 0;
+  virtual void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos) = 0;
 
   virtual bool simplifyToCardinality(bool equivalencePreserving, int cardDegree) = 0;
   virtual bool isCardinality() const = 0;
@@ -149,7 +149,7 @@ struct ConstrExpSuper {
   virtual int getCardinalityDegreeWithZeroes() = 0;
   virtual void simplifyToClause() = 0;
   virtual bool isClause() const = 0;
-  virtual void simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit) = 0;
+  virtual void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit) = 0;
 
   virtual bool isSortedInDecreasingCoefOrder() const = 0;
   virtual void sortInDecreasingCoefOrder(const Heuristic& heur) = 0;
@@ -157,42 +157,42 @@ struct ConstrExpSuper {
   virtual void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) = 0;
 
   virtual void toStreamAsOPB(std::ostream& o) const = 0;
-  virtual void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const = 0;
+  virtual void toStreamWithAssignment(std::ostream& o, const IntMap<int>& level, const std::vector<int>& pos) const = 0;
 
-  virtual int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
+  virtual int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                           const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
+  virtual int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                           const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l,
-                          const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
 };
 std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce);
 std::ostream& operator<<(std::ostream& o, const CeSuper& ce);
 
-template <typename SMALL, typename LARGE>  // LARGE should be able to fit sums of SMALL
+template <typename SMALL, typename LARGE>  // LARGE should be able to fit the sum of 2^32 SMALLs
 struct ConstrExp final : public ConstrExpSuper {
  private:
   ConstrExpPool<SMALL, LARGE>& pool;
@@ -206,11 +206,11 @@ struct ConstrExp final : public ConstrExpSuper {
  private:
   void add(Var v, SMALL c, bool removeZeroes = false);
   void remove(Var v);  // NOTE: modifies order of variables
-  bool increasesSlack(const IntVecIt& level, Var v) const;
+  bool increasesSlack(const IntMap<int>& level, Var v) const;
   LARGE calcDegree() const;
   LARGE calcRhs() const;
   bool testConstraint() const;
-  bool falsified(const IntVecIt& level, Var v) const;
+  bool falsified(const IntMap<int>& level, Var v) const;
 
  public:
   explicit ConstrExp(ConstrExpPool<SMALL, LARGE>& cep);
@@ -259,17 +259,17 @@ struct ConstrExp final : public ConstrExpSuper {
   void weaken(const SMALL& m, Var v);
   void weaken(Var v);
 
-  LARGE getSlack(const IntVecIt& level) const;
-  bool hasNegativeSlack(const IntVecIt& level) const;
+  LARGE getSlack(const IntMap<int>& level) const;
+  bool hasNegativeSlack(const IntMap<int>& level) const;
   LARGE getSlack(const IntSet& assumptions) const;
   bool hasNegativeSlack(const IntSet& assumptions) const;
   bool isTautology() const;
   bool isInconsistency() const;
   bool isSatisfied(const std::vector<Lit>& assignment) const;
-  unsigned int getLBD(const IntVecIt& level) const;
+  unsigned int getLBD(const IntMap<int>& level) const;
 
   // @post: preserves order of vars
-  void removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos);
+  void removeUnitsAndZeroes(const IntMap<int>& level, const std::vector<int>& pos);
   // @post: mutates order of vars
   void removeZeroes();
   bool hasNoZeroes() const;
@@ -289,8 +289,8 @@ struct ConstrExp final : public ConstrExpSuper {
    * @post: if overflow happened, all division until 2^bitReduce happened
    * @post: the constraint remains conflicting or propagating on asserting
    */
-  void fixOverflow(const IntVecIt& level, int bitOverflow, int bitReduce, const SMALL& largestCoef, Lit asserting);
-  void saturateAndFixOverflow(const IntVecIt& level, int bitOverflow, int bitReduce, Lit asserting);
+  void fixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, const SMALL& largestCoef, Lit asserting);
+  void saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, Lit asserting);
   /*
    * Fixes overflow for rationals
    * @post: saturated
@@ -318,24 +318,24 @@ struct ConstrExp final : public ConstrExpSuper {
   void invert();
   void multiply(const SMALL& m);
   void divideRoundUp(const LARGE& d);
-  void weakenDivideRound(const LARGE& div, const IntVecIt& level, Lit asserting);
-  void weakenDivideRoundOrdered(const LARGE& div, const IntVecIt& level);
-  void weakenNonDivisibleNonFalsifieds(const IntVecIt& level, const LARGE& div, Lit asserting);
+  void weakenDivideRound(const LARGE& div, const IntMap<int>& level, Lit asserting);
+  void weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level);
+  void weakenNonDivisibleNonFalsifieds(const IntMap<int>& level, const LARGE& div, Lit asserting);
   void repairOrder();
   void weakenSuperfluous(const LARGE& div, bool sorted);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
-  AssertionStatus isAssertingBefore(const IntVecIt& level, int lvl) const;
+  AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level
-  std::pair<int, bool> getAssertionStatus(const IntVecIt& level, const std::vector<int>& pos) const;
+  std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos) const;
   // @post: preserves order after removeZeroes()
-  void weakenNonImplied(const IntVecIt& level, const LARGE& slack);
+  void weakenNonImplied(const IntMap<int>& level, const LARGE& slack);
   // @post: preserves order after removeZeroes()
-  bool weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack);
+  bool weakenNonImplying(const IntMap<int>& level, const SMALL& propCoef, const LARGE& slack);
   // @post: preserves order after removeZeroes()
-  void heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos);
+  void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos);
 
   // @post: preserves order
   template <typename T>
@@ -359,7 +359,7 @@ struct ConstrExp final : public ConstrExpSuper {
   int getCardinalityDegreeWithZeroes();
   void simplifyToClause();
   bool isClause() const;
-  void simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit);
+  void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit);
 
   bool isSortedInDecreasingCoefOrder() const;
   void sortInDecreasingCoefOrder(const Heuristic& heur);
@@ -367,37 +367,37 @@ struct ConstrExp final : public ConstrExpSuper {
   void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
 
   void toStreamAsOPB(std::ostream& o) const;
-  void toStreamWithAssignment(std::ostream& o, const IntVecIt& level, const std::vector<int>& pos) const;
+  void toStreamWithAssignment(std::ostream& o, const IntMap<int>& level, const std::vector<int>& pos) const;
 
-  int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
+  int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                   const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
   int resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet);
-  int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntVecIt& level,
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
+  int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                   const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
-  int subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+  int subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l,
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
   int subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                  const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
-  int subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
-  int subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
-  int subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l, const IntVecIt& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+  int subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l,
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+  int subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l,
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+  int subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l,
+                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
 
  private:
   template <typename CF, typename DG>
-  void initFixOverflow(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o, const IntVecIt& level,
-                       const std::vector<int>& pos, Lit asserting) {
+  void initFixOverflow(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o,
+                       const IntMap<int>& level, const std::vector<int>& pos, Lit asserting) {
     orig = o;
     assert(size > 0);
     DG div = 1;
@@ -455,7 +455,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
   template <typename CF, typename DG>
   int genericResolve(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o, Lit asserting,
-                     const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) {
+                     const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
     assert(getCoef(-asserting) > 0);
     assert(hasNoZeroes());
 
@@ -536,7 +536,7 @@ struct ConstrExp final : public ConstrExpSuper {
   //@post: variable vector vars is not changed, but coefs[toVar(toSubsume)] may become 0
   template <typename CF, typename DG>
   int genericSubsume(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Lit toSubsume,
-                     const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits) {
+                     const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits) {
     assert(getCoef(-toSubsume) > 0);
 
     DG weakenedDeg = degr;

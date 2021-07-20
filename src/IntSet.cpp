@@ -44,7 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace rs {
 
 [[nodiscard]] bool IntSet::check() const {
-  for (int i = 0; i < (int)_index.size() / 2; ++i) {
+  for (int i = 0; i < (int)index.reserved() / 2; ++i) {
     assert(index[i] == _unused_() || i == keys[index[i]]);
     assert(index[-i] == _unused_() || -i == keys[index[-i]]);
   }
@@ -58,8 +58,7 @@ IntSet::IntSet(int size, const std::vector<int>& ints) {
 }
 IntSet::IntSet(const IntSet& other) {
   keys = other.keys;
-  _index = other._index;
-  index = _index.begin() + _index.size() / 2;
+  index = other.index;
 }
 IntSet& IntSet::operator=(const IntSet& other) {
   if (&other == this) return *this;
@@ -70,7 +69,7 @@ IntSet& IntSet::operator=(const IntSet& other) {
   return *this;
 }
 
-void IntSet::resize(int size) { aux::resizeIntMap(_index, index, size, resize_factor, _unused_()); }
+void IntSet::resize(int size) { index.resize(size, _unused_()); }
 [[nodiscard]] size_t IntSet::size() const { return keys.size(); }
 [[nodiscard]] bool IntSet::isEmpty() const { return size() == 0; }
 
@@ -83,11 +82,11 @@ void IntSet::clear() {
 [[nodiscard]] const std::vector<int>& IntSet::getKeys() const { return keys; }
 
 [[nodiscard]] bool IntSet::has(int key) const {
-  return _index.size() > (unsigned int)2 * std::abs(key) && index[key] != _unused_();
+  return index.reserved() > (unsigned int)2 * std::abs(key) && index[key] != _unused_();
 }
 
 void IntSet::add(int key) {
-  if (_index.size() <= (unsigned int)2 * std::abs(key)) resize(std::abs(key));
+  if (index.reserved() <= (unsigned int)2 * std::abs(key)) resize(std::abs(key));
   if (index[key] != _unused_()) return;
   assert(!aux::contains(keys, key));
   index[key] = keys.size();

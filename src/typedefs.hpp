@@ -105,8 +105,6 @@ bool fitsIn([[maybe_unused]] const S& x) {
   return fits<T>(bigint(x));
 }
 
-using IntVecIt = std::vector<int>::iterator;
-
 using ActValV = long double;
 const ActValV actLimitV = (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 *
                           (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300;  // ~1e2400 << 2^(2^13)

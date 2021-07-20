@@ -44,6 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "Constr.hpp"
 #include "Heuristic.hpp"
+#include "IntMap.hpp"
 #include "IntSet.hpp"
 #include "LpSolver.hpp"
 #include "Options.hpp"
@@ -94,17 +95,13 @@ class Solver {
 
   std::vector<CRef> constraints;  // row-based view
   std::unordered_map<ID, CRef> external;
-  std::vector<std::unordered_map<CRef, int>> _lit2cons;  // column-based view, int is index of literal in CRef
-  std::vector<std::unordered_map<CRef, int>>::iterator lit2cons;
+  IntMap<std::unordered_map<CRef, int>> lit2cons;  // column-based view, int is index of literal in CRef
   int lastRemoveSatisfiedsTrail = 0;
   std::unordered_multimap<Lit, Lit> binaryImplicants;  // l implies multimap[l]
-  std::vector<int> _lit2consOldSize;
-  std::vector<int>::iterator lit2consOldSize;
+  IntMap<int> lit2consOldSize;
 
-  std::vector<std::vector<Watch>> _adj;
-  std::vector<std::vector<Watch>>::iterator adj;
-  std::vector<int> _level;
-  IntVecIt level;  // TODO: make position, level, contiguous memory for better cache efficiency.
+  IntMap<std::vector<Watch>> adj;
+  IntMap<int> level;  // TODO: make position, level, contiguous memory for better cache efficiency.
   std::vector<int> position;
   std::vector<Lit> trail;
   std::vector<int> trail_lim;
@@ -129,7 +126,7 @@ class Solver {
   void setNbVars(int nvars, bool orig);
   int getNbOrigVars() const { return orig_n; }
 
-  const IntVecIt& getLevel() const { return level; }
+  const IntMap<int>& getLevel() const { return level; }
   const std::vector<int>& getPos() const { return position; }
   const Heuristic& getHeuristic() const { return *heur; }
   int decisionLevel() const { return trail_lim.size(); }

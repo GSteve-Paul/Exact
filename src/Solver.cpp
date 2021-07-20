@@ -64,8 +64,8 @@ void Solver::setNbVars(int nvars, bool orig) {
   assert(nvars > 0);
   assert(nvars < INF);
   if (nvars <= n) return;
-  aux::resizeIntMap(_adj, adj, nvars, resize_factor, {});
-  aux::resizeIntMap(_level, level, nvars, resize_factor, INF);
+  adj.resize(nvars, {});
+  level.resize(nvars, INF);
   position.resize(nvars + 1, INF);
   reason.resize(nvars + 1, CRef_Undef);
   freeHeur.resize(nvars + 1);
@@ -82,8 +82,8 @@ void Solver::setNbVars(int nvars, bool orig) {
     orig_n = nvars;
     stats.NORIGVARS.z = nvars;
     stats.NAUXVARS.z = 0;
-    aux::resizeIntMap(_lit2cons, lit2cons, nvars, resize_factor, {});
-    aux::resizeIntMap(_lit2consOldSize, lit2consOldSize, nvars, resize_factor, std::numeric_limits<int>::max());
+    lit2cons.resize(nvars, {});
+    lit2consOldSize.resize(nvars, std::numeric_limits<int>::max());
   } else {
     stats.NAUXVARS.z = n - orig_n;
   }
@@ -758,7 +758,7 @@ const std::vector<Lit>& Solver::getLastSolution() const { return lastSol; }
 // Garbage collection
 
 void Solver::rebuildLit2Cons() {
-  for (std::unordered_map<CRef, int>& col : _lit2cons) {
+  for (std::unordered_map<CRef, int>& col : lit2cons) {
     col.clear();
   }
   for (const CRef& cr : constraints) {

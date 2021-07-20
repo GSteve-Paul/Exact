@@ -160,24 +160,6 @@ static inline double cpuTime() {
 }
 
 template <typename T>
-void resizeIntMap(std::vector<T>& _map, typename std::vector<T>::iterator& map, int size, int resize_factor,
-                  const T& init) {
-  assert(size >= 0);
-  int oldsize = (_map.size() - 1) / 2;
-  if (oldsize >= size) return;
-  long long newsize = std::max(0, oldsize);  // oldsize could be -1...
-  while (newsize < size) {
-    newsize = newsize * resize_factor + 1;
-  }
-  _map.resize(2 * newsize + 1);
-  map = _map.begin() + newsize;
-  long long i = _map.size() - 1;
-  for (; i > newsize + oldsize; --i) _map[i] = init;
-  for (; i >= newsize - oldsize; --i) _map[i] = std::move(_map[i - newsize + oldsize]);
-  for (; i >= 0; --i) _map[i] = init;
-}
-
-template <typename T>
 T median(std::vector<T>& v) {
   assert(v.size() > 0);
   size_t n = v.size() / 2;

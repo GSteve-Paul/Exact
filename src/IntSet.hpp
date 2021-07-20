@@ -41,17 +41,15 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "aux.hpp"
+#include "IntMap.hpp"
 
 namespace rs {
 
 struct IntSet {  // TODO: template to long long, int128, ...?
  private:
   std::vector<int> keys;
-  std::vector<int> _index;
-  std::vector<int>::iterator index = _index.begin();
+  IntMap<int> index;
   static constexpr int _unused_() { return -1; }
-  const int resize_factor = 2;
 
   [[nodiscard]] bool check() const;
 

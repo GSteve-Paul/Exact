@@ -224,7 +224,7 @@ void ConstrExp<SMALL, LARGE>::remove(Var v) {
 }
 
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::increasesSlack(const IntVecIt& level, Var v) const {
+bool ConstrExp<SMALL, LARGE>::increasesSlack(const IntMap<int>& level, Var v) const {
   return isTrue(level, v) || (!isFalse(level, v) && coefs[v] > 0);
 }
 
@@ -375,7 +375,7 @@ bool ConstrExp<SMALL, LARGE>::saturatedVar(Var v) const {
 }
 
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::falsified(const IntVecIt& level, Var v) const {
+bool ConstrExp<SMALL, LARGE>::falsified(const IntMap<int>& level, Var v) const {
   assert(v > 0);
   assert((getLit(v) != 0 && !isFalse(level, getLit(v))) == (coefs[v] > 0 && !isFalse(level, v)) ||
          (coefs[v] < 0 && !isTrue(level, v)));
@@ -383,7 +383,7 @@ bool ConstrExp<SMALL, LARGE>::falsified(const IntVecIt& level, Var v) const {
 }
 
 template <typename SMALL, typename LARGE>
-LARGE ConstrExp<SMALL, LARGE>::getSlack(const IntVecIt& level) const {
+LARGE ConstrExp<SMALL, LARGE>::getSlack(const IntMap<int>& level) const {
   LARGE slack = -rhs;
   for (Var v : vars)
     if (increasesSlack(level, v)) slack += coefs[v];
@@ -391,7 +391,7 @@ LARGE ConstrExp<SMALL, LARGE>::getSlack(const IntVecIt& level) const {
 }
 
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::hasNegativeSlack(const IntVecIt& level) const {
+bool ConstrExp<SMALL, LARGE>::hasNegativeSlack(const IntMap<int>& level) const {
   return getSlack(level) < 0;
 }
 
@@ -428,7 +428,7 @@ bool ConstrExp<SMALL, LARGE>::isSatisfied(const std::vector<Lit>& assignment) co
 }
 
 template <typename SMALL, typename LARGE>
-unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntVecIt& level) const {
+unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntMap<int>& level) const {
   // calculate delete-lbd-e according to "On Dedicated CDCL Strategies for PB Solvers" - Le Berre & Wallon - 2021
   assert(isSortedInDecreasingCoefOrder());
   LARGE weakenedDeg = degree;
@@ -516,7 +516,7 @@ void ConstrExpSuper::popLast() {
 
 // @post: preserves order of vars
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntVecIt& level, const std::vector<int>& pos) {
+void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntMap<int>& level, const std::vector<int>& pos) {
   if (plogger) {
     for (Var v : vars) {
       Lit l = getLit(v);
@@ -551,7 +551,7 @@ void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntVecIt& level, const 
   vars.resize(j);
 }
 
-bool ConstrExpSuper::hasNoUnits(const IntVecIt& level) const {
+bool ConstrExpSuper::hasNoUnits(const IntMap<int>& level) const {
   return std::all_of(vars.cbegin(), vars.cend(), [&](Var v) { return !isUnit(level, v) && !isUnit(level, -v); });
 }
 
@@ -642,7 +642,7 @@ void ConstrExp<SMALL, LARGE>::invert() {
  * @post: the constraint remains conflicting or propagating on asserting
  */
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::fixOverflow(const IntVecIt& level, int bitOverflow, int bitReduce,
+void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce,
                                           const SMALL& largestCoef, Lit asserting) {
   assert(hasNoZeroes());
   assert(isSaturated());
@@ -665,7 +665,7 @@ void ConstrExp<SMALL, LARGE>::fixOverflow(const IntVecIt& level, int bitOverflow
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::saturateAndFixOverflow(const IntVecIt& level, int bitOverflow, int bitReduce,
+void ConstrExp<SMALL, LARGE>::saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce,
                                                      Lit asserting) {
   assert(hasNoZeroes());
   SMALL largest = getLargestCoef();
@@ -736,7 +736,7 @@ void ConstrExp<SMALL, LARGE>::divideRoundUp(const LARGE& d) {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const IntVecIt& level, Lit asserting) {
+void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const IntMap<int>& level, Lit asserting) {
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisibleNonFalsifieds(level, div, asserting);
@@ -748,7 +748,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const IntVecIt
 
 // NOTE: preserves ordered-ness
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const IntVecIt& level) {
+void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level) {
   assert(isSortedInDecreasingCoefOrder());
   assert(div > 0);
   if (div == 1) return;
@@ -775,7 +775,8 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
 // NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
 // NOTE: after call to weakenNonDivisibleNonFalsifieds, order can be re repaired by call to repairOrder
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenNonDivisibleNonFalsifieds(const IntVecIt& level, const LARGE& div, Lit asserting) {
+void ConstrExp<SMALL, LARGE>::weakenNonDivisibleNonFalsifieds(const IntMap<int>& level, const LARGE& div,
+                                                              Lit asserting) {
   assert(div > 0);
   if (div == 1) return;
   for (Var v : vars) {
@@ -873,7 +874,7 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
 }
 
 // NOTE: only equivalence preserving operations!
-void ConstrExpSuper::postProcess(const IntVecIt& level, const std::vector<int>& pos, const Heuristic& heur,
+void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur,
                                  bool sortFirst) {
   removeUnitsAndZeroes(level, pos);
   assert(sortFirst || isSortedInDecreasingCoefOrder());  // NOTE: check this only after removing units and zeroes
@@ -891,7 +892,7 @@ void ConstrExpSuper::postProcess(const IntVecIt& level, const std::vector<int>& 
 }
 
 template <typename SMALL, typename LARGE>
-AssertionStatus ConstrExp<SMALL, LARGE>::isAssertingBefore(const IntVecIt& level, int lvl) const {
+AssertionStatus ConstrExp<SMALL, LARGE>::isAssertingBefore(const IntMap<int>& level, int lvl) const {
   assert(lvl >= 0);
   assert(isSaturated());
   SMALL largestCoef = 0;
@@ -916,7 +917,7 @@ AssertionStatus ConstrExp<SMALL, LARGE>::isAssertingBefore(const IntVecIt& level
 // @return: highest decision level that does not make the constraint inconsistent
 // @return: whether or not the constraint is asserting at that level
 template <typename SMALL, typename LARGE>
-std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntVecIt& level,
+std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<int>& level,
                                                                  const std::vector<int>& pos) const {
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
@@ -956,7 +957,7 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntVecIt&
 
 // @post: preserves order after removeZeroes()
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntVecIt& level, const LARGE& slack) {
+void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntMap<int>& level, const LARGE& slack) {
   int weakenings = 0;
   for (Var v : vars) {
     if (coefs[v] != 0 && aux::abs(coefs[v]) <= slack && !falsified(level, v)) {
@@ -970,7 +971,7 @@ void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntVecIt& level, const LARG
 // @post: preserves order after removeZeroes()
 // TODO: return modified slack?
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntVecIt& level, const SMALL& propCoef, const LARGE& slack) {
+bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntMap<int>& level, const SMALL& propCoef, const LARGE& slack) {
   LARGE slk = slack;
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
@@ -989,7 +990,7 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntVecIt& level, const SMA
 
 // @post: preserves order after removeZeroes()
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntVecIt& level, const std::vector<int>& pos) {
+void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos) {
   assert(isSortedInDecreasingCoefOrder());
   if (aux::abs(coefs[vars[0]]) == aux::abs(coefs[vars.back()])) return;
   LARGE slk = getSlack(level);
@@ -1186,7 +1187,7 @@ bool ConstrExp<SMALL, LARGE>::isClause() const {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntVecIt& level, const std::vector<int>& pos, Var v_unit) {
+void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit) {
   removeUnitsAndZeroes(level, pos);
   assert(getLit(v_unit) != 0);
   for (Var v : vars) {
@@ -1272,7 +1273,7 @@ void ConstrExp<SMALL, LARGE>::toStreamAsOPB(std::ostream& o) const {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::toStreamWithAssignment(std::ostream& o, const IntVecIt& level,
+void ConstrExp<SMALL, LARGE>::toStreamWithAssignment(std::ostream& o, const IntMap<int>& level,
                                                      const std::vector<int>& pos) const {
   std::vector<Var> vs = vars;
   std::sort(vs.begin(), vs.end(), [](Var v1, Var v2) { return v1 < v2; });
@@ -1289,7 +1290,7 @@ void ConstrExp<SMALL, LARGE>::toStreamWithAssignment(std::ostream& o, const IntV
 
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet) {
+                                         const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
   assert(getCoef(-l) > 0);
   assert(hasNoZeroes());
   stats.NADDEDLITERALS += size;
@@ -1380,7 +1381,7 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
 //@post: variable vector vars is not changed, but coefs[toVar(toSubsume)] may become 0
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit toSubsume,
-                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   assert(getCoef(-toSubsume) > 0);
   stats.NADDEDLITERALS += size;
@@ -1446,62 +1447,62 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
 
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
                                          IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
                                          IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
                                          IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
                                          IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id,
-                                         Origin o, Lit l, const IntVecIt& level, const std::vector<int>& pos,
+                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
                                          IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id,
-                                         Lit l, const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l,
-                                         const IntVecIt& level, const std::vector<int>& pos, IntSet& actSet,
+                                         const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }

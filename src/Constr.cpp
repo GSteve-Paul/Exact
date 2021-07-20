@@ -194,7 +194,7 @@ CeSuper Clause::toExpanded(ConstrExpPools& cePools) const {
   return result;
 }
 
-bool Clause::isSatisfiedAtRoot(const IntVecIt& level) const {
+bool Clause::isSatisfiedAtRoot(const IntMap<int>& level) const {
   for (int i = 0; i < (int)size; ++i) {
     if (isUnit(level, data[i])) return true;
   }
@@ -336,7 +336,7 @@ CeSuper Cardinality::toExpanded(ConstrExpPools& cePools) const {
   return result;
 }
 
-bool Cardinality::isSatisfiedAtRoot(const IntVecIt& level) const {
+bool Cardinality::isSatisfiedAtRoot(const IntMap<int>& level) const {
   int eval = -static_cast<int>(degr);
   for (int i = 0; i < (int)size && eval < 0; ++i) {
     eval += isUnit(level, data[i]);
@@ -470,7 +470,7 @@ CeSuper Counting<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 }
 
 template <typename CF, typename DG>
-bool Counting<CF, DG>::isSatisfiedAtRoot(const IntVecIt& level) const {
+bool Counting<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -degr;
   for (int i = 0; i < (int)size && eval < 0; ++i) {
     if (isUnit(level, data[i].l)) eval += data[i].c;
@@ -654,7 +654,7 @@ CeSuper Watched<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 }
 
 template <typename CF, typename DG>
-bool Watched<CF, DG>::isSatisfiedAtRoot(const IntVecIt& level) const {
+bool Watched<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -degr;
   for (int i = 0; i < (int)size && eval < 0; ++i) {
     if (isUnit(level, data[i].l)) eval += aux::abs(data[i].c);
@@ -794,7 +794,7 @@ CeSuper CountingSafe<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 }
 
 template <typename CF, typename DG>
-bool CountingSafe<CF, DG>::isSatisfiedAtRoot(const IntVecIt& level) const {
+bool CountingSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -*degr;
   for (int i = 0; i < (int)size && eval < 0; ++i) {
     if (isUnit(level, terms[i].l)) eval += terms[i].c;
@@ -981,7 +981,7 @@ CeSuper WatchedSafe<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 }
 
 template <typename CF, typename DG>
-bool WatchedSafe<CF, DG>::isSatisfiedAtRoot(const IntVecIt& level) const {
+bool WatchedSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -*degr;
   for (int i = 0; i < (int)size && eval < 0; ++i) {
     if (isUnit(level, terms[i].l)) eval += aux::abs(terms[i].c);

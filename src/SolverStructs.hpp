@@ -42,6 +42,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include <ostream>
+#include "IntMap.hpp"
 #include "typedefs.hpp"
 
 namespace rs {
@@ -59,9 +60,9 @@ const CRef CRef_Unsat = {std::numeric_limits<uint32_t>::max() - 1};
 inline bool isValid(CRef cr) { return cr.ofs < std::numeric_limits<uint32_t>::max() - 1; };
 
 // TODO: make below methods part of a Solver object that's passed around
-inline bool isTrue(const IntVecIt& level, Lit l) { return level[l] != INF; }
-inline bool isFalse(const IntVecIt& level, Lit l) { return level[-l] != INF; }
-inline bool isUnit(const IntVecIt& level, Lit l) { return level[l] == 0; }
+inline bool isTrue(const IntMap<int>& level, Lit l) { return level[l] != INF; }
+inline bool isFalse(const IntMap<int>& level, Lit l) { return level[-l] != INF; }
+inline bool isUnit(const IntMap<int>& level, Lit l) { return level[l] == 0; }
 inline bool isUnknown(const std::vector<int>& pos, Lit l) { return pos[toVar(l)] == INF; }
 inline bool isKnown(const std::vector<int>& pos, Lit l) { return pos[toVar(l)] != INF; }
 // NOTE: below assumes isKnown(position,l)
