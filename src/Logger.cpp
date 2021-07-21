@@ -191,10 +191,14 @@ ID Logger::logAtMostOne(const ConstrSimple32& c) {
   return last_proofID;
 }
 
-ID Logger::logResolvent(ID id1, ID id2) {
+ID Logger::logResolvent(ID id1, ID id2) {  // should be clauses
+  assert(isValid(id1));
+  assert(isValid(id2));
 #if !NDEBUG
   logComment("Resolve");
 #endif
+  if (id1 == ID_Trivial) return id2;
+  if (id2 == ID_Trivial) return id1;
   proof_out << "p " << id1 << " " << id2 << " + s\n";
   return ++last_proofID;
 }

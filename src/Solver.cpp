@@ -72,6 +72,7 @@ void Solver::setNbVars(int nvars, bool orig) {
   cgHeur.resize(nvars + 1);
   cePools.resize(nvars + 1);
   // if (lpSolver) lpSolver->setNbVariables(nvars + 1); // Currently, LP solver only reasons on formula constraints
+  equalities.setNbVars(nvars);
   n = nvars;
   if (orig) {
     ranks.resize(nvars + 1, 0);

@@ -49,6 +49,7 @@ using ID = uint64_t;
 const ID ID_Undef = std::numeric_limits<ID>::max();
 const ID ID_Unsat = ID_Undef - 1;
 const ID ID_Trivial = 1;  // represents constraint 0 >= 0
+inline bool isValid(ID id) { return id > 0 && id < ID_Unsat; }
 
 using Var = int;
 using Lit = int;

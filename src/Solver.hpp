@@ -43,6 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <memory>
 #include "Constr.hpp"
+#include "Equalities.hpp"
 #include "Heuristic.hpp"
 #include "IntMap.hpp"
 #include "IntSet.hpp"
@@ -113,6 +114,8 @@ class Solver {
 
   bool firstRun = true;
   std::shared_ptr<LpSolver> lpSolver;
+
+  Equalities equalities;
 
   long long nconfl_to_reduce;
   long long nconfl_to_restart;
