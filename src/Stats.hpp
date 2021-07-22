@@ -185,6 +185,7 @@ struct Stats {
   Stat NSATISFIEDSREMOVED{0, "constraints satisfied at root"};
 
   Stat NPROBINGLITS{0, "unit lits due to probing"};
+  Stat NPROBINGEQS{0, "equalities due to probing"};
   Stat NPROBINGS{0, "probing calls"};
   Stat PROBETIME{0, "probing inprocessing time"};
   Stat ATMOSTONES{0, "detected at-most-ones"};
@@ -361,6 +362,7 @@ struct Stats {
       &NPURELITS,
       &NSATISFIEDSREMOVED,
       &NPROBINGLITS,
+      &NPROBINGEQS,
       &NPROBINGS,
       &PROBETIME,
       &ATMOSTONES,

@@ -24,8 +24,8 @@ class Equalities {  // a union-find data structure
   IntMap<LitID> canonical;
 
  public:
-  LitID getRepr(Lit a);                                  // Find
-  void merge(Lit a, Lit b, ID aImpliesB, ID bImpliesA);  // Union
+  LitID getRepr(Lit a);      // Find
+  void merge(Lit a, Lit b);  // Union
   void setNbVars(int n);
 };
 

@@ -28,34 +28,35 @@ LitID Equalities::getRepr(Lit a) {
   return reprChild;
 }
 
-void Equalities::merge(Lit a, Lit b, ID aImpliesB, ID bImpliesA) {
+void Equalities::merge(Lit a, Lit b) {
   LitID reprA = getRepr(a);
   LitID reprB = getRepr(b);
   LitID reprAneg = getRepr(-a);
   LitID reprBneg = getRepr(-b);
-  if (reprA.l == reprB.l) return;  // already equal
-  assert(reprA.l != -reprB.l);     // no inconsistency
-  if (toVar(reprB.l) < toVar(reprA.l)) {
-    canonical[reprA.l] = {
-        reprB.l, logger ? logger->logResolvent(logger->logResolvent(aImpliesB, reprAneg.id), reprB.id) : ID_Trivial};
-    canonical[reprAneg.l] = {
-        reprBneg.l, logger ? logger->logResolvent(logger->logResolvent(bImpliesA, reprA.id), reprBneg.id) : ID_Trivial};
+  assert(reprA.l == -reprAneg.l);
+  assert(reprB.l == -reprBneg.l);
+  Lit reprAl = reprA.l;
+  Lit reprBl = reprB.l;
+  if (reprAl == reprBl) return;  // already equal
+  assert(reprAl != -reprBl);     // no inconsistency
+  ++stats.NPROBINGEQS;
+  auto [reprAImpReprB, reprBImpReprA] =
+      logger ? logger->logEquality(a, b, reprA.id, reprAneg.id, reprB.id, reprBneg.id, reprAl, reprBl)
+             : std::pair<ID, ID>{ID_Trivial, ID_Trivial};
+  if (toVar(reprBl) < toVar(reprAl)) {
+    canonical[reprAl] = {reprBl, reprAImpReprB};
+    canonical[-reprAl] = {-reprBl, reprBImpReprA};
   } else {
-    canonical[reprB.l] = {
-        reprA.l, logger ? logger->logResolvent(logger->logResolvent(bImpliesA, reprBneg.id), reprA.id) : ID_Trivial};
-    canonical[reprBneg.l] = {
-        reprAneg.l, logger ? logger->logResolvent(logger->logResolvent(aImpliesB, reprB.id), reprAneg.id) : ID_Trivial};
+    canonical[reprBl] = {reprAl, reprBImpReprA};
+    canonical[-reprBl] = {-reprAl, reprAImpReprB};
   }
-  assert(canonical[a].l == -canonical[-a].l);
-  assert(canonical[b].l == -canonical[-b].l);
-  assert(canonical[a].l == canonical[b].l);
-  assert(canonical[-a].l == canonical[-b].l);
 }
 
 void Equalities::setNbVars(int nvars) {
   int oldNvars = canonical.reserved() / 2;
   canonical.resize(nvars, {0, ID_Trivial});
-  for (int v = oldNvars; v <= nvars; ++v) {
+  int newNvars = canonical.reserved() / 2;
+  for (Var v = oldNvars + 1; v <= newNvars; ++v) {
     canonical[v].l = v;
     canonical[-v].l = -v;
   }

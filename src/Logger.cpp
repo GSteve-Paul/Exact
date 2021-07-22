@@ -203,4 +203,25 @@ ID Logger::logResolvent(ID id1, ID id2) {  // should be clauses
   return ++last_proofID;
 }
 
+std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB, Lit reprA,
+                                      Lit reprB) {
+#if !NDEBUG
+  logComment("Equality");
+#endif
+  ID aImpliesB = logRUP(-a, b);
+  proof_out << "p " << reprAImplA << " " << aImpliesB << " + " << bImpReprB << " + s\n";
+  ID reprAImpReprB = ++last_proofID;
+#if !NDEBUG
+  proof_out << "e " << reprAImpReprB << " " << std::pair<int, Lit>{1, -reprA} << " " << std::pair<int, Lit>{1, reprB}
+            << " >= 1 ;\n";
+#endif
+  ID bImpliesA = logRUP(-b, a);
+  proof_out << "p " << reprBImplB << " " << bImpliesA << " + " << aImpReprA << " + s\n";
+  ID reprBImpReprA = ++last_proofID;
+#if !NDEBUG
+  proof_out << "e " << reprBImpReprA << " " << std::pair<int, Lit>{1, -reprB} << " " << std::pair<int, Lit>{1, reprA}
+            << " >= 1 ;\n";
+#endif
+  return {reprAImpReprB, reprBImpReprA};
+}
 }  // namespace rs
