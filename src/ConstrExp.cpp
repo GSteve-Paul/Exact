@@ -580,10 +580,13 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities) {
     Var v = vars[i];
     Lit l = getLit(v);
     if (l == 0) continue;
-    if (LitID li = equalities.getRepr(l); li.l != l) {  // literal is not its own canonical representative
-      if (plogger) proofBuffer << aux::abs(coefs[v]) << " " << li.id << " * + ";
-      addLhs(aux::abs(coefs[v]), li.l);
-      coefs[v] = 0;
+    if (LitID repr = equalities.getRepr(l); repr.l != l) {  // literal is not its own canonical representative
+      SMALL mult = aux::abs(coefs[v]);
+      if (plogger) proofBuffer << repr.id << " " << mult << " * + ";
+      addLhs(mult, -l);
+      addLhs(mult, repr.l);
+      addRhs(mult);
+      assert(coefs[v] == 0);
     }
   }
 }
@@ -891,9 +894,8 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
 }
 
 // NOTE: only equivalence preserving operations!
-void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int>& pos, Equalities& equalities,
-                                 const Heuristic& heur, bool sortFirst) {
-  removeEqualities(equalities);
+void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur,
+                                 bool sortFirst) {
   removeUnitsAndZeroes(level, pos);
   assert(sortFirst || isSortedInDecreasingCoefOrder());  // NOTE: check this only after removing units and zeroes
   saturate(true, !sortFirst);
@@ -941,8 +943,8 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<in
   assert(isSortedInDecreasingCoefOrder());
   assert(hasNoUnits(level));
   // calculate slack at level 0
-  LARGE slack = -rhs;
-  for (Var v : vars) slack += std::max<SMALL>(0, coefs[v]);
+  LARGE slack = -degree;
+  for (Var v : vars) slack += aux::abs(coefs[v]);
   if (slack < 0) return {-1, false};
 
   // create useful datastructures

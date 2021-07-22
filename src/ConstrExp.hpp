@@ -86,8 +86,7 @@ struct ConstrExpSuper {
   bool hasNoUnits(const IntMap<int>& level) const;
   bool isUnitConstraint() const;
   // NOTE: only equivalence preserving operations!
-  void postProcess(const IntMap<int>& level, const std::vector<int>& pos, Equalities& equalities, const Heuristic& heur,
-                   bool sortFirst);
+  void postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
 
   virtual ~ConstrExpSuper() = default;
 

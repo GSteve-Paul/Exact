@@ -73,8 +73,8 @@ class Logger {
   ID logDomBreaker(const CeSuper& ce);  // second lit is the witness
   ID logAtMostOne(const ConstrSimple32& c);
   ID logResolvent(ID id1, ID id2);
-  std::pair<ID, ID> logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB,
-                                [[maybe_unused]] Lit reprA, [[maybe_unused]] Lit reprB);
+  std::pair<ID, ID> logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB, Lit reprA,
+                                Lit reprB);
 
   ID getUnitID(int trailIdx) { return unitIDs[trailIdx]; }
   int getNbUnitIDs() { return unitIDs.size(); }

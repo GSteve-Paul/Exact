@@ -203,8 +203,8 @@ ID Logger::logResolvent(ID id1, ID id2) {  // should be clauses
   return ++last_proofID;
 }
 
-std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB, Lit reprA,
-                                      Lit reprB) {
+std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB,
+                                      [[maybe_unused]] Lit reprA, [[maybe_unused]] Lit reprB) {
 #if !NDEBUG
   logComment("Equality");
 #endif

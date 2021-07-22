@@ -448,7 +448,7 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
                              stats.LEARNTIME);  // NOTE: takes care of inconsistency
   if (res == ID_Unsat) return State::UNSAT;
   backjumpTo(0);
-  lastCore->postProcess(getLevel(), getPos(), getEqualities(), getHeuristic(), true);
+  lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true);
   if (!lastCore->hasNegativeSlack(assumptions)) {  // apparently unit clauses were propagated during learnConstraint
     lastCore.makeNull();
   }
@@ -553,6 +553,7 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   assert(isLearned(orig));
   CeSuper learned = ce->clone(cePools);
   learned->orig = orig;
+  learned->removeEqualities(getEqualities());
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   learned->saturateAndFixOverflow(getLevel(), options.bitsLearned.get(), options.bitsLearned.get(), 0);
   learned->sortInDecreasingCoefOrder(getHeuristic());
@@ -566,7 +567,7 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   backjumpTo(assertionLevel);
   assert(!learned->hasNegativeSlack(level));
   if (isAsserting) learned->heuristicWeakening(level, position);
-  learned->postProcess(getLevel(), getPos(), getEqualities(), getHeuristic(), false);
+  learned->postProcess(getLevel(), getPos(), getHeuristic(), false);
   assert(learned->isSaturated());
   if (learned->isTautology()) {
     return ID_Undef;
@@ -627,7 +628,8 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
         input = logger->logAssumption(ce);
     }
   }
-  ce->postProcess(getLevel(), getPos(), getEqualities(), getHeuristic(), true);
+  ce->removeEqualities(getEqualities());
+  ce->postProcess(getLevel(), getPos(), getHeuristic(), true);
   if (ce->isTautology()) {
     return {input, ID_Undef};  // already satisfied.
   }
@@ -805,7 +807,7 @@ void Solver::garbage_collect() {
 
 // We assume in the garbage collection method that reduceDB() is the
 // only place where constraints are removed from memory.
-void Solver::reduceDB() {
+State Solver::reduceDB() {
   backjumpTo(0);  // otherwise reason CRefs need to be taken care of
   std::vector<CRef> learnts;
   learnts.reserve(constraints.size());
@@ -852,10 +854,8 @@ void Solver::reduceDB() {
       ce->removeUnitsAndZeroes(getLevel(), getPos());
       assert(ce->getCardinalityDegree() > 0);
       ce->simplifyToCardinality(false, ce->getMaxStrengthCardinalityDegree(cardPoints));
-      [[maybe_unused]] ID res =
-          aux::timeCall<ID>([&] { return learnConstraint(ce, Origin::REDUCED); }, stats.LEARNTIME);
-      assert(res != ID_Undef);
-      assert(res != ID_Unsat);
+      ID res = aux::timeCall<ID>([&] { return learnConstraint(ce, Origin::REDUCED); }, stats.LEARNTIME);
+      if (res == ID_Unsat) return State::UNSAT;
     }
   }
 
@@ -874,6 +874,7 @@ void Solver::reduceDB() {
   if ((double)ca.wasted / (double)ca.at > 0.2) {
     aux::timeCallVoid([&] { garbage_collect(); }, stats.GCTIME);
   }
+  return State::SUCCESS;
 }
 
 // ---------------------------------------------------------------------
@@ -1143,8 +1144,9 @@ SolveState Solver::solve() {
           lastCATime = stats.CATIME.z;
           lastNProp = stats.NPROP.z;
         }
-        aux::timeCallVoid([&] { reduceDB(); }, stats.CLEANUPTIME);
-        State state = aux::timeCall<State>([&] { return inProcess(); }, stats.INPROCESSTIME);
+        State state = aux::timeCall<State>([&] { return reduceDB(); }, stats.CLEANUPTIME);
+        if (state == State::UNSAT) return SolveState::UNSAT;
+        state = aux::timeCall<State>([&] { return inProcess(); }, stats.INPROCESSTIME);
         if (state == State::UNSAT) return SolveState::UNSAT;
         return SolveState::INPROCESSED;
       }

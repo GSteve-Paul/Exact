@@ -225,7 +225,7 @@ class Solver {
   // Garbage collection
 
   void garbage_collect();
-  void reduceDB();
+  State reduceDB();
 
   // ---------------------------------------------------------------------
   // Restarts
