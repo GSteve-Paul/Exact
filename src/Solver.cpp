@@ -1224,6 +1224,8 @@ State Solver::probeRestart(Lit next) {
         Lit l = trail[i];
         if (trailSet.has(l)) {
           newUnits.push_back(l);
+        } else if (trailSet.has(-l)) {
+          equalities.merge(next, l);
         }
       }
       if (!newUnits.empty()) {
@@ -1288,6 +1290,8 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
         if (learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(seed, l) : ID_Undef) == ID_Unsat) {
           return State::UNSAT;
         }
+      } else if (previous.has(-l)) {
+        equalities.merge(-seed, l);
       }
     }
     isPool.release(previous);
