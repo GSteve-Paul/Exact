@@ -336,7 +336,7 @@ State LpSolver::addFilteredCuts() {
   for (int i : keptCuts) {
     CandidateCut& cc = candidateCuts[i];
     CeSuper ce = cc.simpcons.toExpanded(cePools);
-    ce->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
+    ce->postProcess(solver.getLevel(), solver.getPos(), solver.getEqualities(), solver.getHeuristic(), true);
     assert(ce->fitsInDouble());
     assert(!ce->isTautology());
     if (cc.cr == CRef_Undef) {  // Gomory cut

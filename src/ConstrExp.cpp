@@ -43,6 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <functional>
 #include "Constr.hpp"
+#include "Equalities.hpp"
 #include "Heuristic.hpp"
 #include "aux.hpp"
 
@@ -571,6 +572,22 @@ void ConstrExp<SMALL, LARGE>::removeZeroes() {
   vars.resize(j);
 }
 
+// @post: preserves order of vars
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities) {
+  int oldsize = vars.size();  // newly added literals are their own canonical representative
+  for (int i = 0; i < oldsize; ++i) {
+    Var v = vars[i];
+    Lit l = getLit(v);
+    if (l == 0) continue;
+    if (LitID li = equalities.getRepr(l); li.l != l) {  // literal is not its own canonical representative
+      if (plogger) proofBuffer << aux::abs(coefs[v]) << " " << li.id << " * + ";
+      addLhs(aux::abs(coefs[v]), li.l);
+      coefs[v] = 0;
+    }
+  }
+}
+
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::hasNoZeroes() const {
   return std::all_of(vars.cbegin(), vars.cend(), [&](Var v) { return coefs[v] != 0; });
@@ -874,8 +891,9 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
 }
 
 // NOTE: only equivalence preserving operations!
-void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur,
-                                 bool sortFirst) {
+void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int>& pos, Equalities& equalities,
+                                 const Heuristic& heur, bool sortFirst) {
+  removeEqualities(equalities);
   removeUnitsAndZeroes(level, pos);
   assert(sortFirst || isSortedInDecreasingCoefOrder());  // NOTE: check this only after removing units and zeroes
   saturate(true, !sortFirst);

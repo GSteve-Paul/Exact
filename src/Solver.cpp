@@ -448,7 +448,7 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
                              stats.LEARNTIME);  // NOTE: takes care of inconsistency
   if (res == ID_Unsat) return State::UNSAT;
   backjumpTo(0);
-  lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true);
+  lastCore->postProcess(getLevel(), getPos(), getEqualities(), getHeuristic(), true);
   if (!lastCore->hasNegativeSlack(assumptions)) {  // apparently unit clauses were propagated during learnConstraint
     lastCore.makeNull();
   }
@@ -566,7 +566,7 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   backjumpTo(assertionLevel);
   assert(!learned->hasNegativeSlack(level));
   if (isAsserting) learned->heuristicWeakening(level, position);
-  learned->postProcess(getLevel(), getPos(), getHeuristic(), false);
+  learned->postProcess(getLevel(), getPos(), getEqualities(), getHeuristic(), false);
   assert(learned->isSaturated());
   if (learned->isTautology()) {
     return ID_Undef;
@@ -627,7 +627,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
         input = logger->logAssumption(ce);
     }
   }
-  ce->postProcess(getLevel(), getPos(), getHeuristic(), true);
+  ce->postProcess(getLevel(), getPos(), getEqualities(), getHeuristic(), true);
   if (ce->isTautology()) {
     return {input, ID_Undef};  // already satisfied.
   }

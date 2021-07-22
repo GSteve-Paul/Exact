@@ -58,6 +58,7 @@ enum class AssertionStatus { NONASSERTING, ASSERTING, FALSIFIED };
 struct ConstraintAllocator;
 class Solver;
 class Heuristic;
+class Equalities;
 
 struct ConstrExpSuper {
   // protected:
@@ -85,7 +86,8 @@ struct ConstrExpSuper {
   bool hasNoUnits(const IntMap<int>& level) const;
   bool isUnitConstraint() const;
   // NOTE: only equivalence preserving operations!
-  void postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
+  void postProcess(const IntMap<int>& level, const std::vector<int>& pos, Equalities& equalities, const Heuristic& heur,
+                   bool sortFirst);
 
   virtual ~ConstrExpSuper() = default;
 
@@ -126,6 +128,7 @@ struct ConstrExpSuper {
   virtual void removeUnitsAndZeroes(const IntMap<int>& level, const std::vector<int>& pos) = 0;
   virtual void removeZeroes() = 0;
   virtual bool hasNoZeroes() const = 0;
+  virtual void removeEqualities(Equalities& equalities) = 0;
 
   virtual void saturate(const std::vector<Var>& vs, bool check, bool sorted) = 0;
   virtual void saturate(bool check, bool sorted) = 0;
@@ -273,6 +276,8 @@ struct ConstrExp final : public ConstrExpSuper {
   // @post: mutates order of vars
   void removeZeroes();
   bool hasNoZeroes() const;
+  // @post: preserves order of vars
+  void removeEqualities(Equalities& equalities);
 
   // @post: preserves order of vars
   void saturate(const std::vector<Var>& vs, bool check, bool sorted);
