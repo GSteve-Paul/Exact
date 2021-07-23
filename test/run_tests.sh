@@ -61,7 +61,7 @@ echo ""
 
 for j in "${arr_dec[@]}"; do
     formula="$(cut -d'*' -f1 <<<$j)"
-    logfile="$logfolder/$formula"
+    logfile="$logfolder/simple/$formula"
     mkdir -p `dirname $logfile`
     echo -n "" > $logfile.proof
     echo -n "" > $logfile.formula
@@ -92,7 +92,7 @@ echo ""
 
 for j in "${arr_dec[@]}"; do
     formula="$(cut -d'*' -f1 <<<$j)"
-    logfile="$logfolder/$formula"
+    logfile="$logfolder/arbitrary/$formula"
     mkdir -p `dirname $logfile`
     echo -n "" > $logfile.proof
     echo -n "" > $logfile.formula
@@ -161,7 +161,7 @@ for idx in "${!arr_lazy[@]}"; do
     echo ""
     for j in "${arr_opt[@]}"; do
         formula="$(cut -d'*' -f1 <<<$j)"
-        logfile="$logfolder/$formula"
+        logfile="$logfolder/$lazy/$formula"
         mkdir -p `dirname $logfile`
         echo -n "" > $logfile.proof
         echo -n "" > $logfile.formula
@@ -192,7 +192,7 @@ echo "########## no proofs ##########"
 echo ""
 for j in "${arr_opt[@]}"; do
     formula="$(cut -d'*' -f1 <<<$j)"
-    logfile="$logfolder/$formula"
+    logfile="$logfolder/noproofs/$formula"
     mkdir -p `dirname $logfile`
     echo -n "" > $logfile.proof
     echo -n "" > $logfile.formula
