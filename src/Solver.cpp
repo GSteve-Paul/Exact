@@ -94,7 +94,7 @@ void Solver::init() {
   cePools.initializeLogging(logger);
   objective->stopLogging();
   nconfl_to_restart = options.lubyMult.get();
-  nconfl_to_reduce = 100;
+  nconfl_to_reduce = 1000;
 }
 
 // ---------------------------------------------------------------------
