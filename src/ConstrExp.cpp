@@ -580,7 +580,7 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities) {
     Var v = vars[i];
     Lit l = getLit(v);
     if (l == 0) continue;
-    if (LitID repr = equalities.getRepr(l); repr.l != l) {  // literal is not its own canonical representative
+    if (const Repr& repr = equalities.getRepr(l); repr.l != l) {  // literal is not its own canonical representative
       SMALL mult = aux::abs(coefs[v]);
       if (plogger) proofBuffer << repr.id << " " << mult << " * + ";
       addLhs(mult, -l);

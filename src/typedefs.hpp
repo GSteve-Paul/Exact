@@ -130,6 +130,7 @@ enum class Origin {
   PROBING,        // probing unit literal
   DETECTEDAMO,    // detected cardinality constraint
   REDUCED,        // reduced constraint
+  EQUALITY,       // equality enforcing constraint
 };
 
 inline bool isNonImplied(Origin o) {
@@ -137,14 +138,8 @@ inline bool isNonImplied(Origin o) {
 }
 inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
 inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED; }
-inline bool isInput(Origin o) {
-  return isNonImplied(o) || isExternal(o) || o == Origin::PURE || o == Origin::HARDENEDBOUND;
-}
-// inline bool isLearned(Origin o) {
-//  return o == Origin::LEARNED || o == Origin::FARKAS || o == Origin::DUAL || o == Origin::GOMORY ||
-//         o == Origin::REDUCED;
-//}
-inline bool isLearned(Origin o) { return o >= Origin::LEARNED; }
+inline bool isInput(Origin o) { return o < Origin::LEARNED; }
+inline bool isLearned(Origin o) { return !isInput(o); }
 inline bool usedInTabu(Origin o) { return isNonImplied(o) || o == Origin::UPPERBOUND; }
 
 template <typename SMALL, typename LARGE>

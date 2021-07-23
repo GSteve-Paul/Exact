@@ -15,18 +15,28 @@ See the file LICENSE or run with the flag --license=MIT.
 
 namespace rs {
 
-struct LitID {
+class Solver;
+
+struct Repr {
   Lit l;
   ID id;
+  std::vector<Lit> equals;
 };
 
 class Equalities {  // a union-find data structure
-  IntMap<LitID> canonical;
+  IntMap<Repr> canonical;
+  Solver& solver;
+
+  int nextTrailPos = 0;
 
  public:
-  LitID getRepr(Lit a);      // Find
-  void merge(Lit a, Lit b);  // Union
+  Equalities(Solver& s) : solver(s) {}
+  const Repr& getRepr(Lit a);  // Find
+  void merge(Lit a, Lit b);    // Union
   void setNbVars(int n);
+
+  State propagate();
+  void notifyBackjump(int newTrailSize);
 };
 
 }  // namespace rs

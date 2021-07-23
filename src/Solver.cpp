@@ -49,7 +49,7 @@ namespace rs {
 // ---------------------------------------------------------------------
 // Initialization
 
-Solver::Solver() : n(0), orig_n(0), assumptions_lim({0}), nconfl_to_reduce(0), nconfl_to_restart(0) {
+Solver::Solver() : n(0), orig_n(0), assumptions_lim({0}), equalities(*this), nconfl_to_reduce(0), nconfl_to_restart(0) {
   ca.capacity(1024 * 1024);  // 4MB
   objective = cePools.takeArb();
 }
@@ -153,6 +153,7 @@ void Solver::undoOne(bool updateHeur) {
       assumptions_lim.pop_back();
     }
   }
+  equalities.notifyBackjump(trail.size());
 }
 
 void Solver::backjumpTo(int lvl, bool updateHeur) {
@@ -177,9 +178,12 @@ State Solver::probe(Lit l) {
   assert(isUnknown(getPos(), l));
   ++stats.NPROBINGS;
   decide(l);
-  CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, stats.PROPTIME);
-  if (confl) {
-    CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, stats.CATIME);
+  std::pair<CeSuper, State> result =
+      aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagation(); }, stats.PROPTIME);
+  if (result.second == State::UNSAT) {
+    return State::UNSAT;
+  } else if (result.second == State::FAIL) {
+    CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(result.first); }, stats.CATIME);
     ID res = aux::timeCall<ID>([&] { return learnConstraint(analyzed, Origin::LEARNED); }, stats.LEARNTIME);
     return res == ID_Unsat ? State::UNSAT : State::FAIL;
   }
@@ -191,57 +195,60 @@ State Solver::probe(Lit l) {
  * Unit propagation with watched literals.
  * @post: all watches up to trail[qhead] have been propagated
  */
-CeSuper Solver::runPropagation() {
+std::pair<CeSuper, State> Solver::runPropagation() {
   while (qhead < (int)trail.size()) {
-    Lit p = trail[qhead++];
-    std::vector<Watch>& ws = adj[-p];
-    float prevStrength = std::numeric_limits<float>::max();
-    int prevLBD = 0;
-    for (int it_ws = 0; it_ws < (int)ws.size(); ++it_ws) {
-      int idx = ws[it_ws].idx;
-      if (idx < 0 && isTrue(level, idx + INF)) {
-        assert(dynamic_cast<Clause*>(&(ca[ws[it_ws].cref])) != nullptr);
-        continue;
-      }  // blocked literal check
-      CRef cr = ws[it_ws].cref;
-      WatchStatus wstat = checkForPropagation(cr, ws[it_ws].idx, -p);
-      if (wstat == WatchStatus::DROPWATCH) {
-        aux::swapErase(ws, it_ws--);
-      } else if (wstat == WatchStatus::CONFLICTING) {  // clean up current level and stop propagation
-        ++stats.NTRAILPOPS;
-        for (int i = 0; i <= it_ws; ++i) {
-          const Watch& w = ws[i];
-          if (w.idx >= INF) ca[w.cref].undoFalsified(w.idx);
+    while (qhead < (int)trail.size()) {
+      Lit p = trail[qhead++];
+      std::vector<Watch>& ws = adj[-p];
+      float prevStrength = std::numeric_limits<float>::max();
+      int prevLBD = 0;
+      for (int it_ws = 0; it_ws < (int)ws.size(); ++it_ws) {
+        int idx = ws[it_ws].idx;
+        if (idx < 0 && isTrue(level, idx + INF)) {
+          assert(dynamic_cast<Clause*>(&(ca[ws[it_ws].cref])) != nullptr);
+          continue;
+        }  // blocked literal check
+        CRef cr = ws[it_ws].cref;
+        WatchStatus wstat = checkForPropagation(cr, ws[it_ws].idx, -p);
+        if (wstat == WatchStatus::DROPWATCH) {
+          aux::swapErase(ws, it_ws--);
+        } else if (wstat == WatchStatus::CONFLICTING) {  // clean up current level and stop propagation
+          ++stats.NTRAILPOPS;
+          for (int i = 0; i <= it_ws; ++i) {
+            const Watch& w = ws[i];
+            if (w.idx >= INF) ca[w.cref].undoFalsified(w.idx);
+          }
+          --qhead;
+          Constr& c = ca[cr];
+          CeSuper result = c.toExpanded(cePools);
+          c.decreaseLBD(result->getLBD(level));
+          c.fixEncountered();
+          return {result, State::FAIL};
+        } else {
+          assert(wstat == WatchStatus::KEEPWATCH);
+          Constr& c = ca[cr];
+          float cStrength = c.strength;
+          int cLBD = c.lbd();
+          if (cStrength > prevStrength || (cStrength == prevStrength && cLBD < prevLBD)) {
+            assert(it_ws > 0);
+            std::swap(ws[it_ws], ws[it_ws - 1]);
+          }
+          prevStrength = cStrength;
+          prevLBD = cLBD;
         }
-        --qhead;
-        Constr& c = ca[cr];
-        CeSuper result = c.toExpanded(cePools);
-        c.decreaseLBD(result->getLBD(level));
-        c.fixEncountered();
-        return result;
-      } else {
-        assert(wstat == WatchStatus::KEEPWATCH);
-        Constr& c = ca[cr];
-        float cStrength = c.strength;
-        int cLBD = c.lbd();
-        if (cStrength > prevStrength || (cStrength == prevStrength && cLBD < prevLBD)) {
-          assert(it_ws > 0);
-          std::swap(ws[it_ws], ws[it_ws - 1]);
-        }
-        prevStrength = cStrength;
-        prevLBD = cLBD;
       }
     }
+    if (equalities.propagate() == State::UNSAT) return {CeNull(), State::UNSAT};
   }
   assert(qhead == (int)trail.size());
-  return CeNull();
+  return {CeNull(), State::SUCCESS};
 }
 
 std::pair<CeSuper, State> Solver::runPropagationWithLP() {
   while (qhead < (int)trail.size()) {
-    CeSuper result = runPropagation();
-    if (result) {
-      return {result, State::FAIL};
+    std::pair<CeSuper, State> result = runPropagation();
+    if (result.second != State::SUCCESS) {
+      return result;
     } else if (lpSolver) {
       LpStatus state = aux::timeCall<LpStatus>([&] { return lpSolver->checkFeasibility(false); }, stats.LPTOTALTIME);
       if (state == LpStatus::UNSAT) return {CeNull(), State::UNSAT};
@@ -529,8 +536,13 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   stats.NCONSREDUCED += orig == Origin::REDUCED;
 
   if (decisionLevel() == 0) {
-    CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, stats.PROPTIME);
-    if (confl) {
+    std::pair<CeSuper, State> result =
+        aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagation(); }, stats.PROPTIME);
+    if (result.second == State::UNSAT) {
+      return CRef_Unsat;
+    } else if (result.second == State::FAIL) {
+      CeSuper& confl = result.first;
+      assert(confl);
       assert(confl->hasNegativeSlack(getLevel()));
       if (logger) {
         confl->removeUnitsAndZeroes(level, position);
@@ -553,8 +565,9 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   assert(isLearned(orig));
   CeSuper learned = ce->clone(cePools);
   learned->orig = orig;
-  learned->removeEqualities(getEqualities());
+  if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities());
   learned->removeUnitsAndZeroes(getLevel(), getPos());
+  if (learned->isTautology()) return ID_Undef;
   learned->saturateAndFixOverflow(getLevel(), options.bitsLearned.get(), options.bitsLearned.get(), 0);
   learned->sortInDecreasingCoefOrder(getHeuristic());
   auto [assertionLevel, isAsserting] = learned->getAssertionStatus(level, position);
@@ -600,12 +613,24 @@ ID Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
     unit->resetBuffer(id);
   }
   CRef cr = attachConstraint(unit, false);
-  if (cr == CRef_Unsat) return ID_Unsat;
+  if (cr == CRef_Unsat) {
+    stats.LEARNTIME += aux::cpuTime() - start;
+    return ID_Unsat;
+  }
   Constr& c = ca[cr];
   c.decreaseLBD(1);
 
   stats.LEARNTIME += aux::cpuTime() - start;
   return c.id;
+}
+
+ID Solver::learnClause(const std::vector<Lit>& lits, Origin orig, ID id) {
+  ConstrSimple32 clause{{}, 1, orig, std::to_string(id) + " "};
+  clause.terms.reserve(lits.size());
+  for (Lit l : lits) {
+    clause.terms.push_back({1, l});
+  }
+  return aux::timeCall<ID>([&] { return learnConstraint(clause.toExpanded(cePools), orig); }, stats.LEARNTIME);
 }
 
 std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
@@ -970,11 +995,11 @@ void Solver::derivePureLits() {
   assert(decisionLevel() == 0);
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {  // NOTE: core-guided variables will not be eliminated
     quit::checkInterrupt();
-    if (l != 0 && isUnknown(getPos(), l) && !objective->hasLit(l) && lit2cons[-l].empty()) {
-      [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
-      assert(id != ID_Unsat);
-      removeSatisfiedNonImpliedsAtRoot();
-    }
+    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || equalities.getRepr(l).l != l || !lit2cons[-l].empty())
+      continue;
+    [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
+    assert(id != ID_Unsat);
+    removeSatisfiedNonImpliedsAtRoot();
   }
 }
 
@@ -984,7 +1009,7 @@ void Solver::dominanceBreaking() {
   IntSet& intersection = isPool.take();
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {
     assert(saturating.isEmpty());
-    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l)) continue;
+    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || equalities.getRepr(l).l != l) continue;
     std::unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
       [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
@@ -1077,14 +1102,15 @@ SolveState Solver::solve() {
     if (runLP) {
       auto [cnfl, state] =
           aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagationWithLP(); }, stats.PROPTIME);
-      if (state == State::UNSAT) {
-        return SolveState::UNSAT;
-      } else {
-        confl = cnfl;
-      }
+      if (state == State::UNSAT) return SolveState::UNSAT;
+      confl = cnfl;
     } else {
-      confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, stats.PROPTIME);
+      std::pair<CeSuper, State> result =
+          aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagation(); }, stats.PROPTIME);
+      if (result.second == State::UNSAT) return SolveState::UNSAT;
+      confl = result.first;
     }
+
     runLP = (bool)confl;
     if (confl) {
       assert(confl->hasNegativeSlack(level));

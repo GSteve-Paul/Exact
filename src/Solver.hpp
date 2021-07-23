@@ -69,6 +69,7 @@ class Solver {
   friend struct CountingSafe;
   template <typename CF, typename DG>
   friend struct WatchedSafe;
+  friend class Equalities;
 
   // ---------------------------------------------------------------------
   // Members
@@ -198,9 +199,10 @@ class Solver {
   /**
    * Unit propagation with watched literals.
    * @post: all constraints have been checked for propagation under trail[0..qhead[
-   * @return: true if inconsistency is detected, false otherwise. The inconsistency is stored in confl->
+   * @return: true if inconsistency is detected, false otherwise. The inconsistency is stored in confl
    */
-  [[nodiscard]] CeSuper runPropagation();
+  // TODO: don't return actual conflict, but analyze it internally? Won't work because core extraction is necessary
+  [[nodiscard]] std::pair<CeSuper, State> runPropagation();
   [[nodiscard]] std::pair<CeSuper, State> runPropagationWithLP();
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p);
 
@@ -217,7 +219,8 @@ class Solver {
   [[nodiscard]] CRef attachConstraint(const CeSuper& constraint,
                                       bool locked);  // returns CRef_Unsat in case of inconsistency
   [[nodiscard]] ID learnConstraint(const CeSuper& c, Origin orig);
-  [[nodiscard]] ID learnUnitConstraint(Lit l, Origin orig, ID id = ID_Undef);
+  [[nodiscard]] ID learnUnitConstraint(Lit l, Origin orig, ID id);
+  [[nodiscard]] ID learnClause(const std::vector<Lit>& lits, Origin orig, ID id);
   std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
   void removeConstraint(const CRef& cr, bool override = false);
 

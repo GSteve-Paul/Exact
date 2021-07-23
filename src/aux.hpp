@@ -184,6 +184,11 @@ T max(const std::vector<T>& v) {
 }
 
 template <typename T>
+void appendTo(std::vector<T>& x, const std::vector<T>& y) {
+  x.insert(x.end(), y.begin(), y.end());
+}
+
+template <typename T>
 int sgn(const T& x) {
   return (0 < x) - (x < 0);
 }
