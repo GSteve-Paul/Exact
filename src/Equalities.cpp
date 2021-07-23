@@ -18,10 +18,10 @@ const Repr& Equalities::getRepr(Lit a) {
   Repr& repr = canonical[a];
   assert(repr.l != 0);
   if (a == repr.l || canonical[repr.l].l == repr.l) return repr;
-  const Repr& reprChild = getRepr(repr.l);
-  repr.l = reprChild.l;
-  assert(toVar(reprChild.l) < toVar(repr.l));
   assert(toVar(repr.l) < toVar(a));
+  const Repr& reprChild = getRepr(repr.l);
+  assert(toVar(reprChild.l) < toVar(repr.l));
+  repr.l = reprChild.l;
   if (logger) {
     assert(reprChild.id != ID_Trivial);  // as we know that canonical[repr.l]!=repr.l
     repr.id = logger->logResolvent(repr.id, reprChild.id);
@@ -65,6 +65,8 @@ void Equalities::merge(Lit a, Lit b) {
   }
 }
 
+bool Equalities::isCanonical(Lit l) { return getRepr(l).l == l; }
+
 void Equalities::setNbVars(int nvars) {
   int oldNvars = canonical.reserved() / 2;
   canonical.resize(nvars, {0, ID_Trivial, {}});
@@ -78,22 +80,25 @@ void Equalities::setNbVars(int nvars) {
 State Equalities::propagate() {
   for (; nextTrailPos < (int)solver.trail.size(); ++nextTrailPos) {
     Lit l = solver.trail[nextTrailPos];
+    assert(isTrue(solver.getLevel(), l));
     const Repr& repr = getRepr(l);
     if (!isTrue(solver.getLevel(), repr.l)) {
       if (solver.learnClause({-l, repr.l}, Origin::EQUALITY, repr.id) == ID_Unsat) return State::UNSAT;
       return State::FAIL;
     }
+    assert(solver.getLevel()[l] == solver.getLevel()[repr.l]);
     for (Lit ll : repr.equals) {
       if (!isTrue(solver.getLevel(), ll)) {
         assert(getRepr(ll).l == l);
         if (solver.learnClause({-l, ll}, Origin::EQUALITY, getRepr(-ll).id) == ID_Unsat) return State::UNSAT;
       }
+      assert(solver.getLevel()[l] == solver.getLevel()[ll]);
       return State::FAIL;
     }
   }
   return State::SUCCESS;
 }
 
-void Equalities::notifyBackjump(int newTrailSize) { nextTrailPos = std::max(nextTrailPos, newTrailSize); }
+void Equalities::notifyBackjump(int newTrailSize) { nextTrailPos = std::min(nextTrailPos, newTrailSize); }
 
 }  // namespace rs

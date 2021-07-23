@@ -31,9 +31,11 @@ class Equalities {  // a union-find data structure
 
  public:
   Equalities(Solver& s) : solver(s) {}
+  void setNbVars(int n);
+
   const Repr& getRepr(Lit a);  // Find
   void merge(Lit a, Lit b);    // Union
-  void setNbVars(int n);
+  bool isCanonical(Lit l);
 
   State propagate();
   void notifyBackjump(int newTrailSize);

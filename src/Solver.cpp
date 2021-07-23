@@ -241,6 +241,10 @@ std::pair<CeSuper, State> Solver::runPropagation() {
     if (equalities.propagate() == State::UNSAT) return {CeNull(), State::UNSAT};
   }
   assert(qhead == (int)trail.size());
+  for (Var v = 1; v < getNbVars(); ++v) {
+    assert(isTrue(getLevel(), v) == isTrue(getLevel(), equalities.getRepr(v).l));
+    assert(isTrue(getLevel(), -v) == isTrue(getLevel(), equalities.getRepr(-v).l));
+  }
   return {CeNull(), State::SUCCESS};
 }
 
@@ -634,7 +638,7 @@ ID Solver::learnClause(const std::vector<Lit>& lits, Origin orig, ID id) {
 }
 
 std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
-  assert(isInput(ce->orig) || ce->orig == Origin::DETECTEDAMO);
+  assert(isInput(ce->orig));
   assert(decisionLevel() == 0);
   ID input = ID_Undef;
   if (logger) {
@@ -861,6 +865,34 @@ State Solver::reduceDB() {
     removeConstraint(learnts[i]);
   }
 
+  int currentConstraints = constraints.size();
+  for (int i = 0; i < currentConstraints; ++i) {
+    CRef cr = constraints[i];
+    Constr& c = ca[cr];
+    if (c.isMarkedForDelete() || external.count(c.id)) continue;
+    bool ok = true;
+    for (int i = 0; ok && i < (int)c.size; ++i) {
+      Lit l = c.lit(i);  // TODO: more efficient loop
+      ok = ok && !isKnown(getPos(), l) && (c.getOrigin() == Origin::EQUALITY || equalities.isCanonical(l));
+    }
+    if (ok) continue;
+    ++stats.NCONSREADDED;
+    CeSuper ce = c.toExpanded(cePools);
+    //    std::cout << "OLD " << ce << std::endl;
+    bool isLocked = c.isLocked();
+    bool lbd = c.lbd();
+    removeConstraint(cr, true);
+    ce->removeEqualities(getEqualities());
+    ce->postProcess(getLevel(), getPos(), getHeuristic(), true);
+    if (ce->isTautology()) continue;
+    CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates c!
+    if (crnew == CRef_Unsat) return State::UNSAT;
+    if (crnew == CRef_Undef) continue;
+    //    std::cout << "NEW " << ca[crnew] << std::endl;
+    ca[crnew].decreaseLBD(lbd);
+  }
+  // TODO: update reformed objective?
+
   for (Lit l = -n; l <= n; ++l) {
     for (int i = 0; i < (int)adj[l].size(); ++i) {
       if (ca[adj[l][i].cref].isMarkedForDelete()) {
@@ -873,6 +905,7 @@ State Solver::reduceDB() {
   long long reduced = 0;
   for (size_t i = limit; i < learnts.size(); ++i) {
     Constr& c = ca[learnts[i]];
+    assert(c.isMarkedForDelete());
     if (!c.isClauseOrCard()) {
       ++reduced;
       CeSuper ce = c.toExpanded(cePools);
@@ -896,7 +929,7 @@ State Solver::reduceDB() {
     }
   }
   constraints.resize(j);
-  if ((double)ca.wasted / (double)ca.at > 0.2) {
+  if ((double)ca.wasted / (double)ca.at > 0.2) {  // TODO: ca.wasted no longer needed
     aux::timeCallVoid([&] { garbage_collect(); }, stats.GCTIME);
   }
   return State::SUCCESS;
@@ -995,7 +1028,7 @@ void Solver::derivePureLits() {
   assert(decisionLevel() == 0);
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {  // NOTE: core-guided variables will not be eliminated
     quit::checkInterrupt();
-    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || equalities.getRepr(l).l != l || !lit2cons[-l].empty())
+    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || !equalities.isCanonical(l) || !lit2cons[-l].empty())
       continue;
     [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
     assert(id != ID_Unsat);
@@ -1009,7 +1042,7 @@ void Solver::dominanceBreaking() {
   IntSet& intersection = isPool.take();
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {
     assert(saturating.isEmpty());
-    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || equalities.getRepr(l).l != l) continue;
+    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || !equalities.isCanonical(l)) continue;
     std::unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
       [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);

@@ -185,7 +185,7 @@ T max(const std::vector<T>& v) {
 
 template <typename T>
 void appendTo(std::vector<T>& x, const std::vector<T>& y) {
-  x.insert(x.end(), y.begin(), y.end());
+  x.insert(x.end(), y.cbegin(), y.cend());
 }
 
 template <typename T>

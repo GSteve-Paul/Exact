@@ -95,7 +95,7 @@ void LazyVar::addVar(Var v, bool reified) {
 
 void LazyVar::addAtLeastConstraint(bool reified) {
   assert(atLeast.terms.back().l == currentVar);
-  solver.dropExternal(atLeastID, !reified, false);
+  solver.dropExternal(atLeastID, !reified, false);  // TODO: should non-reified constraints be force deleted?
   solver.addConstraintUnchecked(atLeast, Origin::COREGUIDED);
 }
 

@@ -183,6 +183,7 @@ struct Stats {
   Stat NHARDENINGS{0, "hardened literals"};
   Stat NPURELITS{0, "pure literals"};
   Stat NSATISFIEDSREMOVED{0, "constraints satisfied at root"};
+  Stat NCONSREADDED{0, "constraints simplified during database reduction"};
 
   Stat NPROBINGLITS{0, "unit lits due to probing"};
   Stat NPROBINGEQS{0, "equalities due to probing"};
@@ -361,6 +362,7 @@ struct Stats {
       &NHARDENINGS,
       &NPURELITS,
       &NSATISFIEDSREMOVED,
+      &NCONSREADDED,
       &NPROBINGLITS,
       &NPROBINGEQS,
       &NPROBINGS,
