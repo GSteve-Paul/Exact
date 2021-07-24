@@ -216,7 +216,7 @@ void wcnf_read(std::istream& in, Solver& solver) {
           Var aux = solver.getNbVars() + 1;
           solver.setNbVars(aux, true);  // increases n to n+1
           solver.objective->addLhs(weight, aux);
-          if (options.test) {
+          if (options.test) {                         // TODO: decide on which to use
             for (const Term<int>& t : input.terms) {  // reverse implication as binary clauses
               solver.addConstraintChecked(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
             }

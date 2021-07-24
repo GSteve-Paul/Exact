@@ -30,6 +30,7 @@ const Repr& Equalities::getRepr(Lit a) {
 }
 
 void Equalities::merge(Lit a, Lit b) {
+  nextTrailPos = 0;
   const Repr& reprA = getRepr(a);
   const Repr& reprB = getRepr(b);
   const Repr& reprAneg = getRepr(-a);
@@ -48,6 +49,8 @@ void Equalities::merge(Lit a, Lit b) {
   Repr& reprAlNegRepr = canonical[-reprAl];
   Repr& reprBlRepr = canonical[reprBl];
   Repr& reprBlNegRepr = canonical[-reprBl];
+  assert(reprAlRepr.equals.size() == reprAlNegRepr.equals.size());
+  assert(reprBlRepr.equals.size() == reprBlNegRepr.equals.size());
   if (toVar(reprBl) < toVar(reprAl)) {
     reprBlRepr.equals.push_back(reprAl);
     reprBlNegRepr.equals.push_back(-reprAl);
@@ -82,23 +85,28 @@ State Equalities::propagate() {
     Lit l = solver.trail[nextTrailPos];
     assert(isTrue(solver.getLevel(), l));
     const Repr& repr = getRepr(l);
+    bool added = false;
     if (!isTrue(solver.getLevel(), repr.l)) {
       if (solver.learnClause({-l, repr.l}, Origin::EQUALITY, repr.id) == ID_Unsat) return State::UNSAT;
-      return State::FAIL;
+      added = true;
     }
     assert(solver.getLevel()[l] == solver.getLevel()[repr.l]);
     for (Lit ll : repr.equals) {
       if (!isTrue(solver.getLevel(), ll)) {
         assert(getRepr(ll).l == l);
         if (solver.learnClause({-l, ll}, Origin::EQUALITY, getRepr(-ll).id) == ID_Unsat) return State::UNSAT;
+        added = true;
       }
       assert(solver.getLevel()[l] == solver.getLevel()[ll]);
-      return State::FAIL;
     }
+    if (added) return State::FAIL;
   }
   return State::SUCCESS;
 }
 
-void Equalities::notifyBackjump(int newTrailSize) { nextTrailPos = std::min(nextTrailPos, newTrailSize); }
+void Equalities::notifyBackjump() {
+  nextTrailPos =
+      std::min(nextTrailPos, solver.decisionLevel() == 0 ? (int)solver.trail.size() : solver.trail_lim.back());
+}
 
 }  // namespace rs

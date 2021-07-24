@@ -38,7 +38,7 @@ class Equalities {  // a union-find data structure
   bool isCanonical(Lit l);
 
   State propagate();
-  void notifyBackjump(int newTrailSize);
+  void notifyBackjump();
 };
 
 }  // namespace rs

@@ -153,7 +153,7 @@ void Solver::undoOne(bool updateHeur) {
       assumptions_lim.pop_back();
     }
   }
-  equalities.notifyBackjump(trail.size());
+  equalities.notifyBackjump();
 }
 
 void Solver::backjumpTo(int lvl, bool updateHeur) {
@@ -238,7 +238,9 @@ std::pair<CeSuper, State> Solver::runPropagation() {
         }
       }
     }
-    if (equalities.propagate() == State::UNSAT) return {CeNull(), State::UNSAT};
+    State res = equalities.propagate();  // NOTE: calls runPropagation recursively when adding constraints at level 0...
+    if (res == State::UNSAT) return {CeNull(), State::UNSAT};
+    assert(decisionLevel() == 0 || qhead < (int)trail.size() || res == State::SUCCESS);
   }
   assert(qhead == (int)trail.size());
   for (Var v = 1; v < getNbVars(); ++v) {
@@ -878,7 +880,6 @@ State Solver::reduceDB() {
     if (ok) continue;
     ++stats.NCONSREADDED;
     CeSuper ce = c.toExpanded(cePools);
-    //    std::cout << "OLD " << ce << std::endl;
     bool isLocked = c.isLocked();
     bool lbd = c.lbd();
     removeConstraint(cr, true);
@@ -888,10 +889,8 @@ State Solver::reduceDB() {
     CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates c!
     if (crnew == CRef_Unsat) return State::UNSAT;
     if (crnew == CRef_Undef) continue;
-    //    std::cout << "NEW " << ca[crnew] << std::endl;
     ca[crnew].decreaseLBD(lbd);
   }
-  // TODO: update reformed objective?
 
   for (Lit l = -n; l <= n; ++l) {
     for (int i = 0; i < (int)adj[l].size(); ++i) {
@@ -1153,7 +1152,7 @@ SolveState Solver::solve() {
       long long nconfl = static_cast<long long>(stats.NCONFL.z);
       if (nconfl % 1000 == 0 && options.verbosity.get() > 0) {
         std::cout << "c " << nconfl << " confls " << constraints.size() << " constrs "
-                  << getNbVars() - (long long)stats.NUNITS.z << " vars" << std::endl;
+                  << getNbVars() - (long long)(stats.NUNITS.z + stats.NPROBINGEQS.z) << " vars" << std::endl;
         if (options.verbosity.get() > 2) {
           // memory usage
           std::cout << "c total constraint space: " << ca.cap * 4 / 1024. / 1024. << "MB" << std::endl;
