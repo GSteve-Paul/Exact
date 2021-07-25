@@ -16,5 +16,6 @@ declare -a arr_configs=(
 
 for idx in "${!arr_configs[@]}"; do
     config=${arr_configs[$idx]}
+    mkdir -p `dirname $logfolder/$config.txt`
     $SCRIPTPATH/run_tests_$config.sh $1 $2 $3 $4 &> $logfolder/$config.txt &
 done
