@@ -186,8 +186,9 @@ State Solver::probe(Lit l) {
     CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(result.first); }, stats.CATIME);
     ID res = aux::timeCall<ID>([&] { return learnConstraint(analyzed, Origin::LEARNED); }, stats.LEARNTIME);
     return res == ID_Unsat ? State::UNSAT : State::FAIL;
+  } else if (decisionLevel() == 0) {  // some missing propagation at level 0 could be made
+    return State::FAIL;
   }
-  assert(decisionLevel() > 0);
   return State::SUCCESS;
 }
 
@@ -241,7 +242,7 @@ std::pair<CeSuper, State> Solver::runDatabasePropagation() {
 }
 
 std::pair<CeSuper, State> Solver::runPropagation() {
-  while (qhead < (int)trail.size()) {
+  while (qhead < (int)trail.size() || equalities.mayPropagate()) {
     std::pair<CeSuper, State> result = runDatabasePropagation();
     if (result.second != State::SUCCESS) return result;
     State res = equalities.propagate();
@@ -257,7 +258,7 @@ std::pair<CeSuper, State> Solver::runPropagation() {
 }
 
 std::pair<CeSuper, State> Solver::runPropagationWithLP() {
-  while (qhead < (int)trail.size()) {
+  while (qhead < (int)trail.size() || equalities.mayPropagate()) {
     std::pair<CeSuper, State> result = runPropagation();
     if (result.second != State::SUCCESS) return result;
     if (lpSolver) {

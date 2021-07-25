@@ -109,4 +109,6 @@ void Equalities::notifyBackjump() {
       std::min(nextTrailPos, solver.decisionLevel() == 0 ? (int)solver.trail.size() : solver.trail_lim.back());
 }
 
+bool Equalities::mayPropagate() const { return nextTrailPos < (int)solver.trail.size(); }
+
 }  // namespace rs

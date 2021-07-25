@@ -39,6 +39,7 @@ class Equalities {  // a union-find data structure
 
   State propagate();
   void notifyBackjump();
+  bool mayPropagate() const;
 };
 
 }  // namespace rs
