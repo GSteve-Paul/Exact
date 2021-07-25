@@ -202,6 +202,7 @@ class Solver {
    * @return: true if inconsistency is detected, false otherwise. The inconsistency is stored in confl
    */
   // TODO: don't return actual conflict, but analyze it internally? Won't work because core extraction is necessary
+  [[nodiscard]] std::pair<CeSuper, State> runDatabasePropagation();
   [[nodiscard]] std::pair<CeSuper, State> runPropagation();
   [[nodiscard]] std::pair<CeSuper, State> runPropagationWithLP();
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p);

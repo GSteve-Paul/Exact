@@ -195,50 +195,56 @@ State Solver::probe(Lit l) {
  * Unit propagation with watched literals.
  * @post: all watches up to trail[qhead] have been propagated
  */
-std::pair<CeSuper, State> Solver::runPropagation() {
+std::pair<CeSuper, State> Solver::runDatabasePropagation() {
   while (qhead < (int)trail.size()) {
-    while (qhead < (int)trail.size()) {
-      Lit p = trail[qhead++];
-      std::vector<Watch>& ws = adj[-p];
-      float prevStrength = std::numeric_limits<float>::max();
-      int prevLBD = 0;
-      for (int it_ws = 0; it_ws < (int)ws.size(); ++it_ws) {
-        int idx = ws[it_ws].idx;
-        if (idx < 0 && isTrue(level, idx + INF)) {
-          assert(dynamic_cast<Clause*>(&(ca[ws[it_ws].cref])) != nullptr);
-          continue;
-        }  // blocked literal check
-        CRef cr = ws[it_ws].cref;
-        WatchStatus wstat = checkForPropagation(cr, ws[it_ws].idx, -p);
-        if (wstat == WatchStatus::DROPWATCH) {
-          aux::swapErase(ws, it_ws--);
-        } else if (wstat == WatchStatus::CONFLICTING) {  // clean up current level and stop propagation
-          ++stats.NTRAILPOPS;
-          for (int i = 0; i <= it_ws; ++i) {
-            const Watch& w = ws[i];
-            if (w.idx >= INF) ca[w.cref].undoFalsified(w.idx);
-          }
-          --qhead;
-          Constr& c = ca[cr];
-          CeSuper result = c.toExpanded(cePools);
-          c.decreaseLBD(result->getLBD(level));
-          c.fixEncountered();
-          return {result, State::FAIL};
-        } else {
-          assert(wstat == WatchStatus::KEEPWATCH);
-          Constr& c = ca[cr];
-          float cStrength = c.strength;
-          int cLBD = c.lbd();
-          if (cStrength > prevStrength || (cStrength == prevStrength && cLBD < prevLBD)) {
-            assert(it_ws > 0);
-            std::swap(ws[it_ws], ws[it_ws - 1]);
-          }
-          prevStrength = cStrength;
-          prevLBD = cLBD;
+    Lit p = trail[qhead++];
+    std::vector<Watch>& ws = adj[-p];
+    float prevStrength = std::numeric_limits<float>::max();
+    int prevLBD = 0;
+    for (int it_ws = 0; it_ws < (int)ws.size(); ++it_ws) {
+      int idx = ws[it_ws].idx;
+      if (idx < 0 && isTrue(level, idx + INF)) {
+        assert(dynamic_cast<Clause*>(&(ca[ws[it_ws].cref])) != nullptr);
+        continue;
+      }  // blocked literal check
+      CRef cr = ws[it_ws].cref;
+      WatchStatus wstat = checkForPropagation(cr, ws[it_ws].idx, -p);
+      if (wstat == WatchStatus::DROPWATCH) {
+        aux::swapErase(ws, it_ws--);
+      } else if (wstat == WatchStatus::CONFLICTING) {  // clean up current level and stop propagation
+        ++stats.NTRAILPOPS;
+        for (int i = 0; i <= it_ws; ++i) {
+          const Watch& w = ws[i];
+          if (w.idx >= INF) ca[w.cref].undoFalsified(w.idx);
         }
+        --qhead;
+        Constr& c = ca[cr];
+        CeSuper result = c.toExpanded(cePools);
+        c.decreaseLBD(result->getLBD(level));
+        c.fixEncountered();
+        return {result, State::FAIL};
+      } else {
+        assert(wstat == WatchStatus::KEEPWATCH);
+        Constr& c = ca[cr];
+        float cStrength = c.strength;
+        int cLBD = c.lbd();
+        if (cStrength > prevStrength || (cStrength == prevStrength && cLBD < prevLBD)) {
+          assert(it_ws > 0);
+          std::swap(ws[it_ws], ws[it_ws - 1]);
+        }
+        prevStrength = cStrength;
+        prevLBD = cLBD;
       }
     }
-    State res = equalities.propagate();  // NOTE: calls runPropagation recursively when adding constraints at level 0...
+  }
+  return {CeNull(), State::SUCCESS};
+}
+
+std::pair<CeSuper, State> Solver::runPropagation() {
+  while (qhead < (int)trail.size()) {
+    std::pair<CeSuper, State> result = runDatabasePropagation();
+    if (result.second != State::SUCCESS) return result;
+    State res = equalities.propagate();
     if (res == State::UNSAT) return {CeNull(), State::UNSAT};
     assert(decisionLevel() == 0 || qhead < (int)trail.size() || res == State::SUCCESS);
   }
@@ -253,9 +259,8 @@ std::pair<CeSuper, State> Solver::runPropagation() {
 std::pair<CeSuper, State> Solver::runPropagationWithLP() {
   while (qhead < (int)trail.size()) {
     std::pair<CeSuper, State> result = runPropagation();
-    if (result.second != State::SUCCESS) {
-      return result;
-    } else if (lpSolver) {
+    if (result.second != State::SUCCESS) return result;
+    if (lpSolver) {
       LpStatus state = aux::timeCall<LpStatus>([&] { return lpSolver->checkFeasibility(false); }, stats.LPTOTALTIME);
       if (state == LpStatus::UNSAT) return {CeNull(), State::UNSAT};
       // NOTE: calling LP solver may increase the propagations on the trail due to added constraints
@@ -543,7 +548,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
 
   if (decisionLevel() == 0) {
     std::pair<CeSuper, State> result =
-        aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagation(); }, stats.PROPTIME);
+        aux::timeCall<std::pair<CeSuper, State>>([&] { return runDatabasePropagation(); }, stats.PROPTIME);
     if (result.second == State::UNSAT) {
       return CRef_Unsat;
     } else if (result.second == State::FAIL) {
@@ -871,13 +876,7 @@ State Solver::reduceDB() {
   for (int i = 0; i < currentConstraints; ++i) {
     CRef cr = constraints[i];
     Constr& c = ca[cr];
-    if (c.isMarkedForDelete() || external.count(c.id)) continue;
-    bool ok = true;
-    for (int i = 0; ok && i < (int)c.size; ++i) {
-      Lit l = c.lit(i);  // TODO: more efficient loop
-      ok = ok && !isKnown(getPos(), l) && (c.getOrigin() == Origin::EQUALITY || equalities.isCanonical(l));
-    }
-    if (ok) continue;
+    if (c.isMarkedForDelete() || external.count(c.id) || !c.canBeSimplified(level, equalities)) continue;
     ++stats.NCONSREADDED;
     CeSuper ce = c.toExpanded(cePools);
     bool isLocked = c.isLocked();
@@ -928,7 +927,7 @@ State Solver::reduceDB() {
     }
   }
   constraints.resize(j);
-  if ((double)ca.wasted / (double)ca.at > 0.2) {  // TODO: ca.wasted no longer needed
+  if ((double)ca.wasted / (double)ca.at > 0.2) {
     aux::timeCallVoid([&] { garbage_collect(); }, stats.GCTIME);
   }
   return State::SUCCESS;

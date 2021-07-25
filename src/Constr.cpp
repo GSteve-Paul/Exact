@@ -201,6 +201,15 @@ bool Clause::isSatisfiedAtRoot(const IntMap<int>& level) const {
   return false;
 }
 
+bool Clause::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+  bool isEquality = getOrigin() == Origin::EQUALITY;
+  for (int i = 0; i < (int)size; ++i) {
+    Lit l = data[i];
+    if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  return false;
+}
+
 void Clause::decreaseTabuSlack([[maybe_unused]] int idx) {
   assert(usedInTabu(getOrigin()));
   assert(tabuData != nullptr);
@@ -344,6 +353,15 @@ bool Cardinality::isSatisfiedAtRoot(const IntMap<int>& level) const {
   return eval >= 0;
 }
 
+bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+  bool isEquality = getOrigin() == Origin::EQUALITY;
+  for (int i = 0; i < (int)size; ++i) {
+    Lit l = data[i];
+    if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  return false;
+}
+
 void Cardinality::decreaseTabuSlack([[maybe_unused]] int idx) {
   assert(usedInTabu(getOrigin()));
   assert(tabuData != nullptr);
@@ -476,6 +494,16 @@ bool Counting<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
     if (isUnit(level, data[i].l)) eval += data[i].c;
   }
   return eval >= 0;
+}
+
+template <typename CF, typename DG>
+bool Counting<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+  bool isEquality = getOrigin() == Origin::EQUALITY;
+  for (int i = 0; i < (int)size; ++i) {
+    Lit l = data[i].l;
+    if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  return false;
 }
 
 template <typename CF, typename DG>
@@ -663,6 +691,16 @@ bool Watched<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
 }
 
 template <typename CF, typename DG>
+bool Watched<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+  bool isEquality = getOrigin() == Origin::EQUALITY;
+  for (int i = 0; i < (int)size; ++i) {
+    Lit l = data[i].l;
+    if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  return false;
+}
+
+template <typename CF, typename DG>
 void Watched<CF, DG>::decreaseTabuSlack(int idx) {
   assert(usedInTabu(getOrigin()));
   assert(tabuData != nullptr);
@@ -800,6 +838,16 @@ bool CountingSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
     if (isUnit(level, terms[i].l)) eval += terms[i].c;
   }
   return eval >= 0;
+}
+
+template <typename CF, typename DG>
+bool CountingSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+  bool isEquality = getOrigin() == Origin::EQUALITY;
+  for (int i = 0; i < (int)size; ++i) {
+    Lit l = terms[i].l;
+    if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  return false;
 }
 
 template <typename CF, typename DG>
@@ -987,6 +1035,16 @@ bool WatchedSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
     if (isUnit(level, terms[i].l)) eval += aux::abs(terms[i].c);
   }
   return eval >= 0;
+}
+
+template <typename CF, typename DG>
+bool WatchedSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+  bool isEquality = getOrigin() == Origin::EQUALITY;
+  for (int i = 0; i < (int)size; ++i) {
+    Lit l = terms[i].l;
+    if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  return false;
 }
 
 template <typename CF, typename DG>

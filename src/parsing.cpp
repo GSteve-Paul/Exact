@@ -216,20 +216,20 @@ void wcnf_read(std::istream& in, Solver& solver) {
           Var aux = solver.getNbVars() + 1;
           solver.setNbVars(aux, true);  // increases n to n+1
           solver.objective->addLhs(weight, aux);
-          if (options.test) {                         // TODO: decide on which to use
-            for (const Term<int>& t : input.terms) {  // reverse implication as binary clauses
-              solver.addConstraintChecked(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
-            }
-          } else {  // reverse implication as single constraint
-            ConstrSimple32 reverse;
-            reverse.rhs = input.size();
-            reverse.terms.reserve(input.size() + 1);
-            reverse.terms.push_back({input.size(), -aux});
-            for (const Term<int>& t : input.terms) {
-              reverse.terms.push_back({1, -t.l});
-            }
-            solver.addConstraintChecked(reverse, Origin::FORMULA);
+          // if (options.test) {
+          for (const Term<int>& t : input.terms) {  // reverse implication as binary clauses
+            solver.addConstraintChecked(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
           }
+          //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
+          // ConstrSimple32 reverse;
+          // reverse.rhs = input.size();
+          // reverse.terms.reserve(input.size() + 1);
+          // reverse.terms.push_back({input.size(), -aux});
+          // for (const Term<int>& t : input.terms) {
+          //  reverse.terms.push_back({1, -t.l});
+          //}
+          // solver.addConstraintChecked(reverse, Origin::FORMULA);
+          //}
           input.terms.push_back({1, aux});
           solver.addConstraintChecked(input, Origin::FORMULA);  // implication
         }

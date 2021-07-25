@@ -64,6 +64,8 @@ const unsigned int SAFELBD = (((unsigned int)1) << LBDBITS) - 1;
 const unsigned int MAXLBD = SAFELBD - 1;
 
 class Solver;
+class Equalities;
+
 struct Constr {  // internal solver constraint optimized for fast propagation
   virtual size_t getMemSize() const = 0;
 
@@ -113,6 +115,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
 
   virtual CeSuper toExpanded(ConstrExpPools& cePools) const = 0;
   virtual bool isSatisfiedAtRoot(const IntMap<int>& level) const = 0;
+  virtual bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const = 0;
 
   virtual void decreaseTabuSlack(int idx) = 0;
   virtual void increaseTabuSlack(int idx) = 0;
@@ -172,6 +175,7 @@ struct Clause final : public Constr {
 
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
 
   void decreaseTabuSlack([[maybe_unused]] int idx);
   void increaseTabuSlack([[maybe_unused]] int idx);
@@ -239,6 +243,7 @@ struct Cardinality final : public Constr {
 
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
 
   void decreaseTabuSlack([[maybe_unused]] int idx);
   void increaseTabuSlack([[maybe_unused]] int idx);
@@ -318,6 +323,7 @@ struct Counting final : public Constr {
   CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
 
   void decreaseTabuSlack(int idx);
   void increaseTabuSlack(int idx);
@@ -399,6 +405,7 @@ struct Watched final : public Constr {
   CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
 
   void decreaseTabuSlack(int idx);
   void increaseTabuSlack(int idx);
@@ -485,6 +492,7 @@ struct CountingSafe final : public Constr {
   CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
 
   void decreaseTabuSlack(int idx);
   void increaseTabuSlack(int idx);
@@ -570,6 +578,7 @@ struct WatchedSafe final : public Constr {
   CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
 
   void decreaseTabuSlack(int idx);
   void increaseTabuSlack(int idx);
