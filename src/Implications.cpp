@@ -17,11 +17,16 @@ namespace rs {
 void Implications::setNbVars(int nvars) { implieds.resize(nvars, {}); }
 
 void Implications::addImplied(Lit a, Lit b) {
+  assert(a != b);
   implInMem += implieds[a].insert(b).second;
   resetPropagation();
 }
 
-void Implications::removeImplied(Lit a, Lit b) { implInMem -= implieds[a].erase(b); }
+void Implications::removeImplied(Lit a) {
+  auto& el = implieds[a];
+  implInMem -= el.size();
+  el.clear();
+}
 
 long long Implications::nImpliedsInMemory() const { return implInMem; }
 

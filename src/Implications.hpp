@@ -26,7 +26,7 @@ class Implications : public Propagator {
   void setNbVars(int n);
 
   void addImplied(Lit a, Lit b);
-  void removeImplied(Lit a, Lit b);
+  void removeImplied(Lit a);
   long long nImpliedsInMemory() const;
 
   State propagate();

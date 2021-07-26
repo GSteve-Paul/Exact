@@ -199,7 +199,7 @@ class Solver {
   void backjumpTo(int lvl, bool updateHeur = true);
   void decide(Lit l);
   void propagate(Lit l, CRef r);
-  [[nodiscard]] State probe(Lit l);
+  [[nodiscard]] State probe(Lit l, bool deriveImplications);
   /**
    * Unit propagation with watched literals.
    * @post: all constraints have been checked for propagation under trail[0..qhead[

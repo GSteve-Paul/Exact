@@ -182,7 +182,7 @@ void Solver::propagate(Lit l, CRef r) {
   uncheckedEnqueue(l, r);
 }
 
-State Solver::probe(Lit l) {
+State Solver::probe(Lit l, bool deriveImplications) {
   assert(decisionLevel() == 0);
   assert(isUnknown(getPos(), l));
   ++stats.NPROBINGS;
@@ -199,10 +199,11 @@ State Solver::probe(Lit l) {
     return State::FAIL;
   }
   assert(decisionLevel() == 1);
-  for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
-    Lit implied = trail[i];
-    implications.removeImplied(l, implied);  // the system could derive these
-    implications.addImplied(-implied, -l);   // the system may not be able to derive these
+  if (deriveImplications) {
+    implications.removeImplied(l);
+    for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
+      implications.addImplied(-trail[i], -l);  // the system may not be able to derive these
+    }
     stats.NPROBINGIMPLMEM.z = std::max<long double>(stats.NPROBINGIMPLMEM.z, implications.nImpliedsInMemory());
   }
   return State::SUCCESS;
@@ -1280,7 +1281,7 @@ SolveState Solver::solve() {
 State Solver::probeRestart(Lit next) {
   lastRestartNext = toVar(next);
   int oldUnits = trail.size();
-  State state = probe(-next);
+  State state = probe(-next, true);
   if (state == State::UNSAT) {
     return State::UNSAT;
   } else if (state == State::SUCCESS) {
@@ -1290,7 +1291,7 @@ State Solver::probeRestart(Lit next) {
     }
     backjumpTo(0, false);
     std::vector<Lit> newUnits;
-    State state = probe(next);
+    State state = probe(next, true);
     if (state == State::UNSAT) {
       return State::UNSAT;
     } else if (state == State::SUCCESS) {
@@ -1337,7 +1338,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
   if (isKnown(getPos(), seed)) {
     return State::SUCCESS;
   }
-  State state = probe(-seed);
+  State state = probe(-seed, true);
   if (state == State::UNSAT) {
     return State::UNSAT;
   } else if (state == State::FAIL) {
@@ -1388,7 +1389,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     if (isKnown(getPos(), current)) {
       continue;
     } else {
-      State state = probe(-current);
+      State state = probe(-current, false);
       if (state == State::UNSAT) {
         return State::UNSAT;
       } else if (state == State::FAIL) {
