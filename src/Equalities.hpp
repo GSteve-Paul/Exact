@@ -35,9 +35,13 @@ class Equalities {  // a union-find data structure
 
   const Repr& getRepr(Lit a);  // Find
   void merge(Lit a, Lit b);    // Union
+
   bool isCanonical(Lit l);
+  bool isPartOfEquality(Lit l);
 
   State propagate();
+  // NOTE: propagate() may backjump in case two equal literals are propagated to an opposite value at the same decision
+  // level, as the clause that would prevent this would otherwise trigger unit propagation
   void notifyBackjump();
   bool mayPropagate() const;
 };

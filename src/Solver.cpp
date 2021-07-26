@@ -247,13 +247,12 @@ std::pair<CeSuper, State> Solver::runPropagation() {
     if (result.second != State::SUCCESS) return result;
     State res = equalities.propagate();
     if (res == State::UNSAT) return {CeNull(), State::UNSAT};
-    assert(decisionLevel() == 0 || qhead < (int)trail.size() || res == State::SUCCESS);
   }
   assert(qhead == (int)trail.size());
-  for (Var v = 1; v < getNbVars(); ++v) {
-    assert(isTrue(getLevel(), v) == isTrue(getLevel(), equalities.getRepr(v).l));
-    assert(isTrue(getLevel(), -v) == isTrue(getLevel(), equalities.getRepr(-v).l));
-  }
+  //  for (Var v = 1; v < getNbVars(); ++v) {
+  //    assert(isTrue(getLevel(), v) == isTrue(getLevel(), equalities.getRepr(v).l));
+  //    assert(isTrue(getLevel(), -v) == isTrue(getLevel(), equalities.getRepr(-v).l));
+  //  }
   return {CeNull(), State::SUCCESS};
 }
 
@@ -1027,7 +1026,8 @@ void Solver::derivePureLits() {
   assert(decisionLevel() == 0);
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {  // NOTE: core-guided variables will not be eliminated
     quit::checkInterrupt();
-    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || !equalities.isCanonical(l) || !lit2cons[-l].empty())
+    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || equalities.isPartOfEquality(l) ||
+        !lit2cons[-l].empty())
       continue;
     [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
     assert(id != ID_Unsat);
@@ -1041,7 +1041,7 @@ void Solver::dominanceBreaking() {
   IntSet& intersection = isPool.take();
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {
     assert(saturating.isEmpty());
-    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || !equalities.isCanonical(l)) continue;
+    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || equalities.isPartOfEquality(l)) continue;
     std::unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
       [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);

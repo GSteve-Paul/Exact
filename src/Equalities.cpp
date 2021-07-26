@@ -70,6 +70,11 @@ void Equalities::merge(Lit a, Lit b) {
 
 bool Equalities::isCanonical(Lit l) { return getRepr(l).l == l; }
 
+bool Equalities::isPartOfEquality(Lit l) {
+  const Repr& repr = getRepr(l);
+  return repr.l != l || !repr.equals.empty();
+}
+
 void Equalities::setNbVars(int nvars) {
   int oldNvars = canonical.reserved() / 2;
   canonical.resize(nvars, {0, ID_Trivial, {}});
