@@ -10,34 +10,25 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #pragma once
 
-#include "IntMap.hpp"
-#include "Propagator.hpp"
 #include "typedefs.hpp"
 
 namespace rs {
 
 class Solver;
 
-struct Repr {
-  Lit l;
-  ID id;
-  std::vector<Lit> equals;
-};
-
-class Equalities : public Propagator {  // a union-find data structure
-  IntMap<Repr> canonical;
+class Propagator {
+ protected:
+  Solver& solver;
+  int nextTrailPos = 0;
 
  public:
-  Equalities(Solver& s) : Propagator(s) {}
-  void setNbVars(int n);
+  Propagator(Solver& s) : solver(s) {}
 
-  const Repr& getRepr(Lit a);  // Find
-  void merge(Lit a, Lit b);    // Union
-
-  bool isCanonical(Lit l);
-  bool isPartOfEquality(Lit l);
-
-  State propagate();
+  // NOTE: propagate() may backjump in case two equal literals are propagated to an opposite value at the same decision
+  // level, as the clause that would prevent this would otherwise trigger unit propagation
+  virtual State propagate() = 0;
+  void notifyBackjump();
+  void resetPropagation();
 };
 
 }  // namespace rs

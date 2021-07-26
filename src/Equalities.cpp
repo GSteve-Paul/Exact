@@ -30,7 +30,7 @@ const Repr& Equalities::getRepr(Lit a) {
 }
 
 void Equalities::merge(Lit a, Lit b) {
-  nextTrailPos = 0;
+  resetPropagation();
   const Repr& reprA = getRepr(a);
   const Repr& reprB = getRepr(b);
   const Repr& reprAneg = getRepr(-a);
@@ -108,12 +108,5 @@ State Equalities::propagate() {
   }
   return State::SUCCESS;
 }
-
-void Equalities::notifyBackjump() {
-  nextTrailPos =
-      std::min(nextTrailPos, solver.decisionLevel() == 0 ? (int)solver.trail.size() : solver.trail_lim.back());
-}
-
-bool Equalities::mayPropagate() const { return nextTrailPos < (int)solver.trail.size(); }
 
 }  // namespace rs

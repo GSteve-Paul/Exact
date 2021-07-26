@@ -67,8 +67,10 @@ void Constr::fixEncountered() const {
   stats.NLPENCGOMORY += o == Origin::GOMORY;
   stats.NLPENCDUAL += o == Origin::DUAL;
   stats.NLPENCFARKAS += o == Origin::FARKAS;
-  stats.NENCREDUCED += o == Origin::REDUCED;
   stats.NENCDETECTEDAMO += o == Origin::DETECTEDAMO;
+  stats.NENCREDUCED += o == Origin::REDUCED;
+  stats.NENCEQ += o == Origin::EQUALITY;
+  stats.NENCIMPL += o == Origin::IMPLICATION;
   ++stats.NRESOLVESTEPS;
 }
 

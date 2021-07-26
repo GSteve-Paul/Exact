@@ -131,6 +131,7 @@ enum class Origin {
   DETECTEDAMO,    // detected cardinality constraint
   REDUCED,        // reduced constraint
   EQUALITY,       // equality enforcing constraint
+  IMPLICATION,    // binary implication clause
 };
 
 inline bool isNonImplied(Origin o) {
@@ -138,8 +139,8 @@ inline bool isNonImplied(Origin o) {
 }
 inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
 inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED; }
-inline bool isInput(Origin o) { return o < Origin::LEARNED; }
-inline bool isLearned(Origin o) { return !isInput(o); }
+inline bool isInput(Origin o) { return o != Origin::UNKNOWN && o < Origin::LEARNED; }
+inline bool isLearned(Origin o) { return o >= Origin::LEARNED; }
 inline bool usedInTabu(Origin o) { return isNonImplied(o) || o == Origin::UPPERBOUND; }
 
 template <typename SMALL, typename LARGE>

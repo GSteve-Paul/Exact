@@ -187,6 +187,8 @@ struct Stats {
 
   Stat NPROBINGLITS{0, "unit lits due to probing"};
   Stat NPROBINGEQS{0, "equalities due to probing"};
+  Stat NPROBINGIMPLS{0, "implications added due to probing"};
+  Stat NPROBINGIMPLMEM{0, "max implications in memory due to probing"};
   Stat NPROBINGS{0, "probing calls"};
   Stat PROBETIME{0, "probing inprocessing time"};
   Stat ATMOSTONES{0, "detected at-most-ones"};
@@ -239,6 +241,8 @@ struct Stats {
   Stat NENCCOREGUIDED{0, "encountered core-guided constraints"};
   Stat NENCREDUCED{0, "encountered reduced constraints"};
   Stat NENCDETECTEDAMO{0, "encountered detected at-most-ones"};
+  Stat NENCEQ{0, "encountered detected equalities"};
+  Stat NENCIMPL{0, "encountered detected implications"};
 
   Stat LPSOLVETIME{0, "LP solve time"};
   Stat LPTOTALTIME{0, "LP total time"};
@@ -363,10 +367,12 @@ struct Stats {
       &NPURELITS,
       &NSATISFIEDSREMOVED,
       &NCONSREADDED,
-      &NPROBINGLITS,
-      &NPROBINGEQS,
       &NPROBINGS,
       &PROBETIME,
+      &NPROBINGLITS,
+      &NPROBINGEQS,
+      &NPROBINGIMPLS,
+      &NPROBINGIMPLMEM,
       &ATMOSTONES,
       &NATMOSTONEUNITS,
       &NWATCHED,
@@ -401,6 +407,8 @@ struct Stats {
       &NENCCOREGUIDED,
       &NENCREDUCED,
       &NENCDETECTEDAMO,
+      &NENCEQ,
+      &NENCIMPL,
       &NLPADDEDROWS,
       &NLPDELETEDROWS,
       &NLPPIVOTS,

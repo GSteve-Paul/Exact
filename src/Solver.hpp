@@ -45,6 +45,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Constr.hpp"
 #include "Equalities.hpp"
 #include "Heuristic.hpp"
+#include "Implications.hpp"
 #include "IntMap.hpp"
 #include "IntSet.hpp"
 #include "LpSolver.hpp"
@@ -69,7 +70,9 @@ class Solver {
   friend struct CountingSafe;
   template <typename CF, typename DG>
   friend struct WatchedSafe;
+  friend class Propagator;
   friend class Equalities;
+  friend class Implications;
 
   // ---------------------------------------------------------------------
   // Members
@@ -117,6 +120,7 @@ class Solver {
   std::shared_ptr<LpSolver> lpSolver;
 
   Equalities equalities;
+  Implications implications;
 
   long long nconfl_to_reduce;
   long long nconfl_to_restart;

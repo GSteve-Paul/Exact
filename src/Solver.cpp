@@ -49,7 +49,14 @@ namespace rs {
 // ---------------------------------------------------------------------
 // Initialization
 
-Solver::Solver() : n(0), orig_n(0), assumptions_lim({0}), equalities(*this), nconfl_to_reduce(0), nconfl_to_restart(0) {
+Solver::Solver()
+    : n(0),
+      orig_n(0),
+      assumptions_lim({0}),
+      equalities(*this),
+      implications(*this),
+      nconfl_to_reduce(0),
+      nconfl_to_restart(0) {
   ca.capacity(1024 * 1024);  // 4MB
   objective = cePools.takeArb();
 }
@@ -73,6 +80,7 @@ void Solver::setNbVars(int nvars, bool orig) {
   cePools.resize(nvars + 1);
   // if (lpSolver) lpSolver->setNbVariables(nvars + 1); // Currently, LP solver only reasons on formula constraints
   equalities.setNbVars(nvars);
+  implications.setNbVars(nvars);
   n = nvars;
   if (orig) {
     ranks.resize(nvars + 1, 0);
@@ -154,6 +162,7 @@ void Solver::undoOne(bool updateHeur) {
     }
   }
   equalities.notifyBackjump();
+  implications.notifyBackjump();
 }
 
 void Solver::backjumpTo(int lvl, bool updateHeur) {
@@ -188,6 +197,13 @@ State Solver::probe(Lit l) {
     return res == ID_Unsat ? State::UNSAT : State::FAIL;
   } else if (decisionLevel() == 0) {  // some missing propagation at level 0 could be made
     return State::FAIL;
+  }
+  assert(decisionLevel() == 1);
+  for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
+    Lit implied = trail[i];
+    implications.removeImplied(l, implied);  // the system could derive these
+    implications.addImplied(-implied, -l);   // the system may not be able to derive these
+    stats.NPROBINGIMPLMEM.z = std::max<long double>(stats.NPROBINGIMPLMEM.z, implications.nImpliedsInMemory());
   }
   return State::SUCCESS;
 }
@@ -242,31 +258,29 @@ std::pair<CeSuper, State> Solver::runDatabasePropagation() {
 }
 
 std::pair<CeSuper, State> Solver::runPropagation() {
-  while (qhead < (int)trail.size() || equalities.mayPropagate()) {
+  while (true) {
     std::pair<CeSuper, State> result = runDatabasePropagation();
     if (result.second != State::SUCCESS) return result;
     State res = equalities.propagate();
     if (res == State::UNSAT) return {CeNull(), State::UNSAT};
+    if (res == State::FAIL) continue;
+    res = implications.propagate();
+    if (res == State::UNSAT) return {CeNull(), State::UNSAT};
+    if (res == State::SUCCESS) return {CeNull(), State::SUCCESS};
   }
-  assert(qhead == (int)trail.size());
-  //  for (Var v = 1; v < getNbVars(); ++v) {
-  //    assert(isTrue(getLevel(), v) == isTrue(getLevel(), equalities.getRepr(v).l));
-  //    assert(isTrue(getLevel(), -v) == isTrue(getLevel(), equalities.getRepr(-v).l));
-  //  }
-  return {CeNull(), State::SUCCESS};
 }
 
 std::pair<CeSuper, State> Solver::runPropagationWithLP() {
-  while (qhead < (int)trail.size() || equalities.mayPropagate()) {
-    std::pair<CeSuper, State> result = runPropagation();
-    if (result.second != State::SUCCESS) return result;
-    if (lpSolver) {
-      LpStatus state = aux::timeCall<LpStatus>([&] { return lpSolver->checkFeasibility(false); }, stats.LPTOTALTIME);
-      if (state == LpStatus::UNSAT) return {CeNull(), State::UNSAT};
-      // NOTE: calling LP solver may increase the propagations on the trail due to added constraints
+  if (std::pair<CeSuper, State> result = runPropagation(); result.second != State::SUCCESS) return result;
+  if (lpSolver) {
+    LpStatus state = aux::timeCall<LpStatus>([&] { return lpSolver->checkFeasibility(false); }, stats.LPTOTALTIME);
+    if (state == LpStatus::UNSAT) return {CeNull(), State::UNSAT};
+    // NOTE: calling LP solver may increase the propagations on the trail due to added constraints
+    if (state == LpStatus::INFEASIBLE || state == LpStatus::OPTIMAL) {
+      // added a Farkas/bound constraint and potentially backjumped, so we propagate again
+      return runPropagation();
     }
   }
-  assert(qhead == (int)trail.size());
   return {CeNull(), State::SUCCESS};
 }
 
@@ -548,7 +562,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
 
   if (decisionLevel() == 0) {
     std::pair<CeSuper, State> result =
-        aux::timeCall<std::pair<CeSuper, State>>([&] { return runDatabasePropagation(); }, stats.PROPTIME);
+        aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagation(); }, stats.PROPTIME);
     if (result.second == State::UNSAT) {
       return CRef_Unsat;
     } else if (result.second == State::FAIL) {

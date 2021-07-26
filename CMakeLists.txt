@@ -89,7 +89,9 @@ set(source_files
     src/run.cpp
     src/quit.cpp
     src/Exact.cpp
+    src/Propagator.cpp
     src/Equalities.cpp
+    src/Implications.cpp
 
     src/used_licenses/licenses.cpp
     src/used_licenses/zib_academic.cpp
@@ -119,7 +121,9 @@ set(header_files
     src/aux.hpp
     src/quit.hpp
     src/run.hpp
+    src/Propagator.hpp
     src/Equalities.hpp
+    src/Implications.hpp
 
     src/used_licenses/licenses.hpp
     src/used_licenses/zib_academic.hpp
