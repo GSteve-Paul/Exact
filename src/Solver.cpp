@@ -592,7 +592,7 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   assert(isLearned(orig));
   CeSuper learned = ce->clone(cePools);
   learned->orig = orig;
-  if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities());
+  if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities(), true);
   if (options.test) learned->selfSubsumeImplications(implications);
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   if (learned->isTautology()) return ID_Undef;
@@ -1375,26 +1375,22 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
   }
 
   // check whether at least three of them form a clique
-  std::vector<Lit> cardLits = {seed};
+  std::vector<Lit> cardLits = {seed};  // clique so far
+  std::sort(candidates.begin(), candidates.end(),
+            [&](Lit x, Lit y) { return getHeuristic().getActivity(toVar(x)) < getHeuristic().getActivity(toVar(y)); });
+  assert(candidates.size() <= 1 ||
+         getHeuristic().getActivity(toVar(candidates[0])) <= getHeuristic().getActivity(toVar(candidates[1])));
   while (candidates.size() > 1) {
     assert(decisionLevel() == 0);
     quit::checkInterrupt();
-    for (int i = 1; i < (int)candidates.size(); ++i) {
-      if (getHeuristic().getActivity(toVar(candidates[i])) > getHeuristic().getActivity(toVar(candidates[0]))) {
-        std::swap(candidates[i], candidates[0]);
-      }
-    }
-    Lit current = candidates[0];
-    aux::swapErase(candidates, 0);
-    if (isKnown(getPos(), current)) {
+    Lit current = candidates.back();
+    candidates.pop_back();
+    if (isKnown(getPos(), current)) continue;
+    State state = probe(-current, false);
+    if (state == State::UNSAT) {
+      return State::UNSAT;
+    } else if (state == State::FAIL) {
       continue;
-    } else {
-      State state = probe(-current, false);
-      if (state == State::UNSAT) {
-        return State::UNSAT;
-      } else if (state == State::FAIL) {
-        continue;
-      }
     }
     IntSet& trailSet = isPool.take();
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
@@ -1412,19 +1408,12 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
         continue;
       }
     }
-    int candidatesLeft = 0;
-    for (Lit l : candidates) {
-      candidatesLeft += trailSet.has(l);
-    }
-    if (candidatesLeft > 0) {
+    if (std::any_of(candidates.begin(), candidates.end(), [&](Lit l) { return trailSet.has(l); })) {
       cardLits.push_back(current);  // found an additional cardinality lit
-      for (int i = 0; i < (int)candidates.size(); ++i) {
-        if (!trailSet.has(candidates[i])) {
-          aux::swapErase(candidates, i--);
-        }
-      }
-      assert(candidatesLeft == (int)candidates.size());
+      candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [&](Lit l) { return !trailSet.has(l); }),
+                       candidates.end());
     }
+    assert(!candidates.empty());
     isPool.release(trailSet);
   }
   for (Lit l : candidates) {
