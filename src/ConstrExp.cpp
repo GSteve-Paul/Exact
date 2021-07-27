@@ -576,8 +576,8 @@ void ConstrExp<SMALL, LARGE>::removeZeroes() {
 
 // @post: preserves order of vars
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities) {
-  saturate(true, false);
+void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _saturate) {
+  if (_saturate) saturate(true, false);
   int oldsize = vars.size();  // newly added literals are their own canonical representative
   for (int i = 0; i < oldsize; ++i) {
     Var v = vars[i];
@@ -585,11 +585,24 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities) {
     if (l == 0) continue;
     if (const Repr& repr = equalities.getRepr(l); repr.l != l) {  // literal is not its own canonical representative
       SMALL mult = aux::abs(coefs[v]);
-      if (plogger) proofBuffer << repr.id << " " << mult << " * + ";
-      addLhs(mult, -l);
-      addLhs(mult, repr.l);  // TODO: what if overflow??
-      addRhs(mult);
-      assert(coefs[v] == 0);
+      addLhs(mult, repr.l);
+      Var reprv = toVar(repr.l);
+      if (stillFits<SMALL>(coefs[reprv]) ||
+          (_saturate && aux::abs(coefs[reprv]) >= degree && stillFits<SMALL>(static_cast<SMALL>(degree)))) {
+        if (_saturate) {
+          SMALL cf = aux::abs(coefs[reprv]);
+          if (cf > degree) {
+            SMALL newcf = std::min<SMALL>(cf, static_cast<SMALL>(degree));
+            coefs[reprv] = coefs[reprv] < 0 ? -newcf : newcf;
+          }
+        }
+        addLhs(mult, -l);
+        assert(coefs[v] == 0);
+        addRhs(mult);
+        if (plogger) Logger::proofMult(proofBuffer << repr.id << " ", mult) << (_saturate ? "+ s " : "+ ");
+      } else {
+        addLhs(-mult, repr.l);  // revert change
+      }
     }
   }
 }
@@ -939,7 +952,7 @@ void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int
 }
 
 void ConstrExpSuper::strongPostProcess(Solver& solver) {
-  removeEqualities(solver.getEqualities());
+  removeEqualities(solver.getEqualities(), true);
   if (options.test) selfSubsumeImplications(solver.getImplications());
   postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
 }

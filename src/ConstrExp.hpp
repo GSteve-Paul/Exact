@@ -129,7 +129,7 @@ struct ConstrExpSuper {
   virtual void removeUnitsAndZeroes(const IntMap<int>& level, const std::vector<int>& pos) = 0;
   virtual void removeZeroes() = 0;
   virtual bool hasNoZeroes() const = 0;
-  virtual void removeEqualities(Equalities& equalities) = 0;
+  virtual void removeEqualities(Equalities& equalities, bool saturate) = 0;
   virtual void selfSubsumeImplications(const Implications& implications) = 0;
 
   virtual void saturate(const std::vector<Var>& vs, bool check, bool sorted) = 0;
@@ -279,7 +279,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void removeZeroes();
   bool hasNoZeroes() const;
   // @post: preserves order of vars and saturates, but may change coefficients, so sorting property is removed
-  void removeEqualities(Equalities& equalities);
+  void removeEqualities(Equalities& equalities, bool saturate);
   // @post: preserves order of vars and saturates
   void selfSubsumeImplications(const Implications& implications);
 

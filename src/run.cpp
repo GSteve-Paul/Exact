@@ -457,7 +457,7 @@ State Optimization<SMALL, LARGE>::optimize() {
 
     if (coreguided) {
       if (!solver.hasAssumptions()) {
-        reformObj->removeEqualities(solver.getEqualities());
+        reformObj->removeEqualities(solver.getEqualities(), false);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
         std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
         litcoefs.reserve(reformObj->nVars());

@@ -106,6 +106,31 @@ bool fitsIn([[maybe_unused]] const S& x) {
   return fits<T>(bigint(x));
 }
 
+template <typename T>
+bool stillFits([[maybe_unused]] const T& x) {
+  return false;
+}
+template <>
+inline bool stillFits<int>(const int& x) {
+  return aux::abs(x) <= limit32;
+}
+template <>
+inline bool stillFits<long long>(const long long& x) {
+  return aux::abs(x) <= limit64;
+}
+template <>
+inline bool stillFits<int128>(const int128& x) {
+  return aux::abs(x) <= limit128;
+}
+template <>
+inline bool stillFits<int256>(const int256& x) {
+  return aux::abs(x) <= int256(limit256);
+}
+template <>
+inline bool stillFits<bigint>([[maybe_unused]] const bigint& x) {
+  return true;
+}
+
 using ActValV = long double;
 const ActValV actLimitV = (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 *
                           (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300;  // ~1e2400 << 2^(2^13)
