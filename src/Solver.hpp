@@ -137,6 +137,7 @@ class Solver {
   const IntMap<int>& getLevel() const { return level; }
   const std::vector<int>& getPos() const { return position; }
   Equalities& getEqualities() { return equalities; }
+  Implications& getImplications() { return implications; }
   const Heuristic& getHeuristic() const { return *heur; }
   int decisionLevel() const { return trail_lim.size(); }
   int assumptionLevel() const { return assumptions_lim.size() - 1; }

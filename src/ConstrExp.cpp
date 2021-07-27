@@ -45,6 +45,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Constr.hpp"
 #include "Equalities.hpp"
 #include "Heuristic.hpp"
+#include "Implications.hpp"
+#include "Solver.hpp"
 #include "aux.hpp"
 
 namespace rs {
@@ -575,6 +577,7 @@ void ConstrExp<SMALL, LARGE>::removeZeroes() {
 // @post: preserves order of vars
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities) {
+  saturate(true, false);
   int oldsize = vars.size();  // newly added literals are their own canonical representative
   for (int i = 0; i < oldsize; ++i) {
     Var v = vars[i];
@@ -584,11 +587,35 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities) {
       SMALL mult = aux::abs(coefs[v]);
       if (plogger) proofBuffer << repr.id << " " << mult << " * + ";
       addLhs(mult, -l);
-      addLhs(mult, repr.l);
+      addLhs(mult, repr.l);  // TODO: what if overflow??
       addRhs(mult);
       assert(coefs[v] == 0);
     }
   }
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::selfSubsumeImplications(const Implications& implications) {
+  saturate(true, false);  // needed to get the proof to agree
+  IntSet& saturateds = isPool.take();
+  getSaturatedLits(saturateds);
+  for (Var v : vars) {
+    if (coefs[v] == 0) continue;
+    Lit l = getLit(v);
+    for (Lit ll : implications.getImplieds(l)) {
+      if (!saturateds.has(ll)) continue;
+      ++stats.NSUBSUMESTEPS;
+      SMALL cf = aux::abs(coefs[v]);
+      if (plogger) Logger::proofMult(proofBuffer << plogger->logRUP(-l, ll) << " ", cf) << "+ s ";
+      addRhs(cf);
+      addLhs(cf, -l);
+      assert(coefs[v] == 0);
+      saturateds.remove(l);
+      assert(!saturateds.has(-l));
+      break;
+    }
+  }
+  isPool.release(saturateds);
 }
 
 template <typename SMALL, typename LARGE>
@@ -893,7 +920,7 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
   return true;
 }
 
-// NOTE: only equivalence preserving operations!
+// NOTE: only equivalence preserving operations over the Bools!
 void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur,
                                  bool sortFirst) {
   removeUnitsAndZeroes(level, pos);
@@ -909,6 +936,12 @@ void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int
   if (simplifyToCardinality(true, getCardinalityDegree())) {
     ++stats.NCARDDETECT;
   }
+}
+
+void ConstrExpSuper::strongPostProcess(Solver& solver) {
+  removeEqualities(solver.getEqualities());
+  if (options.test) selfSubsumeImplications(solver.getImplications());
+  postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
 }
 
 template <typename SMALL, typename LARGE>
@@ -1403,6 +1436,7 @@ template <typename SMALL, typename LARGE>
 int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit toSubsume,
                                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
+  assert(isSaturated());
   assert(getCoef(-toSubsume) > 0);
   stats.NADDEDLITERALS += size;
 

@@ -375,6 +375,7 @@ resolve:
 }
 
 void Solver::minimize(const CeSuper& conflict, IntSet& actSet) {
+  assert(conflict->isSaturated());
   assert(conflict->isAssertingBefore(getLevel(), decisionLevel()) == AssertionStatus::ASSERTING);
   IntSet& saturatedLits = isPool.take();
   conflict->removeZeroes();
@@ -592,6 +593,7 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   CeSuper learned = ce->clone(cePools);
   learned->orig = orig;
   if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities());
+  if (options.test) learned->selfSubsumeImplications(implications);
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   if (learned->isTautology()) return ID_Undef;
   learned->saturateAndFixOverflow(getLevel(), options.bitsLearned.get(), options.bitsLearned.get(), 0);
@@ -679,8 +681,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
         input = logger->logAssumption(ce);
     }
   }
-  ce->removeEqualities(getEqualities());
-  ce->postProcess(getLevel(), getPos(), getHeuristic(), true);
+  ce->strongPostProcess(*this);
   if (ce->isTautology()) {
     return {input, ID_Undef};  // already satisfied.
   }
@@ -897,8 +898,7 @@ State Solver::reduceDB() {
     bool isLocked = c.isLocked();
     bool lbd = c.lbd();
     removeConstraint(cr, true);
-    ce->removeEqualities(getEqualities());
-    ce->postProcess(getLevel(), getPos(), getHeuristic(), true);
+    ce->strongPostProcess(*this);
     if (ce->isTautology()) continue;
     CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates c!
     if (crnew == CRef_Unsat) return State::UNSAT;

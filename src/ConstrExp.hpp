@@ -59,6 +59,7 @@ struct ConstraintAllocator;
 class Solver;
 class Heuristic;
 class Equalities;
+class Implications;
 
 struct ConstrExpSuper {
   // protected:
@@ -85,8 +86,9 @@ struct ConstrExpSuper {
 
   bool hasNoUnits(const IntMap<int>& level) const;
   bool isUnitConstraint() const;
-  // NOTE: only equivalence preserving operations!
+  // NOTE: only equivalence preserving operations over the Bools!
   void postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
+  void strongPostProcess(Solver& solver);
 
   virtual ~ConstrExpSuper() = default;
 
@@ -128,6 +130,7 @@ struct ConstrExpSuper {
   virtual void removeZeroes() = 0;
   virtual bool hasNoZeroes() const = 0;
   virtual void removeEqualities(Equalities& equalities) = 0;
+  virtual void selfSubsumeImplications(const Implications& implications) = 0;
 
   virtual void saturate(const std::vector<Var>& vs, bool check, bool sorted) = 0;
   virtual void saturate(bool check, bool sorted) = 0;
@@ -275,8 +278,10 @@ struct ConstrExp final : public ConstrExpSuper {
   // @post: mutates order of vars
   void removeZeroes();
   bool hasNoZeroes() const;
-  // @post: preserves order of vars
+  // @post: preserves order of vars and saturates, but may change coefficients, so sorting property is removed
   void removeEqualities(Equalities& equalities);
+  // @post: preserves order of vars and saturates
+  void selfSubsumeImplications(const Implications& implications);
 
   // @post: preserves order of vars
   void saturate(const std::vector<Var>& vs, bool check, bool sorted);
@@ -542,6 +547,7 @@ struct ConstrExp final : public ConstrExpSuper {
   int genericSubsume(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Lit toSubsume,
                      const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits) {
     assert(getCoef(-toSubsume) > 0);
+    assert(isSaturated());
 
     DG weakenedDeg = degr;
     assert(weakenedDeg > 0);
