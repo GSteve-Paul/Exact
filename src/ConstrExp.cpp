@@ -579,32 +579,27 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _saturate) {
   if (_saturate) saturate(true, false);
   int oldsize = vars.size();  // newly added literals are their own canonical representative
-  for (int i = 0; i < oldsize; ++i) {
+  for (int i = 0; i < oldsize && degree > 0; ++i) {
     Var v = vars[i];
     Lit l = getLit(v);
     if (l == 0) continue;
     if (const Repr& repr = equalities.getRepr(l); repr.l != l) {  // literal is not its own canonical representative
-      SMALL mult = aux::abs(coefs[v]);
+      SMALL mult = _saturate ? static_cast<SMALL>(std::min<LARGE>(degree, aux::abs(coefs[v]))) : aux::abs(coefs[v]);
       addLhs(mult, repr.l);
       Var reprv = toVar(repr.l);
       if (stillFits<SMALL>(coefs[reprv]) ||
           (_saturate && aux::abs(coefs[reprv]) >= degree && stillFits<SMALL>(static_cast<SMALL>(degree)))) {
-        if (_saturate) {
-          SMALL cf = aux::abs(coefs[reprv]);
-          if (cf > degree) {
-            SMALL newcf = std::min<SMALL>(cf, static_cast<SMALL>(degree));
-            coefs[reprv] = coefs[reprv] < 0 ? -newcf : newcf;
-          }
-        }
         addLhs(mult, -l);
-        assert(coefs[v] == 0);
         addRhs(mult);
+        coefs[v] = 0;
         if (plogger) Logger::proofMult(proofBuffer << repr.id << " ", mult) << (_saturate ? "+ s " : "+ ");
+        if (_saturate) saturate(reprv);
       } else {
         addLhs(-mult, repr.l);  // revert change
       }
     }
   }
+  if (_saturate) saturate(true, false);
 }
 
 template <typename SMALL, typename LARGE>
@@ -637,6 +632,7 @@ bool ConstrExp<SMALL, LARGE>::hasNoZeroes() const {
 }
 
 // @post: preserves order of vars
+// NOTE: other variables should already be saturated, otherwise proof logging will break
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, bool sorted) {
   stats.NSATURATESTEPS += vs.size();
@@ -663,6 +659,21 @@ void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, b
     }
   }
   assert(isSaturated());
+}
+
+// NOTE: use judiciously, be careful of adding correct saturation lines in the proof
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::saturate(Var v) {
+  assert(degree >= 0);
+  if (aux::abs(coefs[v]) <= degree) return;
+  SMALL smallDeg = static_cast<SMALL>(degree);
+  if (coefs[v] < -smallDeg) {
+    rhs -= coefs[v] + smallDeg;
+    coefs[v] = -smallDeg;
+  } else {
+    assert(coefs[v] > smallDeg);
+    coefs[v] = smallDeg;
+  }
 }
 
 template <typename SMALL, typename LARGE>

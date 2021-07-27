@@ -923,7 +923,7 @@ State Solver::reduceDB() {
       ++reduced;
       CeSuper ce = c.toExpanded(cePools);
       ce->removeUnitsAndZeroes(getLevel(), getPos());
-      assert(ce->getCardinalityDegree() > 0);
+      if (ce->isTautology()) continue;  // possible due to further root propagations during rewriting of constraints
       ce->simplifyToCardinality(false, ce->getMaxStrengthCardinalityDegree(cardPoints));
       ID res = aux::timeCall<ID>([&] { return learnConstraint(ce, Origin::REDUCED); }, stats.LEARNTIME);
       if (res == ID_Unsat) return State::UNSAT;

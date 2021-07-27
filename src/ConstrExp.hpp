@@ -285,6 +285,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
   // @post: preserves order of vars
   void saturate(const std::vector<Var>& vs, bool check, bool sorted);
+  void saturate(Var v);
   void saturate(bool check, bool sorted);
   bool isSaturated() const;
   void getSaturatedLits(IntSet& out) const;
