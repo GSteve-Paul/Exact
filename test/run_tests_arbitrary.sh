@@ -77,7 +77,7 @@ for j in "${arr_dec[@]}"; do
         errors=`expr 1000 + $errors`
         echo "wrong output: $output vs $obj"
     fi
-    echo "verifying $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat"
+    echo "verifying veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat"
     wc -l $logfile.proof
     veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat
     errors=`expr $? + $errors`
