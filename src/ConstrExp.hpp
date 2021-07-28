@@ -77,6 +77,7 @@ struct ConstrExpSuper {
   void stopLogging();
 
   int nVars() const { return vars.size(); }
+  int nNonZeroVars() const;
   const std::vector<Var>& getVars() const { return vars; }
   bool used(Var v) const { return index[v] >= 0; }
   void reverseOrder();

@@ -963,9 +963,11 @@ void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int
 }
 
 void ConstrExpSuper::strongPostProcess(Solver& solver) {
+  [[maybe_unused]] int nvars = nNonZeroVars();
   removeEqualities(solver.getEqualities(), true);
   selfSubsumeImplications(solver.getImplications());
   postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
+  assert(nvars >= nNonZeroVars());
 }
 
 template <typename SMALL, typename LARGE>
@@ -1330,6 +1332,14 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
     return res > 0 || (res == 0 && aux::abs(coefs[v1]) > aux::abs(coefs[v2]));
   });
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
+}
+
+int ConstrExpSuper::nNonZeroVars() const {
+  int result = 0;
+  for (Var v : vars) {
+    result += hasVar(v);
+  }
+  return result;
 }
 
 void ConstrExpSuper::reverseOrder() {
