@@ -593,7 +593,7 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   CeSuper learned = ce->clone(cePools);
   learned->orig = orig;
   if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities(), true);
-  if (options.test) learned->selfSubsumeImplications(implications);
+  learned->selfSubsumeImplications(implications);
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   if (learned->isTautology()) return ID_Undef;
   learned->saturateAndFixOverflow(getLevel(), options.bitsLearned.get(), options.bitsLearned.get(), 0);

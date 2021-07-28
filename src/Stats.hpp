@@ -446,9 +446,10 @@ struct Stats {
   [[nodiscard]] inline long double getSolveTime() const { return SOLVETIMEFREE + SOLVETIMEASSUMP; }
   // NOTE: below linear relations were determined by regression tests on experimental data,
   // so that the deterministic time correlates as closely as possible with the cpu time
-  [[nodiscard]] inline long double getLpDetTime() const { return 1 + NLPOPERATIONS + 113.4 * NLPADDEDLITERALS; }
+  [[nodiscard]] inline long double getLpDetTime() const { return 1 + NLPOPERATIONS + 120 * NLPADDEDLITERALS; }
   [[nodiscard]] inline long double getNonLpDetTime() const {
-    return 1 + 3.4 * NWATCHCHECKS + 4.1 * NPROPCHECKS + 17.7 * (NADDEDLITERALS - NLPADDEDLITERALS) + 72.5 * NTRAILPOPS;
+    return 1 + 3 * NWATCHCHECKS + 4 * NPROPCHECKS + 20 * (NADDEDLITERALS - NLPADDEDLITERALS) + 80 * NTRAILPOPS +
+           3 * NWATCHLOOKUPS + 3 * NWATCHLOOKUPSBJ;
   }
   [[nodiscard]] inline long double getDetTime() const { return getLpDetTime() + getNonLpDetTime(); }
 

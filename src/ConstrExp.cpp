@@ -964,7 +964,7 @@ void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int
 
 void ConstrExpSuper::strongPostProcess(Solver& solver) {
   removeEqualities(solver.getEqualities(), true);
-  if (options.test) selfSubsumeImplications(solver.getImplications());
+  selfSubsumeImplications(solver.getImplications());
   postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
 }
 
