@@ -193,22 +193,21 @@ struct Stats {
   Stat PROBETIME{0, "probing inprocessing time"};
   Stat ATMOSTONES{0, "detected at-most-ones"};
   Stat ATMOSTONETIME{0, "at-most-one detection time"};
+  Stat ATMOSTONEDETTIME{0, "at-most-one detection time det"};
   Stat NATMOSTONEUNITS{0, "units derived during at-most-one detection"};
-  Stat ATMOSTONEDETTIME{0, "at-most-one detection deterministic time"};
 
   Stat STARTTIME{0, "start time"};
   Stat PARSETIME{0, "parse time"};
   Stat SOLVETIMEFREE{0, "free solve time"};
+  Stat DETTIMEFREE{0, "free solve time det"};
   Stat SOLVETIMEASSUMP{0, "assumption solve time"};
+  Stat DETTIMEASSUMP{0, "assumption solve time det"};
   Stat CATIME{0, "conflict analysis time"};
   Stat MINTIME{0, "learned minimize time"};
   Stat PROPTIME{0, "propagation time"};
   Stat RUNSTARTTIME{0, "solve start time"};
-  Stat LPDETTIME{0, "LP deterministic time"};
-  Stat DETTIMEFREE{0, "deterministic free solve time"};
-  Stat DETTIMEASSUMP{0, "deterministic assumption solve time"};
   Stat TABUTIME{0, "local search time"};
-  Stat TABUDETTIME{0, "deterministic local search time"};
+  Stat TABUDETTIME{0, "local search time det"};
 
   Stat NCLAUSESEXTERN{0, "input clauses"};
   Stat NCARDINALITIESEXTERN{0, "input cardinalities"};
@@ -246,6 +245,7 @@ struct Stats {
 
   Stat LPSOLVETIME{0, "LP solve time"};
   Stat LPTOTALTIME{0, "LP total time"};
+  Stat LPDETTIME{0, "LP total time det"};
 
   Stat NLPADDEDROWS{0, "LP constraints added"};
   Stat NLPDELETEDROWS{0, "LP constraints removed"};
@@ -277,9 +277,9 @@ struct Stats {
   Stat NCGCOREREUSES{0, "CG additional cardinalities from a core"};
 
   // derived statistics
-  Stat DETTIME{0, "deterministic time"};
   Stat CPUTIME{0, "cpu time"};
   Stat SOLVETIME{0, "solve time"};
+  Stat DETTIME{0, "solve time det"};
   Stat OPTTIME{0, "optimization time"};
   Stat CLEANUPTIME{0, "constraint cleanup time"};
   Stat INPROCESSTIME{0, "inprocessing time"};
@@ -301,8 +301,8 @@ struct Stats {
   void setDerivedStats() {
     DETTIME.z = getDetTime();
     CPUTIME.z = getTime();
-    SOLVETIME.z = getSolveTime();
-    OPTTIME.z = getRunTime() - SOLVETIME;
+    SOLVETIME.z = getRunTime();
+    OPTTIME.z = SOLVETIME - getSolveTime();
     LPDETTIME.z = getLpDetTime();
 
     long double nonLearneds = NCLAUSESEXTERN + NCARDINALITIESEXTERN + NGENERALSEXTERN;
@@ -317,13 +317,15 @@ struct Stats {
   }
 
   const std::vector<Stat*> statsToDisplay = {
-      &DETTIME,
       &CPUTIME,
       &PARSETIME,
       &SOLVETIME,
+      &DETTIME,
       &OPTTIME,
       &SOLVETIMEFREE,
+      &DETTIMEFREE,
       &SOLVETIMEASSUMP,
+      &DETTIMEASSUMP,
       &CATIME,
       &MINTIME,
       &PROPTIME,
@@ -332,14 +334,12 @@ struct Stats {
       &GCTIME,
       &LEARNTIME,
       &TABUTIME,
+      &TABUDETTIME,
       &ATMOSTONETIME,
+      &ATMOSTONEDETTIME,
       &LPSOLVETIME,
       &LPTOTALTIME,
       &LPDETTIME,
-      &DETTIMEFREE,
-      &DETTIMEASSUMP,
-      &TABUDETTIME,
-      &ATMOSTONEDETTIME,
       &NCORES,
       &NSOLS,
       &NPROP,
@@ -445,12 +445,16 @@ struct Stats {
   [[nodiscard]] inline long double getRunTime() const { return aux::cpuTime() - RUNSTARTTIME; }
   [[nodiscard]] inline long double getSolveTime() const { return SOLVETIMEFREE + SOLVETIMEASSUMP; }
   // NOTE: below linear relations were determined by regression tests on experimental data,
-  // so that the deterministic time correlates as closely as possible with the cpu time
-  [[nodiscard]] inline long double getLpDetTime() const { return 1 + NLPOPERATIONS + 120 * NLPADDEDLITERALS; }
-  [[nodiscard]] inline long double getNonLpDetTime() const {
-    return 1 + 3 * NWATCHCHECKS + 4 * NPROPCHECKS + 20 * (NADDEDLITERALS - NLPADDEDLITERALS) + 80 * NTRAILPOPS +
-           3 * NWATCHLOOKUPS + 3 * NWATCHLOOKUPSBJ;
+  // so that the deterministic time correlates as closely as possible with the cpu time in seconds
+  [[nodiscard]] inline long double getLpDetTime() const {
+    return (1 + 5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9;
   }
+  [[nodiscard]] inline long double getNonLpDetTime() const {
+    return (1 + 49.00 * NWATCHLOOKUPS + 9.09 * NWATCHCHECKS + 3.55 * NPROPCHECKS + 60.69 * NSATURATESTEPS +
+            61.86 * (NADDEDLITERALS - NLPADDEDLITERALS) + 1484.40 * NWEAKENEDNONIMPLIED + 268.51 * NTRAILPOPS) /
+           1e9;
+  }
+
   [[nodiscard]] inline long double getDetTime() const { return getLpDetTime() + getNonLpDetTime(); }
 
   void print() {
