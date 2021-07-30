@@ -13,6 +13,7 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 - Seamless use of arbitrary precision arithmetic.
 - Hybrid linear (top-down) and core-guided (bottom-up) optimization.
 - Optional integration with the SoPlex LP solver.
+- Compiles on macOS.
 - Under development: generation of certificates of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://github.com/StephanGocht/VeriPB).
 
 ## Compilation
