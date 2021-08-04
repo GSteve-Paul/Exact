@@ -87,18 +87,3 @@ int main(int argc, char** argv) {
 
   rs::run::run();
 }
-
-#include <stdio.h>
-#include <string.h>
-
-int main_python() {
-  char first[100] = "Exact";
-  char second[100] = "/home/jod/Tmp/trivial.opb";
-  //  std::strcpy(second, path.c_str());
-  char* inp[2];
-  inp[0] = first;
-  inp[1] = second;
-  //  strcpy(inp[0],first);
-  //  strcpy(inp[1],path.c_str());
-  return main(2, inp);
-}
