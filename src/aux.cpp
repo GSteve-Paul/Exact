@@ -43,6 +43,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs::aux {
 
+bigint commonDenominator(const std::vector<ratio>& ratios) {
+  bigint cdenom = 1;
+  for (const ratio& r : ratios) {
+    cdenom = lcm(cdenom, boost::multiprecision::denominator(r));
+  }
+  return cdenom;
+}
+
 namespace rng {
 
 uint32_t seed = 1;

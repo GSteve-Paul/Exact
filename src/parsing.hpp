@@ -60,8 +60,6 @@ void lp_read(const std::string& filename, Solver& solver);
 template <typename T>
 void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization);
 
-using RatVal = ratio;
-
 struct IntVar {
   explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub);
 
@@ -86,48 +84,52 @@ struct IntVar {
 std::ostream& operator<<(std::ostream& o, const IntVar& x);
 
 struct IntTerm {
-  RatVal c;
+  bigint c;
   IntVar* v;
   bool negated;
 
-  IntTerm(const RatVal& val, IntVar* var, bool neg) : c(val), v(var), negated(neg) {}
+  IntTerm(const bigint& val, IntVar* var, bool neg) : c(val), v(var), negated(neg) {}
 };
 std::ostream& operator<<(std::ostream& o, const IntTerm& x);
 
-struct IntConstraint {
+class IntConstraint {
   std::vector<IntTerm> lhs;
-  RatVal lowerBound = 0;
-  bool lowerBoundSet = false;
-  RatVal upperBound = 0;
-  bool upperBoundSet = false;
+  std::optional<bigint> lowerBound;
+  std::optional<bigint> upperBound;
 
   void normalize();
+
+ public:
+  IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars, const std::vector<bool>& negated,
+                const std::optional<bigint>& lb = std::optional<bigint>(),
+                const std::optional<bigint>& ub = std::optional<bigint>());
+
+  const std::vector<IntTerm>& getLhs() const { return lhs; }
+  const std::optional<bigint>& getLB() const { return lowerBound; }
+  const std::optional<bigint>& getUB() const { return upperBound; }
+
   void toConstrExp(CeArb&, bool useLowerBound) const;
-  void setLowerBound(const RatVal& b) {
-    lowerBoundSet = true;
-    lowerBound = b;
-  }
-  void setUpperBound(const RatVal& b) {
-    upperBoundSet = true;
-    upperBound = b;
-  }
 };
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
 struct ILP {
   Solver& solver;
   std::vector<std::unique_ptr<IntVar>> vars;
-  std::vector<std::unique_ptr<IntConstraint>> constrs;
+  std::vector<IntConstraint> constrs;
   IntConstraint obj;
   bigint objmult = 1;
   std::unordered_map<std::string, IntVar*> name2var;
 
-  ILP(Solver& s) : solver(s){};
+  ILP(Solver& s) : solver(s), obj({}, {}, {}, 0) {}
 
-  IntConstraint* newConstraint();
   IntVar* getVarFor(const std::string& name, bool nameAsId = true, const bigint& lowerbound = 0,
                     const bigint& upperbound = 1);
-  void addToSolver();
+  bool hasVarFor(const std::string& name) const;
+  void addObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                    const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
+  State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                      const std::vector<bool>& negated, bool hasLB = false, const bigint& lb = 0, bool hasUB = false,
+                      const bigint& ub = 0);
   void printOrigSol(const std::vector<Lit>& sol);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);

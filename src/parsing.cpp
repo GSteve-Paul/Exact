@@ -123,6 +123,9 @@ void opb_read(std::istream& in, Solver& solver) {
   assert(!solver.hasObjective());
   ILP& ilp = solver.ilp;
   [[maybe_unused]] bool first_constraint = true;
+  std::vector<bigint> coefs;
+  std::vector<IntVar*> vars;
+  std::vector<bool> negated;
   for (std::string line; getline(in, line);) {
     if (line.empty() || line[0] == '*') continue;
     for (char& c : line)
@@ -143,7 +146,7 @@ void opb_read(std::istream& in, Solver& solver) {
     }
     first_constraint = false;
     std::istringstream is(line);
-    IntConstraint* input = ilp.newConstraint();
+
     std::vector<std::string> tokens;
     std::string tmp;
     while (is >> tmp) tokens.push_back(tmp);
@@ -154,23 +157,26 @@ void opb_read(std::istream& in, Solver& solver) {
       }
     }
 
+    coefs.clear();
+    vars.clear();
+    negated.clear();
     for (int i = 0; i < (long long)tokens.size(); i += 2) {
       const std::string& var = tokens[i + 1];
       if (var.empty() || (var[0] != '~' && var[0] != 'x') || (var[0] == '~' && var[1] != 'x')) {
         quit::exit_ERROR({"Invalid literal token: ", var});
       }
-      bool negated = (var[0] == '~');
-      input->lhs.emplace_back(read_bigint(tokens[i], 0), ilp.getVarFor(var.substr(negated + 1)), negated);
+      coefs.emplace_back(read_bigint(tokens[i], 0));
+      negated.emplace_back(var[0] == '~');
+      vars.emplace_back(ilp.getVarFor(var.substr(negated.back() + 1)));
     }
     if (opt_line) {
-      ilp.obj = *input;
-      ilp.constrs.pop_back();
+      ilp.addObjective(coefs, vars, negated);
     } else {
-      input->setLowerBound(read_bigint(line0, line0.find('=') + 1));
-      if (line0.find(" = ") != std::string::npos) input->setUpperBound(input->lowerBound);
+      bigint lb = read_bigint(line0, line0.find('=') + 1);
+      State res = ilp.addConstraint(coefs, vars, negated, true, lb, line0.find(" = ") != std::string::npos, lb);
+      if (res == State::UNSAT) quit::exit_SUCCESS(solver);
     }
   }
-  ilp.addToSolver();
 }
 
 void wcnf_read(std::istream& in, Solver& solver) {
@@ -263,39 +269,11 @@ bigint lcm(const bigint& x, const bigint& y) {
   return y == 0 ? x : boost::multiprecision::lcm(x, y);
 }
 
-bigint scaleToIntegers(IntConstraint& ic) {
-  namespace mult = boost::multiprecision;
-
-  bigint multiplier = 1;
-  for (IntTerm& t : ic.lhs) {
-    multiplier = lcm(multiplier, mult::denominator(t.c));
-  }
-  if (ic.lowerBoundSet) {
-    multiplier = lcm(multiplier, mult::denominator(ic.lowerBound));
-  }
-  if (ic.upperBoundSet) {
-    multiplier = lcm(multiplier, mult::denominator(ic.upperBound));
-  }
-
-  for (IntTerm& t : ic.lhs) {
-    t.c *= multiplier;
-    assert(mult::denominator(t.c) == 1);
-  }
-  if (ic.lowerBoundSet) {
-    ic.lowerBound *= multiplier;
-    assert(mult::denominator(ic.lowerBound) == 1);
-  }
-  if (ic.upperBoundSet) {
-    ic.upperBound *= multiplier;
-    assert(mult::denominator(ic.upperBound) == 1);
-  }
-  return multiplier;
-}
-
 template <typename T>
 void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
   ILP& ilp = solver.ilp;
 
+  // Variables
   bool continuousVars = false;
   bool unboundedVars = false;
   for (int c = 0; c < coinutils.getNumCols(); ++c) {
@@ -322,38 +300,61 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
   if (unboundedVars)
     std::cout << "c WARNING unbounded variables have custom bounds of +-" << options.intDefaultBound.get() << std::endl;
 
+  std::vector<ratio> ratcoefs;
+  std::vector<bigint> coefs;
+  std::vector<IntVar*> vars;
+
+  // Objective
   for (int c = 0; c < coinutils.getNumCols(); ++c) {
     double objcoef = coinutils.getObjCoefficients()[c];
     if (objcoef == 0) continue;
-    ilp.obj.lhs.emplace_back(objcoef, ilp.getVarFor(coinutils.columnName(c)), false);
+    ratcoefs.emplace_back(objcoef);
+    vars.emplace_back(ilp.getVarFor(coinutils.columnName(c)));
   }
+  ratcoefs.emplace_back(coinutils.objectiveOffset());
+  bigint cdenom = aux::commonDenominator(ratcoefs);
+  for (const ratio& r : ratcoefs) {
+    coefs.emplace_back(r * cdenom);
+  }
+  bigint offset = coefs.back();
+  coefs.pop_back();
   if (wasMaximization) {
-    ilp.obj.setLowerBound(coinutils.objectiveOffset());
-    ilp.objmult = -1;
-  } else {
-    ilp.obj.setLowerBound(-coinutils.objectiveOffset());
+    cdenom = -cdenom;
+    offset = -offset;
   }
-  ilp.objmult *= scaleToIntegers(ilp.obj);
+  ilp.addObjective(coefs, vars, {}, cdenom, offset);
 
+  // Constraints
   const CoinPackedMatrix* cpm = coinutils.getMatrixByRow();
   for (int r = 0; r < coinutils.getNumRows(); ++r) {
     quit::checkInterrupt();
     char rowSense = coinutils.getRowSense()[r];
     if (rowSense == 'N') continue;  // free constraint
-    IntConstraint* input = ilp.newConstraint();
-    input->lhs.reserve(cpm->getVectorLengths()[r]);
+
+    ratcoefs.clear();
+    coefs.clear();
+    vars.clear();
     for (int c = cpm->getVectorFirst(r); c < cpm->getVectorLast(r); ++c) {
-      input->lhs.emplace_back(cpm->getElements()[c], ilp.getVarFor(coinutils.columnName(cpm->getIndices()[c])), false);
+      double coef = cpm->getElements()[c];
+      if (coef == 0) continue;
+      ratcoefs.emplace_back(coef);
+      vars.emplace_back(ilp.getVarFor(coinutils.columnName(cpm->getIndices()[c])));
     }
-    if (rowSense == 'G' || rowSense == 'E' || rowSense == 'R') {
-      input->setLowerBound(coinutils.getRowLower()[r]);
+    bool useLB = rowSense == 'G' || rowSense == 'E' || rowSense == 'R';
+    ratcoefs.emplace_back(useLB ? coinutils.getRowLower()[r] : 0);
+    bool useUB = rowSense == 'L' || rowSense == 'E' || rowSense == 'R';
+    ratcoefs.emplace_back(useUB ? coinutils.getRowUpper()[r] : 0);
+    bigint cdenom = aux::commonDenominator(ratcoefs);
+    for (const ratio& r : ratcoefs) {
+      coefs.emplace_back(r * cdenom);
     }
-    if (rowSense == 'L' || rowSense == 'E' || rowSense == 'R') {
-      input->setUpperBound(coinutils.getRowUpper()[r]);
-    }
-    scaleToIntegers(*input);
+    bigint ub = coefs.back();
+    coefs.pop_back();
+    bigint lb = coefs.back();
+    coefs.pop_back();
+    State res = ilp.addConstraint(coefs, vars, {}, useLB, lb, useUB, ub);
+    if (res == State::UNSAT) quit::exit_SUCCESS(solver);
   }
-  ilp.addToSolver();
 }
 
 template void coinutils_read<CoinMpsIO>(CoinMpsIO& coinutils, Solver& solver, bool wasMaximization);
@@ -400,14 +401,14 @@ std::ostream& operator<<(std::ostream& o, const IntVar& x) {
 }
 std::ostream& operator<<(std::ostream& o, const IntTerm& x) { return o << x.c << (x.negated ? "~x" : "x") << *x.v; }
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
-  if (x.upperBoundSet) o << x.upperBound << " >= ";
-  for (const IntTerm& t : x.lhs) o << t << " ";
-  if (x.lowerBoundSet) o << " >= " << x.lowerBound;
+  if (x.getUB().has_value()) o << x.getUB().value() << " >= ";
+  for (const IntTerm& t : x.getLhs()) o << t << " ";
+  if (x.getLB().has_value()) o << " >= " << x.getLB().value();
   return o;
 }
 std::ostream& operator<<(std::ostream& o, const ILP& x) {
   o << "obj: " << x.obj;
-  for (const std::unique_ptr<IntConstraint>& c : x.constrs) o << "\n" << *c;
+  for (const IntConstraint& c : x.constrs) o << "\n" << c;
   return o;
 }
 
@@ -419,7 +420,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
   if (nameAsId) {
     Var next = std::stoi(getName());
     solver.setNbVars(next, true);
-    encoding.push_back(next);
+    encoding.emplace_back(next);
   } else {
     bigint range = getRange();
     if (range != 0) {
@@ -428,7 +429,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
       int oldvars = solver.getNbVars();
       solver.setNbVars(oldvars + newvars, true);
       for (Var var = oldvars + 1; var <= oldvars + newvars; ++var) {
-        encoding.push_back(var);
+        encoding.emplace_back(var);
       }
       if (logEncoding) {  // upper bound constraint
         std::vector<Term<bigint>> lhs;
@@ -448,13 +449,26 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
   }
 }
 
+IntConstraint::IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                             const std::vector<bool>& negated, const std::optional<bigint>& lb,
+                             const std::optional<bigint>& ub)
+    : lowerBound(lb), upperBound(ub) {
+  assert(coefs.size() == vars.size());
+  assert(negated.size() == 0 || negated.size() == coefs.size());
+  lhs.reserve(coefs.size());
+  for (int i = 0; i < (int)coefs.size(); ++i) {
+    lhs.emplace_back(coefs[i], vars[i], !negated.empty() && negated[i]);
+  }
+  normalize();
+}
+
 void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (useLowerBound) {
-    assert(boost::multiprecision::denominator(lowerBound) == 1);
-    input->addRhs(boost::multiprecision::numerator(lowerBound));
+    assert(lowerBound.has_value());
+    input->addRhs(lowerBound.value());
   } else {
-    assert(boost::multiprecision::denominator(upperBound) == 1);
-    input->addRhs(boost::multiprecision::numerator(upperBound));
+    assert(upperBound.has_value());
+    input->addRhs(upperBound.value());
   }
   for (const IntTerm& t : lhs) {
     assert(!t.negated);
@@ -463,14 +477,12 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
     if (t.v->usesLogEncoding()) {
       bigint base = 1;
       for (const Var v : t.v->encodingVars()) {
-        assert(boost::multiprecision::denominator(t.c) == 1);
-        input->addLhs(base * boost::multiprecision::numerator(t.c), v);
+        input->addLhs(base * t.c, v);
         base *= 2;
       }
     } else {
       for (const Var v : t.v->encodingVars()) {
-        assert(boost::multiprecision::denominator(t.c) == 1);
-        input->addLhs(boost::multiprecision::numerator(t.c), v);
+        input->addLhs(t.c, v);
       }
     }
   }
@@ -483,19 +495,19 @@ void IntConstraint::normalize() {
     if (t.negated) {
       assert(t.v->isBoolean());
       t.c = -t.c;
-      if (lowerBoundSet) lowerBound += t.c;
-      if (upperBoundSet) upperBound += t.c;
+      if (lowerBound.has_value()) lowerBound = lowerBound.value() + t.c;
+      if (upperBound.has_value()) upperBound = upperBound.value() + t.c;
       t.negated = false;
     } else if (t.v->getLowerBound() != 0) {
-      RatVal adjustment = -t.c * t.v->getLowerBound();
-      if (lowerBoundSet) lowerBound += adjustment;
-      if (upperBoundSet) upperBound += adjustment;
+      bigint adjustment = -t.c * t.v->getLowerBound();
+      if (lowerBound.has_value()) lowerBound = lowerBound.value() + adjustment;
+      if (upperBound.has_value()) upperBound = upperBound.value() + adjustment;
     }
   }
 }
 
 IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& lowerbound, const bigint& upperbound) {
-  if (name2var.count(name)) return name2var[name];
+  if (auto it = name2var.find(name); it != name2var.end()) return it->second;
   assert(lowerbound <= upperbound);
   vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound));
   IntVar* iv = vars.back().get();
@@ -503,31 +515,34 @@ IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& low
   return iv;
 }
 
-IntConstraint* ILP::newConstraint() {
-  constrs.push_back(std::make_unique<IntConstraint>());
-  return constrs.back().get();
+bool ILP::hasVarFor(const std::string& name) const { return name2var.count(name); }
+
+void ILP::addObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                       const std::vector<bool>& negated, const bigint& mult, const bigint& offset) {
+  assert(mult != 0);
+  obj = IntConstraint(coefs, vars, negated, -offset);
+  objmult = mult;
+  obj.toConstrExp(solver.objective, true);
 }
 
-void ILP::addToSolver() {
-  obj.normalize();
-  obj.toConstrExp(solver.objective, true);
+State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                         const std::vector<bool>& negated, bool hasLB, const bigint& lb, bool hasUB, const bigint& ub) {
+  assert(coefs.size() == vars.size());
+  constrs.emplace_back(coefs, vars, negated, hasLB ? lb : std::optional<bigint>(),
+                       hasUB ? ub : std::optional<bigint>());
 
-  CeArb input = cePools.takeArb();
-  for (std::unique_ptr<IntConstraint>& c : constrs) {
-    c->normalize();
-    if (c->lowerBoundSet) {
-      c->toConstrExp(input, true);
-      solver.addConstraintChecked(input, Origin::FORMULA);
-      quit::checkInterrupt();
-      input->reset(false);
-    }
-    if (c->upperBoundSet) {
-      c->toConstrExp(input, false);
-      solver.addConstraintChecked(input, Origin::FORMULA);
-      quit::checkInterrupt();
-      input->reset(false);
-    }
+  IntConstraint ic = constrs.back();
+  if (ic.getLB().has_value()) {
+    CeArb input = cePools.takeArb();
+    ic.toConstrExp(input, true);
+    if (solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) return State::UNSAT;
   }
+  if (ic.getUB().has_value()) {
+    CeArb input = cePools.takeArb();
+    ic.toConstrExp(input, false);
+    if (solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) return State::UNSAT;
+  }
+  return State::SUCCESS;
 }
 
 void ILP::printOrigSol(const std::vector<Lit>& sol) {
