@@ -39,6 +39,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
+#include "Exact.hpp"
 #include <csignal>
 #include <fstream>
 #include "aux.hpp"
@@ -88,17 +89,41 @@ int main(int argc, char** argv) {
   rs::run::run();
 }
 
-#include <stdio.h>
-#include <string.h>
+int start() {
+  rs::stats.STARTTIME.z = rs::aux::cpuTime();
+  rs::asynch_interrupt = false;
 
-int main_python() {
-  char first[100] = "Exact";
-  char second[100] = "/home/jod/Tmp/trivial.opb";
-  //  std::strcpy(second, path.c_str());
-  char* inp[2];
-  inp[0] = first;
-  inp[1] = second;
-  //  strcpy(inp[0],first);
-  //  strcpy(inp[1],path.c_str());
-  return main(2, inp);
+  signal(SIGINT, SIGINT_exit);
+  signal(SIGTERM, SIGINT_exit);
+  signal(SIGXCPU, SIGINT_exit);
+  signal(SIGINT, SIGINT_interrupt);
+  signal(SIGTERM, SIGINT_interrupt);
+  signal(SIGXCPU, SIGINT_interrupt);
+
+  rs::aux::rng::seed = rs::options.randomSeed.get();
+
+  if (rs::options.verbosity.get() > 0) {
+    std::cout << "c Exact 2021\n";
+    std::cout << "c branch " << EXPANDED(GIT_BRANCH) << "\n";
+    std::cout << "c commit " << EXPANDED(GIT_COMMIT_HASH) << std::endl;
+  }
+
+  if (!rs::options.proofLog.get().empty()) rs::logger = std::make_shared<rs::Logger>(rs::options.proofLog.get());
+  rs::run::solver.init();
+  rs::run::run();
+
+  return 0;
+}
+
+using namespace rs;
+
+void addVar(const std::string& name) {}
+
+void addClause(const std::vector<int>& lits) {
+  ConstrSimple32 cs;
+  cs.rhs = 1;
+  for (Lit l : lits) {
+    cs.terms.push_back({1, l});
+  }
+  std::pair<ID, ID> result = rs::run::solver.addConstraint(cs, Origin::FORMULA);
 }

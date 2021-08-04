@@ -228,6 +228,8 @@ struct Term {
   Lit l;
 };
 
+// TODO: typedefs for Term, e.g. Term32
+
 template <typename CF>
 std::ostream& operator<<(std::ostream& o, const Term<CF>& t) {
   return o << t.c << "x" << t.l;

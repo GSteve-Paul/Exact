@@ -124,6 +124,7 @@ set(header_files
     src/Propagator.hpp
     src/Equalities.hpp
     src/Implications.hpp
+    src/Exact.hpp
 
     src/used_licenses/licenses.hpp
     src/used_licenses/zib_academic.hpp
@@ -136,6 +137,7 @@ set(header_files
 set(all_files ${source_files} ${header_files})
 
 add_executable(Exact ${source_files})
+add_library(exact SHARED ${all_files})
 
 target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
 install(TARGETS Exact RUNTIME DESTINATION bin)
