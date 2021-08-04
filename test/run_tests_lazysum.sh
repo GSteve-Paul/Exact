@@ -29,7 +29,13 @@ lazysum
 declare -a arr_opt=(
 "wcnf/driverlog01bc.wcsp.dir.wcnf*2245"
 "lp/hole.lp*2917/2"
+"mps/disctom.mps*-5000"
+"mps/hypothyroid-k1.mps*-2851"
 "mps/mod008.mps*307"
+"mps/neos8.mps*-3719"
+"mps/neos-3004026-krka.mps*0"
+"mps/neos-3437289-erdre.mps*0"
+"mps/supportcase4.mps*0"
 "opb/opt/normalized-single-obj-f47-DC-Side1.seq-B-2-1-EDCBAir.opb*-1593213266"
 "opb/opt/enigma.opb*0"
 "opb/opt/stein9.opb*5"

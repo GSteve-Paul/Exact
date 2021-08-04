@@ -22,6 +22,7 @@ echo ""
 
 declare -a arr_dec=(
 "cnf/ec-rand4regsplit-v030-n1.cnf*UNSATISFIABLE"
+"mps/stein9inf.mps*UNSATISFIABLE"
 "opb/dec/256ebits_any.opb*UNSATISFIABLE"
 "opb/dec/256ebits_0.opb*UNSATISFIABLE"
 "opb/dec/128ebits_any.opb*UNSATISFIABLE"
