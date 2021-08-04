@@ -63,18 +63,25 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization);
 using RatVal = ratio;
 
 struct IntVar {
-  explicit IntVar(const std::string& n) : name(n) {}
+  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub);
 
-  std::string name;
-  bigint lowerBound = 0;
-  bigint upperBound = 1;
-  bigint offset = 0;
-  bool logEncoding = false;
+  [[nodiscard]] const std::string& getName() const { return name; }
+  [[nodiscard]] const bigint& getUpperBound() const { return upperBound; }
+  [[nodiscard]] const bigint& getLowerBound() const { return lowerBound; }
 
-  std::vector<Var> encoding;
-
-  [[nodiscard]] bool isBoolean() const { return lowerBound == 0 && upperBound == 1; }
   [[nodiscard]] bigint getRange() const { return upperBound - lowerBound; }
+  [[nodiscard]] bool isBoolean() const { return getRange() == 1; }
+
+  bool usesLogEncoding() const { return logEncoding; }
+  const std::vector<Var>& encodingVars() const { return encoding; }
+
+ private:
+  std::string name;
+  bigint lowerBound;
+  bigint upperBound;
+
+  bool logEncoding;
+  std::vector<Var> encoding;
 };
 std::ostream& operator<<(std::ostream& o, const IntVar& x);
 
@@ -108,16 +115,19 @@ struct IntConstraint {
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
 struct ILP {
+  Solver& solver;
   std::vector<std::unique_ptr<IntVar>> vars;
   std::vector<std::unique_ptr<IntConstraint>> constrs;
   IntConstraint obj;
   bigint objmult = 1;
   std::unordered_map<std::string, IntVar*> name2var;
 
+  ILP(Solver& s) : solver(s){};
+
   IntConstraint* newConstraint();
-  IntVar* getVarFor(const std::string& name);
-  void addTo(Solver& s, bool nameAsId);
-  void normalize(Solver& s);
+  IntVar* getVarFor(const std::string& name, bool nameAsId = true, const bigint& lowerbound = 0,
+                    const bigint& upperbound = 1);
+  void addToSolver();
   void printOrigSol(const std::vector<Lit>& sol);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);

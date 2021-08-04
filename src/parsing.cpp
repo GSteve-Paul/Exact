@@ -170,8 +170,7 @@ void opb_read(std::istream& in, Solver& solver) {
       if (line0.find(" = ") != std::string::npos) input->setUpperBound(input->lowerBound);
     }
   }
-  ilp.normalize(solver);
-  ilp.addTo(solver, true);
+  ilp.addToSolver();
 }
 
 void wcnf_read(std::istream& in, Solver& solver) {
@@ -300,20 +299,24 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
   bool continuousVars = false;
   bool unboundedVars = false;
   for (int c = 0; c < coinutils.getNumCols(); ++c) {
+    quit::checkInterrupt();
     continuousVars = continuousVars || !coinutils.isInteger(c);
-    IntVar* iv = ilp.getVarFor(coinutils.columnName(c));
     double lower = coinutils.getColLower()[c];
     if (aux::abs(lower) == coinutils.getInfinity()) {
       unboundedVars = true;
       lower = -options.intDefaultBound.get();
     }
-    iv->lowerBound = static_cast<bigint>(std::ceil(lower));
     double upper = coinutils.getColUpper()[c];
     if (aux::abs(upper) == coinutils.getInfinity()) {
       unboundedVars = true;
       upper = options.intDefaultBound.get();
     }
-    iv->upperBound = static_cast<bigint>(std::floor(upper));
+    if (upper < lower) {
+      std::cout << "Conflicting bound on integer variable" << std::endl;
+      quit::exit_SUCCESS(solver);
+    }
+    [[maybe_unused]] IntVar* iv = ilp.getVarFor(coinutils.columnName(c), false, static_cast<bigint>(std::ceil(lower)),
+                                                static_cast<bigint>(std::floor(upper)));
   }
   if (continuousVars) std::cout << "c WARNING continuous variables are treated as integer variables" << std::endl;
   if (unboundedVars)
@@ -350,9 +353,7 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
     }
     scaleToIntegers(*input);
   }
-
-  ilp.normalize(solver);
-  ilp.addTo(solver, false);
+  ilp.addToSolver();
 }
 
 template void coinutils_read<CoinMpsIO>(CoinMpsIO& coinutils, Solver& solver, bool wasMaximization);
@@ -391,9 +392,9 @@ void lp_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] Solv
 #endif
 
 std::ostream& operator<<(std::ostream& o, const IntVar& x) {
-  o << x.name;
+  o << x.getName();
   if (!x.isBoolean()) {
-    o << "[" << x.lowerBound << "," << x.upperBound << "]";
+    o << "[" << x.getLowerBound() << "," << x.getUpperBound() << "]";
   }
   return o;
 }
@@ -410,6 +411,43 @@ std::ostream& operator<<(std::ostream& o, const ILP& x) {
   return o;
 }
 
+IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub)
+    : name(n), lowerBound(lb), upperBound(ub), logEncoding(false) {
+  assert(lb <= ub);
+  assert(!nameAsId || isBoolean());
+
+  if (nameAsId) {
+    Var next = std::stoi(getName());
+    solver.setNbVars(next, true);
+    encoding.push_back(next);
+  } else {
+    bigint range = getRange();
+    if (range != 0) {
+      logEncoding = range > options.intEncoding.get();
+      int newvars = logEncoding ? aux::msb(range) + 1 : static_cast<int>(range);
+      int oldvars = solver.getNbVars();
+      solver.setNbVars(oldvars + newvars, true);
+      for (Var var = oldvars + 1; var <= oldvars + newvars; ++var) {
+        encoding.push_back(var);
+      }
+      if (logEncoding) {  // upper bound constraint
+        std::vector<Term<bigint>> lhs;
+        lhs.reserve(encoding.size());
+        bigint base = -1;
+        for (const Var v : encoding) {
+          lhs.emplace_back(base, v);
+          base *= 2;
+        }
+        solver.addConstraintChecked(ConstrSimpleArb({lhs}, -getRange()), Origin::FORMULA);
+      } else {  // binary order constraints
+        for (Var var = oldvars + 1; var < oldvars + newvars; ++var) {
+          solver.addConstraintChecked(ConstrSimple32({{1, var}, {1, -var - 1}}, 1), Origin::FORMULA);
+        }
+      }
+    }
+  }
+}
+
 void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (useLowerBound) {
     assert(boost::multiprecision::denominator(lowerBound) == 1);
@@ -420,19 +458,17 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   }
   for (const IntTerm& t : lhs) {
     assert(!t.negated);
-    assert(t.v->lowerBound == 0);
-    assert(t.v->upperBound >= 0);
-    if (t.v->upperBound == 0) continue;
-    assert(!t.v->encoding.empty());
-    if (t.v->logEncoding) {
+    if (t.v->getRange() == 0) continue;
+    assert(!t.v->encodingVars().empty());
+    if (t.v->usesLogEncoding()) {
       bigint base = 1;
-      for (const Var v : t.v->encoding) {
+      for (const Var v : t.v->encodingVars()) {
         assert(boost::multiprecision::denominator(t.c) == 1);
         input->addLhs(base * boost::multiprecision::numerator(t.c), v);
         base *= 2;
       }
     } else {
-      for (const Var v : t.v->encoding) {
+      for (const Var v : t.v->encodingVars()) {
         assert(boost::multiprecision::denominator(t.c) == 1);
         input->addLhs(boost::multiprecision::numerator(t.c), v);
       }
@@ -441,6 +477,7 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (!useLowerBound) input->invert();
 }
 
+// Normalization removes remove negated terms and turns the constraint in GTE or EQ
 void IntConstraint::normalize() {
   for (IntTerm& t : lhs) {
     if (t.negated) {
@@ -449,20 +486,21 @@ void IntConstraint::normalize() {
       if (lowerBoundSet) lowerBound += t.c;
       if (upperBoundSet) upperBound += t.c;
       t.negated = false;
-    } else if (t.v->lowerBound != 0) {
-      RatVal adjustment = -t.c * t.v->lowerBound;
+    } else if (t.v->getLowerBound() != 0) {
+      RatVal adjustment = -t.c * t.v->getLowerBound();
       if (lowerBoundSet) lowerBound += adjustment;
       if (upperBoundSet) upperBound += adjustment;
     }
   }
 }
 
-IntVar* ILP::getVarFor(const std::string& name) {
+IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& lowerbound, const bigint& upperbound) {
   if (name2var.count(name)) return name2var[name];
-  vars.push_back(std::make_unique<IntVar>(name));
-  IntVar* result = vars.back().get();
-  name2var.insert({name, result});
-  return result;
+  assert(lowerbound <= upperbound);
+  vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound));
+  IntVar* iv = vars.back().get();
+  name2var.insert({name, iv});
+  return iv;
 }
 
 IntConstraint* ILP::newConstraint() {
@@ -470,48 +508,13 @@ IntConstraint* ILP::newConstraint() {
   return constrs.back().get();
 }
 
-void ILP::addTo(Solver& solver, bool nameAsId) {
-  if (nameAsId) {
-    for (const std::unique_ptr<IntVar>& iv : vars) {
-      assert(iv->isBoolean());
-      Var next = std::stoi(iv->name);
-      solver.setNbVars(next, true);
-      iv->encoding.push_back(next);
-    }
-  } else {
-    for (const std::unique_ptr<IntVar>& iv : vars) {
-      assert(iv->lowerBound == 0);
-      assert(iv->upperBound >= 0);
-      if (iv->upperBound == 0) continue;
-      bigint range = iv->getRange();
-      iv->logEncoding = range > options.intEncoding.get();
-      int newvars = iv->logEncoding ? aux::msb(range) + 1 : static_cast<int>(range);
-      int oldvars = solver.getNbVars();
-      solver.setNbVars(oldvars + newvars, true);
-      for (Var var = oldvars + 1; var <= oldvars + newvars; ++var) {
-        iv->encoding.push_back(var);
-      }
-      if (iv->logEncoding) {  // upper bound constraint
-        std::vector<Term<bigint>> lhs;
-        lhs.reserve(iv->encoding.size());
-        bigint base = 1;
-        for (const Var v : iv->encoding) {
-          lhs.emplace_back(-base, v);
-          base *= 2;
-        }
-        solver.addConstraintChecked(ConstrSimpleArb({lhs}, -iv->upperBound), Origin::FORMULA);
-        quit::checkInterrupt();
-      } else {  // binary order constraints
-        for (Var var = oldvars + 1; var < oldvars + newvars; ++var) {
-          solver.addConstraintChecked(ConstrSimple32({{1, var}, {1, -var - 1}}, 1), Origin::FORMULA);
-          quit::checkInterrupt();
-        }
-      }
-    }
-  }
+void ILP::addToSolver() {
+  obj.normalize();
   obj.toConstrExp(solver.objective, true);
+
   CeArb input = cePools.takeArb();
-  for (const std::unique_ptr<IntConstraint>& c : constrs) {
+  for (std::unique_ptr<IntConstraint>& c : constrs) {
+    c->normalize();
     if (c->lowerBoundSet) {
       c->toConstrExp(input, true);
       solver.addConstraintChecked(input, Origin::FORMULA);
@@ -527,29 +530,6 @@ void ILP::addTo(Solver& solver, bool nameAsId) {
   }
 }
 
-/**
- * remove negated terms
- * get lower bounds to 0
- * turn all constraints in GTE or EQ
- */
-void ILP::normalize(Solver& solver) {
-  obj.normalize();
-  for (std::unique_ptr<IntConstraint>& c : constrs) {
-    c->normalize();
-  }
-  for (const std::unique_ptr<IntVar>& iv : vars) {
-    if (iv->lowerBound != 0) {
-      iv->offset = iv->lowerBound;
-      iv->upperBound -= iv->lowerBound;
-      iv->lowerBound = 0;
-    }
-    if (iv->upperBound < 0) {
-      std::cout << "Conflicting bound on integer variable" << std::endl;
-      quit::exit_SUCCESS(solver);
-    }
-  }
-}
-
 void ILP::printOrigSol(const std::vector<Lit>& sol) {
   std::unordered_set<Var> trueVars;
   for (Lit l : sol) {
@@ -558,10 +538,10 @@ void ILP::printOrigSol(const std::vector<Lit>& sol) {
     }
   }
   for (const std::unique_ptr<IntVar>& iv : vars) {
-    bigint val = iv->offset;
-    if (iv->logEncoding) {
+    bigint val = iv->getLowerBound();
+    if (iv->usesLogEncoding()) {
       bigint base = 1;
-      for (Var v : iv->encoding) {
+      for (Var v : iv->encodingVars()) {
         if (trueVars.count(v)) {
           val += base;
         }
@@ -569,13 +549,13 @@ void ILP::printOrigSol(const std::vector<Lit>& sol) {
       }
     } else {
       int sum = 0;
-      for (Var v : iv->encoding) {
+      for (Var v : iv->encodingVars()) {
         sum += trueVars.count(v);
       }
       val += sum;
     }
     if (val != 0) {
-      std::cout << iv->name << " " << val << "\n";
+      std::cout << iv->getName() << " " << val << "\n";
     }
   }
 }
