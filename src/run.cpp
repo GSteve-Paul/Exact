@@ -352,7 +352,7 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   solver.bestObjSoFar = upper_bound;
   ++solutionsFound;
 
-  if (!solver.hasObjective() && options.enumerateSolutions()) {
+  if (!solver.ilp.hasObjective() && options.enumerateSolutions()) {
     if (options.verbosity.get() > 0) {
       std::cout << "c solution " << solutionsFound << std::endl;
     }
@@ -537,8 +537,8 @@ template class Optimization<int128, int128>;
 template class Optimization<int128, int256>;
 template class Optimization<bigint, bigint>;
 
-void run() {
-  if (options.noSolve) quit::exit_INDETERMINATE(solver);
+State run() {
+  if (options.noSolve) return State::FAIL;
 
   stats.RUNSTARTTIME.z = aux::cpuTime();
   if (options.printCsvData) {
@@ -548,24 +548,28 @@ void run() {
     std::cout << "c " << solver.getNbOrigVars() << " vars " << solver.getNbConstraints() << " constrs" << std::endl;
   }
   try {
-    solver.objective->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-    bigint maxVal = solver.objective->getCutoffVal();
+    CeArb o = cePools.takeArb();
+    solver.ilp.obj.toConstrExp(o, true);
+    solver.init(o);
+    // o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+    // TODO: simplify original objective? NOTE: it will affect in-processing methods in the solver too
+    bigint maxVal = o->getCutoffVal();
     if (maxVal <= limit32) {  // TODO: try to internalize this check in ConstrExp
-      runOptimize(cePools.take32());
+      return runOptimize(cePools.take32(), o);
     } else if (maxVal <= limit64) {
-      runOptimize(cePools.take64());
+      return runOptimize(cePools.take64(), o);
     } else if (maxVal <= static_cast<bigint>(limit96)) {
-      runOptimize(cePools.take96());
+      return runOptimize(cePools.take96(), o);
     } else if (maxVal <= static_cast<bigint>(limit128)) {
-      runOptimize(cePools.take128());
+      return runOptimize(cePools.take128(), o);
     } else {
-      runOptimize(cePools.takeArb());
+      return runOptimize(cePools.takeArb(), o);
     }
   } catch (const AsynchronousInterrupt& ai) {
     if (options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;
     }
-    quit::exit_INDETERMINATE(solver);
+    return State::FAIL;
   }
 }
 

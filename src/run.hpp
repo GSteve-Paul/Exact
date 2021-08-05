@@ -118,15 +118,12 @@ class Optimization {
 };
 
 template <typename T>
-void runOptimize(const T& obj) {
-  solver.objective->copyTo(obj);
+State runOptimize(const T& obj, const CeArb& o) {
+  o->copyTo(obj);
   Optimization optim(obj);
-  [[maybe_unused]] State state = optim.optimize();
-  assert(state != State::FAIL);
-  quit::exit_SUCCESS(
-      solver);  // TODO: fix this return value, as the value does not matter and in this case may not always be correct
+  return optim.optimize();  // TODO: is this return value always correct?
 }
 
-void run();
+State run();
 
 }  // namespace rs::run

@@ -15,4 +15,5 @@ print(addClause([1,2]))
 print(cppyy.gbl.addConstraint([-1,-1], ["1","2"], True, -1, False, 0))
 print(cppyy.gbl.setObjective([1,2],["1","2"]))
 
-cppyy.gbl.start()
+print("run:")
+print(cppyy.gbl.start())
