@@ -59,12 +59,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_set>
 #include <vector>
 
-namespace rs {
-
 using int128 = __int128;
 using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
+
+enum class State { SUCCESS, UNSAT, FAIL };
+
+namespace rs {
 
 inline std::ostream& operator<<(std::ostream& o, const __int128& x) {
   if (x == std::numeric_limits<__int128>::min()) return o << "-170141183460469231731687303715884105728";

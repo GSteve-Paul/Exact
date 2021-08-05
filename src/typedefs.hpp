@@ -135,8 +135,6 @@ using ActValV = long double;
 const ActValV actLimitV = (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 *
                           (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300;  // ~1e2400 << 2^(2^13)
 
-enum class State { SUCCESS, FAIL, UNSAT };
-
 // NOTE: max number of types is 32, as the type is stored with 5 bits in Constr
 enum class Origin {
   UNKNOWN,        // uninitialized

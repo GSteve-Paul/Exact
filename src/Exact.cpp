@@ -102,6 +102,9 @@ int start() {
 
   rs::aux::rng::seed = rs::options.randomSeed.get();
 
+  rs::options.printOpb.parse("");
+  rs::options.noSolve.parse("");
+
   if (rs::options.verbosity.get() > 0) {
     std::cout << "c Exact 2021\n";
     std::cout << "c branch " << EXPANDED(GIT_BRANCH) << "\n";
@@ -115,16 +118,16 @@ int start() {
   return 0;
 }
 
-using namespace rs;
-
-void addClause(const std::vector<int>& lits) {
-  std::vector<bigint> coefs;
-  std::vector<parsing::IntVar*> vars;
-  std::vector<bool> negated;
-  for (int l : lits) {
-    coefs.push_back(1);
-    vars.push_back(run::solver.ilp.getVarFor(std::to_string(std::abs(l)), false));
-    negated.push_back(l < 0);
+State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB, long long lb,
+                    bool useUB, long long ub) {
+  if (coefs.size() != vars.size() || coefs.size() >= 1e9) return State::FAIL;
+  std::vector<bigint> cfs;
+  cfs.reserve(coefs.size());
+  std::vector<rs::parsing::IntVar*> vs;
+  vs.reserve(coefs.size());
+  for (int i = 0; i < (int)coefs.size(); ++i) {
+    cfs.push_back(coefs[i]);
+    vs.push_back(rs::run::solver.ilp.getVarFor(vars[i]));
   }
-  run::solver.ilp.addConstraint(coefs, vars, negated, true, 1);
+  return rs::run::solver.ilp.addConstraint(cfs, vs, {}, useLB, lb, useUB, ub);
 }
