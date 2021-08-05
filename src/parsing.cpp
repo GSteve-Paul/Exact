@@ -173,7 +173,8 @@ void opb_read(std::istream& in, Solver& solver) {
       ilp.addObjective(coefs, vars, negated);
     } else {
       bigint lb = read_bigint(line0, line0.find('=') + 1);
-      State res = ilp.addConstraint(coefs, vars, negated, true, lb, line0.find(" = ") != std::string::npos, lb);
+      State res =
+          ilp.addConstraint(coefs, vars, negated, lb, aux::optional(line0.find(" = ") != std::string::npos, lb));
       if (res == State::UNSAT) quit::exit_SUCCESS(solver);
     }
   }
@@ -352,7 +353,7 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
     coefs.pop_back();
     bigint lb = coefs.back();
     coefs.pop_back();
-    State res = ilp.addConstraint(coefs, vars, {}, useLB, lb, useUB, ub);
+    State res = ilp.addConstraint(coefs, vars, {}, useLB ? lb : std::nullopt, useUB ? ub : std::nullopt);
     if (res == State::UNSAT) quit::exit_SUCCESS(solver);
   }
 }
@@ -526,10 +527,10 @@ void ILP::addObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
 }
 
 State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                         const std::vector<bool>& negated, bool hasLB, const bigint& lb, bool hasUB, const bigint& ub) {
+                         const std::vector<bool>& negated, const std::optional<bigint>& lb,
+                         const std::optional<bigint>& ub) {
   assert(coefs.size() == vars.size());
-  constrs.emplace_back(coefs, vars, negated, hasLB ? lb : std::optional<bigint>(),
-                       hasUB ? ub : std::optional<bigint>());
+  constrs.emplace_back(coefs, vars, negated, lb, ub);
 
   IntConstraint ic = constrs.back();
   if (ic.getLB().has_value()) {

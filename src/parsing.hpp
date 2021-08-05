@@ -101,8 +101,7 @@ class IntConstraint {
 
  public:
   IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars, const std::vector<bool>& negated,
-                const std::optional<bigint>& lb = std::optional<bigint>(),
-                const std::optional<bigint>& ub = std::optional<bigint>());
+                const std::optional<bigint>& lb = std::nullopt, const std::optional<bigint>& ub = std::nullopt);
 
   const std::vector<IntTerm>& getLhs() const { return lhs; }
   const std::optional<bigint>& getLB() const { return lowerBound; }
@@ -128,8 +127,9 @@ struct ILP {
   void addObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
   State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                      const std::vector<bool>& negated, bool hasLB = false, const bigint& lb = 0, bool hasUB = false,
-                      const bigint& ub = 0);
+                      const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
+                      const std::optional<bigint>& ub = std::nullopt);
+
   void printOrigSol(const std::vector<Lit>& sol);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);

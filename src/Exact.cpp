@@ -129,5 +129,6 @@ State addConstraint(const std::vector<long long>& coefs, const std::vector<std::
     cfs.push_back(coefs[i]);
     vs.push_back(rs::run::solver.ilp.getVarFor(vars[i]));
   }
-  return rs::run::solver.ilp.addConstraint(cfs, vs, {}, useLB, lb, useUB, ub);
+
+  return rs::run::solver.ilp.addConstraint(cfs, vs, {}, rs::aux::optional(useLB, lb), rs::aux::optional(useUB, ub));
 }

@@ -328,6 +328,12 @@ SMALL cast(const LARGE& x) {
   return static_cast<SMALL>(x);
 }
 
+template <typename T>
+std::optional<T> optional(bool make, const T& val) {
+  if (make) return std::make_optional<T>(val);
+  return std::nullopt;
+}
+
 #ifdef __APPLE__
 template <>
 inline int128 abs(const int128& x) {
