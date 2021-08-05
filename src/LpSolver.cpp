@@ -145,9 +145,13 @@ LpSolver::LpSolver(Solver& slvr) : solver(slvr) {
 
   soplex::DVectorReal objective;
   objective.reDim(getNbVariables());  // NOTE: automatically set to zero
-  if (solver.hasObjective()) {
-    for (Var v : solver.objective->getVars()) {
-      objective[v] = aux::toDouble(solver.objective->coefs[v]);
+  if (solver.ilp.hasObjective()) {
+    CeArb o = cePools.takeArb();
+    solver.ilp.obj.toConstrExp(o, true);
+    o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+    o->removeEqualities(solver.getEqualities(), false);
+    for (Var v : o->getVars()) {
+      objective[v] = aux::toDouble(o->coefs[v]);
     }
   } else {
     for (int v = 1; v < getNbVariables(); ++v) objective[v] = 1;  // add default objective function

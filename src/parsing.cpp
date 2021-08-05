@@ -49,6 +49,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs::parsing {
 
+// TODO: check efficiency of parsing with a .opb-file that takes long to parse, according to experiments
+
 bigint read_bigint(const std::string& s, int start) {
   int length = s.size();
   while (start < length && std::iswspace(s[start])) {
@@ -120,7 +122,6 @@ void file_read(Solver& solver) {
 }
 
 void opb_read(std::istream& in, Solver& solver) {
-  assert(!solver.hasObjective());
   ILP& ilp = solver.ilp;
   [[maybe_unused]] bool first_constraint = true;
   std::vector<bigint> coefs;
@@ -181,9 +182,11 @@ void opb_read(std::istream& in, Solver& solver) {
 }
 
 void wcnf_read(std::istream& in, Solver& solver) {
-  assert(!solver.hasObjective());
   ConstrSimple32 input;
   bigint top = -1;
+  std::vector<bigint> objcoefs;
+  std::vector<IntVar*> objvars;
+  std::vector<bool> objnegated;
   for (std::string line; getline(in, line);) {
     if (line.empty() || line[0] == 'c') continue;
     if (line[0] == 'p') {
@@ -217,11 +220,15 @@ void wcnf_read(std::istream& in, Solver& solver) {
       }
       if (weight < top) {         // soft clause
         if (input.size() == 1) {  // no need to introduce auxiliary variable
-          solver.objective->addLhs(weight, -input.terms[0].l);
+          objcoefs.push_back(weight);
+          objvars.push_back(solver.ilp.getVarFor(std::to_string(toVar(input.terms[0].l)), true));
+          objnegated.push_back(-input.terms[0].l < 0);
         } else {
           Var aux = solver.getNbVars() + 1;
           solver.setNbVars(aux, true);  // increases n to n+1
-          solver.objective->addLhs(weight, aux);
+          objcoefs.push_back(weight);
+          objvars.push_back(solver.ilp.getVarFor(std::to_string(toVar(aux)), true));
+          objnegated.push_back(aux < 0);
           // if (options.test.get()) {
           for (const Term<int>& t : input.terms) {  // reverse implication as binary clauses
             solver.addConstraintChecked(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
@@ -245,6 +252,7 @@ void wcnf_read(std::istream& in, Solver& solver) {
       quit::checkInterrupt();
     }
   }
+  solver.ilp.addObjective(objcoefs, objvars, objnegated);
 }
 
 void cnf_read(std::istream& in, Solver& solver) {
@@ -256,7 +264,7 @@ void cnf_read(std::istream& in, Solver& solver) {
     input.rhs = 1;
     Lit l;
     while (is >> l, l) {
-      solver.setNbVars(std::abs(l), true);
+      solver.setNbVars(toVar(l), true);
       input.terms.push_back({1, l});
     }
     solver.addConstraintChecked(input, Origin::FORMULA);
@@ -353,7 +361,7 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
     coefs.pop_back();
     bigint lb = coefs.back();
     coefs.pop_back();
-    State res = ilp.addConstraint(coefs, vars, {}, useLB ? lb : std::nullopt, useUB ? ub : std::nullopt);
+    State res = ilp.addConstraint(coefs, vars, {}, aux::optional(useLB, lb), aux::optional(useUB, ub));
     if (res == State::UNSAT) quit::exit_SUCCESS(solver);
   }
 }
@@ -523,7 +531,6 @@ void ILP::addObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   assert(mult != 0);
   obj = IntConstraint(coefs, vars, negated, -offset);
   objmult = mult;
-  obj.toConstrExp(solver.objective, true);
 }
 
 State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,

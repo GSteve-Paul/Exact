@@ -59,7 +59,6 @@ Solver::Solver()
       nconfl_to_reduce(0),
       nconfl_to_restart(0) {
   ca.capacity(1024 * 1024);  // 4MB
-  objective = cePools.takeArb();
 }
 
 Solver::~Solver() {
@@ -99,9 +98,8 @@ void Solver::setNbVars(int nvars, bool orig) {
   }
 }
 
-void Solver::init() {
-  cePools.initializeLogging(logger);
-  objective->stopLogging();
+void Solver::init(const CeArb& obj) {
+  objective = obj;
   nconfl_to_restart = options.lubyMult.get();
   nconfl_to_reduce = 1000;
 }
@@ -761,12 +759,6 @@ void Solver::dropExternal(ID id, bool erasable, bool forceDelete) {
 
 CeSuper Solver::getIthConstraint(int i) const { return ca[constraints[i]].toExpanded(cePools); }
 
-bool Solver::hasPureCnf() const {
-  // TODO: make this a dynamic check based on the constraints added to the constraint database?
-  if (hasObjective() || (rs::options.lpTimeRatio.get() != 0 && rs::options.lpGomoryCuts)) return false;
-  return std::all_of(constraints.cbegin(), constraints.cend(), [&](CRef cr) { return ca[cr].degree() == 1; });
-}
-
 // ---------------------------------------------------------------------
 // Assumptions
 
@@ -1039,6 +1031,7 @@ void Solver::removeSatisfiedNonImpliedsAtRoot() {
 }
 
 void Solver::derivePureLits() {
+  assert(objective);
   assert(decisionLevel() == 0);
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {  // NOTE: core-guided variables will not be eliminated
     quit::checkInterrupt();
@@ -1052,6 +1045,7 @@ void Solver::derivePureLits() {
 }
 
 void Solver::dominanceBreaking() {
+  assert(objective);
   std::unordered_set<Lit> inUnsaturatableConstraint;
   IntSet& saturating = isPool.take();
   IntSet& intersection = isPool.take();

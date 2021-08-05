@@ -84,9 +84,7 @@ class Solver {
   CeSuper lastCore;
   bigint bestObjSoFar = 0;
   ratio getBestObjSoFar() const { return static_cast<ratio>(bestObjSoFar) / ilp.objmult; }
-  // TODO: base this method on original objective function of ILP
   CeArb objective;
-  bool hasObjective() const { return objective->nVars() > 0; }
   int maxSatVars = -1;
 
  private:
@@ -128,7 +126,7 @@ class Solver {
  public:
   Solver();
   ~Solver();
-  void init();  // call after having read options
+  void init(const CeArb& obj);
 
   int getNbVars() const { return n; }
   void setNbVars(int nvars, bool orig);
@@ -162,7 +160,6 @@ class Solver {
   CeSuper getIthConstraint(int i) const;
   const std::vector<CRef>& getRawConstraints() const { return constraints; }
   const ConstraintAllocator& getCA() const { return ca; }
-  bool hasPureCnf() const;
 
   void setAssumptions(const std::vector<Lit>& assumps);
   void clearAssumptions();

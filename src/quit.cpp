@@ -79,10 +79,10 @@ void quit::printFormula(Solver& solver) {
         c.getOrigin() == Origin::FORMULA && !c.isMarkedForDelete() && !c.isSatisfiedAtRoot(solver.getLevel());
   }
   std::cout << "* #variable= " << solver.getNbOrigVars() << " #constraint= " << nbConstraints << "\n";
-  if (solver.hasObjective()) {
+  if (solver.ilp.hasObjective()) {
     std::cout << "min: ";
-    for (Var v : solver.objective->vars) {
-      std::cout << (solver.objective->coefs[v] < 0 ? "" : "+") << solver.objective->coefs[v] << " x" << v << " ";
+    for (const parsing::IntTerm& it : solver.ilp.obj.getLhs()) {
+      std::cout << (it.c < 0 ? "" : "+") << it.c << " x" << it.v->getName() << " ";
     }
     std::cout << ";\n";
   }
