@@ -15,5 +15,4 @@ See the file LICENSE or run with the flag --license=MIT.
 
 int start();
 
-void addVar(const std::string& name);
 void addClause(const std::vector<int>& lits);

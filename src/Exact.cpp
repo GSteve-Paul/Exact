@@ -117,13 +117,14 @@ int start() {
 
 using namespace rs;
 
-void addVar(const std::string& name) {}
-
 void addClause(const std::vector<int>& lits) {
-  ConstrSimple32 cs;
-  cs.rhs = 1;
-  for (Lit l : lits) {
-    cs.terms.push_back({1, l});
+  std::vector<bigint> coefs;
+  std::vector<parsing::IntVar*> vars;
+  std::vector<bool> negated;
+  for (int l : lits) {
+    coefs.push_back(1);
+    vars.push_back(run::solver.ilp.getVarFor(std::to_string(std::abs(l)), false));
+    negated.push_back(l < 0);
   }
-  std::pair<ID, ID> result = rs::run::solver.addConstraint(cs, Origin::FORMULA);
+  run::solver.ilp.addConstraint(coefs, vars, negated, true, 1);
 }
