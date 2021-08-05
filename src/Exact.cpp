@@ -103,7 +103,8 @@ int start() {
   rs::aux::rng::seed = rs::options.randomSeed.get();
 
   rs::options.printOpb.parse("");
-  rs::options.noSolve.parse("");
+  // rs::options.noSolve.parse("");
+  rs::options.verbosity.parse("0");
 
   if (rs::options.verbosity.get() > 0) {
     std::cout << "c Exact 2021\n";
@@ -131,4 +132,20 @@ State addConstraint(const std::vector<long long>& coefs, const std::vector<std::
   }
 
   return rs::run::solver.ilp.addConstraint(cfs, vs, {}, rs::aux::optional(useLB, lb), rs::aux::optional(useUB, ub));
+}
+
+State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
+  if (coefs.size() != vars.size() || coefs.size() >= 1e9) return State::FAIL;
+
+  std::vector<bigint> cfs;
+  cfs.reserve(coefs.size());
+  std::vector<rs::parsing::IntVar*> vs;
+  vs.reserve(coefs.size());
+  for (int i = 0; i < (int)coefs.size(); ++i) {
+    cfs.push_back(coefs[i]);
+    vs.push_back(rs::run::solver.ilp.getVarFor(vars[i]));
+  }
+
+  rs::run::solver.ilp.addObjective(cfs, vs, {});
+  return State::SUCCESS;
 }

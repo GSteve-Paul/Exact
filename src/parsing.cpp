@@ -49,6 +49,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs::parsing {
 
+// TODO: check efficiency of parsing with a .opb-file that takes long to parse, according to experiments
+
 bigint read_bigint(const std::string& s, int start) {
   int length = s.size();
   while (start < length && std::iswspace(s[start])) {

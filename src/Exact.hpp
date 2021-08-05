@@ -18,3 +18,4 @@ int start();
 
 State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB, long long lb,
                     bool useUB, long long ub);
+State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);

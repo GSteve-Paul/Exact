@@ -11,10 +11,8 @@ def addClause(lits):
         True, 1-sum(1 for l in lits if l<0),
         False, 0)
 
-addClause([1,2])
-addClause([-1,-2])
-addClause([-1,2])
-
-print(cppyy.gbl.addConstraint([1,-1], ["1","2"], True, 0, False, 0))
+print(addClause([1,2]))
+print(cppyy.gbl.addConstraint([-1,-1], ["1","2"], True, -1, False, 0))
+print(cppyy.gbl.setObjective([1,2],["1","2"]))
 
 cppyy.gbl.start()
