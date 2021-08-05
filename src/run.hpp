@@ -121,7 +121,7 @@ template <typename T>
 State runOptimize(const T& obj, const CeArb& o) {
   o->copyTo(obj);
   Optimization optim(obj);
-  return optim.optimize(); // TODO: is this return value always correct?
+  return optim.optimize();  // TODO: is this return value always correct?
 }
 
 State run();
