@@ -71,13 +71,13 @@ CandidateCut::CandidateCut(const Constr& in, CRef cref, const std::vector<double
 
 void CandidateCut::initialize(const std::vector<double>& sol) {
   std::sort(simpcons.terms.begin(), simpcons.terms.end(),
-            [](const Term<long long>& t1, const Term<long long>& t2) { return t1.l < t2.l; });
+            [](const Term64& t1, const Term64& t2) { return t1.l < t2.l; });
   assert(norm == 1);
   norm = 0;
-  for (const Term<long long>& p : simpcons.terms) norm += aux::toDouble(p.c) * aux::toDouble(p.c);
+  for (const Term64& p : simpcons.terms) norm += aux::toDouble(p.c) * aux::toDouble(p.c);
   norm = std::sqrt(norm);
   ratSlack = -aux::toDouble(simpcons.rhs);
-  for (Term<long long>& p : simpcons.terms) {
+  for (Term64& p : simpcons.terms) {
     assert(p.l > 0);  // simpcons is in var-normal form
     ratSlack += aux::toDouble(p.c) * sol[p.l];
   }

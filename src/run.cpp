@@ -79,14 +79,14 @@ void LazyVar::setUpperBound(int cardUpperBound) {
 void LazyVar::addVar(Var v, bool reified) {
   currentVar = v;
   if (reified) {
-    Term<int>& last = atLeast.terms.back();
+    Term32& last = atLeast.terms.back();
     last = {last.c - 1, v};
     --atMost.rhs;
-    Term<int>& last2 = atMost.terms.back();
+    Term32& last2 = atMost.terms.back();
     last2 = {remainingVars(), v};
   } else {
     atLeast.terms.emplace_back(-1, v);
-    Term<int>& last = atMost.terms.back();
+    Term32& last = atMost.terms.back();
     last = {1, last.l};
     atMost.terms.emplace_back(remainingVars(), v);
   }
@@ -113,7 +113,7 @@ void LazyVar::addSymBreakingConstraint(Var prevvar) const {
 
 void LazyVar::addFinalAtMost(bool reified) {
   solver.dropExternal(atMostID, !reified, false);
-  Term<int>& last = atMost.terms.back();
+  Term32& last = atMost.terms.back();
   last = {1, last.l};
   solver.addConstraintUnchecked(atMost, Origin::COREGUIDED);
 }

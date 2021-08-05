@@ -167,31 +167,31 @@ struct ConstrExpSuper {
 
   virtual int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                           const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual int resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
+  virtual int resolveWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual int resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
+  virtual int resolveWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual int resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
+  virtual int resolveWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual int resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
+  virtual int resolveWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual int resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
+  virtual int resolveWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                           const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits) = 0;
-  virtual int subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l,
+  virtual int subsumeWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
-  virtual int subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Lit l,
+  virtual int subsumeWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
-  virtual int subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l,
+  virtual int subsumeWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
-  virtual int subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l,
+  virtual int subsumeWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
-  virtual int subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l,
+  virtual int subsumeWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                           IntSet& saturatedLits) = 0;
 };
@@ -382,28 +382,28 @@ struct ConstrExp final : public ConstrExpSuper {
 
   int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                   const std::vector<int>& pos, IntSet& actSet);
-  int resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
+  int resolveWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
-  int resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
+  int resolveWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
-  int resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
+  int resolveWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
-  int resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
+  int resolveWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
-  int resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
+  int resolveWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
   int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                   const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
-  int subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l,
-                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
-  int subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
-  int subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
-  int subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l,
-                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
-  int subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l,
-                  const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+  int subsumeWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Lit l, const IntMap<int>& level,
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+  int subsumeWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Lit l, const IntMap<int>& level,
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+  int subsumeWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Lit l, const IntMap<int>& level,
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+  int subsumeWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Lit l, const IntMap<int>& level,
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+  int subsumeWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Lit l, const IntMap<int>& level,
+                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
 
  private:
   template <typename CF, typename DG>

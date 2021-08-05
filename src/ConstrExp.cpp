@@ -1534,62 +1534,57 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
 }
 
 template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::resolveWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id,
-                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
-                                         IntSet& actSet) {
+int ConstrExp<SMALL, LARGE>::resolveWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Origin o,
+                                         Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::resolveWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id,
-                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
-                                         IntSet& actSet) {
+int ConstrExp<SMALL, LARGE>::resolveWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Origin o,
+                                         Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::resolveWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id,
-                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
-                                         IntSet& actSet) {
+int ConstrExp<SMALL, LARGE>::resolveWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Origin o,
+                                         Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::resolveWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id,
-                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
-                                         IntSet& actSet) {
+int ConstrExp<SMALL, LARGE>::resolveWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Origin o,
+                                         Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::resolveWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id,
-                                         Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
-                                         IntSet& actSet) {
+int ConstrExp<SMALL, LARGE>::resolveWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Origin o,
+                                         Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
   return genericResolve(terms, size, degr, id, o, l, level, pos, actSet);
 }
 
 template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<int>* terms, unsigned int size, const long long& degr, ID id, Lit l,
+int ConstrExp<SMALL, LARGE>::subsumeWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Lit l,
                                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<long long>* terms, unsigned int size, const int128& degr, ID id,
-                                         Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
-                                         IntSet& saturatedLits) {
-  return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
-}
-template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<int128>* terms, unsigned int size, const int128& degr, ID id, Lit l,
+int ConstrExp<SMALL, LARGE>::subsumeWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Lit l,
                                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<int128>* terms, unsigned int size, const int256& degr, ID id, Lit l,
+int ConstrExp<SMALL, LARGE>::subsumeWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Lit l,
                                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
 }
 template <typename SMALL, typename LARGE>
-int ConstrExp<SMALL, LARGE>::subsumeWith(const Term<bigint>* terms, unsigned int size, const bigint& degr, ID id, Lit l,
+int ConstrExp<SMALL, LARGE>::subsumeWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Lit l,
+                                         const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
+                                         IntSet& saturatedLits) {
+  return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);
+}
+template <typename SMALL, typename LARGE>
+int ConstrExp<SMALL, LARGE>::subsumeWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Lit l,
                                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
                                          IntSet& saturatedLits) {
   return genericSubsume(terms, size, degr, id, l, level, pos, actSet, saturatedLits);

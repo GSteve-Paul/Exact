@@ -226,7 +226,11 @@ struct Term {
   Lit l;
 };
 
-// TODO: typedefs for Term, e.g. Term32
+using Term32 = Term<int>;
+using Term64 = Term<long long>;
+using Term128 = Term<int128>;
+using Term256 = Term<int256>;
+using TermArb = Term<bigint>;
 
 template <typename CF>
 std::ostream& operator<<(std::ostream& o, const Term<CF>& t) {

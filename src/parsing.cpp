@@ -230,7 +230,7 @@ void wcnf_read(std::istream& in, Solver& solver) {
           objvars.push_back(solver.ilp.getVarFor(std::to_string(toVar(aux)), true));
           objnegated.push_back(aux < 0);
           // if (options.test.get()) {
-          for (const Term<int>& t : input.terms) {  // reverse implication as binary clauses
+          for (const Term32& t : input.terms) {  // reverse implication as binary clauses
             solver.addConstraintChecked(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
           }
           //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
@@ -238,7 +238,7 @@ void wcnf_read(std::istream& in, Solver& solver) {
           // reverse.rhs = input.size();
           // reverse.terms.reserve(input.size() + 1);
           // reverse.terms.push_back({input.size(), -aux});
-          // for (const Term<int>& t : input.terms) {
+          // for (const Term32& t : input.terms) {
           //  reverse.terms.push_back({1, -t.l});
           //}
           // solver.addConstraintChecked(reverse, Origin::FORMULA);
