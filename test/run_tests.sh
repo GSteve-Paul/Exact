@@ -127,6 +127,13 @@ reified
 
 declare -a arr_opt=(
 "wcnf/driverlog01bc.wcsp.dir.wcnf*2245"
+"wcnf/normalized-factor-size=9-P=383-Q=509.opb.wcnf*383"
+"wcnf/WCNF_pathways_p02.wcnf*3"
+"wcnf/archlinux.dimacs.wcnf*11744"
+"wcnf/414.wcsp.dir.wcnf*38478"
+"wcnf/g2_n56e57_n61e85.wcnf*39"
+"wcnf/synthetic-20.wcnf*6720"
+"wcnf/f49-DC_TotalLoss.seq-A-2-2-EDCBAir.wcnf*85435860665"
 "lp/hole.lp*2917/2"
 "mps/disctom.mps*-5000"
 "mps/hypothyroid-k1.mps*-2851"
