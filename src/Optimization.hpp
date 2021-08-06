@@ -41,12 +41,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "Solver.hpp"
+#include "ILP.hpp"
 #include "typedefs.hpp"
 
 namespace rs {
 
-extern Solver solver;
 extern ILP ilp;
 
 struct LazyVar {
@@ -124,16 +123,7 @@ class Optimization final : public OptimizationSuper {
   [[nodiscard]] State harden();
   [[nodiscard]] State runTabu();
 
-  [[nodiscard]] State optimize();
+  [[nodiscard]] State optimize();  // TODO: is this return value always correct?
 };
-
-template <typename T>
-State runOptimize(const T& obj, const CeArb& o) {
-  o->copyTo(obj);
-  Optimization optim(obj);
-  return optim.optimize();  // TODO: is this return value always correct?
-}
-
-State run();
 
 }  // namespace rs

@@ -10,9 +10,10 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #include "PublicInterface.hpp"
 #include <csignal>
+#include "ILP.hpp"
+#include "Optimization.hpp"
 #include "globals.hpp"
 #include "parsing.hpp"
-#include "run.hpp"
 
 void run() {
   rs::stats.STARTTIME.z = rs::aux::cpuTime();
@@ -36,7 +37,18 @@ void run() {
     rs::cePools.initializeLogging(rs::logger);
   }
 
-  State res = rs::run();
+  rs::stats.RUNSTARTTIME.z = rs::aux::cpuTime();
+  State res;
+  rs::ilp.init();
+  try {
+    res = rs::ilp.run();
+  } catch (const rs::AsynchronousInterrupt& ai) {
+    if (rs::options.outputMode.is("default")) {
+      std::cout << "c " << ai.what() << std::endl;
+    }
+    res = State::FAIL;
+  }
+
   if (res == State::FAIL) {
     rs::quit::exit_INDETERMINATE(rs::ilp);
   } else {

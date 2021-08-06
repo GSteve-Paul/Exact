@@ -42,7 +42,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include <memory>
-#include "ILP.hpp"
 #include "Options.hpp"
 #include "constraints/Constr.hpp"
 #include "datastructures/Heuristic.hpp"

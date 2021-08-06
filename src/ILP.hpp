@@ -11,11 +11,10 @@ See the file LICENSE or run with the flag --license=MIT.
 #pragma once
 
 #include <string>
+#include "Solver.hpp"
 #include "typedefs.hpp"
 
 namespace rs {
-
-class Solver;
 
 struct IntVar {
   explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub);
@@ -69,7 +68,7 @@ class IntConstraint {
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
 struct ILP {
-  Solver& solver;
+  Solver solver;
   Optim optim;
 
   std::vector<std::unique_ptr<IntVar>> vars;
@@ -78,7 +77,7 @@ struct ILP {
   bigint objmult = 0;
   std::unordered_map<std::string, IntVar*> name2var;
 
-  ILP(Solver& s) : solver(s), obj({}, {}, {}, 0) {}
+  ILP() : obj({}, {}, {}, 0) {}
 
   IntVar* getVarFor(const std::string& name, bool nameAsId = true, const bigint& lowerbound = 0,
                     const bigint& upperbound = 1);
@@ -87,6 +86,9 @@ struct ILP {
   void addObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
   bool hasObjective() const { return objmult != 0; }
+
+  void init();
+  State run();
 
   State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                       const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,

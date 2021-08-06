@@ -9,8 +9,7 @@ See the file LICENSE or run with the flag --license=MIT.
 **********************************************************************/
 
 #include "ILP.hpp"
-#include "Solver.hpp"
-#include "run.hpp"
+#include "Optimization.hpp"
 
 namespace rs {
 
@@ -165,6 +164,15 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
   }
   return State::SUCCESS;
 }
+
+void ILP::init() {
+  CeArb o = cePools.takeArb();
+  obj.toConstrExp(o, true);
+  solver.init(o);
+  optim = OptimizationSuper::make(o);
+}
+
+State ILP::run() { return optim->optimize(); }
 
 void ILP::printOrigSol(const std::vector<Lit>& sol) {
   std::unordered_set<Var> trueVars;

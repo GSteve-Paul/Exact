@@ -90,7 +90,7 @@ set(source_files
         src/parsing.cpp
         src/datastructures/Heuristic.cpp
         src/aux.cpp
-        src/run.cpp
+        src/Optimization.cpp
         src/quit.cpp
         src/Exact.cpp
         src/propagation/Propagator.cpp
@@ -126,7 +126,7 @@ set(header_files
         src/Options.hpp
         src/aux.hpp
         src/quit.hpp
-        src/run.hpp
+        src/Optimization.hpp
         src/propagation/Propagator.hpp
         src/propagation/Equalities.hpp
         src/propagation/Implications.hpp

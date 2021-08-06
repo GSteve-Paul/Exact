@@ -42,10 +42,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "quit.hpp"
 #include <iostream>
 #include "ILP.hpp"
+#include "Optimization.hpp"
 #include "Solver.hpp"
 #include "aux.hpp"
 #include "globals.hpp"
-#include "run.hpp"
 
 namespace rs {
 

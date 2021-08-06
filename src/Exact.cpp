@@ -41,9 +41,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Exact.hpp"
 #include <fstream>
+#include "Optimization.hpp"
 #include "globals.hpp"
 #include "parsing.hpp"
-#include "run.hpp"
 
 int main(int argc, char** argv) {
   rs::stats.STARTTIME.z = rs::aux::cpuTime();
@@ -73,7 +73,30 @@ int main(int argc, char** argv) {
 
   rs::aux::timeCallVoid([&] { rs::parsing::file_read(rs::ilp); }, rs::stats.PARSETIME);
 
-  State res = rs::run();
+  if (rs::options.noSolve) {
+    rs::quit::exit_INDETERMINATE(rs::ilp);
+  }
+  if (rs::options.printCsvData) {
+    rs::stats.printCsvHeader();
+  }
+  if (rs::options.verbosity.get() > 0) {
+    std::cout << "c " << rs::ilp.solver.getNbOrigVars() << " vars " << rs::ilp.solver.getNbConstraints() << " constrs"
+              << std::endl;
+  }
+
+  rs::stats.RUNSTARTTIME.z = rs::aux::cpuTime();
+
+  State res;
+  rs::ilp.init();
+  try {
+    res = rs::ilp.run();
+  } catch (const rs::AsynchronousInterrupt& ai) {
+    if (rs::options.outputMode.is("default")) {
+      std::cout << "c " << ai.what() << std::endl;
+    }
+    res = State::FAIL;
+  }
+
   if (res == State::FAIL) {
     rs::quit::exit_INDETERMINATE(rs::ilp);
   } else {
