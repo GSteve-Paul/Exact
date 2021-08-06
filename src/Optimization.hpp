@@ -79,6 +79,7 @@ struct LvM {
 class OptimizationSuper {
  protected:
   Solver& solver;
+
  public:
   int solutionsFound = 0;
   bigint bestObjSoFar = 0;  // TODO: template this in derived class

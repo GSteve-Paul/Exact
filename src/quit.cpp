@@ -58,15 +58,15 @@ void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) 
   std::cout << std::endl;
 }
 
-void quit::printLitsMaxsat(const std::vector<Lit>& lits, const Solver& solver) {
+void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
   std::cout << "v ";
   if (options.outputMode.is("maxsatnew")) {
-    for (Var v = 1; v <= solver.maxSatVars; ++v) {
+    for (Var v = 1; v <= ilp.maxSatVars; ++v) {
       std::cout << (lits[v] > 0);
     }
   } else {
     assert(options.outputMode.is("maxsat"));
-    for (Var v = 1; v <= solver.maxSatVars; ++v) {
+    for (Var v = 1; v <= ilp.maxSatVars; ++v) {
       std::cout << lits[v] << " ";
     }
   }
@@ -120,7 +120,7 @@ void quit::exit_SUCCESS(ILP& ilp) {
       printFinalStats(ilp);
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
-      printLitsMaxsat(ilp.solver.getLastSolution(), ilp.solver);
+      printLitsMaxsat(ilp.solver.getLastSolution(), ilp);
     } else {
       if (options.printSol) printLits(ilp.solver.getLastSolution(), 'v', true);
       printFinalStats(ilp);
@@ -150,7 +150,7 @@ void quit::exit_INDETERMINATE(ILP& ilp) {
       printFinalStats(ilp);
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s UNKNOWN" << std::endl;
-      printLitsMaxsat(ilp.solver.getLastSolution(), ilp.solver);
+      printLitsMaxsat(ilp.solver.getLastSolution(), ilp);
     } else {
       if (options.printSol) printLits(ilp.solver.getLastSolution(), 'v', true);
       printFinalStats(ilp);

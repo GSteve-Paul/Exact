@@ -79,8 +79,7 @@ class Solver {
   std::vector<Lit> lastSol = {0};
   bool foundSolution() const { return getNbOrigVars() == 0 || lastSol.size() > 1; }
   CeSuper lastCore;
-  CeArb objective;
-  int maxSatVars = -1;
+  IntSet objectiveLits;
 
  private:
   int n;

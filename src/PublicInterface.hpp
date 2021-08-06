@@ -12,9 +12,8 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #include <string>
 #include <vector>
-#include "aux.hpp"
-
 #include "ILP.hpp"
+#include "aux.hpp"
 
 extern rs::ILP public_ilp;
 

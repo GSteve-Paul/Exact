@@ -193,7 +193,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
     if (line[0] == 'p') {
       assert(line.substr(0, 7) == "p wcnf ");
       ilp.solver.setNbVars(std::stoll(line.substr(7)), true);
-      ilp.solver.maxSatVars = ilp.solver.getNbVars();
+      ilp.maxSatVars = ilp.solver.getNbVars();
       bool nonWhitespace = false;
       for (int i = line.size() - 1; i >= 0; --i) {
         bool wspace = std::iswspace(line[i]);

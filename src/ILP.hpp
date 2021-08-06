@@ -77,6 +77,8 @@ struct ILP {
   bigint objmult = 0;
   std::unordered_map<std::string, IntVar*> name2var;
 
+  int maxSatVars = -1;
+
   ILP() : obj({}, {}, {}, 0) {}
 
   IntVar* getVarFor(const std::string& name, bool nameAsId = true, const bigint& lowerbound = 0,

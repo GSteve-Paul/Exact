@@ -98,7 +98,9 @@ void Solver::setNbVars(int nvars, bool orig) {
 }
 
 void Solver::init(const CeArb& obj) {
-  objective = obj;
+  for (Var v : obj->vars) {
+    objectiveLits.add(obj->getLit(v));
+  }
   nconfl_to_restart = options.lubyMult.get();
   nconfl_to_reduce = 1000;
 }
@@ -1030,11 +1032,10 @@ void Solver::removeSatisfiedNonImpliedsAtRoot() {
 }
 
 void Solver::derivePureLits() {
-  assert(objective);
   assert(decisionLevel() == 0);
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {  // NOTE: core-guided variables will not be eliminated
     quit::checkInterrupt();
-    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || equalities.isPartOfEquality(l) ||
+    if (l == 0 || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l) ||
         !lit2cons[-l].empty())
       continue;
     [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
@@ -1044,13 +1045,12 @@ void Solver::derivePureLits() {
 }
 
 void Solver::dominanceBreaking() {
-  assert(objective);
   std::unordered_set<Lit> inUnsaturatableConstraint;
   IntSet& saturating = isPool.take();
   IntSet& intersection = isPool.take();
   for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {
     assert(saturating.isEmpty());
-    if (l == 0 || isKnown(getPos(), l) || objective->hasLit(l) || equalities.isPartOfEquality(l)) continue;
+    if (l == 0 || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l)) continue;
     std::unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
       [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);

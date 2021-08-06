@@ -121,35 +121,36 @@ std::ostream& operator<<(std::ostream& o, const std::shared_ptr<LazyVar>& lv) {
   return o;
 }
 
-OptimizationSuper::OptimizationSuper(Solver& s) : solver(s){ }
+OptimizationSuper::OptimizationSuper(Solver& s) : solver(s) {}
 
 Optim OptimizationSuper::make(const CeArb& obj, Solver& solver) {
   bigint maxVal = obj->getCutoffVal();
   if (maxVal <= limit32) {  // TODO: try to internalize this check in ConstrExp
     Ce32 o = cePools.take32();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int, long long>>(o,solver);
+    return std::make_shared<Optimization<int, long long>>(o, solver);
   } else if (maxVal <= limit64) {
     Ce64 o = cePools.take64();
     obj->copyTo(o);
-    return std::make_shared<Optimization<long long, int128>>(o,solver);
+    return std::make_shared<Optimization<long long, int128>>(o, solver);
   } else if (maxVal <= static_cast<bigint>(limit96)) {
     Ce96 o = cePools.take96();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int128, int128>>(o,solver);
+    return std::make_shared<Optimization<int128, int128>>(o, solver);
   } else if (maxVal <= static_cast<bigint>(limit128)) {
     Ce128 o = cePools.take128();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int128, int256>>(o,solver);
+    return std::make_shared<Optimization<int128, int256>>(o, solver);
   } else {
     CeArb o = cePools.takeArb();
     obj->copyTo(o);
-    return std::make_shared<Optimization<bigint, bigint>>(o,solver);
+    return std::make_shared<Optimization<bigint, bigint>>(o, solver);
   }
 }
 
 template <typename SMALL, typename LARGE>
-Optimization<SMALL, LARGE>::Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj, Solver& s) : OptimizationSuper(s), origObj(obj) {
+Optimization<SMALL, LARGE>::Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj, Solver& s)
+    : OptimizationSuper(s), origObj(obj) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
   lower_bound = -origObj->getDegree();
   upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
