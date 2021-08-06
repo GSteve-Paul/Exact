@@ -42,8 +42,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include <ostream>
+#include "../typedefs.hpp"
 #include "IntMap.hpp"
-#include "typedefs.hpp"
 
 namespace xct {
 

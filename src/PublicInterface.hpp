@@ -15,10 +15,8 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "ILP.hpp"
 #include "aux.hpp"
 
-namespace xct {
-
 class Exact {
-  std::unique_ptr<ILP> ilp;
+  std::unique_ptr<xct::ILP> ilp;
 
  public:
   Exact();
@@ -37,5 +35,3 @@ class Exact {
 
   void run();
 };
-
-}  // namespace xct

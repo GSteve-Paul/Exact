@@ -41,11 +41,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "aux.hpp"
-#include "constraints/ConstrExp.hpp"
-#include "constraints/ConstrSimple.hpp"
-#include "globals.hpp"
-#include "typedefs.hpp"
+#include "../aux.hpp"
+#include "../constraints/ConstrExp.hpp"
+#include "../constraints/ConstrSimple.hpp"
+#include "../globals.hpp"
+#include "../typedefs.hpp"
 
 #if WITHSOPLEX
 

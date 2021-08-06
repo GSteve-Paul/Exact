@@ -10,9 +10,9 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #pragma once
 
+#include "../datastructures/IntMap.hpp"
+#include "../typedefs.hpp"
 #include "Propagator.hpp"
-#include "datastructures/IntMap.hpp"
-#include "typedefs.hpp"
 
 namespace xct {
 

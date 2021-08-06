@@ -3,7 +3,7 @@ project(Exact)
 
 set(CMAKE_CXX_STANDARD 17)
 
-include_directories("src/" )
+# include_directories("src" ) # NOTE: don't include non-standard directories, as cppyy complains about those
 
 # Feel free to decrease the required boost version if you can verify that it works with
 # a smaller version. It is known not to compile with version 1.53.0 and lower.

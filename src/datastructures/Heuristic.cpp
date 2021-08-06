@@ -40,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Heuristic.hpp"
-#include "globals.hpp"
+#include "../globals.hpp"
 
 namespace xct {
 

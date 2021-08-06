@@ -3,7 +3,7 @@ cppyy.include('/home/jod/workspace/exact-dev/src/PublicInterface.hpp')
 cppyy.load_library('/home/jod/workspace/exact-dev/build_debug/libexact')
 
 import math
-import cppyy.gbl.Exact
+from cppyy.gbl import Exact
 
 exact = Exact()
 

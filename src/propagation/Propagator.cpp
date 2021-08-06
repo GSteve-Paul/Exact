@@ -9,7 +9,7 @@ See the file LICENSE or run with the flag --license=MIT.
 **********************************************************************/
 
 #include "Propagator.hpp"
-#include "Solver.hpp"
+#include "../Solver.hpp"
 
 namespace xct {
 

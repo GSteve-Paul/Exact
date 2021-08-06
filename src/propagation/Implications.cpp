@@ -9,8 +9,8 @@ See the file LICENSE or run with the flag --license=MIT.
 **********************************************************************/
 
 #include "Implications.hpp"
-#include "Solver.hpp"
-#include "globals.hpp"
+#include "../Solver.hpp"
+#include "../globals.hpp"
 
 namespace xct {
 

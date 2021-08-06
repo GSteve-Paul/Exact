@@ -261,7 +261,7 @@ template <typename T>
 unsigned msb(const T& x) {
   assert(x > 0);
   // return std::bit_floor(x); // C++20
-  return boost::multiprecision::msb(boost::multiprecision::uint128_t(x));
+  return boost::multiprecision::msb(boost::multiprecision::int128_t(x));
 }
 template <>
 inline unsigned msb(const bigint& x) {
@@ -335,7 +335,8 @@ std::optional<T> optional(bool make, const T& val) {
   return std::nullopt;
 }
 
-#ifdef __APPLE__
+// TODO: below is also needed for Python interface?
+// #ifdef __APPLE__
 template <>
 inline int128 abs(const int128& x) {
   return x < 0 ? -x : x;
@@ -346,14 +347,10 @@ inline int128 gcd(const int128& x, const int128& y) {
       boost::multiprecision::gcd(boost::multiprecision::int128_t(x), boost::multiprecision::int128_t(y)));
 }
 template <>
-inline unsigned msb(const int128& x) {
-  return boost::multiprecision::msb(boost::multiprecision::uint128_t(x));
-}
-template <>
 inline int128 pow(const int128& x, unsigned y) {
   return static_cast<int128>(boost::multiprecision::pow(boost::multiprecision::int128_t(x), y));
 }
-#endif
+// #endif
 
 namespace rng {
 

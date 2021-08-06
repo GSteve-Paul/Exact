@@ -43,13 +43,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <memory>
 #include <sstream>
+#include "../Logger.hpp"
+#include "../datastructures/IntSet.hpp"
+#include "../datastructures/SolverStructs.hpp"
+#include "../globals.hpp"
+#include "../typedefs.hpp"
 #include "ConstrExpPools.hpp"
 #include "ConstrSimple.hpp"
-#include "Logger.hpp"
-#include "datastructures/IntSet.hpp"
-#include "datastructures/SolverStructs.hpp"
-#include "globals.hpp"
-#include "typedefs.hpp"
 
 namespace xct {
 

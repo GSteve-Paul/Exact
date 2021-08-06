@@ -42,12 +42,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConstrExp.hpp"
 #include <algorithm>
 #include <functional>
+#include "../Solver.hpp"
+#include "../aux.hpp"
+#include "../datastructures/Heuristic.hpp"
+#include "../propagation/Equalities.hpp"
+#include "../propagation/Implications.hpp"
 #include "Constr.hpp"
-#include "Solver.hpp"
-#include "aux.hpp"
-#include "datastructures/Heuristic.hpp"
-#include "propagation/Equalities.hpp"
-#include "propagation/Implications.hpp"
 
 namespace xct {
 

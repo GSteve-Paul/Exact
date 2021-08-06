@@ -13,7 +13,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "ILP.hpp"
 #include "globals.hpp"
 
-namespace xct {
+using namespace xct;
 
 Exact::Exact() {
   stats.STARTTIME.z = aux::cpuTime();
@@ -90,4 +90,3 @@ void Exact::run() {
     quit::exit_SUCCESS(*ilp);
   }
 }
-}  // namespace xct
