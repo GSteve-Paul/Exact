@@ -96,7 +96,6 @@ set(source_files
         src/propagation/Propagator.cpp
         src/propagation/Equalities.cpp
         src/propagation/Implications.cpp
-        src/PublicInterface.cpp
 
         src/used_licenses/licenses.cpp
         src/used_licenses/zib_academic.cpp
@@ -131,7 +130,6 @@ set(header_files
         src/propagation/Equalities.hpp
         src/propagation/Implications.hpp
         src/Exact.hpp
-        src/PublicInterface.hpp
 
         src/used_licenses/licenses.hpp
         src/used_licenses/zib_academic.hpp

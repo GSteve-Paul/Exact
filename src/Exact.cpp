@@ -8,46 +8,17 @@ You should have received a copy of the MIT License along with Exact.
 See the file LICENSE or run with the flag --license=MIT.
 **********************************************************************/
 
-/**********************************************************************
-Copyright (c) 2014-2020, Jan Elffers
-Copyright (c) 2019-2021, Jo Devriendt
-Copyright (c) 2020-2021, Stephan Gocht
-Copyright (c) 2014-2021, Jakob Nordström
-
-Parts of the code were copied or adapted from MiniSat.
-
-MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
-           Copyright (c) 2007-2010  Niklas Sorensson
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-**********************************************************************/
-
 #include "Exact.hpp"
 #include <fstream>
 #include "ILP.hpp"
 #include "globals.hpp"
 #include "parsing.hpp"
 
+using namespace xct;
+
 int main(int argc, char** argv) {
-  xct::stats.STARTTIME.z = xct::aux::cpuTime();
-  xct::asynch_interrupt = false;
+  stats.STARTTIME.z = aux::cpuTime();
+  asynch_interrupt = false;
 
   signal(SIGINT, SIGINT_exit);
   signal(SIGTERM, SIGINT_exit);
@@ -56,48 +27,124 @@ int main(int argc, char** argv) {
   signal(SIGTERM, SIGINT_interrupt);
   signal(SIGXCPU, SIGINT_interrupt);
 
-  xct::options.parseCommandLine(argc, argv);
+  options.parseCommandLine(argc, argv);
 
-  xct::aux::rng::seed = xct::options.randomSeed.get();
+  aux::rng::seed = options.randomSeed.get();
 
-  if (xct::options.verbosity.get() > 0) {
+  if (options.verbosity.get() > 0) {
     std::cout << "c Exact 2021\n";
     std::cout << "c branch " << EXPANDED(GIT_BRANCH) << "\n";
     std::cout << "c commit " << EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
 
-  if (!xct::options.proofLog.get().empty()) {
-    xct::logger = std::make_shared<xct::Logger>(xct::options.proofLog.get());
-    xct::cePools.initializeLogging(xct::logger);
+  if (!options.proofLog.get().empty()) {
+    logger = std::make_shared<Logger>(options.proofLog.get());
+    cePools.initializeLogging(logger);
   }
 
-  xct::ILP ilp;
+  ILP ilp;
 
-  xct::aux::timeCallVoid([&] { xct::parsing::file_read(ilp); }, xct::stats.PARSETIME);
+  aux::timeCallVoid([&] { parsing::file_read(ilp); }, stats.PARSETIME);
 
-  if (xct::options.noSolve) xct::quit::exit_INDETERMINATE(ilp);
-  if (xct::options.printCsvData) xct::stats.printCsvHeader();
-  if (xct::options.verbosity.get() > 0) {
+  if (options.noSolve) quit::exit_INDETERMINATE(ilp);
+  if (options.printCsvData) stats.printCsvHeader();
+  if (options.verbosity.get() > 0) {
     std::cout << "c " << ilp.solver.getNbOrigVars() << " vars " << ilp.solver.getNbConstraints() << " constrs"
               << std::endl;
   }
 
-  xct::stats.RUNSTARTTIME.z = xct::aux::cpuTime();
+  stats.RUNSTARTTIME.z = aux::cpuTime();
 
   State res;
   ilp.init();
   try {
     res = ilp.run();
-  } catch (const xct::AsynchronousInterrupt& ai) {
-    if (xct::options.outputMode.is("default")) {
+  } catch (const AsynchronousInterrupt& ai) {
+    if (options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;
     }
     res = State::FAIL;
   }
 
   if (res == State::FAIL) {
-    xct::quit::exit_INDETERMINATE(ilp);
+    quit::exit_INDETERMINATE(ilp);
   } else {
-    xct::quit::exit_SUCCESS(ilp);
+    quit::exit_SUCCESS(ilp);
+  }
+}
+
+Exact::Exact() {
+  stats.STARTTIME.z = aux::cpuTime();
+  asynch_interrupt = false;
+  aux::rng::seed = options.randomSeed.get();
+
+  ilp = std::make_unique<ILP>();
+
+  options.printOpb.parse("");
+  // options.noSolve.parse("");
+  options.verbosity.parse("0");
+
+  if (!options.proofLog.get().empty()) {
+    logger = std::make_shared<Logger>(options.proofLog.get());
+    cePools.initializeLogging(logger);
+  }
+}
+
+void Exact::init() { ilp->init(); }
+
+State Exact::addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
+                           long long lb, bool useUB, long long ub) {
+  if (coefs.size() != vars.size() || coefs.size() >= 1e9) return State::FAIL;
+  std::vector<bigint> cfs;
+  cfs.reserve(coefs.size());
+  std::vector<IntVar*> vs;
+  vs.reserve(coefs.size());
+  for (int i = 0; i < (int)coefs.size(); ++i) {
+    cfs.push_back(coefs[i]);
+    vs.push_back(ilp->getVarFor(vars[i]));
+  }
+
+  return ilp->addConstraint(cfs, vs, {}, aux::optional(useLB, lb), aux::optional(useUB, ub));
+}
+
+State Exact::setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
+  if (coefs.size() != vars.size() || coefs.size() >= 1e9 || ilp->optim) return State::FAIL;
+
+  std::vector<bigint> cfs;
+  cfs.reserve(coefs.size());
+  std::vector<IntVar*> vs;
+  vs.reserve(coefs.size());
+  for (int i = 0; i < (int)coefs.size(); ++i) {
+    cfs.push_back(coefs[i]);
+    vs.push_back(ilp->getVarFor(vars[i]));
+  }
+
+  ilp->setObjective(cfs, vs, {});
+  return State::SUCCESS;
+}
+
+void Exact::run() {
+  signal(SIGINT, SIGINT_exit);
+  signal(SIGTERM, SIGINT_exit);
+  signal(SIGXCPU, SIGINT_exit);
+  signal(SIGINT, SIGINT_interrupt);
+  signal(SIGTERM, SIGINT_interrupt);
+  signal(SIGXCPU, SIGINT_interrupt);
+
+  stats.RUNSTARTTIME.z = aux::cpuTime();
+  State res;
+  try {
+    res = ilp->run();
+  } catch (const AsynchronousInterrupt& ai) {
+    if (options.outputMode.is("default")) {
+      std::cout << "c " << ai.what() << std::endl;
+    }
+    res = State::FAIL;
+  }
+
+  if (res == State::FAIL) {
+    quit::exit_INDETERMINATE(*ilp);
+  } else {
+    quit::exit_SUCCESS(*ilp);
   }
 }
