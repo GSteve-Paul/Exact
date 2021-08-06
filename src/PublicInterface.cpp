@@ -15,6 +15,8 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "globals.hpp"
 #include "parsing.hpp"
 
+rs::ILP public_ilp;
+
 void run() {
   rs::stats.STARTTIME.z = rs::aux::cpuTime();
   rs::asynch_interrupt = false;
@@ -39,9 +41,9 @@ void run() {
 
   rs::stats.RUNSTARTTIME.z = rs::aux::cpuTime();
   State res;
-  rs::ilp.init();
+  public_ilp.init();
   try {
-    res = rs::ilp.run();
+    res = public_ilp.run();
   } catch (const rs::AsynchronousInterrupt& ai) {
     if (rs::options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;
@@ -50,9 +52,9 @@ void run() {
   }
 
   if (res == State::FAIL) {
-    rs::quit::exit_INDETERMINATE(rs::ilp);
+    rs::quit::exit_INDETERMINATE(public_ilp);
   } else {
-    rs::quit::exit_SUCCESS(rs::ilp);
+    rs::quit::exit_SUCCESS(public_ilp);
   }
 }
 
@@ -65,14 +67,14 @@ State addConstraint(const std::vector<long long>& coefs, const std::vector<std::
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
     cfs.push_back(coefs[i]);
-    vs.push_back(rs::ilp.getVarFor(vars[i]));
+    vs.push_back(public_ilp.getVarFor(vars[i]));
   }
 
-  return rs::ilp.addConstraint(cfs, vs, {}, rs::aux::optional(useLB, lb), rs::aux::optional(useUB, ub));
+  return public_ilp.addConstraint(cfs, vs, {}, rs::aux::optional(useLB, lb), rs::aux::optional(useUB, ub));
 }
 
 State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
-  if (coefs.size() != vars.size() || coefs.size() >= 1e9 || rs::ilp.hasObjective()) return State::FAIL;
+  if (coefs.size() != vars.size() || coefs.size() >= 1e9 || public_ilp.hasObjective()) return State::FAIL;
 
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
@@ -80,9 +82,9 @@ State setObjective(const std::vector<long long>& coefs, const std::vector<std::s
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
     cfs.push_back(coefs[i]);
-    vs.push_back(rs::ilp.getVarFor(vars[i]));
+    vs.push_back(public_ilp.getVarFor(vars[i]));
   }
 
-  rs::ilp.addObjective(cfs, vs, {});
+  public_ilp.addObjective(cfs, vs, {});
   return State::SUCCESS;
 }

@@ -14,6 +14,10 @@ See the file LICENSE or run with the flag --license=MIT.
 #include <vector>
 #include "aux.hpp"
 
+#include "ILP.hpp"
+
+extern rs::ILP public_ilp;
+
 void run();
 
 State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB, long long lb,

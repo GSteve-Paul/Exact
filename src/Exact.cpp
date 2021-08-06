@@ -41,7 +41,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Exact.hpp"
 #include <fstream>
-#include "Optimization.hpp"
+#include "ILP.hpp"
 #include "globals.hpp"
 #include "parsing.hpp"
 
@@ -71,25 +71,23 @@ int main(int argc, char** argv) {
     rs::cePools.initializeLogging(rs::logger);
   }
 
-  rs::aux::timeCallVoid([&] { rs::parsing::file_read(rs::ilp); }, rs::stats.PARSETIME);
+  rs::ILP ilp;
 
-  if (rs::options.noSolve) {
-    rs::quit::exit_INDETERMINATE(rs::ilp);
-  }
-  if (rs::options.printCsvData) {
-    rs::stats.printCsvHeader();
-  }
+  rs::aux::timeCallVoid([&] { rs::parsing::file_read(ilp); }, rs::stats.PARSETIME);
+
+  if (rs::options.noSolve) rs::quit::exit_INDETERMINATE(ilp);
+  if (rs::options.printCsvData) rs::stats.printCsvHeader();
   if (rs::options.verbosity.get() > 0) {
-    std::cout << "c " << rs::ilp.solver.getNbOrigVars() << " vars " << rs::ilp.solver.getNbConstraints() << " constrs"
+    std::cout << "c " << ilp.solver.getNbOrigVars() << " vars " << ilp.solver.getNbConstraints() << " constrs"
               << std::endl;
   }
 
   rs::stats.RUNSTARTTIME.z = rs::aux::cpuTime();
 
   State res;
-  rs::ilp.init();
+  ilp.init();
   try {
-    res = rs::ilp.run();
+    res = ilp.run();
   } catch (const rs::AsynchronousInterrupt& ai) {
     if (rs::options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;
@@ -98,8 +96,8 @@ int main(int argc, char** argv) {
   }
 
   if (res == State::FAIL) {
-    rs::quit::exit_INDETERMINATE(rs::ilp);
+    rs::quit::exit_INDETERMINATE(ilp);
   } else {
-    rs::quit::exit_SUCCESS(rs::ilp);
+    rs::quit::exit_SUCCESS(ilp);
   }
 }

@@ -46,8 +46,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-extern ILP ilp;
-
 struct LazyVar {
   Solver& solver;
   int coveredVars;
@@ -79,14 +77,17 @@ struct LvM {
 };
 
 class OptimizationSuper {
+ protected:
+  Solver& solver;
  public:
   int solutionsFound = 0;
   bigint bestObjSoFar = 0;  // TODO: template this in derived class
 
-  static Optim make(const CeArb& obj);
+  static Optim make(const CeArb& obj, Solver& solver);
 
   [[nodiscard]] virtual State optimize() = 0;
 
+  OptimizationSuper(Solver& s);
   virtual ~OptimizationSuper() = default;
 };
 
@@ -105,7 +106,7 @@ class Optimization final : public OptimizationSuper {
   std::vector<LvM<SMALL>> lazyVars;
 
  public:
-  explicit Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj);
+  explicit Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj, Solver& s);
 
   LARGE normalizedLowerBound() { return lower_bound + origObj->getDegree(); }
   LARGE normalizedUpperBound() { return upper_bound + origObj->getDegree(); }

@@ -169,7 +169,7 @@ void ILP::init() {
   CeArb o = cePools.takeArb();
   obj.toConstrExp(o, true);
   solver.init(o);
-  optim = OptimizationSuper::make(o);
+  optim = OptimizationSuper::make(o,solver);
 }
 
 State ILP::run() { return optim->optimize(); }

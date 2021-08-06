@@ -54,8 +54,8 @@ namespace quit {
 
 void printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive);
 void printLitsMaxsat(const std::vector<Lit>& lits, const Solver& solver);
-void printFinalStats(Solver& solver);
-void printFormula(Solver& solver);
+void printFinalStats(ILP& ilp);
+void printFormula(ILP& ilp);
 void exit_SUCCESS(ILP& ilp);
 void exit_INDETERMINATE(ILP& ilp);
 void exit_ERROR(const std::initializer_list<std::string>& messages);
