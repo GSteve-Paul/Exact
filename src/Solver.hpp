@@ -55,8 +55,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-enum class SolveState { SAT, UNSAT, INCONSISTENT, INPROCESSED };
-
 class Solver {
   friend class LpSolver;
   friend struct Constr;

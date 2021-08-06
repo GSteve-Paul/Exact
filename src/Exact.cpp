@@ -40,19 +40,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Exact.hpp"
-#include <csignal>
 #include <fstream>
-#include "aux.hpp"
 #include "globals.hpp"
 #include "parsing.hpp"
 #include "run.hpp"
-
-static void SIGINT_interrupt([[maybe_unused]] int signum) { rs::asynch_interrupt = true; }
-
-static void SIGINT_exit([[maybe_unused]] int signum) {
-  std::cout << "*** INTERRUPTED ***" << std::endl;
-  rs::aux::flushexit(1);
-}
 
 int main(int argc, char** argv) {
   rs::stats.STARTTIME.z = rs::aux::cpuTime();
@@ -88,71 +79,4 @@ int main(int argc, char** argv) {
   } else {
     rs::quit::exit_SUCCESS(rs::run::solver);
   }
-}
-
-void start() {
-  rs::stats.STARTTIME.z = rs::aux::cpuTime();
-  rs::asynch_interrupt = false;
-
-  signal(SIGINT, SIGINT_exit);
-  signal(SIGTERM, SIGINT_exit);
-  signal(SIGXCPU, SIGINT_exit);
-  signal(SIGINT, SIGINT_interrupt);
-  signal(SIGTERM, SIGINT_interrupt);
-  signal(SIGXCPU, SIGINT_interrupt);
-
-  rs::aux::rng::seed = rs::options.randomSeed.get();
-
-  rs::options.printOpb.parse("");
-  // rs::options.noSolve.parse("");
-  rs::options.verbosity.parse("0");
-
-  if (rs::options.verbosity.get() > 0) {
-    std::cout << "c Exact 2021\n";
-    std::cout << "c branch " << EXPANDED(GIT_BRANCH) << "\n";
-    std::cout << "c commit " << EXPANDED(GIT_COMMIT_HASH) << std::endl;
-  }
-
-  if (!rs::options.proofLog.get().empty()) {
-    rs::logger = std::make_shared<rs::Logger>(rs::options.proofLog.get());
-    rs::cePools.initializeLogging(rs::logger);
-  }
-
-  State res = rs::run::run();
-  if (res == State::FAIL) {
-    rs::quit::exit_INDETERMINATE(rs::run::solver);
-  } else {
-    rs::quit::exit_SUCCESS(rs::run::solver);
-  }
-}
-
-State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB, long long lb,
-                    bool useUB, long long ub) {
-  if (coefs.size() != vars.size() || coefs.size() >= 1e9) return State::FAIL;
-  std::vector<bigint> cfs;
-  cfs.reserve(coefs.size());
-  std::vector<rs::parsing::IntVar*> vs;
-  vs.reserve(coefs.size());
-  for (int i = 0; i < (int)coefs.size(); ++i) {
-    cfs.push_back(coefs[i]);
-    vs.push_back(rs::run::solver.ilp.getVarFor(vars[i]));
-  }
-
-  return rs::run::solver.ilp.addConstraint(cfs, vs, {}, rs::aux::optional(useLB, lb), rs::aux::optional(useUB, ub));
-}
-
-State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
-  if (coefs.size() != vars.size() || coefs.size() >= 1e9) return State::FAIL;
-
-  std::vector<bigint> cfs;
-  cfs.reserve(coefs.size());
-  std::vector<rs::parsing::IntVar*> vs;
-  vs.reserve(coefs.size());
-  for (int i = 0; i < (int)coefs.size(); ++i) {
-    cfs.push_back(coefs[i]);
-    vs.push_back(rs::run::solver.ilp.getVarFor(vars[i]));
-  }
-
-  rs::run::solver.ilp.addObjective(cfs, vs, {});
-  return State::SUCCESS;
 }

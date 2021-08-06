@@ -123,6 +123,31 @@ std::ostream& operator<<(std::ostream& o, const std::shared_ptr<LazyVar>& lv) {
   return o;
 }
 
+Optim OptimizationSuper::make(const CeArb& obj) {
+  bigint maxVal = obj->getCutoffVal();
+  if (maxVal <= limit32) {  // TODO: try to internalize this check in ConstrExp
+    Ce32 o = cePools.take32();
+    obj->copyTo(o);
+    return std::make_shared<Optimization<int, long long>>(o);
+  } else if (maxVal <= limit64) {
+    Ce64 o = cePools.take64();
+    obj->copyTo(o);
+    return std::make_shared<Optimization<long long, int128>>(o);
+  } else if (maxVal <= static_cast<bigint>(limit96)) {
+    Ce96 o = cePools.take96();
+    obj->copyTo(o);
+    return std::make_shared<Optimization<int128, int128>>(o);
+  } else if (maxVal <= static_cast<bigint>(limit128)) {
+    Ce128 o = cePools.take128();
+    obj->copyTo(o);
+    return std::make_shared<Optimization<int128, int256>>(o);
+  } else {
+    CeArb o = cePools.takeArb();
+    obj->copyTo(o);
+    return std::make_shared<Optimization<bigint, bigint>>(o);
+  }
+}
+
 template <typename SMALL, typename LARGE>
 Optimization<SMALL, LARGE>::Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj) : origObj(obj) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
@@ -547,24 +572,14 @@ State run() {
   if (options.verbosity.get() > 0) {
     std::cout << "c " << solver.getNbOrigVars() << " vars " << solver.getNbConstraints() << " constrs" << std::endl;
   }
+  CeArb o = cePools.takeArb();
+  solver.ilp.obj.toConstrExp(o, true);
+  solver.init(o);
+  // o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  // TODO: simplify original objective? NOTE: it will affect in-processing methods in the solver too
+  Optim optim = OptimizationSuper::make(o);
   try {
-    CeArb o = cePools.takeArb();
-    solver.ilp.obj.toConstrExp(o, true);
-    solver.init(o);
-    // o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-    // TODO: simplify original objective? NOTE: it will affect in-processing methods in the solver too
-    bigint maxVal = o->getCutoffVal();
-    if (maxVal <= limit32) {  // TODO: try to internalize this check in ConstrExp
-      return runOptimize(cePools.take32(), o);
-    } else if (maxVal <= limit64) {
-      return runOptimize(cePools.take64(), o);
-    } else if (maxVal <= static_cast<bigint>(limit96)) {
-      return runOptimize(cePools.take96(), o);
-    } else if (maxVal <= static_cast<bigint>(limit128)) {
-      return runOptimize(cePools.take128(), o);
-    } else {
-      return runOptimize(cePools.takeArb(), o);
-    }
+    return optim->optimize();
   } catch (const AsynchronousInterrupt& ai) {
     if (options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;

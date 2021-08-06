@@ -79,8 +79,17 @@ struct LvM {
   SMALL m;
 };
 
+class OptimizationSuper {
+ public:
+  static Optim make(const CeArb& obj);
+
+  [[nodiscard]] virtual State optimize() = 0;
+
+  virtual ~OptimizationSuper() = default;
+};
+
 template <typename SMALL, typename LARGE>
-class Optimization {
+class Optimization final : public OptimizationSuper {
   const CePtr<ConstrExp<SMALL, LARGE>> origObj;
   CePtr<ConstrExp<SMALL, LARGE>> reformObj;
 

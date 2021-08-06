@@ -65,6 +65,7 @@ using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
 
 enum class State { SUCCESS, UNSAT, FAIL };
+enum class SolveState { SAT, UNSAT, INCONSISTENT, INPROCESSED };
 
 namespace rs {
 

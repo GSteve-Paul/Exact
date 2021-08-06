@@ -41,6 +41,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include <csignal>
 #include "ConstrExpPools.hpp"
 #include "IntSet.hpp"
 #include "Logger.hpp"
@@ -59,3 +60,10 @@ extern ConstrExpPools cePools;
 extern IntSetPool isPool;
 
 }  // namespace rs
+
+inline void SIGINT_interrupt([[maybe_unused]] int signum) { rs::asynch_interrupt = true; }
+
+inline void SIGINT_exit([[maybe_unused]] int signum) {
+  std::cout << "*** INTERRUPTED ***" << std::endl;
+  rs::aux::flushexit(1);
+}

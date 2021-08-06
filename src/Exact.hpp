@@ -9,13 +9,3 @@ See the file LICENSE or run with the flag --license=MIT.
 **********************************************************************/
 
 #pragma once
-
-#include <string>
-#include <vector>
-#include "aux.hpp"
-
-void start();
-
-State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB, long long lb,
-                    bool useUB, long long ub);
-State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);

@@ -528,7 +528,7 @@ bool ILP::hasVarFor(const std::string& name) const { return name2var.count(name)
 
 void ILP::addObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                        const std::vector<bool>& negated, const bigint& mult, const bigint& offset) {
-  assert(mult != 0);
+  assert(!hasObjective());
   obj = IntConstraint(coefs, vars, negated, -offset);
   objmult = mult;
 }

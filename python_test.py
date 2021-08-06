@@ -1,5 +1,5 @@
 import cppyy
-cppyy.include('/home/jod/workspace/exact-dev/src/Exact.hpp')
+cppyy.include('/home/jod/workspace/exact-dev/src/PublicInterface.hpp')
 cppyy.load_library('/home/jod/workspace/exact-dev/build_debug/libexact')
 
 import math
@@ -16,4 +16,4 @@ print(cppyy.gbl.addConstraint([-1,-1], ["1","2"], True, -1, False, 0))
 print(cppyy.gbl.setObjective([1,2],["1","2"]))
 
 print("run:")
-print(cppyy.gbl.start())
+print(cppyy.gbl.run())
