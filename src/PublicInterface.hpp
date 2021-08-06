@@ -15,16 +15,27 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "ILP.hpp"
 #include "aux.hpp"
 
-extern xct::ILP public_ilp;
+namespace xct {
 
-void run();
+class Exact {
+  std::unique_ptr<ILP> ilp;
 
-State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB, long long lb,
-                    bool useUB, long long ub);
-State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
+ public:
+  Exact();
 
-// std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars);
-// bool hasLowerBound();
-// long long getLowerBound();
-// bool hasUpperBound();
-// long long getUpperBound();
+  State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
+                      long long lb, bool useUB, long long ub);
+  State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
+
+  // std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars);
+  // bool hasLowerBound();
+  // long long getLowerBound();
+  // bool hasUpperBound();
+  // long long getUpperBound();
+
+  void init();
+
+  void run();
+};
+
+}  // namespace xct

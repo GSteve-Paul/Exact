@@ -85,7 +85,7 @@ struct ILP {
                     const bigint& upperbound = 1);
   bool hasVarFor(const std::string& name) const;
 
-  void addObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+  void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
   bool hasObjective() const { return objmult != 0; }
 

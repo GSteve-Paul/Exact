@@ -172,7 +172,7 @@ void opb_read(std::istream& in, ILP& ilp) {
       vars.emplace_back(ilp.getVarFor(var.substr(negated.back() + 1)));
     }
     if (opt_line) {
-      ilp.addObjective(coefs, vars, negated);
+      ilp.setObjective(coefs, vars, negated);
     } else {
       bigint lb = read_bigint(line0, line0.find('=') + 1);
       State res =
@@ -254,7 +254,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       quit::checkInterrupt();
     }
   }
-  ilp.addObjective(objcoefs, objvars, objnegated);
+  ilp.setObjective(objcoefs, objvars, objnegated);
 }
 
 void cnf_read(std::istream& in, ILP& ilp) {
@@ -331,7 +331,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     cdenom = -cdenom;
     offset = -offset;
   }
-  ilp.addObjective(coefs, vars, {}, cdenom, offset);
+  ilp.setObjective(coefs, vars, {}, cdenom, offset);
 
   // Constraints
   const CoinPackedMatrix* cpm = coinutils.getMatrixByRow();

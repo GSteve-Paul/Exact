@@ -138,9 +138,9 @@ IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& low
 
 bool ILP::hasVarFor(const std::string& name) const { return name2var.count(name); }
 
-void ILP::addObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                        const std::vector<bool>& negated, const bigint& mult, const bigint& offset) {
-  assert(!hasObjective());
+  assert(!optim);
   obj = IntConstraint(coefs, vars, negated, -offset);
   objmult = mult;
 }
