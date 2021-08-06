@@ -36,11 +36,11 @@ void run() {
     rs::cePools.initializeLogging(rs::logger);
   }
 
-  State res = rs::run::run();
+  State res = rs::run();
   if (res == State::FAIL) {
-    rs::quit::exit_INDETERMINATE(rs::run::solver);
+    rs::quit::exit_INDETERMINATE(rs::ilp);
   } else {
-    rs::quit::exit_SUCCESS(rs::run::solver);
+    rs::quit::exit_SUCCESS(rs::ilp);
   }
 }
 
@@ -53,14 +53,14 @@ State addConstraint(const std::vector<long long>& coefs, const std::vector<std::
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
     cfs.push_back(coefs[i]);
-    vs.push_back(rs::run::solver.ilp.getVarFor(vars[i]));
+    vs.push_back(rs::ilp.getVarFor(vars[i]));
   }
 
-  return rs::run::solver.ilp.addConstraint(cfs, vs, {}, rs::aux::optional(useLB, lb), rs::aux::optional(useUB, ub));
+  return rs::ilp.addConstraint(cfs, vs, {}, rs::aux::optional(useLB, lb), rs::aux::optional(useUB, ub));
 }
 
 State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
-  if (coefs.size() != vars.size() || coefs.size() >= 1e9 || rs::run::solver.ilp.hasObjective()) return State::FAIL;
+  if (coefs.size() != vars.size() || coefs.size() >= 1e9 || rs::ilp.hasObjective()) return State::FAIL;
 
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
@@ -68,9 +68,9 @@ State setObjective(const std::vector<long long>& coefs, const std::vector<std::s
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
     cfs.push_back(coefs[i]);
-    vs.push_back(rs::run::solver.ilp.getVarFor(vars[i]));
+    vs.push_back(rs::ilp.getVarFor(vars[i]));
   }
 
-  rs::run::solver.ilp.addObjective(cfs, vs, {});
+  rs::ilp.addObjective(cfs, vs, {});
   return State::SUCCESS;
 }

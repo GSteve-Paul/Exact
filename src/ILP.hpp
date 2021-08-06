@@ -70,6 +70,8 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
 struct ILP {
   Solver& solver;
+  Optim optim;
+
   std::vector<std::unique_ptr<IntVar>> vars;
   std::vector<IntConstraint> constrs;
   IntConstraint obj;
@@ -91,6 +93,11 @@ struct ILP {
                       const std::optional<bigint>& ub = std::nullopt);
 
   void printOrigSol(const std::vector<Lit>& sol);
+
+  bool hasUpperBound() const;
+  ratio getUpperBound() const;
+
+  bool hasSolution() const;
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 

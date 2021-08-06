@@ -40,7 +40,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "parsing.hpp"
+#include "ILP.hpp"
 #include "Solver.hpp"
+#include "globals.hpp"
 
 #if WITHCOINUTILS
 #include "coin/CoinLpIO.hpp"
@@ -71,7 +73,7 @@ bigint read_bigint(const std::string& s, int start) {
   return negate ? -answer : answer;
 }
 
-void file_read(Solver& solver) {
+void file_read(ILP& ilp) {
   if (options.formulaName.empty()) {
     if (options.verbosity.get() > 0) {
       std::cout << "c No filename given, reading from standard input, expected format is " << options.fileFormat.get()
@@ -90,17 +92,17 @@ void file_read(Solver& solver) {
     }
   }
   if (options.fileFormat.is("mps")) {
-    mps_read(options.formulaName, solver);
+    mps_read(options.formulaName, ilp);
   } else if (options.fileFormat.is("lp")) {
-    lp_read(options.formulaName, solver);
+    lp_read(options.formulaName, ilp);
   } else {
     if (options.formulaName.empty()) {
       if (options.fileFormat.is("opb")) {
-        opb_read(std::cin, solver);
+        opb_read(std::cin, ilp);
       } else if (options.fileFormat.is("cnf")) {
-        cnf_read(std::cin, solver);
+        cnf_read(std::cin, ilp);
       } else if (options.fileFormat.is("wcnf")) {
-        wcnf_read(std::cin, solver);
+        wcnf_read(std::cin, ilp);
       } else {
         assert(false);
       }
@@ -108,11 +110,11 @@ void file_read(Solver& solver) {
       std::ifstream fin(options.formulaName);
       if (!fin) quit::exit_ERROR({"Could not open ", options.formulaName});
       if (options.fileFormat.is("opb")) {
-        opb_read(fin, solver);
+        opb_read(fin, ilp);
       } else if (options.fileFormat.is("cnf")) {
-        cnf_read(fin, solver);
+        cnf_read(fin, ilp);
       } else if (options.fileFormat.is("wcnf")) {
-        wcnf_read(fin, solver);
+        wcnf_read(fin, ilp);
       } else {
         assert(false);
       }
@@ -121,8 +123,7 @@ void file_read(Solver& solver) {
   if (logger) logger->logComment("INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW");
 }
 
-void opb_read(std::istream& in, Solver& solver) {
-  ILP& ilp = solver.ilp;
+void opb_read(std::istream& in, ILP& ilp) {
   [[maybe_unused]] bool first_constraint = true;
   std::vector<bigint> coefs;
   std::vector<IntVar*> vars;
@@ -176,12 +177,12 @@ void opb_read(std::istream& in, Solver& solver) {
       bigint lb = read_bigint(line0, line0.find('=') + 1);
       State res =
           ilp.addConstraint(coefs, vars, negated, lb, aux::optional(line0.find(" = ") != std::string::npos, lb));
-      if (res == State::UNSAT) quit::exit_SUCCESS(solver);
+      if (res == State::UNSAT) quit::exit_SUCCESS(ilp);
     }
   }
 }
 
-void wcnf_read(std::istream& in, Solver& solver) {
+void wcnf_read(std::istream& in, ILP& ilp) {
   ConstrSimple32 input;
   bigint top = -1;
   std::vector<bigint> objcoefs;
@@ -191,8 +192,8 @@ void wcnf_read(std::istream& in, Solver& solver) {
     if (line.empty() || line[0] == 'c') continue;
     if (line[0] == 'p') {
       assert(line.substr(0, 7) == "p wcnf ");
-      solver.setNbVars(std::stoll(line.substr(7)), true);
-      solver.maxSatVars = solver.getNbVars();
+      ilp.solver.setNbVars(std::stoll(line.substr(7)), true);
+      ilp.solver.maxSatVars = ilp.solver.getNbVars();
       bool nonWhitespace = false;
       for (int i = line.size() - 1; i >= 0; --i) {
         bool wspace = std::iswspace(line[i]);
@@ -221,17 +222,18 @@ void wcnf_read(std::istream& in, Solver& solver) {
       if (weight < top) {         // soft clause
         if (input.size() == 1) {  // no need to introduce auxiliary variable
           objcoefs.push_back(weight);
-          objvars.push_back(solver.ilp.getVarFor(std::to_string(toVar(input.terms[0].l)), true));
+          objvars.push_back(ilp.getVarFor(std::to_string(toVar(input.terms[0].l)), true));
           objnegated.push_back(-input.terms[0].l < 0);
         } else {
-          Var aux = solver.getNbVars() + 1;
-          solver.setNbVars(aux, true);  // increases n to n+1
+          Var aux = ilp.solver.getNbVars() + 1;
+          ilp.solver.setNbVars(aux, true);  // increases n to n+1
           objcoefs.push_back(weight);
-          objvars.push_back(solver.ilp.getVarFor(std::to_string(toVar(aux)), true));
+          objvars.push_back(ilp.getVarFor(std::to_string(toVar(aux)), true));
           objnegated.push_back(aux < 0);
           // if (options.test.get()) {
           for (const Term32& t : input.terms) {  // reverse implication as binary clauses
-            solver.addConstraintChecked(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
+            if (ilp.solver.addConstraint(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA).second == ID_Unsat)
+              quit::exit_SUCCESS(ilp);
           }
           //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
           // ConstrSimple32 reverse;
@@ -241,21 +243,21 @@ void wcnf_read(std::istream& in, Solver& solver) {
           // for (const Term32& t : input.terms) {
           //  reverse.terms.push_back({1, -t.l});
           //}
-          // solver.addConstraintChecked(reverse, Origin::FORMULA);
+          // if (ilp.solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp));
           //}
-          input.terms.push_back({1, aux});
-          solver.addConstraintChecked(input, Origin::FORMULA);  // implication
+          input.terms.push_back({1, aux});  // implication
+          if (ilp.solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
         }
       } else {  // hard clause
-        solver.addConstraintChecked(input, Origin::FORMULA);
+        if (ilp.solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
       }
       quit::checkInterrupt();
     }
   }
-  solver.ilp.addObjective(objcoefs, objvars, objnegated);
+  ilp.addObjective(objcoefs, objvars, objnegated);
 }
 
-void cnf_read(std::istream& in, Solver& solver) {
+void cnf_read(std::istream& in, ILP& ilp) {
   ConstrSimple32 input;
   for (std::string line; getline(in, line);) {
     if (line.empty() || line[0] == 'c' || line[0] == 'p') continue;
@@ -264,10 +266,10 @@ void cnf_read(std::istream& in, Solver& solver) {
     input.rhs = 1;
     Lit l;
     while (is >> l, l) {
-      solver.setNbVars(toVar(l), true);
+      ilp.solver.setNbVars(toVar(l), true);
       input.terms.push_back({1, l});
     }
-    solver.addConstraintChecked(input, Origin::FORMULA);
+    if (ilp.solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
     quit::checkInterrupt();
   }
 }
@@ -279,9 +281,7 @@ bigint lcm(const bigint& x, const bigint& y) {
 }
 
 template <typename T>
-void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
-  ILP& ilp = solver.ilp;
-
+void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
   // Variables
   bool continuousVars = false;
   bool unboundedVars = false;
@@ -300,7 +300,7 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
     }
     if (upper < lower) {
       std::cout << "Conflicting bound on integer variable" << std::endl;
-      quit::exit_SUCCESS(solver);
+      quit::exit_SUCCESS(ilp);
     }
     [[maybe_unused]] IntVar* iv = ilp.getVarFor(coinutils.columnName(c), false, static_cast<bigint>(std::ceil(lower)),
                                                 static_cast<bigint>(std::floor(upper)));
@@ -362,14 +362,14 @@ void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization) {
     bigint lb = coefs.back();
     coefs.pop_back();
     State res = ilp.addConstraint(coefs, vars, {}, aux::optional(useLB, lb), aux::optional(useUB, ub));
-    if (res == State::UNSAT) quit::exit_SUCCESS(solver);
+    if (res == State::UNSAT) quit::exit_SUCCESS(ilp);
   }
 }
 
-template void coinutils_read<CoinMpsIO>(CoinMpsIO& coinutils, Solver& solver, bool wasMaximization);
-template void coinutils_read<CoinLpIO>(CoinLpIO& coinutils, Solver& solver, bool wasMaximization);
+template void coinutils_read<CoinMpsIO>(CoinMpsIO& coinutils, ILP& ilp, bool wasMaximization);
+template void coinutils_read<CoinLpIO>(CoinLpIO& coinutils, ILP& ilp, bool wasMaximization);
 
-void mps_read(const std::string& filename, Solver& solver) {
+void mps_read(const std::string& filename, ILP& ilp) {
   CoinMpsIO coinutils;
   coinutils.messageHandler()->setLogLevel(0);
   if (filename == "") {
@@ -377,10 +377,10 @@ void mps_read(const std::string& filename, Solver& solver) {
   } else {
     coinutils.readMps(filename.c_str(), "");
   }
-  coinutils_read<CoinMpsIO>(coinutils, solver, false);
+  coinutils_read<CoinMpsIO>(coinutils, ilp, false);
 }
 
-void lp_read(const std::string& filename, Solver& solver) {
+void lp_read(const std::string& filename, ILP& ilp) {
   CoinLpIO coinutils;
   coinutils.messageHandler()->setLogLevel(0);
   if (filename == "") {
@@ -388,15 +388,15 @@ void lp_read(const std::string& filename, Solver& solver) {
   } else {
     coinutils.readLp(filename.c_str());
   }
-  coinutils_read<CoinLpIO>(coinutils, solver, coinutils.wasMaximization());
+  coinutils_read<CoinLpIO>(coinutils, ilp, coinutils.wasMaximization());
 }
 
 #else
-void mps_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] Solver& solver) {
+void mps_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] ILP& ilp) {
   quit::exit_ERROR({"Please compile with CoinUtils to parse MPS format."});
 }
 
-void lp_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] Solver& solver) {
+void lp_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] ILP& ilp) {
   quit::exit_ERROR({"Please compile with CoinUtils to parse LP format."});
 }
 #endif

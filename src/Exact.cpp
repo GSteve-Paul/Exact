@@ -71,12 +71,12 @@ int main(int argc, char** argv) {
     rs::cePools.initializeLogging(rs::logger);
   }
 
-  rs::aux::timeCallVoid([&] { rs::parsing::file_read(rs::run::solver); }, rs::stats.PARSETIME);
+  rs::aux::timeCallVoid([&] { rs::parsing::file_read(rs::ilp); }, rs::stats.PARSETIME);
 
-  State res = rs::run::run();
+  State res = rs::run();
   if (res == State::FAIL) {
-    rs::quit::exit_INDETERMINATE(rs::run::solver);
+    rs::quit::exit_INDETERMINATE(rs::ilp);
   } else {
-    rs::quit::exit_SUCCESS(rs::run::solver);
+    rs::quit::exit_SUCCESS(rs::ilp);
   }
 }

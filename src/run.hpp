@@ -44,11 +44,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Solver.hpp"
 #include "typedefs.hpp"
 
-namespace rs::run {
+namespace rs {
 
-using rs::operator<<;
-// extern ILP ilp;
 extern Solver solver;
+extern ILP ilp;
 
 struct LazyVar {
   Solver& solver;
@@ -82,6 +81,9 @@ struct LvM {
 
 class OptimizationSuper {
  public:
+  int solutionsFound = 0;
+  bigint bestObjSoFar = 0;  // TODO: template this in derived class
+
   static Optim make(const CeArb& obj);
 
   [[nodiscard]] virtual State optimize() = 0;
@@ -102,8 +104,6 @@ class Optimization final : public OptimizationSuper {
   ID lastLowerBoundUnprocessed = ID_Undef;
 
   std::vector<LvM<SMALL>> lazyVars;
-
-  int solutionsFound = 0;
 
  public:
   explicit Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj);
@@ -136,4 +136,4 @@ State runOptimize(const T& obj, const CeArb& o) {
 
 State run();
 
-}  // namespace rs::run
+}  // namespace rs

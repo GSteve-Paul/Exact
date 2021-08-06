@@ -41,6 +41,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "LpSolver.hpp"
 #include <queue>
+#include "run.hpp"
 
 namespace rs {
 
@@ -144,9 +145,9 @@ LpSolver::LpSolver(Solver& slvr) : solver(slvr) {
 
   soplex::DVectorReal objective;
   objective.reDim(getNbVariables());  // NOTE: automatically set to zero
-  if (solver.ilp.hasObjective()) {
+  if (rs::ilp.hasObjective()) {
     CeArb o = cePools.takeArb();
-    solver.ilp.obj.toConstrExp(o, true);
+    rs::ilp.obj.toConstrExp(o, true);
     o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     o->removeEqualities(solver.getEqualities(), false);
     for (Var v : o->getVars()) {

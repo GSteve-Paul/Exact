@@ -43,10 +43,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Solver.hpp"
 #include "constraints/ConstrExp.hpp"
 
-namespace rs::run {
+namespace rs {
 
 Solver solver;
-// ILP ilp(solver);
+ILP ilp(solver);
 
 LazyVar::LazyVar(Solver& slvr, const Ce32& cardCore, int cardUpperBound, Var startVar)
     : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(cardUpperBound) {
@@ -375,10 +375,10 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   for (Var v : origObj->getVars()) upper_bound += origObj->coefs[v] * (int)(sol[v] > 0);
   assert(upper_bound <= prev_val);
   assert(upper_bound < prev_val || options.enumerateSolutions());
-  solver.bestObjSoFar = upper_bound;
+  bestObjSoFar = upper_bound;
   ++solutionsFound;
 
-  if (!solver.ilp.hasObjective() && options.enumerateSolutions()) {
+  if (!rs::ilp.hasObjective() && options.enumerateSolutions()) {
     if (options.verbosity.get() > 0) {
       std::cout << "c solution " << solutionsFound << std::endl;
     }
@@ -574,13 +574,13 @@ State run() {
     std::cout << "c " << solver.getNbOrigVars() << " vars " << solver.getNbConstraints() << " constrs" << std::endl;
   }
   CeArb o = cePools.takeArb();
-  solver.ilp.obj.toConstrExp(o, true);
+  rs::ilp.obj.toConstrExp(o, true);
   solver.init(o);
   // o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   // TODO: simplify original objective? NOTE: it will affect in-processing methods in the solver too
-  Optim optim = OptimizationSuper::make(o);
+  ilp.optim = OptimizationSuper::make(o);
   try {
-    return optim->optimize();
+    return ilp.optim->optimize();
   } catch (const AsynchronousInterrupt& ai) {
     if (options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;
@@ -589,4 +589,4 @@ State run() {
   }
 }
 
-}  // namespace rs::run
+}  // namespace rs

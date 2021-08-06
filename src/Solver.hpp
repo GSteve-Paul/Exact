@@ -77,12 +77,9 @@ class Solver {
   // Members
 
  public:
-  ILP ilp;
   std::vector<Lit> lastSol = {0};
   bool foundSolution() const { return getNbOrigVars() == 0 || lastSol.size() > 1; }
   CeSuper lastCore;
-  bigint bestObjSoFar = 0;
-  ratio getBestObjSoFar() const { return static_cast<ratio>(bestObjSoFar) / ilp.objmult; }
   CeArb objective;
   int maxSatVars = -1;
 
@@ -143,11 +140,6 @@ class Solver {
   [[nodiscard]] std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
   [[nodiscard]] std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
   [[nodiscard]] ID addUnitConstraint(Lit l, Origin orig);
-  template <typename T>
-  void addConstraintChecked(const T& c, Origin orig) {
-    // NOTE: logging of the inconsistency happened in addInputConstraint
-    if (addConstraint(c, orig).second == ID_Unsat) quit::exit_SUCCESS(*this);
-  }
   template <typename T>
   void addConstraintUnchecked(const T& c, Origin orig) {
     // NOTE: logging of the inconsistency happened in addInputConstraint

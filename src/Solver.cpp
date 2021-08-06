@@ -50,8 +50,7 @@ namespace rs {
 // Initialization
 
 Solver::Solver()
-    : ilp(*this),
-      n(0),
+    : n(0),
       orig_n(0),
       assumptions_lim({0}),
       equalities(*this),

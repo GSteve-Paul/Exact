@@ -232,10 +232,8 @@ using Term128 = Term<int128>;
 using Term256 = Term<int256>;
 using TermArb = Term<bigint>;
 
-namespace run {
 class OptimizationSuper;
 using Optim = std::shared_ptr<OptimizationSuper>;
-}  // namespace run
 
 template <typename CF>
 std::ostream& operator<<(std::ostream& o, const Term<CF>& t) {

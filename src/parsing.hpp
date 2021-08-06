@@ -46,19 +46,19 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace rs {
 
-class Solver;
+class ILP;
 
 namespace parsing {
 
 bigint read_bigint(const std::string& s, int start);
-void file_read(Solver& solver);
-void opb_read(std::istream& in, Solver& solver);
-void cnf_read(std::istream& in, Solver& solver);
-void wcnf_read(std::istream& in, Solver& solver);
-void mps_read(const std::string& filename, Solver& solver);
-void lp_read(const std::string& filename, Solver& solver);
+void file_read(ILP& ilp);
+void opb_read(std::istream& in, ILP& ilp);
+void cnf_read(std::istream& in, ILP& ilp);
+void wcnf_read(std::istream& in, ILP& ilp);
+void mps_read(const std::string& filename, ILP& ilp);
+void lp_read(const std::string& filename, ILP& ilp);
 template <typename T>
-void coinutils_read(T& coinutils, Solver& solver, bool wasMaximization);
+void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization);
 
 }  // namespace parsing
 

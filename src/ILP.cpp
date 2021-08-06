@@ -10,6 +10,7 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #include "ILP.hpp"
 #include "Solver.hpp"
+#include "run.hpp"
 
 namespace rs {
 
@@ -60,10 +61,10 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
           lhs.emplace_back(base, v);
           base *= 2;
         }
-        solver.addConstraintChecked(ConstrSimpleArb({lhs}, -getRange()), Origin::FORMULA);
+        solver.addConstraintUnchecked(ConstrSimpleArb({lhs}, -getRange()), Origin::FORMULA);
       } else {  // binary order constraints
         for (Var var = oldvars + 1; var < oldvars + newvars; ++var) {
-          solver.addConstraintChecked(ConstrSimple32({{1, var}, {1, -var - 1}}, 1), Origin::FORMULA);
+          solver.addConstraintUnchecked(ConstrSimple32({{1, var}, {1, -var - 1}}, 1), Origin::FORMULA);
         }
       }
     }
@@ -194,5 +195,16 @@ void ILP::printOrigSol(const std::vector<Lit>& sol) {
     }
   }
 }
+
+bool ILP::hasUpperBound() const {
+  bool result = optim && optim->solutionsFound > 0;
+  assert(result == solver.foundSolution());  // TODO: check behavior on empty formula
+  return result;
+}
+ratio ILP::getUpperBound() const {
+  return hasUpperBound() ? static_cast<ratio>(optim->bestObjSoFar) / objmult : static_cast<ratio>(0);
+}
+
+bool ILP::hasSolution() const { return hasUpperBound(); }
 
 }  // namespace rs
