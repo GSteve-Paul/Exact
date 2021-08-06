@@ -42,7 +42,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConstrExpPools.hpp"
 #include "ConstrExp.hpp"
 
-namespace rs {
+namespace xct {
 
 void ConstrExpPools::resize(size_t newn) {
   ce32s.resize(newn);
@@ -135,4 +135,4 @@ template class ConstrExpPool<int128, int128>;
 template class ConstrExpPool<int128, int256>;
 template class ConstrExpPool<bigint, bigint>;
 
-}  // namespace rs
+}  // namespace xct

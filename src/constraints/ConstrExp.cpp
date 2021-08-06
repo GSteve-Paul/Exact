@@ -49,7 +49,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "propagation/Equalities.hpp"
 #include "propagation/Implications.hpp"
 
-namespace rs {
+namespace xct {
 
 void ConstrExpSuper::resetBuffer(ID proofID) {
   assert(plogger);
@@ -1596,4 +1596,4 @@ template struct ConstrExp<int128, int128>;
 template struct ConstrExp<int128, int256>;
 template struct ConstrExp<bigint, bigint>;
 
-}  // namespace rs
+}  // namespace xct

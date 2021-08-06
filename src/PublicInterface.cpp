@@ -15,11 +15,11 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "globals.hpp"
 #include "parsing.hpp"
 
-rs::ILP public_ilp;
+xct::ILP public_ilp;
 
 void run() {
-  rs::stats.STARTTIME.z = rs::aux::cpuTime();
-  rs::asynch_interrupt = false;
+  xct::stats.STARTTIME.z = xct::aux::cpuTime();
+  xct::asynch_interrupt = false;
 
   signal(SIGINT, SIGINT_exit);
   signal(SIGTERM, SIGINT_exit);
@@ -28,33 +28,33 @@ void run() {
   signal(SIGTERM, SIGINT_interrupt);
   signal(SIGXCPU, SIGINT_interrupt);
 
-  rs::aux::rng::seed = rs::options.randomSeed.get();
+  xct::aux::rng::seed = xct::options.randomSeed.get();
 
-  rs::options.printOpb.parse("");
-  // rs::options.noSolve.parse("");
-  rs::options.verbosity.parse("0");
+  xct::options.printOpb.parse("");
+  // xct::options.noSolve.parse("");
+  xct::options.verbosity.parse("0");
 
-  if (!rs::options.proofLog.get().empty()) {
-    rs::logger = std::make_shared<rs::Logger>(rs::options.proofLog.get());
-    rs::cePools.initializeLogging(rs::logger);
+  if (!xct::options.proofLog.get().empty()) {
+    xct::logger = std::make_shared<xct::Logger>(xct::options.proofLog.get());
+    xct::cePools.initializeLogging(xct::logger);
   }
 
-  rs::stats.RUNSTARTTIME.z = rs::aux::cpuTime();
+  xct::stats.RUNSTARTTIME.z = xct::aux::cpuTime();
   State res;
   public_ilp.init();
   try {
     res = public_ilp.run();
-  } catch (const rs::AsynchronousInterrupt& ai) {
-    if (rs::options.outputMode.is("default")) {
+  } catch (const xct::AsynchronousInterrupt& ai) {
+    if (xct::options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;
     }
     res = State::FAIL;
   }
 
   if (res == State::FAIL) {
-    rs::quit::exit_INDETERMINATE(public_ilp);
+    xct::quit::exit_INDETERMINATE(public_ilp);
   } else {
-    rs::quit::exit_SUCCESS(public_ilp);
+    xct::quit::exit_SUCCESS(public_ilp);
   }
 }
 
@@ -63,14 +63,14 @@ State addConstraint(const std::vector<long long>& coefs, const std::vector<std::
   if (coefs.size() != vars.size() || coefs.size() >= 1e9) return State::FAIL;
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
-  std::vector<rs::IntVar*> vs;
+  std::vector<xct::IntVar*> vs;
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
     cfs.push_back(coefs[i]);
     vs.push_back(public_ilp.getVarFor(vars[i]));
   }
 
-  return public_ilp.addConstraint(cfs, vs, {}, rs::aux::optional(useLB, lb), rs::aux::optional(useUB, ub));
+  return public_ilp.addConstraint(cfs, vs, {}, xct::aux::optional(useLB, lb), xct::aux::optional(useUB, ub));
 }
 
 State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
@@ -78,7 +78,7 @@ State setObjective(const std::vector<long long>& coefs, const std::vector<std::s
 
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
-  std::vector<rs::IntVar*> vs;
+  std::vector<xct::IntVar*> vs;
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
     cfs.push_back(coefs[i]);

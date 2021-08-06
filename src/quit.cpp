@@ -47,7 +47,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "aux.hpp"
 #include "globals.hpp"
 
-namespace rs {
+namespace xct {
 
 void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) {
   std::cout << pre;
@@ -127,14 +127,14 @@ void quit::exit_SUCCESS(ILP& ilp) {
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
     }
-    rs::aux::flushexit(30);
+    xct::aux::flushexit(30);
   } else {
     if (options.outputMode.is("miplib")) {
       std::cout << "=infeas=\n";
     }
     printFinalStats(ilp);
     std::cout << "s UNSATISFIABLE" << std::endl;
-    rs::aux::flushexit(20);
+    xct::aux::flushexit(20);
   }
 }
 
@@ -157,14 +157,14 @@ void quit::exit_INDETERMINATE(ILP& ilp) {
       std::cout << "c best so far " << ilp.getUpperBound() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;
     }
-    rs::aux::flushexit(10);
+    xct::aux::flushexit(10);
   } else {
     if (options.outputMode.is("miplib")) {
       std::cout << "=unkn=\n";
     }
     printFinalStats(ilp);
     if (!options.noSolve) std::cout << "s UNKNOWN" << std::endl;
-    rs::aux::flushexit(0);
+    xct::aux::flushexit(0);
   }
 }
 
@@ -172,7 +172,7 @@ void quit::exit_ERROR(const std::initializer_list<std::string>& messages) {
   std::cout << "Error: ";
   for (const std::string& m : messages) std::cout << m;
   std::cout << std::endl;
-  rs::aux::flushexit(1);
+  xct::aux::flushexit(1);
 }
 
 void quit::checkInterrupt() {
@@ -182,4 +182,4 @@ void quit::checkInterrupt() {
   }
 }
 
-}  // namespace rs
+}  // namespace xct

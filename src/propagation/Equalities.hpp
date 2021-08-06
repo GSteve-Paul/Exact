@@ -14,7 +14,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "datastructures/IntMap.hpp"
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 class Solver;
 
@@ -40,4 +40,4 @@ class Equalities : public Propagator {  // a union-find data structure
   State propagate();
 };
 
-}  // namespace rs
+}  // namespace xct

@@ -11,7 +11,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "Propagator.hpp"
 #include "Solver.hpp"
 
-namespace rs {
+namespace xct {
 
 void Propagator::notifyBackjump() {
   nextTrailPos =
@@ -20,4 +20,4 @@ void Propagator::notifyBackjump() {
 
 void Propagator::resetPropagation() { nextTrailPos = 0; }
 
-}  // namespace rs
+}  // namespace xct

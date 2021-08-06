@@ -44,7 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ILP.hpp"
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 struct LazyVar {
   Solver& solver;
@@ -128,4 +128,4 @@ class Optimization final : public OptimizationSuper {
   [[nodiscard]] State optimize();  // TODO: is this return value always correct?
 };
 
-}  // namespace rs
+}  // namespace xct

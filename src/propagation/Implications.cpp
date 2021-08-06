@@ -12,7 +12,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "Solver.hpp"
 #include "globals.hpp"
 
-namespace rs {
+namespace xct {
 
 void Implications::setNbVars(int nvars) { implieds.resize(nvars, {}); }
 
@@ -50,4 +50,4 @@ State Implications::propagate() {
   return State::SUCCESS;
 }
 
-}  // namespace rs
+}  // namespace xct

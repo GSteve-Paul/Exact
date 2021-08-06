@@ -46,8 +46,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "parsing.hpp"
 
 int main(int argc, char** argv) {
-  rs::stats.STARTTIME.z = rs::aux::cpuTime();
-  rs::asynch_interrupt = false;
+  xct::stats.STARTTIME.z = xct::aux::cpuTime();
+  xct::asynch_interrupt = false;
 
   signal(SIGINT, SIGINT_exit);
   signal(SIGTERM, SIGINT_exit);
@@ -56,48 +56,48 @@ int main(int argc, char** argv) {
   signal(SIGTERM, SIGINT_interrupt);
   signal(SIGXCPU, SIGINT_interrupt);
 
-  rs::options.parseCommandLine(argc, argv);
+  xct::options.parseCommandLine(argc, argv);
 
-  rs::aux::rng::seed = rs::options.randomSeed.get();
+  xct::aux::rng::seed = xct::options.randomSeed.get();
 
-  if (rs::options.verbosity.get() > 0) {
+  if (xct::options.verbosity.get() > 0) {
     std::cout << "c Exact 2021\n";
     std::cout << "c branch " << EXPANDED(GIT_BRANCH) << "\n";
     std::cout << "c commit " << EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
 
-  if (!rs::options.proofLog.get().empty()) {
-    rs::logger = std::make_shared<rs::Logger>(rs::options.proofLog.get());
-    rs::cePools.initializeLogging(rs::logger);
+  if (!xct::options.proofLog.get().empty()) {
+    xct::logger = std::make_shared<xct::Logger>(xct::options.proofLog.get());
+    xct::cePools.initializeLogging(xct::logger);
   }
 
-  rs::ILP ilp;
+  xct::ILP ilp;
 
-  rs::aux::timeCallVoid([&] { rs::parsing::file_read(ilp); }, rs::stats.PARSETIME);
+  xct::aux::timeCallVoid([&] { xct::parsing::file_read(ilp); }, xct::stats.PARSETIME);
 
-  if (rs::options.noSolve) rs::quit::exit_INDETERMINATE(ilp);
-  if (rs::options.printCsvData) rs::stats.printCsvHeader();
-  if (rs::options.verbosity.get() > 0) {
+  if (xct::options.noSolve) xct::quit::exit_INDETERMINATE(ilp);
+  if (xct::options.printCsvData) xct::stats.printCsvHeader();
+  if (xct::options.verbosity.get() > 0) {
     std::cout << "c " << ilp.solver.getNbOrigVars() << " vars " << ilp.solver.getNbConstraints() << " constrs"
               << std::endl;
   }
 
-  rs::stats.RUNSTARTTIME.z = rs::aux::cpuTime();
+  xct::stats.RUNSTARTTIME.z = xct::aux::cpuTime();
 
   State res;
   ilp.init();
   try {
     res = ilp.run();
-  } catch (const rs::AsynchronousInterrupt& ai) {
-    if (rs::options.outputMode.is("default")) {
+  } catch (const xct::AsynchronousInterrupt& ai) {
+    if (xct::options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;
     }
     res = State::FAIL;
   }
 
   if (res == State::FAIL) {
-    rs::quit::exit_INDETERMINATE(ilp);
+    xct::quit::exit_INDETERMINATE(ilp);
   } else {
-    rs::quit::exit_SUCCESS(ilp);
+    xct::quit::exit_SUCCESS(ilp);
   }
 }

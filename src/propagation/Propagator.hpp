@@ -12,7 +12,7 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 class Solver;
 
@@ -31,4 +31,4 @@ class Propagator {
   void resetPropagation();
 };
 
-}  // namespace rs
+}  // namespace xct

@@ -44,7 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "constraints/Constr.hpp"
 #include "globals.hpp"
 
-namespace rs {
+namespace xct {
 
 // ---------------------------------------------------------------------
 // Initialization
@@ -1637,4 +1637,4 @@ void Solver::ranksToAct() {
   cgHeur.v_vsids_inc = next;
 }
 
-}  // namespace rs
+}  // namespace xct

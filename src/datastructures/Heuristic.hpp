@@ -43,7 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SolverStructs.hpp"
 
-namespace rs {
+namespace xct {
 
 struct OrderHeap {  // segment tree (fast implementation of priority queue).
   std::vector<ActValV>& activity;
@@ -86,4 +86,4 @@ class Heuristic {
   Lit pickBranchLit(const std::vector<int>& position);
 };
 
-}  // namespace rs
+}  // namespace xct

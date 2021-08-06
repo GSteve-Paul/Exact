@@ -53,7 +53,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "propagation/LpSolver.hpp"
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 class Solver {
   friend class LpSolver;
@@ -270,4 +270,4 @@ class Solver {
   void ranksToAct();
 };
 
-}  // namespace rs
+}  // namespace xct

@@ -13,7 +13,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "Propagator.hpp"
 #include "datastructures/IntMap.hpp"
 
-namespace rs {
+namespace xct {
 
 class Solver;
 
@@ -33,4 +33,4 @@ class Implications : public Propagator {
   State propagate();
 };
 
-}  // namespace rs
+}  // namespace xct

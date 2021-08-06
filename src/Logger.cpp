@@ -42,7 +42,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logger.hpp"
 #include "constraints/ConstrExp.hpp"
 
-namespace rs {
+namespace xct {
 
 ID Logger::last_proofID = ID_Trivial;
 ID Logger::last_formID = ID_Trivial;
@@ -224,4 +224,4 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
 #endif
   return {reprAImpReprB, reprBImpReprA};
 }
-}  // namespace rs
+}  // namespace xct

@@ -12,7 +12,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "Solver.hpp"
 #include "globals.hpp"
 
-namespace rs {
+namespace xct {
 
 const Repr& Equalities::getRepr(Lit a) {
   Repr& repr = canonical[a];
@@ -109,4 +109,4 @@ State Equalities::propagate() {
   return State::SUCCESS;
 }
 
-}  // namespace rs
+}  // namespace xct

@@ -42,7 +42,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Heuristic.hpp"
 #include "globals.hpp"
 
-namespace rs {
+namespace xct {
 
 void OrderHeap::resize(int newsize) {
   if (cap >= newsize) return;
@@ -173,4 +173,4 @@ Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
   return getPhase(next);
 }
 
-}  // namespace rs
+}  // namespace xct

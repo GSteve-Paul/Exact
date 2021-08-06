@@ -43,7 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "IntMap.hpp"
 
-namespace rs {
+namespace xct {
 
 struct IntSet {  // TODO: template to long long, int128, ...?
  private:
@@ -84,4 +84,4 @@ class IntSetPool {
   void release(IntSet& intset);
 };
 
-}  // namespace rs
+}  // namespace xct

@@ -45,7 +45,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "globals.hpp"
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 template <typename DG>
 struct TabuData {
@@ -594,4 +594,4 @@ struct WatchedSafe final : public Constr {
   bool hasCorrectWatches(const Solver& solver);
 };
 
-}  // namespace rs
+}  // namespace xct

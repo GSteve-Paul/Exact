@@ -48,7 +48,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "constraints/ConstrExpPools.hpp"
 #include "datastructures/IntSet.hpp"
 
-namespace rs {
+namespace xct {
 
 extern bool asynch_interrupt;
 extern Options options;
@@ -59,11 +59,11 @@ extern std::shared_ptr<Logger> logger;
 extern ConstrExpPools cePools;
 extern IntSetPool isPool;
 
-}  // namespace rs
+}  // namespace xct
 
-inline void SIGINT_interrupt([[maybe_unused]] int signum) { rs::asynch_interrupt = true; }
+inline void SIGINT_interrupt([[maybe_unused]] int signum) { xct::asynch_interrupt = true; }
 
 inline void SIGINT_exit([[maybe_unused]] int signum) {
   std::cout << "*** INTERRUPTED ***" << std::endl;
-  rs::aux::flushexit(1);
+  xct::aux::flushexit(1);
 }

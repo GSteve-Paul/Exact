@@ -14,7 +14,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "Solver.hpp"
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 struct IntVar {
   explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub);
@@ -105,4 +105,4 @@ struct ILP {
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 
-}  // namespace rs
+}  // namespace xct

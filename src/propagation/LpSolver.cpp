@@ -43,7 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <queue>
 #include "Optimization.hpp"
 
-namespace rs {
+namespace xct {
 
 #if WITHSOPLEX
 
@@ -145,9 +145,9 @@ LpSolver::LpSolver(Solver& slvr) : solver(slvr) {
 
   soplex::DVectorReal objective;
   objective.reDim(getNbVariables());  // NOTE: automatically set to zero
-  if (rs::ilp.hasObjective()) {
+  if (xct::ilp.hasObjective()) {
     CeArb o = cePools.takeArb();
-    rs::ilp.obj.toConstrExp(o, true);
+    xct::ilp.obj.toConstrExp(o, true);
     o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     o->removeEqualities(solver.getEqualities(), false);
     for (Var v : o->getVars()) {
@@ -616,4 +616,4 @@ void LpSolver::flushConstraints() {
 
 #endif  // WITHSOPLEX
 
-}  // namespace rs
+}  // namespace xct

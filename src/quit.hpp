@@ -45,7 +45,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 class Solver;
 class ILP;
@@ -63,4 +63,4 @@ void exit_ERROR(const std::initializer_list<std::string>& messages);
 void checkInterrupt();
 }  // namespace quit
 
-}  // namespace rs
+}  // namespace xct

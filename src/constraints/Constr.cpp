@@ -42,7 +42,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Constr.hpp"
 #include "Solver.hpp"
 
-namespace rs {
+namespace xct {
 
 Constr::Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth)
     : id(i), strength(strngth), size(lngth), header{0, lkd, 0, (unsigned int)o, MAXLBD} {
@@ -1204,4 +1204,4 @@ template struct WatchedSafe<int128, int128>;
 template struct WatchedSafe<int128, int256>;
 template struct WatchedSafe<bigint, bigint>;
 
-}  // namespace rs
+}  // namespace xct

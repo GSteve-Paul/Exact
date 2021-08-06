@@ -67,7 +67,7 @@ using ratio = boost::multiprecision::cpp_rational;
 enum class State { SUCCESS, UNSAT, FAIL };
 enum class SolveState { SAT, UNSAT, INCONSISTENT, INPROCESSED };
 
-namespace rs {
+namespace xct {
 
 inline std::ostream& operator<<(std::ostream& o, const __int128& x) {
   if (x == std::numeric_limits<__int128>::min()) return o << "-170141183460469231731687303715884105728";
@@ -367,4 +367,4 @@ uint64_t hashForSet(const std::vector<int>& ints);
 
 }  // namespace aux
 
-}  // namespace rs
+}  // namespace xct

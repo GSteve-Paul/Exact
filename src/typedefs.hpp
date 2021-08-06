@@ -43,7 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "aux.hpp"
 
-namespace rs {
+namespace xct {
 
 using ID = uint64_t;
 const ID ID_Undef = std::numeric_limits<ID>::max();
@@ -252,4 +252,4 @@ inline class AsynchronousInterrupt : public std::exception {
 
 using TabuRank = long long;
 
-}  // namespace rs
+}  // namespace xct

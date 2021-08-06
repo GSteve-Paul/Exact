@@ -45,7 +45,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "quit.hpp"
 #include "used_licenses/licenses.hpp"
 
-namespace rs {
+namespace xct {
 
 class Option {
  public:
@@ -397,13 +397,13 @@ struct Options {
 
     if (help) {
       usage(argv[0]);
-      rs::aux::flushexit(0);
+      xct::aux::flushexit(0);
     } else if (copyright) {
       licenses::printUsed();
-      rs::aux::flushexit(0);
+      xct::aux::flushexit(0);
     } else if (licenseInfo.get() != "") {
       licenses::printLicense(licenseInfo.get());
-      rs::aux::flushexit(0);
+      xct::aux::flushexit(0);
     }
   }
 
@@ -417,4 +417,4 @@ struct Options {
   bool enumerateSolutions() const { return enumerate.get() != 1; }
 };
 
-}  // namespace rs
+}  // namespace xct

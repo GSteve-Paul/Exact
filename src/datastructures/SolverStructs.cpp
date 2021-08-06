@@ -41,7 +41,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SolverStructs.hpp"
 
-namespace rs {
+namespace xct {
 
 void ConstraintAllocator::capacity(uint32_t min_cap) {
   if (cap >= min_cap) return;
@@ -61,4 +61,4 @@ void ConstraintAllocator::capacity(uint32_t min_cap) {
   memory = (uint32_t*)xrealloc(memory, sizeof(uint32_t) * cap);
 }
 
-}  // namespace rs
+}  // namespace xct

@@ -44,7 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "aux.hpp"
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 struct Stat {
   long double z;
@@ -483,4 +483,4 @@ struct Stats {
   }
 };
 
-}  // namespace rs
+}  // namespace xct

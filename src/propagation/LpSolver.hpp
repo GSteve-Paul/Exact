@@ -61,7 +61,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #endif  // WITHSOPLEX
 
-namespace rs {
+namespace xct {
 
 enum class LpStatus { INFEASIBLE, OPTIMAL, PIVOTLIMIT, UNDETERMINED, UNSAT };
 
@@ -195,4 +195,4 @@ class LpSolver {
 
 #endif  // WITHSOPLEX
 
-}  // namespace rs
+}  // namespace xct

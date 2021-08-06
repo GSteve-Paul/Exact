@@ -41,7 +41,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "IntSet.hpp"
 
-namespace rs {
+namespace xct {
 
 [[nodiscard]] bool IntSet::check() const {
   for (int i = 0; i < (int)index.reserved() / 2; ++i) {
@@ -134,4 +134,4 @@ void IntSetPool::release(IntSet& is) {
   availables.push_back(&is);
 }
 
-}  // namespace rs
+}  // namespace xct

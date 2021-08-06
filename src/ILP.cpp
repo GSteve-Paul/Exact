@@ -11,7 +11,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "ILP.hpp"
 #include "Optimization.hpp"
 
-namespace rs {
+namespace xct {
 
 std::ostream& operator<<(std::ostream& o, const IntVar& x) {
   o << x.getName();
@@ -215,4 +215,4 @@ ratio ILP::getUpperBound() const {
 
 bool ILP::hasSolution() const { return hasUpperBound(); }
 
-}  // namespace rs
+}  // namespace xct

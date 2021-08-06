@@ -42,7 +42,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConstrSimple.hpp"
 #include "ConstrExp.hpp"
 
-namespace rs {
+namespace xct {
 
 template <typename CF, typename DG>
 CeSuper ConstrSimple<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
@@ -104,4 +104,4 @@ template struct ConstrSimple<int128, int128>;
 template struct ConstrSimple<int128, int256>;
 template struct ConstrSimple<bigint, bigint>;
 
-}  // namespace rs
+}  // namespace xct

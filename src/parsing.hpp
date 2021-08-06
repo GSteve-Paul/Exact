@@ -44,7 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 class ILP;
 
@@ -62,4 +62,4 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization);
 
 }  // namespace parsing
 
-}  // namespace rs
+}  // namespace xct

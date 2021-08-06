@@ -49,7 +49,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "coin/CoinMpsIO.hpp"
 #endif
 
-namespace rs::parsing {
+namespace xct::parsing {
 
 // TODO: check efficiency of parsing with a .opb-file that takes long to parse, according to experiments
 
@@ -401,4 +401,4 @@ void lp_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] ILP&
 }
 #endif
 
-}  // namespace rs::parsing
+}  // namespace xct::parsing

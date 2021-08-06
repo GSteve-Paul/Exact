@@ -12,7 +12,7 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 template <typename T>
 class IntMap {
@@ -54,4 +54,4 @@ class IntMap {
   size_t reserved() const { return _int2type.size(); }
 };
 
-}  // namespace rs
+}  // namespace xct

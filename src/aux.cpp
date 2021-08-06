@@ -41,7 +41,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "aux.hpp"
 
-namespace rs::aux {
+namespace xct::aux {
 
 bigint commonDenominator(const std::vector<ratio>& ratios) {
   bigint cdenom = 1;
@@ -85,4 +85,4 @@ uint64_t hashForSet(const std::vector<int>& ints) {
   return result;
 }
 
-}  // namespace rs::aux
+}  // namespace xct::aux

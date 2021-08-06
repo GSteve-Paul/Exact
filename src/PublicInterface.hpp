@@ -15,7 +15,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "ILP.hpp"
 #include "aux.hpp"
 
-extern rs::ILP public_ilp;
+extern xct::ILP public_ilp;
 
 void run();
 

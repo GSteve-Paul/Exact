@@ -44,7 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 // shared_ptr-like wrapper around ConstrExp, ensuring it gets released back to the pool when no longer needed.
 template <typename CE>
@@ -144,4 +144,4 @@ class ConstrExpPools {
   CeArb takeArb();
 };
 
-}  // namespace rs
+}  // namespace xct

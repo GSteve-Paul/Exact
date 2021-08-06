@@ -45,7 +45,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IntMap.hpp"
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 struct CRef {
   uint32_t ofs = std::numeric_limits<uint32_t>::max();
@@ -108,11 +108,11 @@ static inline void* xrealloc(void* ptr, size_t size) {
     return mem;
 }
 
-}  // namespace rs
+}  // namespace xct
 
 namespace std {
 template <>
-struct hash<rs::CRef> {
-  size_t operator()(rs::CRef const& cr) const noexcept { return cr.ofs; }
+struct hash<xct::CRef> {
+  size_t operator()(xct::CRef const& cr) const noexcept { return cr.ofs; }
 };
 }  // namespace std

@@ -45,7 +45,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Stats.hpp"
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 class Logger {
   std::ofstream formula_out;
@@ -107,4 +107,4 @@ class Logger {
   }
 };
 
-}  // namespace rs
+}  // namespace xct

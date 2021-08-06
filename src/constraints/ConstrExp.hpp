@@ -51,7 +51,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "globals.hpp"
 #include "typedefs.hpp"
 
-namespace rs {
+namespace xct {
 
 enum class AssertionStatus { NONASSERTING, ASSERTING, FALSIFIED };
 
@@ -639,4 +639,4 @@ struct ConstrExp final : public ConstrExpSuper {
   }
 };
 
-}  // namespace rs
+}  // namespace xct
