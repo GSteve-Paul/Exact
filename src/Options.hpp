@@ -42,7 +42,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "aux.hpp"
-#include "globals.hpp"
 #include "quit.hpp"
 #include "used_licenses/licenses.hpp"
 

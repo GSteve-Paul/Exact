@@ -42,11 +42,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include <csignal>
-#include "ConstrExpPools.hpp"
-#include "IntSet.hpp"
 #include "Logger.hpp"
 #include "Options.hpp"
 #include "Stats.hpp"
+#include "constraints/ConstrExpPools.hpp"
+#include "datastructures/IntSet.hpp"
 
 namespace rs {
 

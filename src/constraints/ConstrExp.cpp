@@ -43,11 +43,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <functional>
 #include "Constr.hpp"
-#include "Equalities.hpp"
-#include "Heuristic.hpp"
-#include "Implications.hpp"
 #include "Solver.hpp"
 #include "aux.hpp"
+#include "datastructures/Heuristic.hpp"
+#include "propagation/Equalities.hpp"
+#include "propagation/Implications.hpp"
 
 namespace rs {
 

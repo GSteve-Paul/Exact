@@ -42,15 +42,16 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include <memory>
-#include "Constr.hpp"
-#include "Equalities.hpp"
-#include "Heuristic.hpp"
-#include "Implications.hpp"
-#include "IntMap.hpp"
-#include "IntSet.hpp"
-#include "LpSolver.hpp"
+#include "ILP.hpp"
 #include "Options.hpp"
+#include "constraints/Constr.hpp"
+#include "datastructures/Heuristic.hpp"
+#include "datastructures/IntMap.hpp"
+#include "datastructures/IntSet.hpp"
 #include "parsing.hpp"
+#include "propagation/Equalities.hpp"
+#include "propagation/Implications.hpp"
+#include "propagation/LpSolver.hpp"
 #include "typedefs.hpp"
 
 namespace rs {
@@ -76,7 +77,7 @@ class Solver {
   // Members
 
  public:
-  parsing::ILP ilp;
+  ILP ilp;
   std::vector<Lit> lastSol = {0};
   bool foundSolution() const { return getNbOrigVars() == 0 || lastSol.size() > 1; }
   CeSuper lastCore;

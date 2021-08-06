@@ -41,7 +41,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "LpSolver.hpp"
 #include <queue>
-#include "Solver.hpp"
 
 namespace rs {
 

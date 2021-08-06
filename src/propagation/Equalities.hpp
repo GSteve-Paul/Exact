@@ -10,25 +10,32 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #pragma once
 
-#include "IntMap.hpp"
 #include "Propagator.hpp"
+#include "datastructures/IntMap.hpp"
+#include "typedefs.hpp"
 
 namespace rs {
 
 class Solver;
 
-class Implications : public Propagator {
-  IntMap<std::unordered_set<Lit>> implieds;
-  long long implInMem = 0;
+struct Repr {
+  Lit l;
+  ID id;
+  std::vector<Lit> equals;
+};
+
+class Equalities : public Propagator {  // a union-find data structure
+  IntMap<Repr> canonical;
 
  public:
-  Implications(Solver& s) : Propagator(s) {}
+  Equalities(Solver& s) : Propagator(s) {}
   void setNbVars(int n);
 
-  void addImplied(Lit a, Lit b);
-  void removeImplied(Lit a);
-  const std::unordered_set<Lit>& getImplieds(Lit a) const;
-  long long nImpliedsInMemory() const;
+  const Repr& getRepr(Lit a);  // Find
+  void merge(Lit a, Lit b);    // Union
+
+  bool isCanonical(Lit l);
+  bool isPartOfEquality(Lit l);
 
   State propagate();
 };

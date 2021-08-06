@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 project(Exact)
 
 set(CMAKE_CXX_STANDARD 17)
+
+include_directories("src/" )
+
 # Feel free to decrease the required boost version if you can verify that it works with
 # a smaller version. It is known not to compile with version 1.53.0 and lower.
 find_package(Boost 1.67 REQUIRED)
@@ -73,67 +76,69 @@ add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 set(source_files
-    src/globals.cpp
-    src/Constr.cpp
-    src/ConstrExp.cpp
-    src/ConstrSimple.cpp
-    src/ConstrExpPools.cpp
-    src/LpSolver.cpp
-    src/Solver.cpp
-    src/SolverStructs.cpp
-    src/Logger.cpp
-    src/IntSet.cpp
-    src/parsing.cpp
-    src/Heuristic.cpp
-    src/aux.cpp
-    src/run.cpp
-    src/quit.cpp
-    src/Exact.cpp
-    src/Propagator.cpp
-    src/Equalities.cpp
-    src/Implications.cpp
-    src/PublicInterface.cpp
+        src/globals.cpp
+        src/constraints/Constr.cpp
+        src/constraints/ConstrExp.cpp
+        src/constraints/ConstrSimple.cpp
+        src/constraints/ConstrExpPools.cpp
+        src/propagation/LpSolver.cpp
+        src/Solver.cpp
+        src/ILP.cpp
+        src/datastructures/SolverStructs.cpp
+        src/Logger.cpp
+        src/datastructures/IntSet.cpp
+        src/parsing.cpp
+        src/datastructures/Heuristic.cpp
+        src/aux.cpp
+        src/run.cpp
+        src/quit.cpp
+        src/Exact.cpp
+        src/propagation/Propagator.cpp
+        src/propagation/Equalities.cpp
+        src/propagation/Implications.cpp
+        src/PublicInterface.cpp
 
-    src/used_licenses/licenses.cpp
-    src/used_licenses/zib_academic.cpp
-    src/used_licenses/roundingsat.cpp
-    src/used_licenses/MIT.cpp
-    src/used_licenses/boost.cpp
-    src/used_licenses/EPL.cpp
+        src/used_licenses/licenses.cpp
+        src/used_licenses/zib_academic.cpp
+        src/used_licenses/roundingsat.cpp
+        src/used_licenses/MIT.cpp
+        src/used_licenses/boost.cpp
+        src/used_licenses/EPL.cpp
 )
 
 set(header_files
-    src/globals.hpp
-    src/Constr.hpp
-    src/ConstrExp.hpp
-    src/ConstrSimple.hpp
-    src/SolverStructs.hpp
-    src/ConstrExpPools.hpp
-    src/LpSolver.hpp
-    src/Solver.hpp
-    src/Logger.hpp
-    src/IntMap.hpp
-    src/IntSet.hpp
-    src/typedefs.hpp
-    src/parsing.hpp
-    src/Heuristic.hpp
-    src/Stats.hpp
-    src/Options.hpp
-    src/aux.hpp
-    src/quit.hpp
-    src/run.hpp
-    src/Propagator.hpp
-    src/Equalities.hpp
-    src/Implications.hpp
-    src/Exact.hpp
-    src/PublicInterface.hpp
+        src/globals.hpp
+        src/constraints/Constr.hpp
+        src/constraints/ConstrExp.hpp
+        src/constraints/ConstrSimple.hpp
+        src/datastructures/SolverStructs.hpp
+        src/constraints/ConstrExpPools.hpp
+        src/propagation/LpSolver.hpp
+        src/Solver.hpp
+        src/ILP.hpp
+        src/Logger.hpp
+        src/datastructures/IntMap.hpp
+        src/datastructures/IntSet.hpp
+        src/typedefs.hpp
+        src/parsing.hpp
+        src/datastructures/Heuristic.hpp
+        src/Stats.hpp
+        src/Options.hpp
+        src/aux.hpp
+        src/quit.hpp
+        src/run.hpp
+        src/propagation/Propagator.hpp
+        src/propagation/Equalities.hpp
+        src/propagation/Implications.hpp
+        src/Exact.hpp
+        src/PublicInterface.hpp
 
-    src/used_licenses/licenses.hpp
-    src/used_licenses/zib_academic.hpp
-    src/used_licenses/roundingsat.hpp
-    src/used_licenses/MIT.hpp
-    src/used_licenses/boost.hpp
-    src/used_licenses/EPL.hpp
+        src/used_licenses/licenses.hpp
+        src/used_licenses/zib_academic.hpp
+        src/used_licenses/roundingsat.hpp
+        src/used_licenses/MIT.hpp
+        src/used_licenses/boost.hpp
+        src/used_licenses/EPL.hpp
 )
 
 set(all_files ${source_files} ${header_files})

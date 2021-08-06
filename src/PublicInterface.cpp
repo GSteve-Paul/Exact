@@ -49,7 +49,7 @@ State addConstraint(const std::vector<long long>& coefs, const std::vector<std::
   if (coefs.size() != vars.size() || coefs.size() >= 1e9) return State::FAIL;
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
-  std::vector<rs::parsing::IntVar*> vs;
+  std::vector<rs::IntVar*> vs;
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
     cfs.push_back(coefs[i]);
@@ -64,7 +64,7 @@ State setObjective(const std::vector<long long>& coefs, const std::vector<std::s
 
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
-  std::vector<rs::parsing::IntVar*> vs;
+  std::vector<rs::IntVar*> vs;
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
     cfs.push_back(coefs[i]);

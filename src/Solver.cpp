@@ -40,8 +40,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Solver.hpp"
-#include "Constr.hpp"
 #include "aux.hpp"
+#include "constraints/Constr.hpp"
 #include "globals.hpp"
 
 namespace rs {

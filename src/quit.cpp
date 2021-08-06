@@ -81,7 +81,7 @@ void quit::printFormula(Solver& solver) {
   std::cout << "* #variable= " << solver.getNbOrigVars() << " #constraint= " << nbConstraints << "\n";
   if (solver.ilp.hasObjective()) {
     std::cout << "min: ";
-    for (const parsing::IntTerm& it : solver.ilp.obj.getLhs()) {
+    for (const IntTerm& it : solver.ilp.obj.getLhs()) {
       std::cout << (it.c < 0 ? "" : "+") << it.c << " x" << it.v->getName() << " ";
     }
     std::cout << ";\n";

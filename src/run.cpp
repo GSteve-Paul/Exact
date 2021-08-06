@@ -40,12 +40,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "run.hpp"
-#include "ConstrExp.hpp"
 #include "Solver.hpp"
+#include "constraints/ConstrExp.hpp"
 
 namespace rs::run {
 
 Solver solver;
+// ILP ilp(solver);
 
 LazyVar::LazyVar(Solver& slvr, const Ce32& cardCore, int cardUpperBound, Var startVar)
     : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(cardUpperBound) {

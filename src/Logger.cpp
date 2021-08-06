@@ -40,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Logger.hpp"
-#include "ConstrExp.hpp"
+#include "constraints/ConstrExp.hpp"
 
 namespace rs {
 

@@ -45,9 +45,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include "ConstrExpPools.hpp"
 #include "ConstrSimple.hpp"
-#include "IntSet.hpp"
 #include "Logger.hpp"
-#include "SolverStructs.hpp"
+#include "datastructures/IntSet.hpp"
+#include "datastructures/SolverStructs.hpp"
 #include "globals.hpp"
 #include "typedefs.hpp"
 
