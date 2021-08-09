@@ -67,7 +67,7 @@ class IntConstraint {
 };
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
-struct ILP {
+class ILP {
   Solver solver;
   Optim optim;
 
@@ -79,7 +79,15 @@ struct ILP {
 
   int maxSatVars = -1;
 
+ public:
   ILP();
+
+  const IntConstraint& getObjective() const { return obj; }
+  const std::vector<IntConstraint>& getConstraints() const { return constrs; }
+  Solver& getSolver() { return solver; }
+  Optim getOptimization() { return optim; }
+  void setMaxSatVars() { maxSatVars = solver.getNbVars(); }
+  int getMaxSatVars() const { return maxSatVars; }
 
   IntVar* getVarFor(const std::string& name, bool nameAsId = true, const bigint& lowerbound = 0,
                     const bigint& upperbound = 1);

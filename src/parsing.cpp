@@ -192,8 +192,8 @@ void wcnf_read(std::istream& in, ILP& ilp) {
     if (line.empty() || line[0] == 'c') continue;
     if (line[0] == 'p') {
       assert(line.substr(0, 7) == "p wcnf ");
-      ilp.solver.setNbVars(std::stoll(line.substr(7)), true);
-      ilp.maxSatVars = ilp.solver.getNbVars();
+      ilp.getSolver().setNbVars(std::stoll(line.substr(7)), true);
+      ilp.setMaxSatVars();
       bool nonWhitespace = false;
       for (int i = line.size() - 1; i >= 0; --i) {
         bool wspace = std::iswspace(line[i]);
@@ -225,14 +225,15 @@ void wcnf_read(std::istream& in, ILP& ilp) {
           objvars.push_back(ilp.getVarFor(std::to_string(toVar(input.terms[0].l)), true));
           objnegated.push_back(-input.terms[0].l < 0);
         } else {
-          Var aux = ilp.solver.getNbVars() + 1;
-          ilp.solver.setNbVars(aux, true);  // increases n to n+1
+          Var aux = ilp.getSolver().getNbVars() + 1;
+          ilp.getSolver().setNbVars(aux, true);  // increases n to n+1
           objcoefs.push_back(weight);
           objvars.push_back(ilp.getVarFor(std::to_string(toVar(aux)), true));
           objnegated.push_back(aux < 0);
           // if (options.test.get()) {
           for (const Term32& t : input.terms) {  // reverse implication as binary clauses
-            if (ilp.solver.addConstraint(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA).second == ID_Unsat)
+            if (ilp.getSolver().addConstraint(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA).second ==
+                ID_Unsat)
               quit::exit_SUCCESS(ilp);
           }
           //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
@@ -243,13 +244,13 @@ void wcnf_read(std::istream& in, ILP& ilp) {
           // for (const Term32& t : input.terms) {
           //  reverse.terms.push_back({1, -t.l});
           //}
-          // if (ilp.solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp));
+          // if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp));
           //}
           input.terms.push_back({1, aux});  // implication
-          if (ilp.solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
+          if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
         }
       } else {  // hard clause
-        if (ilp.solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
+        if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
       }
       quit::checkInterrupt();
     }
@@ -266,10 +267,10 @@ void cnf_read(std::istream& in, ILP& ilp) {
     input.rhs = 1;
     Lit l;
     while (is >> l, l) {
-      ilp.solver.setNbVars(toVar(l), true);
+      ilp.getSolver().setNbVars(toVar(l), true);
       input.terms.push_back({1, l});
     }
-    if (ilp.solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
+    if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
     quit::checkInterrupt();
   }
 }

@@ -28,8 +28,8 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   return o;
 }
 std::ostream& operator<<(std::ostream& o, const ILP& x) {
-  o << "obj: " << x.obj;
-  for (const IntConstraint& c : x.constrs) o << "\n" << c;
+  o << "obj: " << x.getObjective();
+  for (const IntConstraint& c : x.getConstraints()) o << "\n" << c;
   return o;
 }
 
@@ -174,7 +174,14 @@ void ILP::init() {
   optim = OptimizationSuper::make(o, solver);
 }
 
-SolveState ILP::run() { return optim->optimize(); }
+SolveState ILP::run() {
+  try {
+    return optim->optimize();
+  } catch (const AsynchronousInterrupt& ai) {
+    if (options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
+    return SolveState::INTERRUPTED;
+  }
+}
 
 void ILP::printOrigSol(const std::vector<Lit>& sol) {
   std::unordered_set<Var> trueVars;

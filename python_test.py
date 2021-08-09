@@ -20,4 +20,8 @@ exact.init()
 print(exact.addConstraint([-1,-1], ["1","2"], True, -1, False, 0))
 
 print("run:")
-print(exact.run())
+result = 0
+while result==0 or result==2:
+    result = exact.run()
+
+print(result)

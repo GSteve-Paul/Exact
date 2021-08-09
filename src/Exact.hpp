@@ -33,5 +33,5 @@ class Exact {
 
   void init();
 
-  void run();
+  SolveState run();
 };

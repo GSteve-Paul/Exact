@@ -113,7 +113,7 @@ std::ostream& operator<<(std::ostream& o, const CandidateCut& cc) {
   return o << cc.simpcons << " norm " << cc.norm << " ratSlack " << cc.ratSlack;
 }
 
-LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.solver) {
+LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.getSolver()) {
   assert(INFTY == lp.realParam(lp.INFTY));
 
   if (options.verbosity.get() > 1) std::cout << "c Initializing LP" << std::endl;
@@ -147,7 +147,7 @@ LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.solver) {
   objective.reDim(getNbVariables());  // NOTE: automatically set to zero
   if (ilp.hasObjective()) {
     CeArb o = cePools.takeArb();
-    ilp.obj.toConstrExp(o, true);
+    ilp.getObjective().toConstrExp(o, true);
     o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     o->removeEqualities(solver.getEqualities(), false);
     for (Var v : o->getVars()) {

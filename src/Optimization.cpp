@@ -477,10 +477,6 @@ State Optimization<SMALL, LARGE>::runTabu() {
 
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::optimize() {
-  if (options.tabuLim.get() != 0) {
-    State state = aux::timeCall<State>([&] { return runTabu(); }, stats.TABUTIME);
-    if (state == State::UNSAT) return SolveState::UNSAT;
-  }
   while (true) {
     long double current_time = stats.getDetTime();
     if (reply == SolveState::INPROCESSED) {
@@ -540,6 +536,7 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
         stratLim = std::max<double>(stratLim / stratDiv, 1);
       }
       somethingHappened = true;
+      return SolveState::SAT;
     } else if (reply == SolveState::INCONSISTENT) {
       ++stats.NCORES;
       if (handleInconsistency(solver.lastCore) == State::UNSAT) return SolveState::UNSAT;
@@ -554,6 +551,7 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
       somethingHappened = false;
       coreguided = options.cgHybrid.get() >= 1 ||
                    stats.DETTIMEASSUMP < options.cgHybrid.get() * (stats.DETTIMEFREE + stats.DETTIMEASSUMP);
+      return SolveState::INPROCESSED;
     } else {
       assert(false);  // should not happen
     }

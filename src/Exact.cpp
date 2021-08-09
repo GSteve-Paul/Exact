@@ -49,21 +49,21 @@ int main(int argc, char** argv) {
   if (options.noSolve) quit::exit_INDETERMINATE(ilp);
   if (options.printCsvData) stats.printCsvHeader();
   if (options.verbosity.get() > 0) {
-    std::cout << "c " << ilp.solver.getNbOrigVars() << " vars " << ilp.solver.getNbConstraints() << " constrs"
+    std::cout << "c " << ilp.getSolver().getNbOrigVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
               << std::endl;
   }
 
   stats.RUNSTARTTIME.z = aux::cpuTime();
 
   ilp.init();
-  try {
-    ilp.run();
-    quit::exit_SUCCESS(ilp);
-  } catch (const AsynchronousInterrupt& ai) {
-    if (options.outputMode.is("default")) {
-      std::cout << "c " << ai.what() << std::endl;
-    }
+  SolveState res = SolveState::INPROCESSED;
+  while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
+    res = ilp.run();
+  }
+  if (res == SolveState::INTERRUPTED) {
     quit::exit_INDETERMINATE(ilp);
+  } else {
+    quit::exit_SUCCESS(ilp);
   }
 }
 
@@ -84,7 +84,17 @@ Exact::Exact() {
   }
 }
 
-void Exact::init() { ilp->init(); }
+void Exact::init() {
+  ilp->init();
+  signal(SIGINT, SIGINT_exit);
+  signal(SIGTERM, SIGINT_exit);
+  signal(SIGXCPU, SIGINT_exit);
+  signal(SIGINT, SIGINT_interrupt);
+  signal(SIGTERM, SIGINT_interrupt);
+  signal(SIGXCPU, SIGINT_interrupt);
+
+  stats.RUNSTARTTIME.z = aux::cpuTime();
+}
 
 State Exact::addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                            long long lb, bool useUB, long long ub) {
@@ -102,7 +112,7 @@ State Exact::addConstraint(const std::vector<long long>& coefs, const std::vecto
 }
 
 State Exact::setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
-  if (coefs.size() != vars.size() || coefs.size() >= 1e9 || ilp->optim) return State::FAIL;
+  if (coefs.size() != vars.size() || coefs.size() >= 1e9 || ilp->getOptimization()) return State::FAIL;
 
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
@@ -117,22 +127,4 @@ State Exact::setObjective(const std::vector<long long>& coefs, const std::vector
   return State::SUCCESS;
 }
 
-void Exact::run() {
-  signal(SIGINT, SIGINT_exit);
-  signal(SIGTERM, SIGINT_exit);
-  signal(SIGXCPU, SIGINT_exit);
-  signal(SIGINT, SIGINT_interrupt);
-  signal(SIGTERM, SIGINT_interrupt);
-  signal(SIGXCPU, SIGINT_interrupt);
-
-  stats.RUNSTARTTIME.z = aux::cpuTime();
-  try {
-    ilp->run();
-    quit::exit_SUCCESS(*ilp);
-  } catch (const AsynchronousInterrupt& ai) {
-    if (options.outputMode.is("default")) {
-      std::cout << "c " << ai.what() << std::endl;
-    }
-    quit::exit_INDETERMINATE(*ilp);
-  }
-}
+SolveState Exact::run() { return ilp->run(); }
