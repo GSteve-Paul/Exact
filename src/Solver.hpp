@@ -82,6 +82,7 @@ class Solver {
   IntSet objectiveLits;
 
  private:
+  ILP& ilp;
   int n;
   int orig_n;
 
@@ -118,7 +119,7 @@ class Solver {
   long long nconfl_to_restart;
 
  public:
-  Solver();
+  Solver(ILP& i);
   ~Solver();
   void init(const CeArb& obj);
 

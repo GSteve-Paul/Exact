@@ -79,7 +79,7 @@ struct ILP {
 
   int maxSatVars = -1;
 
-  ILP() : obj({}, {}, {}, 0) {}
+  ILP();
 
   IntVar* getVarFor(const std::string& name, bool nameAsId = true, const bigint& lowerbound = 0,
                     const bigint& upperbound = 1);

@@ -113,11 +113,11 @@ std::ostream& operator<<(std::ostream& o, const CandidateCut& cc) {
   return o << cc.simpcons << " norm " << cc.norm << " ratSlack " << cc.ratSlack;
 }
 
-LpSolver::LpSolver(Solver& slvr) : solver(slvr) {
+LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.solver) {
   assert(INFTY == lp.realParam(lp.INFTY));
 
   if (options.verbosity.get() > 1) std::cout << "c Initializing LP" << std::endl;
-  setNbVariables(slvr.getNbVars() + 1);
+  setNbVariables(solver.getNbVars() + 1);
   lp.setIntParam(soplex::SoPlex::SYNCMODE, soplex::SoPlex::SYNCMODE_ONLYREAL);
   lp.setIntParam(soplex::SoPlex::SOLVEMODE, soplex::SoPlex::SOLVEMODE_REAL);
   lp.setIntParam(soplex::SoPlex::CHECKMODE, soplex::SoPlex::CHECKMODE_REAL);
@@ -145,9 +145,9 @@ LpSolver::LpSolver(Solver& slvr) : solver(slvr) {
 
   soplex::DVectorReal objective;
   objective.reDim(getNbVariables());  // NOTE: automatically set to zero
-  if (xct::ilp.hasObjective()) {
+  if (ilp.hasObjective()) {
     CeArb o = cePools.takeArb();
-    xct::ilp.obj.toConstrExp(o, true);
+    ilp.obj.toConstrExp(o, true);
     o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     o->removeEqualities(solver.getEqualities(), false);
     for (Var v : o->getVars()) {

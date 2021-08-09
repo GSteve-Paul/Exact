@@ -127,6 +127,8 @@ void IntConstraint::normalize() {
   }
 }
 
+ILP::ILP() : solver(*this), obj({}, {}, {}, 0) {}
+
 IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& lowerbound, const bigint& upperbound) {
   if (auto it = name2var.find(name); it != name2var.end()) return it->second;
   assert(lowerbound <= upperbound);

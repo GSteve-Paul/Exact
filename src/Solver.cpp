@@ -49,8 +49,9 @@ namespace xct {
 // ---------------------------------------------------------------------
 // Initialization
 
-Solver::Solver()
-    : n(0),
+Solver::Solver(ILP& i)
+    : ilp(i),
+      n(0),
       orig_n(0),
       assumptions_lim({0}),
       equalities(*this),
@@ -981,7 +982,7 @@ State Solver::inProcess() {
 #if WITHSOPLEX
   State state = State::SUCCESS;
   if (firstRun && options.lpTimeRatio.get() > 0) {
-    lpSolver = std::make_shared<LpSolver>(*this);
+    lpSolver = std::make_shared<LpSolver>(ilp);
     state = aux::timeCall<State>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);
   } else if (lpSolver && lpSolver->canInProcess()) {
     state = aux::timeCall<State>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);

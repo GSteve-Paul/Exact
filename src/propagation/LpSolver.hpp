@@ -107,6 +107,7 @@ class LpSolver {
   friend struct CandidateCut;
 
   soplex::SoPlex lp;
+  ILP& ilp;
   Solver& solver;
 
   double lpPivotMult = 1;
@@ -137,7 +138,7 @@ class LpSolver {
   std::vector<CandidateCut> candidateCuts;
 
  public:
-  explicit LpSolver(Solver& solver);
+  explicit LpSolver(ILP& ilp);
   void setNbVariables(int n);
 
   [[nodiscard]] LpStatus checkFeasibility(bool inProcessing);  // TODO: don't use objective function here?
@@ -172,12 +173,9 @@ class LpSolver {
 
 class LpSolver {
  public:
-  // LpSolver([[maybe_unused]] Solver& slvr, [[maybe_unused]] const CeArb objective){
+  // LpSolver([[maybe_unused]] ILP& ilp){
   // See https://stackoverflow.com/questions/52263141/maybe-unused-and-constructors
-  LpSolver(Solver& slvr, const CeArb& objective) {
-    _unused(slvr);
-    _unused(objective);
-  };
+  LpSolver(ILP& i) { _unused(i); };
   void setNbVariables([[maybe_unused]] int n){};
 
   LpStatus checkFeasibility([[maybe_unused]] bool inProcessing) {
