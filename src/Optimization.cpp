@@ -149,7 +149,7 @@ Optim OptimizationSuper::make(const CeArb& obj, Solver& solver) {
 }
 
 template <typename SMALL, typename LARGE>
-Optimization<SMALL, LARGE>::Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj, Solver& s)
+Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s)
     : OptimizationSuper(s), origObj(obj) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
   lower_bound = -origObj->getDegree();
@@ -158,8 +158,14 @@ Optimization<SMALL, LARGE>::Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj, Sol
   reformObj = cePools.take<SMALL, LARGE>();
   reformObj->stopLogging();
   origObj->copyTo(reformObj);
-  // reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  // TODO: already simply reformObj?
+  reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  reformObj->removeEqualities(solver.getEqualities(), false);
+
+  reply = SolveState::INPROCESSED;
+  stratDiv = options.cgStrat.get();
+  stratLim = stratDiv == 1 ? 1 : aux::toDouble(reformObj->getLargestCoef());
+  coreguided = options.cgHybrid.get() >= 1;
+  somethingHappened = false;
 };
 
 template <typename SMALL, typename LARGE>
@@ -462,26 +468,32 @@ State Optimization<SMALL, LARGE>::runTabu() {
     // NOTE: may flip tabuSol due to unit propagations
   }
   if (success) solver.lastSolToPhase();
+  if (solver.isFirstRun() && options.varInitAct) solver.ranksToAct();
   stats.NTABUUNITS += solver.getNbUnits() - currentUnits;
   if (options.verbosity.get() > 0) std::cout << "c END LOCAL SEARCH" << std::endl;
+
   return State::SUCCESS;
 }
 
 template <typename SMALL, typename LARGE>
-State Optimization<SMALL, LARGE>::optimize() {
-  SolveState reply = SolveState::SAT;
-  float stratDiv = options.cgStrat.get();
-  double stratLim = stratDiv == 1 ? 1 : aux::toDouble(reformObj->getLargestCoef());
-  bool coreguided = options.cgHybrid.get() >= 1;
-  bool somethingHappened = false;
+SolveState Optimization<SMALL, LARGE>::optimize() {
   if (options.tabuLim.get() != 0) {
     State state = aux::timeCall<State>([&] { return runTabu(); }, stats.TABUTIME);
-    if (state == State::UNSAT) return State::UNSAT;
+    if (state == State::UNSAT) return SolveState::UNSAT;
   }
-  if (options.varInitAct) solver.ranksToAct();
   while (true) {
     long double current_time = stats.getDetTime();
-    if (reply == SolveState::INPROCESSED && options.printCsvData) stats.printCsvLine();
+    if (reply == SolveState::INPROCESSED) {
+      if (options.printCsvData) stats.printCsvLine();
+      if (options.tabuLim.get() != 0) {
+        State state = aux::timeCall<State>([&] { return runTabu(); }, stats.TABUTIME);
+        if (state == State::UNSAT) return SolveState::UNSAT;
+      }
+    }
+    if (lower_bound >= upper_bound && options.enumerate.get() != 0 && solutionsFound >= options.enumerate.get()) {
+      logProof();
+      return SolveState::SAT;
+    }
 
     if (coreguided) {
       if (!solver.hasAssumptions()) {
@@ -505,9 +517,7 @@ State Optimization<SMALL, LARGE>::optimize() {
         solver.setAssumptions(assumps);
       }
     } else {
-      if (solver.hasAssumptions()) {
-        solver.clearAssumptions();
-      }
+      if (solver.hasAssumptions()) solver.clearAssumptions();
     }
     assert(upper_bound >= lower_bound);
     assert(upper_bound > lower_bound || options.enumerateSolutions());
@@ -520,11 +530,11 @@ State Optimization<SMALL, LARGE>::optimize() {
       stats.DETTIMEFREE += stats.getDetTime() - current_time;
     }
     if (reply == SolveState::UNSAT) {
-      return State::UNSAT;
+      return SolveState::UNSAT;
     } else if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
       ++stats.NSOLS;
-      if (handleNewSolution(solver.getLastSolution()) == State::UNSAT) return State::UNSAT;
+      if (handleNewSolution(solver.getLastSolution()) == State::UNSAT) return SolveState::UNSAT;
       if (coreguided) {
         solver.clearAssumptions();
         stratLim = std::max<double>(stratLim / stratDiv, 1);
@@ -532,7 +542,7 @@ State Optimization<SMALL, LARGE>::optimize() {
       somethingHappened = true;
     } else if (reply == SolveState::INCONSISTENT) {
       ++stats.NCORES;
-      if (handleInconsistency(solver.lastCore) == State::UNSAT) return State::UNSAT;
+      if (handleInconsistency(solver.lastCore) == State::UNSAT) return SolveState::UNSAT;
       solver.clearAssumptions();
       somethingHappened = true;
     } else if (reply == SolveState::INPROCESSED) {
@@ -544,17 +554,8 @@ State Optimization<SMALL, LARGE>::optimize() {
       somethingHappened = false;
       coreguided = options.cgHybrid.get() >= 1 ||
                    stats.DETTIMEASSUMP < options.cgHybrid.get() * (stats.DETTIMEFREE + stats.DETTIMEASSUMP);
-
-      if (options.tabuLim.get() != 0) {
-        State state = aux::timeCall<State>([&] { return runTabu(); }, stats.TABUTIME);
-        if (state == State::UNSAT) return State::UNSAT;
-      }
     } else {
       assert(false);  // should not happen
-    }
-    if (lower_bound >= upper_bound && options.enumerate.get() != 0 && solutionsFound >= options.enumerate.get()) {
-      logProof();
-      return State::SUCCESS;
     }
   }
 }

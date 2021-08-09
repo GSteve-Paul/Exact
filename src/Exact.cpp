@@ -55,21 +55,15 @@ int main(int argc, char** argv) {
 
   stats.RUNSTARTTIME.z = aux::cpuTime();
 
-  State res;
   ilp.init();
   try {
-    res = ilp.run();
+    ilp.run();
+    quit::exit_SUCCESS(ilp);
   } catch (const AsynchronousInterrupt& ai) {
     if (options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;
     }
-    res = State::FAIL;
-  }
-
-  if (res == State::FAIL) {
     quit::exit_INDETERMINATE(ilp);
-  } else {
-    quit::exit_SUCCESS(ilp);
   }
 }
 
@@ -132,19 +126,13 @@ void Exact::run() {
   signal(SIGXCPU, SIGINT_interrupt);
 
   stats.RUNSTARTTIME.z = aux::cpuTime();
-  State res;
   try {
-    res = ilp->run();
+    ilp->run();
+    quit::exit_SUCCESS(*ilp);
   } catch (const AsynchronousInterrupt& ai) {
     if (options.outputMode.is("default")) {
       std::cout << "c " << ai.what() << std::endl;
     }
-    res = State::FAIL;
-  }
-
-  if (res == State::FAIL) {
     quit::exit_INDETERMINATE(*ilp);
-  } else {
-    quit::exit_SUCCESS(*ilp);
   }
 }

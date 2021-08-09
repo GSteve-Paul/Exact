@@ -122,6 +122,7 @@ class Solver {
   Solver(ILP& i);
   ~Solver();
   void init(const CeArb& obj);
+  bool isFirstRun() { return firstRun; }
 
   int getNbVars() const { return n; }
   void setNbVars(int nvars, bool orig);

@@ -174,7 +174,7 @@ void ILP::init() {
   optim = OptimizationSuper::make(o, solver);
 }
 
-State ILP::run() { return optim->optimize(); }
+SolveState ILP::run() { return optim->optimize(); }
 
 void ILP::printOrigSol(const std::vector<Lit>& sol) {
   std::unordered_set<Var> trueVars;

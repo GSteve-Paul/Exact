@@ -86,7 +86,7 @@ class OptimizationSuper {
 
   static Optim make(const CeArb& obj, Solver& solver);
 
-  [[nodiscard]] virtual State optimize() = 0;
+  [[nodiscard]] virtual SolveState optimize() = 0;
 
   OptimizationSuper(Solver& s);
   virtual ~OptimizationSuper() = default;
@@ -106,8 +106,15 @@ class Optimization final : public OptimizationSuper {
 
   std::vector<LvM<SMALL>> lazyVars;
 
+  // State variables during solve loop:
+  SolveState reply;
+  float stratDiv;
+  double stratLim;
+  bool coreguided;
+  bool somethingHappened;
+
  public:
-  explicit Optimization(CePtr<ConstrExp<SMALL, LARGE>> obj, Solver& s);
+  explicit Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s);
 
   LARGE normalizedLowerBound() { return lower_bound + origObj->getDegree(); }
   LARGE normalizedUpperBound() { return upper_bound + origObj->getDegree(); }
@@ -125,7 +132,7 @@ class Optimization final : public OptimizationSuper {
   [[nodiscard]] State harden();
   [[nodiscard]] State runTabu();
 
-  [[nodiscard]] State optimize();  // TODO: is this return value always correct?
+  [[nodiscard]] SolveState optimize();
 };
 
 }  // namespace xct

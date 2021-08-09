@@ -90,7 +90,7 @@ struct ILP {
   bool hasObjective() const { return objmult != 0; }
 
   void init();
-  State run();
+  SolveState run();
 
   State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                       const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
