@@ -28,6 +28,7 @@ struct IntVar {
 
   bool usesLogEncoding() const { return logEncoding; }
   const std::vector<Var>& encodingVars() const { return encoding; }
+  bigint getValue(const std::vector<Lit>& sol) const;
 
  private:
   std::string name;
@@ -104,7 +105,10 @@ class ILP {
                       const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
                       const std::optional<bigint>& ub = std::nullopt);
 
-  void printOrigSol(const std::vector<Lit>& sol);
+  void printFormula();
+
+  std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
+  void printOrigSol() const;
 
   bool hasUpperBound() const;
   ratio getUpperBound() const;

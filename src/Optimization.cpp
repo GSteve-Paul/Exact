@@ -488,7 +488,7 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
     }
     if (lower_bound >= upper_bound && options.enumerate.get() != 0 && solutionsFound >= options.enumerate.get()) {
       logProof();
-      return SolveState::SAT;
+      return SolveState::UNSAT;  // optimality is proven
     }
 
     if (coreguided) {

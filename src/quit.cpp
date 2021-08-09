@@ -73,40 +73,10 @@ void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
   std::cout << std::endl;
 }
 
-void quit::printFormula(ILP& ilp) {
-  int nbConstraints = 0;
-  for (const CRef& cr : ilp.getSolver().getRawConstraints()) {
-    const Constr& c = ilp.getSolver().getCA()[cr];
-    nbConstraints +=
-        c.getOrigin() == Origin::FORMULA && !c.isMarkedForDelete() && !c.isSatisfiedAtRoot(ilp.getSolver().getLevel());
-  }
-  std::cout << "* #variable= " << ilp.getSolver().getNbOrigVars() << " #constraint= " << nbConstraints << "\n";
-  if (ilp.hasObjective()) {
-    std::cout << "min: ";
-    for (const IntTerm& it : ilp.getObjective().getLhs()) {
-      std::cout << (it.c < 0 ? "" : "+") << it.c << " x" << it.v->getName() << " ";
-    }
-    std::cout << ";\n";
-  }
-  for (Lit l : ilp.getSolver().getUnits()) {
-    if (toVar(l) > ilp.getSolver().getNbOrigVars()) continue;
-    std::cout << std::pair<int, Lit>{1, l} << " >= 1 ;\n";
-  }
-  for (const CRef& cr : ilp.getSolver().getRawConstraints()) {
-    const Constr& c = ilp.getSolver().getCA()[cr];
-    if (c.getOrigin() == Origin::FORMULA && !c.isMarkedForDelete() &&
-        !c.isSatisfiedAtRoot(ilp.getSolver().getLevel())) {
-      CeSuper ce = c.toExpanded(cePools);
-      ce->toStreamAsOPB(std::cout);
-      std::cout << "\n";
-    }
-  }
-}
-
 void quit::printFinalStats(ILP& ilp) {
   if (options.verbosity.get() > 0) stats.print();
   if (options.printCsvData) stats.printCsvLine();
-  if (options.printOpb) printFormula(ilp);
+  if (options.printOpb) ilp.printFormula();
 }
 
 void quit::exit_SUCCESS(ILP& ilp) {
@@ -115,7 +85,7 @@ void quit::exit_SUCCESS(ILP& ilp) {
   if (ilp.hasSolution()) {
     if (options.outputMode.is("miplib")) {
       std::cout << "=obj= " << ilp.getUpperBound() << "\n";
-      ilp.printOrigSol(ilp.getSolver().getLastSolution());
+      ilp.printOrigSol();
     }
     if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew")) {
       printFinalStats(ilp);
@@ -145,7 +115,7 @@ void quit::exit_INDETERMINATE(ILP& ilp) {
   if (ilp.hasSolution()) {
     if (options.outputMode.is("miplib")) {
       std::cout << "=obj= " << ilp.getUpperBound() << "\n";
-      ilp.printOrigSol(ilp.getSolver().getLastSolution());
+      ilp.printOrigSol();
     }
     if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew")) {
       printFinalStats(ilp);

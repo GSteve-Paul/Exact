@@ -18,7 +18,6 @@ using namespace xct;
 
 int main(int argc, char** argv) {
   stats.STARTTIME.z = aux::cpuTime();
-  asynch_interrupt = false;
 
   signal(SIGINT, SIGINT_exit);
   signal(SIGTERM, SIGINT_exit);
@@ -28,8 +27,6 @@ int main(int argc, char** argv) {
   signal(SIGXCPU, SIGINT_interrupt);
 
   options.parseCommandLine(argc, argv);
-
-  aux::rng::seed = options.randomSeed.get();
 
   if (options.verbosity.get() > 0) {
     std::cout << "c Exact 2021\n";
@@ -69,14 +66,8 @@ int main(int argc, char** argv) {
 
 Exact::Exact() {
   stats.STARTTIME.z = aux::cpuTime();
-  asynch_interrupt = false;
-  aux::rng::seed = options.randomSeed.get();
 
   ilp = std::make_unique<ILP>();
-
-  options.printOpb.parse("");
-  // options.noSolve.parse("");
-  options.verbosity.parse("0");
 
   if (!options.proofLog.get().empty()) {
     logger = std::make_shared<Logger>(options.proofLog.get());
@@ -96,6 +87,12 @@ void Exact::init() {
   stats.RUNSTARTTIME.z = aux::cpuTime();
 }
 
+State Exact::addVariable(const std::string& name, long long lb, long long ub) {
+  if (ilp->hasVarFor(name)) return State::FAIL;
+  ilp->getVarFor(name, false, lb, ub);
+  return State::SUCCESS;
+}
+
 State Exact::addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                            long long lb, bool useUB, long long ub) {
   if (coefs.size() != vars.size() || coefs.size() >= 1e9) return State::FAIL;
@@ -104,6 +101,7 @@ State Exact::addConstraint(const std::vector<long long>& coefs, const std::vecto
   std::vector<IntVar*> vs;
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
+    if (!ilp->hasVarFor(vars[i])) return State::FAIL;
     cfs.push_back(coefs[i]);
     vs.push_back(ilp->getVarFor(vars[i]));
   }
@@ -119,12 +117,19 @@ State Exact::setObjective(const std::vector<long long>& coefs, const std::vector
   std::vector<IntVar*> vs;
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
+    if (!ilp->hasVarFor(vars[i])) return State::FAIL;
     cfs.push_back(coefs[i]);
     vs.push_back(ilp->getVarFor(vars[i]));
   }
 
   ilp->setObjective(cfs, vs, {});
   return State::SUCCESS;
+}
+
+void Exact::printFormula() { ilp->printFormula(); }
+
+std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
+  return ilp->getLastSolutionFor(vars);
 }
 
 SolveState Exact::run() { return ilp->run(); }

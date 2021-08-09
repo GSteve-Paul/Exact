@@ -21,11 +21,13 @@ class Exact {
  public:
   Exact();
 
+  State addVariable(const std::string& name, long long lb, long long ub);
   State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                       long long lb, bool useUB, long long ub);
   State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
+  void printFormula();
 
-  // std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars);
+  std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
   // bool hasLowerBound();
   // long long getLowerBound();
   // bool hasUpperBound();

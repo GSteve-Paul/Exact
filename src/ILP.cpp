@@ -70,6 +70,28 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
   }
 }
 
+bigint IntVar::getValue(const std::vector<Lit>& sol) const {
+  bigint val = getLowerBound();
+  if (usesLogEncoding()) {
+    bigint base = 1;
+    for (Var v : encodingVars()) {
+      assert(v < (int)sol.size());
+      assert(toVar(sol[v]) == v);
+      if (sol[v] > 0) val += base;
+      base *= 2;
+    }
+  } else {
+    int sum = 0;
+    for (Var v : encodingVars()) {
+      assert(v < (int)sol.size());
+      assert(toVar(sol[v]) == v);
+      sum += sol[v] > 0;
+    }
+    val += sum;
+  }
+  return val;
+}
+
 IntConstraint::IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                              const std::vector<bool>& negated, const std::optional<bigint>& lb,
                              const std::optional<bigint>& ub)
@@ -168,6 +190,8 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
 }
 
 void ILP::init() {
+  asynch_interrupt = false;
+  aux::rng::seed = options.randomSeed.get();
   CeArb o = cePools.takeArb();
   obj.toConstrExp(o, true);
   solver.init(o);
@@ -183,30 +207,53 @@ SolveState ILP::run() {
   }
 }
 
-void ILP::printOrigSol(const std::vector<Lit>& sol) {
-  std::unordered_set<Var> trueVars;
-  for (Lit l : sol) {
-    if (l > 0) {
-      trueVars.insert(l);
+void ILP::printFormula() {
+  int nbConstraints = 0;
+  for (const CRef& cr : solver.getRawConstraints()) {
+    const Constr& c = solver.getCA()[cr];
+    nbConstraints += isNonImplied(c.getOrigin());
+  }
+  std::cout << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
+  if (hasObjective()) {
+    std::cout << "min: ";
+    for (const IntTerm& it : getObjective().getLhs()) {
+      std::cout << (it.c < 0 ? "" : "+") << it.c << " x" << it.v->getName() << " ";
+    }
+    std::cout << ";\n";
+  }
+  for (Lit l : solver.getUnits()) {
+    std::cout << std::pair<int, Lit>{1, l} << " >= 1 ;\n";
+  }
+  for (Var v = 1; v <= solver.getNbVars(); ++v) {
+    if (solver.getEqualities().isCanonical(v)) continue;
+    std::cout << std::pair<int, Lit>{1, v} << std::pair<int, Lit>{-1, solver.getEqualities().getRepr(v).l}
+              << " = 0 ;\n";
+  }
+  for (const CRef& cr : solver.getRawConstraints()) {
+    const Constr& c = solver.getCA()[cr];
+    if (isNonImplied(c.getOrigin())) {
+      CeSuper ce = c.toExpanded(cePools);
+      ce->toStreamAsOPB(std::cout);
+      std::cout << "\n";
     }
   }
+}
+
+std::vector<long long> ILP::getLastSolutionFor(const std::vector<std::string>& vars) const {
+  std::vector<long long> result;
+  result.reserve(vars.size());
+  for (const std::string& var : vars) {
+    bigint val = name2var.at(var)->getValue(solver.getLastSolution());
+    assert(val <= std::numeric_limits<long long>::max());
+    assert(val >= std::numeric_limits<long long>::lowest());
+    result.push_back(static_cast<long long>(val));
+  }
+  return result;
+}
+
+void ILP::printOrigSol() const {
   for (const std::unique_ptr<IntVar>& iv : vars) {
-    bigint val = iv->getLowerBound();
-    if (iv->usesLogEncoding()) {
-      bigint base = 1;
-      for (Var v : iv->encodingVars()) {
-        if (trueVars.count(v)) {
-          val += base;
-        }
-        base *= 2;
-      }
-    } else {
-      int sum = 0;
-      for (Var v : iv->encodingVars()) {
-        sum += trueVars.count(v);
-      }
-      val += sum;
-    }
+    bigint val = iv->getValue(solver.getLastSolution());
     if (val != 0) {
       std::cout << iv->getName() << " " << val << "\n";
     }
