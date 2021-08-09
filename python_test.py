@@ -38,5 +38,9 @@ while result==0 or result==2:
     if(result==0):
         print(exact.getLastSolutionFor(vars))
 
-print(exact.getLastSolutionFor(vars))
+sol = exact.getLastSolutionFor(vars)
 print(result)
+print(exact.getLowerBound())
+print(exact.getUpperBound())
+print(sol)
+print(sum([sol[i]*coefs_o[i] for i in range(0,len(coefs_o))]))

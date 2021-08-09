@@ -260,15 +260,12 @@ void ILP::printOrigSol() const {
   }
 }
 
-bool ILP::hasUpperBound() const {
+ratio ILP::getLowerBound() const { return static_cast<ratio>(optim->getLowerBound()) / objmult; }
+ratio ILP::getUpperBound() const { return static_cast<ratio>(optim->getUpperBound()) / objmult; }
+bool ILP::hasSolution() const {
   bool result = optim && optim->solutionsFound > 0;
   assert(result == solver.foundSolution());  // TODO: check behavior on empty formula
   return result;
 }
-ratio ILP::getUpperBound() const {
-  return hasUpperBound() ? static_cast<ratio>(optim->bestObjSoFar) / objmult : static_cast<ratio>(0);
-}
-
-bool ILP::hasSolution() const { return hasUpperBound(); }
 
 }  // namespace xct

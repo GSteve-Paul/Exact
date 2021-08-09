@@ -27,13 +27,11 @@ class Exact {
   State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
   void printFormula();
 
-  std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
-  // bool hasLowerBound();
-  // long long getLowerBound();
-  // bool hasUpperBound();
-  // long long getUpperBound();
-
   void init();
-
   SolveState run();
+
+  long long getLowerBound() const;
+  long long getUpperBound() const;
+  bool hasSolution() const;
+  std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
 };

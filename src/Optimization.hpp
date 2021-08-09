@@ -82,7 +82,8 @@ class OptimizationSuper {
 
  public:
   int solutionsFound = 0;
-  bigint bestObjSoFar = 0;  // TODO: template this in derived class
+  virtual bigint getUpperBound() const = 0;
+  virtual bigint getLowerBound() const = 0;
 
   static Optim make(const CeArb& obj, Solver& solver);
 
@@ -116,8 +117,10 @@ class Optimization final : public OptimizationSuper {
  public:
   explicit Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s);
 
-  LARGE normalizedLowerBound() { return lower_bound + origObj->getDegree(); }
-  LARGE normalizedUpperBound() { return upper_bound + origObj->getDegree(); }
+  LARGE normalizedLowerBound() const { return lower_bound + origObj->getDegree(); }
+  LARGE normalizedUpperBound() const { return upper_bound + origObj->getDegree(); }
+  bigint getUpperBound() const { return bigint(upper_bound); }
+  bigint getLowerBound() const { return bigint(lower_bound); }
 
   void printObjBounds();
   void checkLazyVariables();

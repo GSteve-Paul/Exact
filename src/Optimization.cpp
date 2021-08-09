@@ -383,7 +383,6 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   for (Var v : origObj->getVars()) upper_bound += origObj->coefs[v] * (int)(sol[v] > 0);
   assert(upper_bound <= prev_val);
   assert(upper_bound < prev_val || options.enumerateSolutions());
-  bestObjSoFar = upper_bound;
   ++solutionsFound;
 
   if (reformObj->vars.empty() && options.enumerateSolutions()) {

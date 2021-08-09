@@ -105,15 +105,14 @@ class ILP {
                       const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
                       const std::optional<bigint>& ub = std::nullopt);
 
-  void printFormula();
-
   std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
   void printOrigSol() const;
 
-  bool hasUpperBound() const;
+  bool multIsOne() const { return objmult == 1; }
+  ratio getLowerBound() const;
   ratio getUpperBound() const;
-
   bool hasSolution() const;
+  void printFormula();
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 
