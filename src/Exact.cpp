@@ -88,13 +88,20 @@ State Exact::addVariable(const std::string& name, long long lb, long long ub) {
 
 State Exact::addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                            long long lb, bool useUB, long long ub) {
-  if (coefs.size() != vars.size() || coefs.size() >= 1e9) return State::FAIL;
+  if (coefs.size() != vars.size() || coefs.size() >= 1e9) {
+    // TODO: error messages for fails...
+    std::cerr << "Incorrect number of coefficients " << coefs.size() << std::endl;
+    return State::FAIL;
+  }
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
   std::vector<IntVar*> vs;
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
-    if (!ilp.hasVarFor(vars[i])) return State::FAIL;
+    if (!ilp.hasVarFor(vars[i])) {
+      std::cerr << "No known variable " << vars[i] << std::endl;
+      return State::FAIL;
+    }
     cfs.push_back(coefs[i]);
     vs.push_back(ilp.getVarFor(vars[i]));
   }
@@ -119,7 +126,7 @@ State Exact::setObjective(const std::vector<long long>& coefs, const std::vector
   return State::SUCCESS;
 }
 
-State Exact::setAssumptions(const std::vector<long long>& vals, const std::vector<std::string>& vars) {
+State Exact::setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals) {
   if (vals.size() != vars.size() || vars.size() >= 1e9) return State::FAIL;
   std::vector<bigint> values;
   values.reserve(vars.size());
@@ -131,7 +138,7 @@ State Exact::setAssumptions(const std::vector<long long>& vals, const std::vecto
     values.push_back(vals[i]);
     if (values.back() > vs.back()->getUpperBound() || values.back() < vs.back()->getLowerBound()) return State::FAIL;
   }
-  ilp.setAssumptions(values, vs, {});
+  ilp.setAssumptions(values, vs);
   return State::SUCCESS;
 }
 
@@ -163,4 +170,11 @@ bool Exact::hasSolution() const { return ilp.hasSolution(); }
 std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
   if (!hasSolution()) return {};
   return ilp.getLastSolutionFor(vars);
+}
+
+bool Exact::hasCore() const { return ilp.hasCore(); }
+
+std::vector<std::string> Exact::getLastCore() const {
+  if (!hasCore()) return {};
+  return ilp.getLastCore();
 }

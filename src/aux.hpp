@@ -64,8 +64,8 @@ using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
 
-enum class State { SUCCESS, UNSAT, FAIL };
-enum class SolveState { SAT, UNSAT, INPROCESSED, INCONSISTENT, INTERRUPTED };
+enum class State { UNSAT, SUCCESS, FAIL };
+enum class SolveState { UNSAT, SAT, INCONSISTENT, INPROCESSED, INTERRUPTED };
 
 namespace xct {
 
@@ -186,8 +186,8 @@ T max(const std::vector<T>& v) {
   return *std::max_element(v.cbegin(), v.cend());
 }
 
-template <typename T>
-void appendTo(std::vector<T>& x, const std::vector<T>& y) {
+template <typename A, typename B>
+void appendTo(A& x, const B& y) {
   x.insert(x.end(), y.cbegin(), y.cend());
 }
 

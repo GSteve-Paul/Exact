@@ -16,25 +16,18 @@ rhs_c = int(sum(coefs_c)*3/4)
 
 exact = Exact()
 
-def addClause(lits):
-    return exact.addConstraint(
-        [int(math.copysign(1, l)) for l in lits],
-        [str(abs(l)) for l in lits],
-        True, 1-sum(1 for l in lits if l<0),
-        False, 0)
-
 for v in var_range:
      exact.addVariable(str(v),0,1+v%2)
 
 print(exact.setObjective(coefs_o,vars))
-exact.init(False)
 print(exact.addConstraint(coefs_c, vars, True, rhs_c, False, 0))
+exact.init(False)
 
 exact.printFormula()
 
 print("run:")
-result = 0
-while result==0 or result==2:
+result = 1
+while result!=0:
     result = exact.run()
 
 sol = exact.getLastSolutionFor(vars)

@@ -9,13 +9,10 @@ nvars = 50
 
 var_range = range(1,nvars+1)
 
-vars = [str(x) for x in var_range]
-coefs_o = [5*x+(x%3) for x in var_range]
+vars = [str(x) for x in var_range]+["tmp"]
+coefs_o = [5*x+(x%3) for x in var_range]+[1]
 coefs_c = [5*x+(x%4) for x in var_range]
 rhs_c = int(sum(coefs_c)*3/4)
-
-print(coefs_c)
-print(rhs_c)
 
 exact = Exact()
 
@@ -28,26 +25,41 @@ def addClause(lits):
 
 for v in var_range:
      exact.addVariable(str(v),0,1+v%2)
+exact.addVariable("tmp",0,1)
 
 print(exact.setObjective(coefs_o,vars))
-print(exact.addConstraint(coefs_c, vars, True, rhs_c, False, 0))
+print(exact.addConstraint(coefs_c, vars[:-1], True, rhs_c, False, 0))
 exact.init(True)
+exact.setAssumptions({"tmp"},{1})
 
 exact.printFormula()
 
 print("run:")
-result = 0
-while result==0 or result==2:
+result = 1
+while result!=0:
     result = exact.run()
-    if result==0:
+    if result==1: # SAT
         assert(exact.hasSolution())
         # print(exact.getLastSolutionFor(vars))
         result = exact.addLastSolObjectiveBound()
         # result = exact.addLastSolInvalidatingClause()
+    if result==2: # INCONSISTENT
+        core = exact.getLastCore()
+        assert(len(core)==1 and core[0] == "tmp")
+        optVal = exact.getUpperBound()-1
+        print("optimal:",optVal)
+        exact.addConstraint(coefs_o, vars, True, optVal, True, optVal)
+        exact.setAssumptions({},{})
+        break
 
-sol = exact.getLastSolutionFor(vars)
-print(result)
-print(exact.getLowerBound())
-print(exact.getUpperBound())
-print(sum([sol[i]*coefs_o[i] for i in range(0,len(coefs_o))]))
-print(sol)
+sol = exact.getLastSolutionFor(vars[:-1])
+implied = {vars[i]:sol[i] for i in range(0,len(vars)-1)}
+
+while result!=0:
+    result = exact.run()
+    if result==1:
+        sol = exact.getLastSolutionFor(vars[:-1])
+        implied = {vars[i]:sol[i] for i in range(0,len(vars)-1) if vars[i] in implied and implied[vars[i]]==sol[i]}
+        result = exact.addLastSolInvalidatingClause()
+
+print("Implied:",implied)

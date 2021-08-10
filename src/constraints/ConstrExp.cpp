@@ -1258,6 +1258,7 @@ void ConstrExp<SMALL, LARGE>::simplifyToClause() {
   if (!vars.empty()) divideRoundUp(aux::abs(coefs[vars[0]]));
   assert(vars.empty() || degree <= 1);
   assert(isClause());
+  assert(hasNoZeroes());
 }
 
 template <typename SMALL, typename LARGE>

@@ -31,11 +31,11 @@ struct IntVar {
   bigint getValue(const std::vector<Lit>& sol) const;
 
  private:
-  std::string name;
-  bigint lowerBound;
-  bigint upperBound;
+  const std::string name;
+  const bigint lowerBound;
+  const bigint upperBound;
 
-  bool logEncoding;
+  const bool logEncoding;
   std::vector<Var> encoding;
 };
 std::ostream& operator<<(std::ostream& o, const IntVar& x);
@@ -77,8 +77,11 @@ class ILP {
   IntConstraint obj;
   bigint objmult = 0;
   std::unordered_map<std::string, IntVar*> name2var;
+  std::unordered_map<Var, IntVar*> var2var;
 
   int maxSatVars = -1;
+
+  std::vector<Lit> assumptions;
 
  public:
   ILP();
@@ -96,8 +99,7 @@ class ILP {
 
   void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
-  void setAssumptions(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                      const std::vector<bool>& negated);
+  void setAssumptions(const std::vector<bigint>& vals, const std::vector<IntVar*>& vars);
 
   bool hasObjective() const { return objmult != 0; }
 
@@ -110,13 +112,17 @@ class ILP {
   State addLastSolObjectiveBound();
   State addLastSolInvalidatingClause();
 
-  std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
-  void printOrigSol() const;
-
   bool multIsOne() const { return objmult == 1; }
   ratio getLowerBound() const;
   ratio getUpperBound() const;
+
   bool hasSolution() const;
+  std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
+
+  bool hasCore() const;
+  std::vector<std::string> getLastCore() const;
+
+  void printOrigSol() const;
   void printFormula();
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);

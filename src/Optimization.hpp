@@ -88,7 +88,7 @@ class OptimizationSuper {
 
   static Optim make(const CeArb& obj, Solver& solver);
 
-  [[nodiscard]] virtual SolveState optimize() = 0;
+  [[nodiscard]] virtual SolveState optimize(const std::vector<Lit>& assumptions) = 0;
   [[nodiscard]] virtual State handleNewSolution(const std::vector<Lit>& sol) = 0;
 
   OptimizationSuper(Solver& s);
@@ -138,7 +138,7 @@ class Optimization final : public OptimizationSuper {
   [[nodiscard]] State harden();
   [[nodiscard]] State runTabu();
 
-  [[nodiscard]] SolveState optimize();
+  [[nodiscard]] SolveState optimize(const std::vector<Lit>& assumptions);
 };
 
 }  // namespace xct

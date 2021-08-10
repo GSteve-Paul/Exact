@@ -466,7 +466,7 @@ State Optimization<SMALL, LARGE>::runTabu() {
 }
 
 template <typename SMALL, typename LARGE>
-SolveState Optimization<SMALL, LARGE>::optimize() {
+SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumptions) {
   while (true) {
     assert(upper_bound >= lower_bound);
     long double current_time = stats.getDetTime();
@@ -477,12 +477,12 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
         if (state == State::UNSAT) return SolveState::UNSAT;
       }
     }
-    if (lower_bound >= upper_bound) {
+    if (lower_bound >= upper_bound && options.boundUpper) {
       logProof();
       return SolveState::UNSAT;  // optimality is proven
     }
 
-    if (coreguided) {
+    if (assumptions.empty() && coreguided) {
       if (!solver.hasAssumptions()) {
         reformObj->removeEqualities(solver.getEqualities(), false);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -504,7 +504,7 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
         solver.setAssumptions(assumps);
       }
     } else {
-      if (solver.hasAssumptions()) solver.clearAssumptions();
+      solver.setAssumptions(assumptions);
     }
 
     reply = aux::timeCall<SolveState>([&] { return solver.solve(); },
@@ -529,9 +529,11 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
       return SolveState::SAT;
     } else if (reply == SolveState::INCONSISTENT) {
       ++stats.NCORES;
+      somethingHappened = true;
+      if (!assumptions.empty()) return SolveState::INCONSISTENT;
+      assert(coreguided);  // else: core from core-guided search
       if (handleInconsistency(solver.lastCore) == State::UNSAT) return SolveState::UNSAT;
       solver.clearAssumptions();
-      somethingHappened = true;
     } else if (reply == SolveState::INPROCESSED) {
       // NOTE: returning when inprocessing avoids long non-terminating solve calls
       if (!somethingHappened && coreguided) {

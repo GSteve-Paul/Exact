@@ -777,6 +777,7 @@ CeSuper Solver::getIthConstraint(int i) const { return ca[constraints[i]].toExpa
 
 void Solver::setAssumptions(const std::vector<Lit>& assumps) {
   clearAssumptions();
+  if (assumps.empty()) return;
   for (Lit l : assumps) {
     assumptions.add(l);
   }
