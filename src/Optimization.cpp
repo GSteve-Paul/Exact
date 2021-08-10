@@ -169,6 +169,11 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& o
 };
 
 template <typename SMALL, typename LARGE>
+CeSuper Optimization<SMALL, LARGE>::getReformObj() const {
+  return reformObj;
+};
+
+template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::printObjBounds() {
   if (options.verbosity.get() == 0) return;
   std::cout << "c     bounds ";

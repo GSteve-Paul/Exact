@@ -194,9 +194,15 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
   return State::SUCCESS;
 }
 
-State ILP::addObjectiveBoundFromLastSol() {
-  assert(optim);
+State ILP::addLastSolObjectiveBound() {
+  if (!hasSolution()) return State::FAIL;
   return optim->handleNewSolution(solver.getLastSolution());
+}
+
+State ILP::addLastSolInvalidatingClause() {
+  if (!hasSolution()) return State::FAIL;
+  std::pair<ID, ID> ids = solver.addLastSolInvalidatingClause();
+  return ids.second == ID_Unsat ? State::UNSAT : State::SUCCESS;
 }
 
 void ILP::init(bool onlyFormulaDerivations) {
@@ -230,11 +236,7 @@ void ILP::printFormula() {
   }
   std::cout << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
   if (hasObjective()) {
-    std::cout << "min: ";
-    for (const IntTerm& it : getObjective().getLhs()) {
-      std::cout << (it.c < 0 ? "" : "+") << it.c << " x" << it.v->getName() << " ";
-    }
-    std::cout << ";\n";
+    std::cout << "min: " << optim->getReformObj() << "\n";
   }
   for (Lit l : solver.getUnits()) {
     std::cout << std::pair<int, Lit>{1, l} << " >= 1 ;\n";

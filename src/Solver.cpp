@@ -730,6 +730,17 @@ std::pair<ID, ID> Solver::addConstraint(const ConstrSimpleSuper& c, Origin orig)
 
 ID Solver::addUnitConstraint(Lit l, Origin orig) { return addConstraint(ConstrSimple32({{1, l}}, 1), orig).second; }
 
+std::pair<ID, ID> Solver::addLastSolInvalidatingClause() {
+  assert(foundSolution());
+  ConstrSimple32 invalidator;
+  invalidator.terms.reserve(getNbOrigVars());
+  invalidator.rhs = 1;
+  for (Var v = 1; v <= getNbOrigVars(); ++v) {
+    invalidator.terms.push_back({1, -lastSol[v]});
+  }
+  return addConstraint(invalidator, Origin::INVALIDATOR);
+}
+
 void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
   Constr& c = ca[cr];
   assert(override || !c.isLocked());

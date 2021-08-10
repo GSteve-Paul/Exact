@@ -84,6 +84,7 @@ class OptimizationSuper {
   int solutionsFound = 0;
   virtual bigint getUpperBound() const = 0;
   virtual bigint getLowerBound() const = 0;
+  virtual CeSuper getReformObj() const = 0;
 
   static Optim make(const CeArb& obj, Solver& solver);
 
@@ -122,6 +123,7 @@ class Optimization final : public OptimizationSuper {
   LARGE normalizedUpperBound() const { return upper_bound + origObj->getDegree(); }
   bigint getUpperBound() const { return bigint(upper_bound); }
   bigint getLowerBound() const { return bigint(lower_bound); }
+  CeSuper getReformObj() const;
 
   void printObjBounds();
   void checkLazyVariables();

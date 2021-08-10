@@ -107,7 +107,8 @@ class ILP {
   State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                       const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
                       const std::optional<bigint>& ub = std::nullopt);
-  State addObjectiveBoundFromLastSol();
+  State addLastSolObjectiveBound();
+  State addLastSolInvalidatingClause();
 
   std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
   void printOrigSol() const;

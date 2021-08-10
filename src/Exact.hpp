@@ -26,7 +26,8 @@ class Exact {
                       long long lb, bool useUB, long long ub);
   State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
   State setAssumptions(const std::vector<long long>& vals, const std::vector<std::string>& vars);
-  State addObjectiveBoundFromLastSol();
+  State addLastSolObjectiveBound();
+  State addLastSolInvalidatingClause();
   void printFormula();
 
   void init(bool onlyFormulaDerivations);

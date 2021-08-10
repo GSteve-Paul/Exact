@@ -5,13 +5,14 @@ cppyy.load_library('/home/jod/workspace/exact-dev/build_debug/libexact')
 import math
 from cppyy.gbl import Exact
 
-nvars = 40
+nvars = 50
 
 var_range = range(1,nvars+1)
 
 vars = [str(x) for x in var_range]
 coefs_o = [5*x+(x%3) for x in var_range]
 coefs_c = [5*x+(x%4) for x in var_range]
+rhs_c = int(sum(coefs_c)*3/4)
 
 exact = Exact()
 
@@ -27,7 +28,7 @@ for v in var_range:
 
 print(exact.setObjective(coefs_o,vars))
 exact.init(False)
-print(exact.addConstraint(coefs_c, vars, True, int(sum(coefs_c)/2), False, 0))
+print(exact.addConstraint(coefs_c, vars, True, rhs_c, False, 0))
 
 exact.printFormula()
 

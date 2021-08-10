@@ -135,7 +135,8 @@ State Exact::setAssumptions(const std::vector<long long>& vals, const std::vecto
   return State::SUCCESS;
 }
 
-State Exact::addObjectiveBoundFromLastSol() { return ilp.addObjectiveBoundFromLastSol(); }
+State Exact::addLastSolObjectiveBound() { return ilp.addLastSolObjectiveBound(); }
+State Exact::addLastSolInvalidatingClause() { return ilp.addLastSolInvalidatingClause(); }
 
 void Exact::printFormula() { ilp.printFormula(); }
 

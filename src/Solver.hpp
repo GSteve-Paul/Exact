@@ -146,6 +146,8 @@ class Solver {
     [[maybe_unused]] auto [_, id] = addConstraint(c, orig);
     assert(id != ID_Unsat);
   }
+  [[nodiscard]] std::pair<ID, ID> addLastSolInvalidatingClause();
+
   void dropExternal(ID id, bool erasable, bool forceDelete);
   int getNbConstraints() const { return constraints.size(); }
   CeSuper getIthConstraint(int i) const;
