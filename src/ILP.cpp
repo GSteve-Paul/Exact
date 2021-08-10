@@ -169,6 +169,11 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   objmult = mult;
 }
 
+void ILP::setAssumptions(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                         const std::vector<bool>& negated) {
+  // TODO
+}
+
 State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                          const std::vector<bool>& negated, const std::optional<bigint>& lb,
                          const std::optional<bigint>& ub) {

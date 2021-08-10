@@ -25,6 +25,7 @@ class Exact {
   State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                       long long lb, bool useUB, long long ub);
   State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
+  State setAssumptions(const std::vector<long long>& vals, const std::vector<std::string>& vars);
   void printFormula();
 
   void init();
@@ -34,4 +35,5 @@ class Exact {
   long long getUpperBound() const;
   bool hasSolution() const;
   std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
+  //  std::vector<long long> getAssumptionsFor(const std::vector<std::string>& vars) const;
 };

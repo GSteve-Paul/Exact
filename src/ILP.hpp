@@ -96,6 +96,9 @@ class ILP {
 
   void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
+  void setAssumptions(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                      const std::vector<bool>& negated);
+
   bool hasObjective() const { return objmult != 0; }
 
   void init();

@@ -98,7 +98,7 @@ State Exact::addConstraint(const std::vector<long long>& coefs, const std::vecto
 }
 
 State Exact::setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
-  if (coefs.size() != vars.size() || coefs.size() >= 1e9 || ilp->getOptimization()) return State::FAIL;
+  if (coefs.size() != vars.size() || vars.size() >= 1e9 || ilp->getOptimization()) return State::FAIL;
 
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
@@ -111,6 +111,22 @@ State Exact::setObjective(const std::vector<long long>& coefs, const std::vector
   }
 
   ilp->setObjective(cfs, vs, {});
+  return State::SUCCESS;
+}
+
+State Exact::setAssumptions(const std::vector<long long>& vals, const std::vector<std::string>& vars) {
+  if (vals.size() != vars.size() || vars.size() >= 1e9) return State::FAIL;
+  std::vector<bigint> values;
+  values.reserve(vars.size());
+  std::vector<IntVar*> vs;
+  vs.reserve(vars.size());
+  for (int i = 0; i < (int)vars.size(); ++i) {
+    if (!ilp->hasVarFor(vars[i])) return State::FAIL;
+    vs.push_back(ilp->getVarFor(vars[i]));
+    values.push_back(vals[i]);
+    if (values.back() > vs.back()->getUpperBound() || values.back() < vs.back()->getLowerBound()) return State::FAIL;
+  }
+  ilp->setAssumptions(values, vs, {});
   return State::SUCCESS;
 }
 
