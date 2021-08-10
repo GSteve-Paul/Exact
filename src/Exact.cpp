@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
 
   stats.RUNSTARTTIME.z = aux::cpuTime();
 
-  ilp.init();
+  ilp.init(false);
   SolveState res = SolveState::INPROCESSED;
   while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
     res = ilp.run();
@@ -64,10 +64,15 @@ int main(int argc, char** argv) {
   }
 }
 
-Exact::Exact() {
+Exact::Exact() : ilp() {
   stats.STARTTIME.z = aux::cpuTime();
 
-  ilp = std::make_unique<ILP>();
+  signal(SIGINT, SIGINT_exit);
+  signal(SIGTERM, SIGINT_exit);
+  signal(SIGXCPU, SIGINT_exit);
+  signal(SIGINT, SIGINT_interrupt);
+  signal(SIGTERM, SIGINT_interrupt);
+  signal(SIGXCPU, SIGINT_interrupt);
 
   if (!options.proofLog.get().empty()) {
     logger = std::make_shared<Logger>(options.proofLog.get());
@@ -76,8 +81,8 @@ Exact::Exact() {
 }
 
 State Exact::addVariable(const std::string& name, long long lb, long long ub) {
-  if (ilp->hasVarFor(name)) return State::FAIL;
-  ilp->getVarFor(name, false, lb, ub);
+  if (ilp.hasVarFor(name)) return State::FAIL;
+  ilp.getVarFor(name, false, lb, ub);
   return State::SUCCESS;
 }
 
@@ -89,28 +94,28 @@ State Exact::addConstraint(const std::vector<long long>& coefs, const std::vecto
   std::vector<IntVar*> vs;
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
-    if (!ilp->hasVarFor(vars[i])) return State::FAIL;
+    if (!ilp.hasVarFor(vars[i])) return State::FAIL;
     cfs.push_back(coefs[i]);
-    vs.push_back(ilp->getVarFor(vars[i]));
+    vs.push_back(ilp.getVarFor(vars[i]));
   }
 
-  return ilp->addConstraint(cfs, vs, {}, aux::optional(useLB, lb), aux::optional(useUB, ub));
+  return ilp.addConstraint(cfs, vs, {}, aux::optional(useLB, lb), aux::optional(useUB, ub));
 }
 
 State Exact::setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
-  if (coefs.size() != vars.size() || vars.size() >= 1e9 || ilp->getOptimization()) return State::FAIL;
+  if (coefs.size() != vars.size() || vars.size() >= 1e9 || ilp.getOptimization()) return State::FAIL;
 
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
   std::vector<IntVar*> vs;
   vs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
-    if (!ilp->hasVarFor(vars[i])) return State::FAIL;
+    if (!ilp.hasVarFor(vars[i])) return State::FAIL;
     cfs.push_back(coefs[i]);
-    vs.push_back(ilp->getVarFor(vars[i]));
+    vs.push_back(ilp.getVarFor(vars[i]));
   }
 
-  ilp->setObjective(cfs, vs, {});
+  ilp.setObjective(cfs, vs, {});
   return State::SUCCESS;
 }
 
@@ -121,44 +126,40 @@ State Exact::setAssumptions(const std::vector<long long>& vals, const std::vecto
   std::vector<IntVar*> vs;
   vs.reserve(vars.size());
   for (int i = 0; i < (int)vars.size(); ++i) {
-    if (!ilp->hasVarFor(vars[i])) return State::FAIL;
-    vs.push_back(ilp->getVarFor(vars[i]));
+    if (!ilp.hasVarFor(vars[i])) return State::FAIL;
+    vs.push_back(ilp.getVarFor(vars[i]));
     values.push_back(vals[i]);
     if (values.back() > vs.back()->getUpperBound() || values.back() < vs.back()->getLowerBound()) return State::FAIL;
   }
-  ilp->setAssumptions(values, vs, {});
+  ilp.setAssumptions(values, vs, {});
   return State::SUCCESS;
 }
 
-void Exact::printFormula() { ilp->printFormula(); }
+State Exact::addObjectiveBoundFromLastSol() { return ilp.addObjectiveBoundFromLastSol(); }
 
-void Exact::init() {
-  ilp->init();
-  signal(SIGINT, SIGINT_exit);
-  signal(SIGTERM, SIGINT_exit);
-  signal(SIGXCPU, SIGINT_exit);
-  signal(SIGINT, SIGINT_interrupt);
-  signal(SIGTERM, SIGINT_interrupt);
-  signal(SIGXCPU, SIGINT_interrupt);
+void Exact::printFormula() { ilp.printFormula(); }
+
+void Exact::init(bool onlyFormulaDerivations) {
+  ilp.init(onlyFormulaDerivations);
 
   stats.RUNSTARTTIME.z = aux::cpuTime();
 }
 
-SolveState Exact::run() { return ilp->run(); }
+SolveState Exact::run() { return ilp.run(); }
 
 long long Exact::getLowerBound() const {
-  assert(ilp->multIsOne());
-  return static_cast<long long>(ilp->getLowerBound());
+  assert(ilp.multIsOne());
+  return static_cast<long long>(ilp.getLowerBound());
 }
 
 long long Exact::getUpperBound() const {
-  assert(ilp->multIsOne());
-  return static_cast<long long>(ilp->getUpperBound());
+  assert(ilp.multIsOne());
+  return static_cast<long long>(ilp.getUpperBound());
 }
 
-bool Exact::hasSolution() const { return ilp->hasSolution(); }
+bool Exact::hasSolution() const { return ilp.hasSolution(); }
 
 std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
   if (!hasSolution()) return {};
-  return ilp->getLastSolutionFor(vars);
+  return ilp.getLastSolutionFor(vars);
 }

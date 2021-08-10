@@ -101,12 +101,13 @@ class ILP {
 
   bool hasObjective() const { return objmult != 0; }
 
-  void init();
+  void init(bool onlyFormulaDerivations);
   SolveState run();
 
   State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                       const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
                       const std::optional<bigint>& ub = std::nullopt);
+  State addObjectiveBoundFromLastSol();
 
   std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
   void printOrigSol() const;

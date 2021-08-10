@@ -382,35 +382,19 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   upper_bound = -origObj->getRhs();
   for (Var v : origObj->getVars()) upper_bound += origObj->coefs[v] * (int)(sol[v] > 0);
   assert(upper_bound <= prev_val);
-  assert(upper_bound < prev_val || options.enumerateSolutions());
-  ++solutionsFound;
+  assert(upper_bound < prev_val || !options.boundUpper);
 
-  if (reformObj->vars.empty() && options.enumerateSolutions()) {
-    if (options.verbosity.get() > 0) {
-      std::cout << "c solution " << solutionsFound << std::endl;
-    }
-    quit::printLits(sol, 'v', true);
-    ConstrSimple32 invalidator;
-    invalidator.terms.reserve(solver.getNbOrigVars() + 1);
-    invalidator.rhs = 1;
-    for (Lit l : sol) {
-      if (l == 0 || toVar(l) > solver.getNbOrigVars()) continue;
-      invalidator.terms.push_back({1, -l});
-    }
-    std::pair<ID, ID> res = solver.addConstraint(invalidator, Origin::INVALIDATOR);
-    if (res.second == ID_Unsat) return State::UNSAT;
-  } else {
-    CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
-    origObj->copyTo(aux);
-    aux->invert();
-    aux->addRhs(-upper_bound + 1);
-    solver.dropExternal(lastUpperBound, true, true);
-    std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
-    lastUpperBoundUnprocessed = res.first;
-    lastUpperBound = res.second;
-    if (lastUpperBound == ID_Unsat) return State::UNSAT;
-    if (harden() == State::UNSAT) return State::UNSAT;
-  }
+  CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
+  origObj->copyTo(aux);
+  aux->invert();
+  aux->addRhs(-upper_bound + 1);
+  solver.dropExternal(lastUpperBound, true, true);
+  std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
+  lastUpperBoundUnprocessed = res.first;
+  lastUpperBound = res.second;
+  if (lastUpperBound == ID_Unsat) return State::UNSAT;
+  if (harden() == State::UNSAT) return State::UNSAT;
+
   printObjBounds();
   return State::SUCCESS;
 }
@@ -463,8 +447,10 @@ State Optimization<SMALL, LARGE>::runTabu() {
     assert(solver.getTabuViolatedSize() == 0);
     success = true;
     ++stats.TABUSOLS;
-    if (handleNewSolution(solver.getLastSolution()) == State::UNSAT) return State::UNSAT;
+    ++solutionsFound;
+    if (options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT) return State::UNSAT;
     // NOTE: may flip tabuSol due to unit propagations
+    // TODO: return SAT state to python interface...
   }
   if (success) solver.lastSolToPhase();
   if (solver.isFirstRun() && options.varInitAct) solver.ranksToAct();
@@ -477,6 +463,7 @@ State Optimization<SMALL, LARGE>::runTabu() {
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::optimize() {
   while (true) {
+    assert(upper_bound >= lower_bound);
     long double current_time = stats.getDetTime();
     if (reply == SolveState::INPROCESSED) {
       if (options.printCsvData) stats.printCsvLine();
@@ -485,7 +472,7 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
         if (state == State::UNSAT) return SolveState::UNSAT;
       }
     }
-    if (lower_bound >= upper_bound && options.enumerate.get() != 0 && solutionsFound >= options.enumerate.get()) {
+    if (lower_bound >= upper_bound) {
       logProof();
       return SolveState::UNSAT;  // optimality is proven
     }
@@ -514,8 +501,6 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
     } else {
       if (solver.hasAssumptions()) solver.clearAssumptions();
     }
-    assert(upper_bound >= lower_bound);
-    assert(upper_bound > lower_bound || options.enumerateSolutions());
 
     reply = aux::timeCall<SolveState>([&] { return solver.solve(); },
                                       solver.hasAssumptions() ? stats.SOLVETIMEASSUMP : stats.SOLVETIMEFREE);
@@ -529,7 +514,8 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
     } else if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
       ++stats.NSOLS;
-      if (handleNewSolution(solver.getLastSolution()) == State::UNSAT) return SolveState::UNSAT;
+      ++solutionsFound;
+      if (options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT) return SolveState::UNSAT;
       if (coreguided) {
         solver.clearAssumptions();
         stratLim = std::max<double>(stratLim / stratDiv, 1);

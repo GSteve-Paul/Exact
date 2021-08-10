@@ -212,9 +212,7 @@ struct Options {
                             [](double x) -> bool { return 0 <= x; }};
   ValOption<long long> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
                                   [](long long x) -> bool { return 0 <= x; }};
-  ValOption<int> enumerate{"enumerate",
-                           "For a decision problem, keep enumerating solutions until this number are found.", 1,
-                           "0 (no limit) =< int", [](const int& x) -> bool { return x >= 0; }};
+  BoolOption boundUpper{"boundupper", "Add objective upper bound constraints when a feasible solution is found.", true};
   ValOption<double> lubyBase{"luby-base", "Base of the Luby restart sequence", 2, "1 =< float",
                              [](double x) -> bool { return 1 <= x; }};
   ValOption<int> lubyMult{"luby-mult", "Multiplier of the Luby restart sequence", 100, "1 =< int",
@@ -328,7 +326,7 @@ struct Options {
       &timeout,
       &timeoutDet,
       &proofLog,
-      &enumerate,
+      &boundUpper,
       &lubyBase,
       &lubyMult,
       &varDecay,
@@ -413,8 +411,6 @@ struct Options {
     std::cout << "Options:\n";
     for (Option* opt : options) opt->printUsage(24);
   }
-
-  bool enumerateSolutions() const { return enumerate.get() != 1; }
 };
 
 }  // namespace xct

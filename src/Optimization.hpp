@@ -88,6 +88,7 @@ class OptimizationSuper {
   static Optim make(const CeArb& obj, Solver& solver);
 
   [[nodiscard]] virtual SolveState optimize() = 0;
+  [[nodiscard]] virtual State handleNewSolution(const std::vector<Lit>& sol) = 0;
 
   OptimizationSuper(Solver& s);
   virtual ~OptimizationSuper() = default;

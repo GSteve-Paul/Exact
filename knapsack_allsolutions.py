@@ -26,8 +26,8 @@ for v in var_range:
      exact.addVariable(str(v),0,1+v%2)
 
 print(exact.setObjective(coefs_o,vars))
-exact.init()
 print(exact.addConstraint(coefs_c, vars, True, int(sum(coefs_c)/2), False, 0))
+exact.init(True)
 
 exact.printFormula()
 
@@ -35,12 +35,13 @@ print("run:")
 result = 0
 while result==0 or result==2:
     result = exact.run()
-    if(result==0):
-        print(exact.getLastSolutionFor(vars))
+    if result==0:
+        assert(exact.hasSolution())
+        result = exact.addObjectiveBoundFromLastSol()
 
 sol = exact.getLastSolutionFor(vars)
 print(result)
 print(exact.getLowerBound())
 print(exact.getUpperBound())
-print(sol)
 print(sum([sol[i]*coefs_o[i] for i in range(0,len(coefs_o))]))
+print(sol)

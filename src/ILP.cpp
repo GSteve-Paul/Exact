@@ -194,7 +194,17 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
   return State::SUCCESS;
 }
 
-void ILP::init() {
+State ILP::addObjectiveBoundFromLastSol() {
+  assert(optim);
+  return optim->handleNewSolution(solver.getLastSolution());
+}
+
+void ILP::init(bool onlyFormulaDerivations) {
+  if (onlyFormulaDerivations) {
+    options.pureLits.parse("0");
+    options.domBreakLim.parse("0");
+    options.boundUpper.parse("0");
+  }
   asynch_interrupt = false;
   aux::rng::seed = options.randomSeed.get();
   CeArb o = cePools.takeArb();

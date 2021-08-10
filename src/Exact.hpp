@@ -16,7 +16,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "aux.hpp"
 
 class Exact {
-  std::unique_ptr<xct::ILP> ilp;
+  xct::ILP ilp;
 
  public:
   Exact();
@@ -26,9 +26,10 @@ class Exact {
                       long long lb, bool useUB, long long ub);
   State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
   State setAssumptions(const std::vector<long long>& vals, const std::vector<std::string>& vars);
+  State addObjectiveBoundFromLastSol();
   void printFormula();
 
-  void init();
+  void init(bool onlyFormulaDerivations);
   SolveState run();
 
   long long getLowerBound() const;
