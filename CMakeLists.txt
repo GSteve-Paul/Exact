@@ -174,12 +174,24 @@ endif()
 
 if(build_result STREQUAL "SharedLib")
     add_library(Exact SHARED ${source_files})
+
+    if(soplex)
+        target_link_libraries(Exact libsoplex)
+        target_compile_definitions(Exact PUBLIC WITHSOPLEX)
+    endif()
+
     target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
     set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
 endif()
 
 if(build_result STREQUAL "StaticLib")
     add_library(Exact STATIC ${source_files})
+
+    if(soplex)
+        target_link_libraries(Exact libsoplex)
+        target_compile_definitions(Exact PUBLIC WITHSOPLEX)
+    endif()
+
     target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
     set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
 endif()

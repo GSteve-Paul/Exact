@@ -1,6 +1,6 @@
 import cppyy
 cppyy.include('/home/jod/workspace/exact-dev/src/Exact.hpp')
-cppyy.load_library('/home/jod/workspace/exact-dev/build_debug/libExact')
+cppyy.load_library('/home/jod/workspace/exact-dev/build_lib/libExact')
 
 import math
 from cppyy.gbl import Exact
