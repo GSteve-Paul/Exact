@@ -280,8 +280,13 @@ void ILP::printFormula() {
   }
 }
 
-ratio ILP::getLowerBound() const { return static_cast<ratio>(optim->getLowerBound()) / objmult; }
-ratio ILP::getUpperBound() const { return static_cast<ratio>(optim->getUpperBound()) / objmult; }
+ratio ILP::getLowerBound() const {
+  return hasObjective() ? static_cast<ratio>(optim->getLowerBound()) / objmult : static_cast<ratio>(0);
+}
+ratio ILP::getUpperBound() const {
+  return hasObjective() ? static_cast<ratio>(optim->getUpperBound()) / objmult : static_cast<ratio>(0);
+}
+
 bool ILP::hasSolution() const {
   bool result = optim && optim->solutionsFound > 0;
   assert(result == solver.foundSolution());  // TODO: check behavior on empty formula
