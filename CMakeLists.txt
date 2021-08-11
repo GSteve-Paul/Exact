@@ -15,11 +15,18 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/
 set(CMAKE_CXX_FLAGS_TESTRUNS "-O3")
 
 if (NOT CMAKE_BUILD_TYPE)
-    message(WARNING "Please use -DCMAKE_BUILD_TYPE=[build_type] where [build_type] is one of: Debug, Release, RelWithDebInfo, MinSizeRel, TestRuns")
+    message(WARNING "Please use -DCMAKE_BUILD_TYPE=[Debug | Release | RelWithDebInfo | MinSizeRel | TestRuns]")
+endif()
+
+set(build_result "Executable"
+    CACHE STRING "Result of make command: Executable, SharedLib or StaticLib.")
+
+if (NOT (build_result STREQUAL "Executable" OR build_result STREQUAL "SharedLib" OR build_result STREQUAL "StaticLib"))
+    message(WARNING "Please use -Dbuild_result=[Executable | SharedLib | StaticLib]")
 endif()
 
 set(build_static "OFF"
-    CACHE STRING "Build and use static libraries.")
+    CACHE STRING "Build statically linked executable.")
 
 set(profile_flags "OFF"
     CACHE STRING "Build using gprof flag (-pg).")
@@ -46,11 +53,11 @@ if(coinutils)
     include_directories(${CoinUtils_INCLUDE_DIR})
 endif()
 
-if(${build_static})
+if(build_static)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -static")
 endif()
 
-if(${profile_flags})
+if(profile_flags)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
@@ -141,20 +148,40 @@ set(header_files
 
 set(all_files ${source_files} ${header_files})
 
-add_executable(Exact ${source_files})
-add_library(exact SHARED ${all_files})
+if(build_result STREQUAL "Executable")
+    add_executable(Exact ${source_files})
 
-target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
-install(TARGETS Exact RUNTIME DESTINATION bin)
+    if(soplex)
+        target_link_libraries(Exact libsoplex)
+        target_compile_definitions(Exact PUBLIC WITHSOPLEX)
+    endif()
 
-if(soplex)
-    target_link_libraries(Exact libsoplex)
-    target_compile_definitions(Exact PUBLIC WITHSOPLEX)
+    if(coinutils)
+        target_link_libraries(Exact CoinUtils z bz2)
+        target_compile_definitions(Exact PUBLIC WITHCOINUTILS)
+    endif()
+
+    target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
+    install(TARGETS Exact RUNTIME DESTINATION bin)
+
+    add_custom_target(
+            testruns
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test
+            COMMAND ./run_tests.sh ${testruns_timeout} "testruns" ${CMAKE_CURRENT_BINARY_DIR}/Exact
+    )
+    add_dependencies(testruns Exact)
 endif()
 
-if(coinutils)
-    target_link_libraries(Exact CoinUtils z bz2)
-    target_compile_definitions(Exact PUBLIC WITHCOINUTILS)
+if(build_result STREQUAL "SharedLib")
+    add_library(Exact SHARED ${source_files})
+    target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
+    set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
+endif()
+
+if(build_result STREQUAL "StaticLib")
+    add_library(Exact STATIC ${source_files})
+    target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
+    set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
 endif()
 
 FIND_PROGRAM(CLANG_FORMAT "clang-format")
@@ -168,10 +195,3 @@ IF(CLANG_FORMAT)
         ${all_files}
     )
 endif()
-
-add_custom_target(
-    testruns
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test
-    COMMAND ./run_tests.sh ${testruns_timeout} "testruns" ${CMAKE_CURRENT_BINARY_DIR}/Exact
-)
-add_dependencies(testruns Exact)
