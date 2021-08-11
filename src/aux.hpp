@@ -201,11 +201,15 @@ T abs(const T& x) {
   return std::abs(x);
 }
 template <>
-inline bigint abs(const bigint& x) {
-  return boost::multiprecision::abs(x);
+inline int128 abs(const int128& x) {
+  return x < 0 ? -x : x;
 }
 template <>
 inline int256 abs(const int256& x) {
+  return boost::multiprecision::abs(x);
+}
+template <>
+inline bigint abs(const bigint& x) {
   return boost::multiprecision::abs(x);
 }
 template <typename S, typename R, typename U>
@@ -218,11 +222,16 @@ T gcd(const T& x, const T& y) {
   return std::gcd(x, y);
 }
 template <>
-inline bigint gcd(const bigint& x, const bigint& y) {
-  return boost::multiprecision::gcd(x, y);
+inline int128 gcd(const int128& x, const int128& y) {
+  return static_cast<int128>(
+      boost::multiprecision::gcd(boost::multiprecision::int128_t(x), boost::multiprecision::int128_t(y)));
 }
 template <>
 inline int256 gcd(const int256& x, const int256& y) {
+  return boost::multiprecision::gcd(x, y);
+}
+template <>
+inline bigint gcd(const bigint& x, const bigint& y) {
   return boost::multiprecision::gcd(x, y);
 }
 
@@ -264,12 +273,12 @@ unsigned msb(const T& x) {
   return boost::multiprecision::msb(boost::multiprecision::int128_t(x));
 }
 template <>
-inline unsigned msb(const bigint& x) {
+inline unsigned msb(const int256& x) {
   assert(x > 0);
   return boost::multiprecision::msb(x);
 }
 template <>
-inline unsigned msb(const int256& x) {
+inline unsigned msb(const bigint& x) {
   assert(x > 0);
   return boost::multiprecision::msb(x);
 }
@@ -279,11 +288,15 @@ T pow(const T& x, unsigned y) {
   return std::pow(x, y);
 }
 template <>
-inline bigint pow(const bigint& x, unsigned y) {
-  return boost::multiprecision::pow(x, y);
+inline int128 pow(const int128& x, unsigned y) {
+  return static_cast<int128>(boost::multiprecision::pow(boost::multiprecision::int128_t(x), y));
 }
 template <>
 inline int256 pow(const int256& x, unsigned y) {
+  return boost::multiprecision::pow(x, y);
+}
+template <>
+inline bigint pow(const bigint& x, unsigned y) {
   return boost::multiprecision::pow(x, y);
 }
 
@@ -334,23 +347,6 @@ std::optional<T> optional(bool make, const T& val) {
   if (make) return std::make_optional<T>(val);
   return std::nullopt;
 }
-
-// TODO: below is also needed for Python interface?
-// #ifdef __APPLE__
-template <>
-inline int128 abs(const int128& x) {
-  return x < 0 ? -x : x;
-}
-template <>
-inline int128 gcd(const int128& x, const int128& y) {
-  return static_cast<int128>(
-      boost::multiprecision::gcd(boost::multiprecision::int128_t(x), boost::multiprecision::int128_t(y)));
-}
-template <>
-inline int128 pow(const int128& x, unsigned y) {
-  return static_cast<int128>(boost::multiprecision::pow(boost::multiprecision::int128_t(x), y));
-}
-// #endif
 
 namespace rng {
 
