@@ -107,7 +107,7 @@ void ConstrExpPool<SMALL, LARGE>::initializeLogging(std::shared_ptr<Logger>& lgr
 
 template <typename SMALL, typename LARGE>
 CePtr<ConstrExp<SMALL, LARGE>> ConstrExpPool<SMALL, LARGE>::take() {
-  assert(ces.size() < 20);  // Sanity check that no large amounts of ConstrExps are created
+  assert(ces.size() < 100);  // Sanity check that no large amounts of ConstrExps are created
   if (availables.size() == 0) {
     ces.emplace_back(new ConstrExp<SMALL, LARGE>(*this));
     ces.back()->resize(n);

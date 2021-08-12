@@ -103,10 +103,14 @@ int Heuristic::nVars() const { return phase.size(); }
 void Heuristic::resize(int nvars) {
   assert(nvars > (int)phase.size());
   int old_n = std::max(1, nVars());
-  activity.resize(nvars, 1 / actLimitV);
+  activity.resize(nvars, v_vsids_inc);
   if (options.varOrder) {
     for (Var v = old_n; v < nvars; ++v) {
       activity[v] = 1 / static_cast<ActValV>(v);
+    }
+  } else if (options.randomSeed.get() != 1) {
+    for (Var v = old_n; v < nvars; ++v) {
+      activity[v] = v_vsids_inc * (aux::getRand(0, 100) / (float)50);
     }
   }
   heap.resize(nvars);
