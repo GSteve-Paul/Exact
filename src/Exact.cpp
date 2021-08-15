@@ -86,6 +86,8 @@ State Exact::addVariable(const std::string& name, long long lb, long long ub) {
   return State::SUCCESS;
 }
 
+std::vector<std::string> Exact::getVariables() const { return ilp.getVariables(); }
+
 State Exact::addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                            long long lb, bool useUB, long long ub) {
   if (coefs.size() != vars.size() || coefs.size() >= 1e9) {

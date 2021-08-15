@@ -96,6 +96,7 @@ class ILP {
   IntVar* getVarFor(const std::string& name, bool nameAsId = true, const bigint& lowerbound = 0,
                     const bigint& upperbound = 1);
   bool hasVarFor(const std::string& name) const;
+  std::vector<std::string> getVariables() const;
 
   void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);

@@ -164,6 +164,12 @@ IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& low
 
 bool ILP::hasVarFor(const std::string& name) const { return name2var.count(name); }
 
+std::vector<std::string> ILP::getVariables() const {
+  std::vector<std::string> keys(name2var.size());
+  transform(name2var.begin(), name2var.end(), keys.begin(), [](auto pair) { return pair.first; });
+  return keys;
+}
+
 void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                        const std::vector<bool>& negated, const bigint& mult, const bigint& offset) {
   assert(!optim);
