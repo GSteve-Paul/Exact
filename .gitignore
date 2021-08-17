@@ -9,3 +9,11 @@
 
 # build directories
 /build*
+
+# python package directories
+/python/build*
+/python/Exact.egg*
+/python/dist*
+/python/exact/__pycache__*
+/python/exact/headers*
+/python/exact/*.so
