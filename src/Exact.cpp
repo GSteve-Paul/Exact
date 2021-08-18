@@ -157,14 +157,14 @@ void Exact::init(bool onlyFormulaDerivations) {
 
 SolveState Exact::run() { return ilp.run(); }
 
-long long Exact::getLowerBound() const {
+std::pair<long long, long long> Exact::getObjectiveBounds() const {
   assert(ilp.multIsOne());
-  return static_cast<long long>(ilp.getLowerBound());
+  return {static_cast<long long>(ilp.getLowerBound()), static_cast<long long>(ilp.getUpperBound())};
 }
 
-long long Exact::getUpperBound() const {
-  assert(ilp.multIsOne());
-  return static_cast<long long>(ilp.getUpperBound());
+std::pair<long long, long long> Exact::getBounds(const std::string& var) const {
+  assert(ilp.hasVarFor(var));
+  return static_cast<std::pair<long long, long long>>(ilp.getBounds(var));
 }
 
 bool Exact::hasSolution() const { return ilp.hasSolution(); }

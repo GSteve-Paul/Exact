@@ -170,6 +170,12 @@ std::vector<std::string> ILP::getVariables() const {
   return keys;
 }
 
+std::pair<bigint, bigint> ILP::getBounds(const std::string& name) const {
+  assert(hasVarFor(name));
+  IntVar* iv = name2var.at(name);
+  return {iv->getLowerBound(), iv->getUpperBound()};
+}
+
 void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                        const std::vector<bool>& negated, const bigint& mult, const bigint& offset) {
   assert(!optim);

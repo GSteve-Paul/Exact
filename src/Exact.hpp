@@ -34,8 +34,9 @@ class Exact {
   void init(bool onlyFormulaDerivations);
   SolveState run();
 
-  long long getLowerBound() const;
-  long long getUpperBound() const;
+  std::pair<long long, long long> getObjectiveBounds() const;
+  std::pair<long long, long long> getBounds(const std::string& var) const;
+
   bool hasSolution() const;
   std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
   bool hasCore() const;
