@@ -230,23 +230,37 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
   return State::SUCCESS;
 }
 
-State ILP::addLastSolObjectiveBound() {
+State ILP::boundObjByLastSol() {
   if (!hasSolution()) return State::FAIL;
   return optim->handleNewSolution(solver.getLastSolution());
 }
 
-State ILP::addLastSolInvalidatingClause() {
+State ILP::invalidateLastSol() {
   if (!hasSolution()) return State::FAIL;
-  std::pair<ID, ID> ids = solver.addLastSolInvalidatingClause();
+  std::vector<Var> vars;
+  vars.reserve(name2var.size());
+  for (const auto& tup : name2var) {
+    aux::appendTo(vars, tup.second->encodingVars());
+  }
+  std::pair<ID, ID> ids = solver.invalidateLastSol(vars);
   return ids.second == ID_Unsat ? State::UNSAT : State::SUCCESS;
 }
 
-void ILP::init(bool onlyFormulaDerivations) {
-  if (onlyFormulaDerivations) {
-    options.pureLits.parse("0");
-    options.domBreakLim.parse("0");
-    options.boundUpper.parse("0");
+State ILP::invalidateLastSol(const std::vector<std::string>& names) {
+  if (!hasSolution()) return State::FAIL;
+  std::vector<Var> vars;
+  vars.reserve(names.size());
+  for (const std::string& name : names) {
+    aux::appendTo(vars, name2var[name]->encodingVars());
   }
+  std::pair<ID, ID> ids = solver.invalidateLastSol(vars);
+  return ids.second == ID_Unsat ? State::UNSAT : State::SUCCESS;
+}
+
+void ILP::init(bool boundObjective, bool addNonImplieds) {
+  options.boundUpper.parse(std::to_string(boundObjective));
+  options.pureLits.parse(std::to_string(addNonImplieds));
+  options.domBreakLim.parse(std::to_string(addNonImplieds));
   asynch_interrupt = false;
   aux::rng::seed = options.randomSeed.get();
   CeArb o = cePools.takeArb();

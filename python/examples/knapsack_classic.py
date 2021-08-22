@@ -18,7 +18,7 @@ for v in var_range:
 
 print(solver.setObjective(coefs_o,vars))
 print(solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0))
-solver.init(False)
+solver.init(True, True)
 
 solver.printFormula()
 

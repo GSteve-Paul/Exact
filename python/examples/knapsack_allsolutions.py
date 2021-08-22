@@ -26,7 +26,7 @@ solver.addVariable("tmp",0,1)
 
 print(solver.setObjective(coefs_o,vars))
 print(solver.addConstraint(coefs_c, vars[:-1], True, rhs_c, False, 0))
-solver.init(True)
+solver.init(False, False)
 solver.setAssumptions({"tmp"},{1})
 
 solver.printFormula()
@@ -38,8 +38,8 @@ while result!=0:
     if result==1: # SAT
         assert(solver.hasSolution())
         # print(solver.getLastSolutionFor(vars))
-        result = solver.addLastSolObjectiveBound()
-        # result = solver.addLastSolInvalidatingClause()
+        result = solver.boundObjByLastSol()
+        # result = solver.invalidateLastSol()
     if result==2: # INCONSISTENT
         core = solver.getLastCore()
         assert(len(core)==1 and core[0] == "tmp")
@@ -57,6 +57,6 @@ while result!=0:
     if result==1:
         sol = solver.getLastSolutionFor(vars[:-1])
         implied = {vars[i]:sol[i] for i in range(0,len(vars)-1) if vars[i] in implied and implied[vars[i]]==sol[i]}
-        result = solver.addLastSolInvalidatingClause()
+        result = solver.invalidateLastSol()
 
 print("Implied:",implied)

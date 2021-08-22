@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
 
   stats.RUNSTARTTIME.z = aux::cpuTime();
 
-  ilp.init(false);
+  ilp.init(true, true);
   SolveState res = SolveState::INPROCESSED;
   while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
     res = ilp.run();
@@ -144,13 +144,14 @@ State Exact::setAssumptions(const std::vector<std::string>& vars, const std::vec
   return State::SUCCESS;
 }
 
-State Exact::addLastSolObjectiveBound() { return ilp.addLastSolObjectiveBound(); }
-State Exact::addLastSolInvalidatingClause() { return ilp.addLastSolInvalidatingClause(); }
+State Exact::boundObjByLastSol() { return ilp.boundObjByLastSol(); }
+State Exact::invalidateLastSol() { return ilp.invalidateLastSol(); }
+State Exact::invalidateLastSol(const std::vector<std::string>& vars) { return ilp.invalidateLastSol(vars); }
 
 void Exact::printFormula() { ilp.printFormula(); }
 
-void Exact::init(bool onlyFormulaDerivations) {
-  ilp.init(onlyFormulaDerivations);
+void Exact::init(bool boundObjective, bool addNonImplieds) {
+  ilp.init(boundObjective, addNonImplieds);
 
   stats.RUNSTARTTIME.z = aux::cpuTime();
 }
@@ -180,3 +181,7 @@ std::vector<std::string> Exact::getLastCore() const {
   if (!hasCore()) return {};
   return ilp.getLastCore();
 }
+
+void Exact::printStats() { quit::printFinalStats(ilp); }
+
+void Exact::setVerbosity(int verbosity) { options.verbosity.parse(std::to_string(verbosity)); }

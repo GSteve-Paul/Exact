@@ -27,11 +27,12 @@ class Exact {
                       long long lb, bool useUB, long long ub);
   State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
   State setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals);
-  State addLastSolObjectiveBound();
-  State addLastSolInvalidatingClause();
+  State boundObjByLastSol();
+  State invalidateLastSol();
+  State invalidateLastSol(const std::vector<std::string>& vars);
   void printFormula();
 
-  void init(bool onlyFormulaDerivations);
+  void init(bool boundObjective, bool addNonImplieds);
   SolveState run();
 
   std::pair<long long, long long> getObjectiveBounds() const;
@@ -41,4 +42,7 @@ class Exact {
   std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
   bool hasCore() const;
   std::vector<std::string> getLastCore() const;
+
+  void printStats();
+  void setVerbosity(int verbosity);
 };

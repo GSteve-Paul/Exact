@@ -105,14 +105,15 @@ class ILP {
 
   bool hasObjective() const { return objmult != 0; }
 
-  void init(bool onlyFormulaDerivations);
+  void init(bool boundObjective, bool addNonImplieds);
   SolveState run();
 
   State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                       const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
                       const std::optional<bigint>& ub = std::nullopt);
-  State addLastSolObjectiveBound();
-  State addLastSolInvalidatingClause();
+  State boundObjByLastSol();
+  State invalidateLastSol();
+  State invalidateLastSol(const std::vector<std::string>& names);
 
   bool multIsOne() const { return objmult == 1; }
   ratio getLowerBound() const;
