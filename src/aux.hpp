@@ -226,31 +226,31 @@ inline int256 gcd(const int256& x, const int256& y) {
 template <typename T>
 double toDouble(const T& x) {
   double res = static_cast<double>(x);
-  assert(isfinite(res));
+  assert(std::isfinite(res));
   return res;
 }
 
 template <>
 inline double toDouble(const bigint& x) {
   double res = static_cast<double>(x);
-  if (!isfinite(res)) {
+  if (!std::isfinite(res)) {
     res = x < 0 ? std::numeric_limits<double>::lowest() : std::numeric_limits<double>::max();
   }
-  assert(isfinite(res));
+  assert(std::isfinite(res));
   return res;
 }
 
 template <typename T>
 double divToDouble(const T& num, const T& denom) {
   double res = static_cast<double>(num) / static_cast<double>(denom);
-  assert(isfinite(res));
+  assert(std::isfinite(res));
   return res;
 }
 
 template <>
 inline double divToDouble(const bigint& num, const bigint& denom) {
   double res = static_cast<double>(static_cast<ratio>(num) / static_cast<ratio>(denom));
-  assert(isfinite(res));
+  assert(std::isfinite(res));
   return res;
 }
 
