@@ -68,14 +68,20 @@ class IntConstraint {
 };
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
+struct UnsatState : public std::exception {
+  const char* what() const throw() { return "Solver is in an UNSAT state."; }
+};
+
 class ILP {
   Solver solver;
   Optim optim;
 
+  bool unsatDetected = false;
+
   std::vector<std::unique_ptr<IntVar>> vars;
   std::vector<IntConstraint> constrs;
   IntConstraint obj;
-  bigint objmult = 0;
+  bigint objmult = 1;
   std::unordered_map<std::string, IntVar*> name2var;
   std::unordered_map<Var, IntVar*> var2var;
 
@@ -103,8 +109,6 @@ class ILP {
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
   void setAssumptions(const std::vector<bigint>& vals, const std::vector<IntVar*>& vars);
 
-  bool hasObjective() const { return objmult != 0; }
-
   void init(bool boundObjective, bool addNonImplieds);
   SolveState run();
 
@@ -115,7 +119,6 @@ class ILP {
   State invalidateLastSol();
   State invalidateLastSol(const std::vector<std::string>& names);
 
-  bool multIsOne() const { return objmult == 1; }
   ratio getLowerBound() const;
   ratio getUpperBound() const;
 

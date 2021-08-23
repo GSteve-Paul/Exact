@@ -24,9 +24,8 @@ for v in var_range:
     solver.addVariable(str(v),0,1+v%2)
 solver.addVariable("tmp",0,1)
 
-print(solver.setObjective(coefs_o,vars))
 print(solver.addConstraint(coefs_c, vars[:-1], True, rhs_c, False, 0))
-solver.init(False, False)
+solver.init(coefs_o, vars, False, False)
 solver.setAssumptions({"tmp"},{1})
 
 solver.printFormula()
@@ -43,7 +42,7 @@ while result!=0:
     if result==2: # INCONSISTENT
         core = solver.getLastCore()
         assert(len(core)==1 and core[0] == "tmp")
-        optVal = solver.getUpperBound()-1
+        optVal = solver.getObjectiveBounds()[1]-1
         print("optimal:",optVal)
         solver.addConstraint(coefs_o, vars, True, optVal, True, optVal)
         solver.setAssumptions({},{})

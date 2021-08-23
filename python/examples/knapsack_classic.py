@@ -16,9 +16,8 @@ solver = exact.solver()
 for v in var_range:
      solver.addVariable(str(v),0,1+v%2)
 
-print(solver.setObjective(coefs_o,vars))
 print(solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0))
-solver.init(True, True)
+solver.init(coefs_o, vars, True, True)
 
 solver.printFormula()
 
@@ -29,7 +28,6 @@ while result!=0:
 
 sol = solver.getLastSolutionFor(vars)
 print(result)
-print(solver.getLowerBound())
-print(solver.getUpperBound())
+print(list(solver.getObjectiveBounds()))
 print(sum([sol[i]*coefs_o[i] for i in range(0,len(coefs_o))]))
 print(sol)

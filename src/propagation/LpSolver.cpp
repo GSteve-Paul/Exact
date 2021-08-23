@@ -145,7 +145,9 @@ LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.getSolver()) {
 
   soplex::DVectorReal objective;
   objective.reDim(getNbVariables());  // NOTE: automatically set to zero
-  if (ilp.hasObjective()) {
+  if (ilp.getObjective().getLhs().empty()) {
+    for (int v = 1; v < getNbVariables(); ++v) objective[v] = 1;  // add default objective function
+  } else {
     CeArb o = cePools.takeArb();
     ilp.getObjective().toConstrExp(o, true);
     o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -153,8 +155,6 @@ LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.getSolver()) {
     for (Var v : o->getVars()) {
       objective[v] = aux::toDouble(o->coefs[v]);
     }
-  } else {
-    for (int v = 1; v < getNbVariables(); ++v) objective[v] = 1;  // add default objective function
   }
   lp.changeObjReal(objective);
 

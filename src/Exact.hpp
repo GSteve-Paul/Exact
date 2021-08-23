@@ -18,21 +18,23 @@ See the file LICENSE or run with the flag --license=MIT.
 class Exact {
   xct::ILP ilp;
 
+  xct::IntVar* getVariable(const std::string& name);
+
  public:
   Exact();
 
-  State addVariable(const std::string& name, long long lb, long long ub);
+  void addVariable(const std::string& name, long long lb, long long ub);
   std::vector<std::string> getVariables() const;
   State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                       long long lb, bool useUB, long long ub);
-  State setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
-  State setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals);
+  void setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals);
   State boundObjByLastSol();
   State invalidateLastSol();
   State invalidateLastSol(const std::vector<std::string>& vars);
   void printFormula();
 
-  void init(bool boundObjective, bool addNonImplieds);
+  void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool boundObjective,
+            bool addNonImplieds);
   SolveState run();
 
   std::pair<long long, long long> getObjectiveBounds() const;
