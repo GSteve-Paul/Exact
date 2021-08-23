@@ -16,6 +16,7 @@ cp ../src/datastructures/*.hpp exact/headers/datastructures
 cp ../src/propagation/*.hpp exact/headers/propagation
 cp ../src/used_licenses/*.hpp exact/headers/used_licenses
 cp ../src/*.hpp exact/headers
+cp ../README.md README.md
 
 cp ../build_lib/libExact.so exact/libExact.so
 

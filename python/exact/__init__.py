@@ -6,7 +6,7 @@
 # You should have received a copy of the MIT License along with Exact.
 # See the file LICENSE.
 
-__version__ = "0.2.10"
+__version__ = "0.3.1"
 __author__ = 'Jo Devriendt'
 
 import os
