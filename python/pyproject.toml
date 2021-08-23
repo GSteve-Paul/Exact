@@ -8,7 +8,7 @@
 
 [tool.poetry]
 name = "exact"
-version = "0.2.9"
+version = "0.2.10"
 description = "A Python interface to the Exact integer linear programming solver"
 authors = ["Jo Devriendt"]
 license = "MIT License"

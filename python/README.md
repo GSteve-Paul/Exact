@@ -14,6 +14,7 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 - Hybrid linear (top-down) and core-guided (bottom-up) optimization.
 - Optional integration with the SoPlex LP solver.
 - Compiles on macOS.
+- Python interface with assumption solving. Published as a [PyPI package](https://pypi.org/project/exact). (supporting only Linux for now)
 - Under development: generation of certificates of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://github.com/StephanGocht/VeriPB).
 
 ## Usage

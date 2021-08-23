@@ -1,6 +1,6 @@
 # Exact
 
-Exact solves decision and optimization problems formulated as binary linear programs, also known as 0-1 integer linear programs or pseudo-Boolean formulas.
+[Exact](https://gitlab.com/JoD/exact) solves decision and optimization problems formulated as binary linear programs, also known as 0-1 integer linear programs or pseudo-Boolean formulas.
 
 Exact is a fork of [RoundingSat](https://gitlab.com/miao_research/roundingsat) and improves upon its predecessor in reliability, performance and ease-of-use.
 The name "Exact" reflects that the answers are fully sound, as approximate and floating-point calculations only occur in heuristic parts of the algorithm.
@@ -14,48 +14,20 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 - Hybrid linear (top-down) and core-guided (bottom-up) optimization.
 - Optional integration with the SoPlex LP solver.
 - Compiles on macOS.
+- Python interface with assumption solving and reuse of solver state. Published as a [PyPI package](https://pypi.org/project/exact) (only on Linux for now).
 - Under development: generation of certificates of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://github.com/StephanGocht/VeriPB).
 
-## Compilation
+## Python usage
 
-In the root directory of Exact:
+The header file `Exact.hpp` contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release ..
-    make
+Next, `python/examples` contains two commented instructive examples.
 
-For a debug build:
+The first, `python/examples/knapsack_classic.py`, showcases how to solve an integer classic knapsack problem with Exact's Python interface.
 
-    cd build_debug
-    cmake -DCMAKE_BUILD_TYPE=Debug ..
-    make
+The second, `python/examples/knapsack_implied.py`, elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
 
-For more builds, similar build directories can be created.
-
-For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make install`. 
-
-## Dependencies
-
-- C++17 (i.e., a reasonably recent C++ compiler)
-- Boost library (https://www.boost.org). 
-  On a Debian/Ubuntu system, install with `sudo apt install libboost-all-dev`.
-- Optionally: CoinUtils library (https://github.com/coin-or/CoinUtils) to parse MPS and LP file formats. 
-  On a Debian/Ubuntu system, install with `sudo apt install coinor-libcoinutils-dev`.
-- Optionally: SoPlex LP solver (see below)
-
-## SoPlex
-
-Exact supports an integration with the LP solver [SoPlex](https://soplex.zib.de) to improve its search routine.
-For this, first [download](https://soplex.zib.de/download.php?fname=soplex-5.0.2.tgz) SoPlex 5.0.2 and place the downloaded file in the root directory of Exact.
-Next, follow the above build process, but configure with the cmake option `-Dsoplex=ON`:
-
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release -Dsoplex=ON ..
-    make
-
-The location of the SoPlex package can be configured with the cmake option `-Dsoplex_pkg=<location>`.
-
-## Usage
+## File-based usage
 
 Exact takes as input a binary linear program and outputs a(n optimal) solution or reports that none exists.
 Either pipe the program
@@ -78,6 +50,45 @@ By default, Exact decides on the format based on the filename extension, but thi
 For a description of these input formats, see [here](InputFormats.md).
 
 Use the flag `--help` to display a list of runtime parameters.
+
+## Compilation
+
+In the root directory of Exact:
+
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release ..
+    make
+
+For a debug build:
+
+    cd build_debug
+    cmake -DCMAKE_BUILD_TYPE=Debug ..
+    make
+
+For more builds, similar build directories can be created.
+
+For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make install`.
+
+## Dependencies
+
+- C++17 (i.e., a reasonably recent C++ compiler)
+- Boost library (https://www.boost.org).
+  On a Debian/Ubuntu system, install with `sudo apt install libboost-all-dev`.
+- Optionally: CoinUtils library (https://github.com/coin-or/CoinUtils) to parse MPS and LP file formats.
+  On a Debian/Ubuntu system, install with `sudo apt install coinor-libcoinutils-dev`.
+- Optionally: SoPlex LP solver (see below)
+
+## SoPlex
+
+Exact supports an integration with the LP solver [SoPlex](https://soplex.zib.de) to improve its search routine.
+For this, first [download](https://soplex.zib.de/download.php?fname=soplex-5.0.2.tgz) SoPlex 5.0.2 and place the downloaded file in the root directory of Exact.
+Next, follow the above build process, but configure with the cmake option `-Dsoplex=ON`:
+
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release -Dsoplex=ON ..
+    make
+
+The location of the SoPlex package can be configured with the cmake option `-Dsoplex_pkg=<location>`.
 
 ## Citations
 

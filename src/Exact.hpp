@@ -96,10 +96,11 @@ class Exact {
    * @param coefs: coefficients of the objective function
    * @param vars: variables of the objective function
    * @param boundObjective: automatically add an upper bound constraint to the objective function for each solution
-   * found during search. This guarantees each solution will improve on the best-so-far.
+   * found during search. This guarantees each solution will improve on the best-so-far, but will also yield UNSAT
+   * when the last solution is proven to be optimal.
    * @param addNonImplieds: allow the solver to derive non-implied constraints that are consistent with at least
    * one optimal solution. A simple example is fixing pure literals, which occur only positively or negatively in the
-   * constraints.
+   * constraints. These non-implied constraints speed up search by reducing the set of solutions.
    */
   void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool boundObjective,
             bool addNonImplieds);

@@ -6,7 +6,7 @@
 # You should have received a copy of the MIT License along with Exact.
 # See the file LICENSE.
 
-__version__ = "0.2.9"
+__version__ = "0.2.10"
 __author__ = 'Jo Devriendt'
 
 import os
@@ -17,4 +17,4 @@ import cppyy
 cppyy.include(file_dir+'/headers/Exact.hpp')
 cppyy.load_library(file_dir+'/libExact')
 
-from cppyy.gbl import Exact as solver
+from cppyy.gbl import Exact
