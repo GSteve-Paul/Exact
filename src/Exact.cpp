@@ -110,6 +110,23 @@ State Exact::addConstraint(const std::vector<long long>& coefs, const std::vecto
   return ilp.addConstraint(cfs, vs, {}, aux::optional(useLB, lb), aux::optional(useUB, ub));
 }
 
+State Exact::addReification(const std::string& head, const std::vector<long long>& coefs,
+                            const std::vector<std::string>& vars, long long lb) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+
+  std::vector<bigint> cfs;
+  cfs.reserve(coefs.size());
+  std::vector<IntVar*> vs;
+  vs.reserve(coefs.size());
+  for (int i = 0; i < (int)coefs.size(); ++i) {
+    cfs.push_back(coefs[i]);
+    vs.push_back(getVariable(vars[i]));
+  }
+
+  return ilp.addReification(getVariable(head), cfs, vs, bigint(lb));
+}
+
 void Exact::setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals) {
   if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("More than 1e9 assumptions.");

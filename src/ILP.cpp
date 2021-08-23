@@ -28,11 +28,6 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   if (x.getLB().has_value()) o << " >= " << x.getLB().value();
   return o;
 }
-std::ostream& operator<<(std::ostream& o, const ILP& x) {
-  o << "obj: " << x.getObjective();
-  for (const IntConstraint& c : x.getConstraints()) o << "\n" << c;
-  return o;
-}
 
 IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub)
     : name(n), lowerBound(lb), upperBound(ub), logEncoding(getRange() > options.intEncoding.get()) {
@@ -97,7 +92,7 @@ IntConstraint::IntConstraint(const std::vector<bigint>& coefs, const std::vector
                              const std::optional<bigint>& ub)
     : lowerBound(lb), upperBound(ub) {
   assert(coefs.size() == vars.size());
-  assert(negated.size() == 0 || negated.size() == coefs.size());
+  assert(negated.empty() || negated.size() == coefs.size());
   lhs.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
     lhs.emplace_back(coefs[i], vars[i], !negated.empty() && negated[i]);
@@ -179,14 +174,14 @@ std::pair<bigint, bigint> ILP::getBounds(const std::string& name) const {
 
 void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                        const std::vector<bool>& negated, const bigint& mult, const bigint& offset) {
-  if (coefs.size() != vars.size() ||
-      (!negated.empty() && (coefs.size() != negated.size() || negated.size() != vars.size())))
+  if (coefs.size() != vars.size() || (!negated.empty() && negated.size() != vars.size()))
     throw std::invalid_argument("Coefficient, variable, or negated lists differ in size.");
-  if (mult < 1) throw std::invalid_argument("Objective multiplier not strictly positive.");
+  if (mult == 0) throw std::invalid_argument("Objective multiplier should not be zero.");
   if (optim) throw std::invalid_argument("Objective already set.");
   obj = IntConstraint(coefs, vars, negated, -offset);
   objmult = mult;
 }
+
 void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntVar*>& vars) {
   if (unsatDetected) throw UnsatState();
   if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
@@ -223,8 +218,7 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
 
-  constrs.emplace_back(coefs, vars, negated, lb, ub);
-  IntConstraint ic = constrs.back();
+  IntConstraint ic(coefs, vars, negated, lb, ub);
   if (ic.getLB().has_value()) {
     CeArb input = cePools.takeArb();
     ic.toConstrExp(input, true);
@@ -241,6 +235,38 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
       return State::UNSAT;
     }
   }
+  return State::SUCCESS;
+}
+
+State ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                          const bigint& lb) {
+  if (unsatDetected) throw UnsatState();
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw std::invalid_argument("Reification has more than 1e9 terms.");
+  if (!head->isBoolean()) throw std::invalid_argument("Head of reification is not Boolean.");
+
+  IntConstraint ic(coefs, vars, {}, lb);
+  CeArb leq = cePools.takeArb();
+  ic.toConstrExp(leq, true);
+  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
+  CeArb geq = cePools.takeArb();
+  leq->copyTo(geq);
+  Var h = head->encodingVars()[0];
+
+  leq->addLhs(leq->degree, -h);
+  if (solver.addConstraint(leq, Origin::FORMULA).second == ID_Unsat) {
+    unsatDetected = true;
+    return State::UNSAT;
+  }
+
+  geq->addRhs(-1);
+  geq->invert();
+  geq->addLhs(geq->degree, h);
+  if (solver.addConstraint(geq, Origin::FORMULA).second == ID_Unsat) {
+    unsatDetected = true;
+    return State::UNSAT;
+  }
+
   return State::SUCCESS;
 }
 

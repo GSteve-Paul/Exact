@@ -27,6 +27,9 @@ class Exact {
   std::vector<std::string> getVariables() const;
   State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                       long long lb, bool useUB, long long ub);
+  State addReification(const std::string& head, const std::vector<long long>& coefs,
+                       const std::vector<std::string>& vars, long long lb);
+
   void setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals);
   State boundObjByLastSol();
   State invalidateLastSol();

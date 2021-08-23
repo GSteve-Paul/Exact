@@ -24,7 +24,7 @@ struct IntVar {
   [[nodiscard]] const bigint& getLowerBound() const { return lowerBound; }
 
   [[nodiscard]] bigint getRange() const { return upperBound - lowerBound; }
-  [[nodiscard]] bool isBoolean() const { return getRange() == 1; }
+  [[nodiscard]] bool isBoolean() const { return lowerBound == 0 && upperBound == 1; }
 
   bool usesLogEncoding() const { return logEncoding; }
   const std::vector<Var>& encodingVars() const { return encoding; }
@@ -79,7 +79,6 @@ class ILP {
   bool unsatDetected = false;
 
   std::vector<std::unique_ptr<IntVar>> vars;
-  std::vector<IntConstraint> constrs;
   IntConstraint obj;
   bigint objmult = 1;
   std::unordered_map<std::string, IntVar*> name2var;
@@ -93,7 +92,6 @@ class ILP {
   ILP();
 
   const IntConstraint& getObjective() const { return obj; }
-  const std::vector<IntConstraint>& getConstraints() const { return constrs; }
   Solver& getSolver() { return solver; }
   Optim getOptimization() { return optim; }
   void setMaxSatVars() { maxSatVars = solver.getNbVars(); }
@@ -115,6 +113,8 @@ class ILP {
   State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                       const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
                       const std::optional<bigint>& ub = std::nullopt);
+  State addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                       const bigint& lb);
   State boundObjByLastSol();
   State invalidateLastSol();
   State invalidateLastSol(const std::vector<std::string>& names);
