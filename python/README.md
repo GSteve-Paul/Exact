@@ -19,7 +19,7 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 
 ## Python usage
 
-Either compile a shared library locally or use the published (PyPI package](https://pypi.org/project/exact) (Linux only for now) via the `pip` or `poetry` package managers.
+Either compile a shared library locally or use the published [PyPI package](https://pypi.org/project/exact) (Linux only for now) via the `pip` or `poetry` package managers.
 
 The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/master/src/Exact.hpp) contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
@@ -29,7 +29,7 @@ Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/master/python/exam
 
 ## File-based usage
 
-Exact takes as input a binary linear program and outputs a(n optimal) solution or reports that none exists.
+Exact takes as input an integer linear program and outputs a(n optimal) solution or reports that none exists.
 Either pipe the program
 
     cat test/instances/opb/opt/stein15.opb | build/Exact
