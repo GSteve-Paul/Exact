@@ -6,7 +6,6 @@
 # You should have received a copy of the MIT License along with Exact.
 # See the file LICENSE.
 
-
 import math
 
 # Construct a non-trivial integer knapsack instance
