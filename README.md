@@ -14,18 +14,18 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 - Hybrid linear (top-down) and **core-guided** (bottom-up) optimization.
 - Optional integration with the **SoPlex LP solver**.
 - Compiles on **macOS**.
-- **Python** interface with assumption solving and reuse of solver state. Published as a [PyPI package](https://pypi.org/project/exact) (only on Linux for now).
+- **Python** interface with assumption solving and reuse of solver state.
 - Under development: generation of **certificates** of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://github.com/StephanGocht/VeriPB).
 
 ## Python usage
 
+Either compile a shared library locally or use the published (PyPI package](https://pypi.org/project/exact) (Linux only for now) via the `pip` or `poetry` package managers.
+
 The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/master/src/Exact.hpp) contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
 Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/master/python/examples) contains two commented instructive examples.
-
-The first, [`python/examples/knapsack_classic.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_classic.py), showcases how to solve an integer classic knapsack problem with Exact's Python interface.
-
-The second, [`python/examples/knapsack_implied.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_implied.py), elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
+- [`python/examples/knapsack_classic.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_classic.py) showcases how to solve an integer classic knapsack problem with Exact's Python interface.
+- [`python/examples/knapsack_implied.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_implied.py), elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
 
 ## File-based usage
 
