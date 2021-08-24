@@ -19,13 +19,13 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 
 ## Python usage
 
-The header file `Exact.hpp` contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
+The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/master/src/Exact.hpp) contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
-Next, `python/examples` contains two commented instructive examples.
+Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/master/python/examples) contains two commented instructive examples.
 
-The first, `python/examples/knapsack_classic.py`, showcases how to solve an integer classic knapsack problem with Exact's Python interface.
+The first, [`python/examples/knapsack_classic.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_classic.py), showcases how to solve an integer classic knapsack problem with Exact's Python interface.
 
-The second, `python/examples/knapsack_implied.py`, elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
+The second, [`python/examples/knapsack_implied.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_implied.py), elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
 
 ## File-based usage
 
@@ -38,7 +38,9 @@ or pass the file as a parameter
 
     build/Exact test/instances/opb/opt/stein15.opb
 
-Exact supports five input formats:
+Use the flag `--help` to display a list of runtime parameters.
+
+Exact supports five input formats (described in more detail in [`InputFormats.md`](https://gitlab.com/JoD/exact/-/blob/master/InputFormats.md)):
 - `.opb` pseudo-Boolean PBO (only linear objective and constraints)
 - `.cnf` DIMACS Conjunctive Normal Form (CNF)
 - `.wcnf` Weighted Conjunctive Normal Form (WCNF)
@@ -46,10 +48,6 @@ Exact supports five input formats:
 - `.lp` Linear Program (LP) via the optional CoinUtils library
 
 By default, Exact decides on the format based on the filename extension, but this can be overridden with the `--format` option.
-
-For a description of these input formats, see [here](InputFormats.md).
-
-Use the flag `--help` to display a list of runtime parameters.
 
 ## Compilation
 
@@ -72,11 +70,11 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 ## Dependencies
 
 - C++17 (i.e., a reasonably recent C++ compiler)
-- Boost library (https://www.boost.org).
+- [Boost](https://www.boost.org) library.
   On a Debian/Ubuntu system, install with `sudo apt install libboost-all-dev`.
-- Optionally: CoinUtils library (https://github.com/coin-or/CoinUtils) to parse MPS and LP file formats.
+- Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
   On a Debian/Ubuntu system, install with `sudo apt install coinor-libcoinutils-dev`.
-- Optionally: SoPlex LP solver (see below)
+- Optionally: [SoPlex](https://soplex.zib.de) LP solver (see below)
 
 ## SoPlex
 
