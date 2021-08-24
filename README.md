@@ -29,7 +29,7 @@ Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/master/python/exam
 
 ## File-based usage
 
-Exact takes as input a binary linear program and outputs a(n optimal) solution or reports that none exists.
+Exact takes as input an integer linear program and outputs a(n optimal) solution or reports that none exists.
 Either pipe the program
 
     cat test/instances/opb/opt/stein15.opb | build/Exact
