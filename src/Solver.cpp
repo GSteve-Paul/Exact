@@ -52,7 +52,6 @@ namespace xct {
 Solver::Solver(ILP& i)
     : ilp(i),
       n(0),
-      orig_n(0),
       assumptions_lim({0}),
       equalities(*this),
       implications(*this),
@@ -70,7 +69,10 @@ Solver::~Solver() {
 void Solver::setNbVars(int nvars, bool orig) {
   assert(nvars > 0);
   assert(nvars < INF);
-  if (nvars <= n) return;
+  if (nvars <= n) {
+    assert(isOrig(nvars) == orig);
+    return;
+  }
   adj.resize(nvars, {});
   level.resize(nvars, INF);
   position.resize(nvars + 1, INF);
@@ -81,21 +83,20 @@ void Solver::setNbVars(int nvars, bool orig) {
   // if (lpSolver) lpSolver->setNbVariables(nvars + 1); // Currently, LP solver only reasons on formula constraints
   equalities.setNbVars(nvars);
   implications.setNbVars(nvars);
-  n = nvars;
+  isorig.resize(nvars + 1, orig);
+  ranks.resize(nvars + 1, 0);
+  tabuSol.resize(nvars + 1, 0);
+  lit2cons.resize(nvars, {});
+  lit2consOldSize.resize(nvars, std::numeric_limits<int>::max());
   if (orig) {
-    ranks.resize(nvars + 1, 0);
-    tabuSol.resize(nvars + 1);
-    for (Var v = orig_n + 1; v <= nvars; ++v) {
+    for (Var v = n + 1; v <= nvars; ++v) {
       tabuSol[v] = -v;
     }
-    orig_n = nvars;
-    stats.NORIGVARS.z = nvars;
-    stats.NAUXVARS.z = 0;
-    lit2cons.resize(nvars, {});
-    lit2consOldSize.resize(nvars, std::numeric_limits<int>::max());
+    stats.NORIGVARS.z += nvars - n;
   } else {
-    stats.NAUXVARS.z = n - orig_n;
+    stats.NAUXVARS.z += nvars - n;
   }
+  n = nvars;
 }
 
 void Solver::init(const CeArb& obj) {
@@ -120,7 +121,7 @@ void Solver::enqueueUnit(Lit l, Var v, CRef r) {
     logger->logUnit(tmp);
     assert(logger->getNbUnitIDs() == (int)trail.size() + 1);
   }
-  if (options.tabuLim.get() != 0 && v <= getNbOrigVars() && tabuSol[v] != l) {
+  if (options.tabuLim.get() != 0 && isOrig(v) && tabuSol[v] != l) {
     cutoff = ranks[v];
     flipTabu(l);
   }
@@ -511,7 +512,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   if (usedInTabu(c.getOrigin())) {
     for (unsigned int i = 0; i < c.size; ++i) {
       Lit l = c.lit(i);
-      assert(toVar(l) <= getNbOrigVars());
+      assert(isOrig(toVar(l)));
       lit2cons[l].insert({cr, i});
     }
     c.initializeTabu(tabuSol);
@@ -733,7 +734,7 @@ ID Solver::addUnitConstraint(Lit l, Origin orig) { return addConstraint(ConstrSi
 std::pair<ID, ID> Solver::invalidateLastSol(const std::vector<Var>& vars) {
   assert(foundSolution());
   ConstrSimple32 invalidator;
-  invalidator.terms.reserve(getNbOrigVars());
+  invalidator.terms.reserve(stats.NORIGVARS.z);
   invalidator.rhs = 1;
   for (Var v : vars) {
     invalidator.terms.push_back({1, -lastSol[v]});
@@ -751,7 +752,7 @@ void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
   if (usedInTabu(c.getOrigin())) {
     for (unsigned int i = 0; i < c.size; ++i) {
       Lit l = c.lit(i);
-      assert(toVar(l) <= getNbOrigVars());
+      assert(isOrig(toVar(l)));
       assert(lit2cons[l].count(cr));
       lit2cons[l].erase(cr);
     }
@@ -808,7 +809,7 @@ std::vector<Lit> Solver::getUnits() const {
   units.reserve(trail_lim[0]);
   for (int i = 0; i < trail_lim[0]; ++i) {
     Lit l = trail[i];
-    if (toVar(l) > getNbOrigVars()) continue;
+    if (!isOrig(toVar(l))) continue;
     units.push_back(l);
   }
   return units;
@@ -827,7 +828,7 @@ void Solver::rebuildLit2Cons() {
     Constr& c = ca[cr];
     if (c.isMarkedForDelete() || !usedInTabu(c.getOrigin())) continue;
     for (unsigned int i = 0; i < c.size; ++i) {
-      assert(toVar(c.lit(i)) <= getNbOrigVars());
+      assert(isOrig(toVar(c.lit(i))));
       lit2cons[c.lit(i)].insert({cr, c.isClauseOrCard() ? INF : i});
     }
   }
@@ -1023,7 +1024,7 @@ void Solver::removeSatisfiedNonImpliedsAtRoot() {
   std::vector<CRef> toCheck;
   for (int i = lastRemoveSatisfiedsTrail; i < (int)trail.size(); ++i) {
     Lit l = trail[i];
-    if (toVar(l) > getNbOrigVars()) continue;  // no column view for auxiliary variables for now
+    if (!isOrig(toVar(l))) continue;  // no column view for auxiliary variables for now
     for (const std::pair<const CRef, int>& pr : lit2cons[l]) {
       Constr& c = ca[pr.first];
       assert(!c.isMarkedForDelete());  // should be erased from lit2cons when marked for delete
@@ -1046,11 +1047,11 @@ void Solver::removeSatisfiedNonImpliedsAtRoot() {
 
 void Solver::derivePureLits() {
   assert(decisionLevel() == 0);
-  for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {  // NOTE: core-guided variables will not be eliminated
+  for (Lit l = -getNbVars(); l <= getNbVars(); ++l) {
     quit::checkInterrupt();
-    if (l == 0 || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l) ||
+    if (l == 0 || !isOrig(toVar(l)) || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l) ||
         !lit2cons[-l].empty())
-      continue;
+      continue;  // NOTE: core-guided variables will not be eliminated
     [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
     assert(id != ID_Unsat);
     removeSatisfiedNonImpliedsAtRoot();
@@ -1061,9 +1062,10 @@ void Solver::dominanceBreaking() {
   std::unordered_set<Lit> inUnsaturatableConstraint;
   IntSet& saturating = isPool.take();
   IntSet& intersection = isPool.take();
-  for (Lit l = -getNbOrigVars(); l <= getNbOrigVars(); ++l) {
+  for (Lit l = -getNbVars(); l <= getNbVars(); ++l) {
+    if (l == 0 || !isOrig(toVar(l)) || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l))
+      continue;
     assert(saturating.isEmpty());
-    if (l == 0 || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l)) continue;
     std::unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
       [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
@@ -1267,9 +1269,9 @@ SolveState Solver::solve() {
       }
       if (next == 0) {
         assert((int)trail.size() == getNbVars());
-        lastSol.resize(getNbOrigVars() + 1);
+        lastSol.resize(getNbVars() + 1);
         lastSol[0] = 0;
-        for (Var v = 1; v <= getNbOrigVars(); ++v) lastSol[v] = isTrue(level, v) ? v : -v;
+        for (Var v = 1; v <= getNbVars(); ++v) lastSol[v] = isOrig(v) ? (isTrue(level, v) ? v : -v) : 0;
         backjumpTo(0);
         return SolveState::SAT;
       }
@@ -1579,9 +1581,9 @@ bool Solver::runTabuOnce() {
     stats.TABUDETTIME += currentDetTime - oldDetTime;
   }
   if (violatedPtrs.empty()) {
-    lastSol.resize(getNbOrigVars() + 1);
+    lastSol.resize(getNbVars() + 1);
     lastSol[0] = 0;
-    for (Var v = 1; v <= getNbOrigVars(); ++v) lastSol[v] = tabuSol[v];
+    for (Var v = 1; v <= getNbVars(); ++v) lastSol[v] = isOrig(v) ? tabuSol[v] : 0;
     return true;
   }
   return false;
@@ -1622,8 +1624,10 @@ void Solver::flipTabu(Lit l) {
 }
 
 void Solver::phaseToTabu() {
-  for (Var v = 1; v <= getNbOrigVars(); ++v) {
+  for (Var v = 1; v <= getNbVars(); ++v) {
+    if (!isOrig(v)) continue;
     Lit l = tabuSol[v];
+    assert(l != 0);
     assert(!isUnit(getLevel(), -l));
     if (!isUnit(getLevel(), l) && freeHeur.getPhase(v) != l) {
       cutoff = ranks[toVar(l)];
@@ -1633,14 +1637,16 @@ void Solver::phaseToTabu() {
 }
 
 void Solver::lastSolToPhase() {
-  for (Var v = 1; v <= getNbOrigVars(); ++v) {
+  for (Var v = 1; v <= getNbVars(); ++v) {
+    if (!isOrig(v)) continue;
     freeHeur.setPhase(v, lastSol[v]);
   }
 }
 
 void Solver::ranksToAct() {
   ActValV nbConstrs = constraints.size();
-  for (Var v = 1; v <= getNbOrigVars(); ++v) {
+  for (Var v = 1; v <= getNbVars(); ++v) {
+    if (!isOrig(v)) continue;
     freeHeur.activity[v] = std::max(cutoff, ranks[v]) + (adj[v].size() + adj[-v].size()) / nbConstrs;
     cgHeur.activity[v] = freeHeur.activity[v];
   }

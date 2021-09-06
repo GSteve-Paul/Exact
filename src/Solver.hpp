@@ -77,14 +77,14 @@ class Solver {
 
  public:
   std::vector<Lit> lastSol = {0};
-  bool foundSolution() const { return getNbOrigVars() == 0 || lastSol.size() > 1; }
+  bool foundSolution() const { return stats.NORIGVARS.z == 0 || lastSol.size() > 1; }
   CeSuper lastCore;
   IntSet objectiveLits;
 
  private:
   ILP& ilp;
   int n;
-  int orig_n;
+  std::vector<bool> isorig;
 
   ConstraintAllocator ca;
   Heuristic freeHeur;
@@ -126,7 +126,10 @@ class Solver {
 
   int getNbVars() const { return n; }
   void setNbVars(int nvars, bool orig);
-  int getNbOrigVars() const { return orig_n; }
+  bool isOrig(Var v) const {
+    assert(v > 0);
+    return isorig[v];
+  }
 
   const IntMap<int>& getLevel() const { return level; }
   const std::vector<int>& getPos() const { return position; }

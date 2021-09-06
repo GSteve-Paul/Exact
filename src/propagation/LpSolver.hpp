@@ -148,7 +148,7 @@ class LpSolver {
   void addConstraint(CRef cr, bool removable, bool upperbound = false, bool lowerbound = false);
 
  private:
-  int getNbVariables() const;
+  int getNbCols() const;
   int getNbRows() const;
 
   void flushConstraints();

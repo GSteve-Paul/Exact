@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
   if (options.noSolve) quit::exit_INDETERMINATE(ilp);
   if (options.printCsvData) stats.printCsvHeader();
   if (options.verbosity.get() > 0) {
-    std::cout << "c " << ilp.getSolver().getNbOrigVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
+    std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
               << std::endl;
   }
 

@@ -144,9 +144,9 @@ LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.getSolver()) {
   }
 
   soplex::DVectorReal objective;
-  objective.reDim(getNbVariables());  // NOTE: automatically set to zero
+  objective.reDim(getNbCols());  // NOTE: automatically set to zero
   if (ilp.getObjective().getLhs().empty()) {
-    for (int v = 1; v < getNbVariables(); ++v) objective[v] = 1;  // add default objective function
+    for (int v = 1; v < getNbCols(); ++v) objective[v] = 1;  // add default objective function
   } else {
     CeArb o = cePools.takeArb();
     ilp.getObjective().toConstrExp(o, true);
@@ -162,11 +162,11 @@ LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.getSolver()) {
 }
 
 void LpSolver::setNbVariables(int n) {
-  if (n <= getNbVariables()) return;
+  if (n <= getNbCols()) return;
   soplex::LPColSetReal allCols;
-  allCols.reMax(n - getNbVariables());
+  allCols.reMax(n - getNbCols());
   soplex::DSVectorReal dummycol(0);
-  for (Var v = getNbVariables(); v < n; ++v) {
+  for (Var v = getNbCols(); v < n; ++v) {
     allCols.add(soplex::LPColReal(0, dummycol, 1, 0));
   }
   lp.addColsReal(allCols);
@@ -175,10 +175,10 @@ void LpSolver::setNbVariables(int n) {
   lpSolution.resize(n, 0);
   lowerBounds.reDim(n);
   upperBounds.reDim(n);
-  assert(getNbVariables() == n);
+  assert(getNbCols() == n);
 }
 
-int LpSolver::getNbVariables() const { return lp.numCols(); }
+int LpSolver::getNbCols() const { return lp.numCols(); }
 int LpSolver::getNbRows() const { return lp.numRows(); }
 
 CeSuper LpSolver::createLinearCombinationFarkas(soplex::DVectorReal& mults) {
@@ -307,11 +307,9 @@ void LpSolver::constructLearnedCandidates() {
     if (isLearned(c.getOrigin())) {
       bool containsNewVars = false;
       for (unsigned int i = 0; i < c.size && !containsNewVars; ++i) {
-        containsNewVars = toVar(c.lit(i)) >= getNbVariables();
-        assert((toVar(c.lit(i)) > solver.getNbOrigVars()) == containsNewVars);
-        // for now, getNbVariables() == solver.getNbOrigVars().nbOrigVars+1
+        containsNewVars = toVar(c.lit(i)) >= getNbCols();
       }
-      if (containsNewVars) continue;
+      if (containsNewVars) continue;  // for now, LP solver only knows about the initial formula variables
       candidateCuts.emplace_back(c, cr, lpSolution, cePools);
       if (candidateCuts.back().ratSlack >= -options.lpIntolerance.get()) candidateCuts.pop_back();
     }
@@ -419,7 +417,7 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
   flushConstraints();
 
   // Set the  LP's bounds based on the current trail
-  for (Var v = 1; v < getNbVariables(); ++v) {
+  for (Var v = 1; v < getNbCols(); ++v) {
     lowerBounds[v] = isTrue(solver.getLevel(), v);
     upperBounds[v] = !isFalse(solver.getLevel(), v);
   }
@@ -512,8 +510,8 @@ State LpSolver::inProcess() {
   assert(lpSol.dim() == (int)lpSolution.size());
   for (int i = 0; i < lpSol.dim(); ++i) lpSolution[i] = lpSol[i];
   lp.getSlacksReal(lpSlackSolution);
-  assert(solver.getNbVars() + 1 >= getNbVariables());
-  for (Var v = 1; v < getNbVariables(); ++v) {
+  assert(solver.getNbVars() + 1 >= getNbCols());
+  for (Var v = 1; v < getNbCols(); ++v) {
     solver.freeHeur.setPhase(v, (lpSolution[v] <= 0.5) ? -v : v);
   }
   if (options.verbosity.get() > 0) {
