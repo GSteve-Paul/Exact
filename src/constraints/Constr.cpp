@@ -417,7 +417,6 @@ void Counting<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 
 template <typename CF, typename DG>
 WatchStatus Counting<CF, DG>::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver) {
-  _unused(p);
   auto& position = solver.position;
 
   assert(idx >= INF);
@@ -584,7 +583,6 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 
 template <typename CF, typename DG>
 WatchStatus Watched<CF, DG>::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver) {
-  _unused(p);
   auto& level = solver.level;
   auto& position = solver.position;
   auto& adj = solver.adj;
@@ -929,7 +927,6 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 
 template <typename CF, typename DG>
 WatchStatus WatchedSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver) {
-  _unused(p);
   auto& level = solver.level;
   auto& position = solver.position;
   auto& adj = solver.adj;

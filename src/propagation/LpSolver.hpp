@@ -173,9 +173,9 @@ class LpSolver {
 
 class LpSolver {
  public:
-  // LpSolver([[maybe_unused]] ILP& ilp){
+  // TODO: use LpSolver([[maybe_unused]] ILP& ilp)
   // See https://stackoverflow.com/questions/52263141/maybe-unused-and-constructors
-  LpSolver(ILP& i) { _unused(i); };
+  LpSolver(ILP& ilp) { (void)(ilp); };
   void setNbVariables([[maybe_unused]] int n){};
 
   LpStatus checkFeasibility([[maybe_unused]] bool inProcessing) {

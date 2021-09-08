@@ -315,7 +315,7 @@ struct Counting final : public Constr {
 
   void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const;
@@ -397,7 +397,7 @@ struct Watched final : public Constr {
 
   void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const;
@@ -570,7 +570,7 @@ struct WatchedSafe final : public Constr {
 
   void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const;

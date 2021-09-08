@@ -44,8 +44,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define EXPANDED(x) STR(x)
 #define STR(x) #x
 
-#define _unused(x) ((void)(x))  // marks variables unused in release mode, use [[maybe_unused]] where possible
-
 #include <sys/resource.h>
 #include <algorithm>
 #include <boost/multiprecision/cpp_int.hpp>
