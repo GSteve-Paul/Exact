@@ -9,7 +9,7 @@
 import math
 
 # Construct a non-trivial integer knapsack instance
-nvars = 50
+nvars = 10
 var_range = range(1,nvars+1)
 vars = [str(x) for x in var_range]
 coefs_o = [5*x+(x%3) for x in var_range]
@@ -69,6 +69,10 @@ while result!=0:
         print("optimal:",optVal)
         break
 
+# To find more solutions, first remove the "aux"=1 assumption, as otherwise solver.run() would only return
+# SolveState::INCONSISTENT.
+solver.setAssumptions({'1'},{1})
+
 propagatedBounds = [tuple(b) for b in solver.propagate(vars)]
 print("Propagated:",{vars[i]:propagatedBounds[i] for i in range(0,len(vars)) if propagatedBounds[i]!=(0,1+(i+1)%2)})
 
@@ -84,10 +88,6 @@ sol = solver.getLastSolutionFor(vars)
 # To find the variable assignments implied by the set of optimal solutions, construct the intersection of those
 # solutions. For now, the single optimal solution found initializes this intersection.
 intersection = {vars[i]:sol[i] for i in range(0,len(vars))}
-
-# To find more solutions, first remove the "aux"=1 assumption, as otherwise solver.run() would only return
-# SolveState::INCONSISTENT.
-solver.setAssumptions({},{})
 
 # Continue the search, forcing the solver to find solutions that reduce the intersection
 solver.invalidateLastSol()

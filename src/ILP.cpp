@@ -428,15 +428,15 @@ void ILP::printOrigSol() const {
   }
 }
 
-// NOTE: also throws AsynchronousInterrupt and resets assumptions
+// NOTE: also throws AsynchronousInterrupt
 std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::string>& varnames) {
-  assumptions = {};
   SolveState result = runFull();
   if (unsatDetected) throw UnsatState();
+  if (result == SolveState::INCONSISTENT) return {};
   assert(result == SolveState::SAT);
   Var marker = solver.getNbVars() + 1;
   solver.setNbVars(marker, true);
-  assumptions = {-marker};
+  assumptions.push_back(-marker);
 
   Ce32 invalidator = cePools.take32();
   invalidator->addRhs(1);
@@ -461,7 +461,14 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
     invalidator->removeZeroes();
   }
   assert(result == SolveState::INCONSISTENT);
-  assumptions.clear();
+  assumptions.pop_back();
+  [[maybe_unused]] ID id = solver.addUnitConstraint(marker, Origin::INVALIDATOR);
+  assert(id != ID_Unsat);
+  assert(invalidator->getDegree() == 1);
+  assert(invalidator->vars.back() == marker);
+  invalidator->weakenLast();
+  assert(invalidator->hasNoZeroes());
+  assert(invalidator->getDegree() == 0);
 
   std::vector<std::pair<bigint, bigint>> consequences;
   consequences.reserve(varnames.size());
@@ -488,6 +495,18 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
     }
     consequences.push_back({lb, ub});
   }
+
+  invalidator->invert();
+  int invsize = invalidator->vars.size();
+  for (Lit l : assumptions) {
+    invalidator->addLhs(invsize, -l);
+  }
+  invalidator->addRhs(invsize - invalidator->getDegree());
+  assert(invalidator->getDegree() == invsize);
+  std::cout << invalidator << std::endl;
+  // TODO: make below a learned constraint instead of input
+  solver.addConstraintUnchecked(invalidator, Origin::INVALIDATOR);
+
   return consequences;
 }
 
