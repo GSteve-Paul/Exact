@@ -86,7 +86,7 @@ class ILP {
 
   int maxSatVars = -1;
 
-  std::vector<Lit> assumptions;
+  std::vector<Lit> assumptions;  // TODO: pass assumptions to run() instead of keeping track of them here?
 
  public:
   ILP();
@@ -109,6 +109,7 @@ class ILP {
 
   void init(bool boundObjective, bool addNonImplieds);
   SolveState run();
+  SolveState runFull();
 
   State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                       const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
@@ -123,13 +124,15 @@ class ILP {
   ratio getUpperBound() const;
 
   bool hasSolution() const;
-  std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
+  std::vector<bigint> getLastSolutionFor(const std::vector<std::string>& vars) const;
 
   bool hasCore() const;
   std::vector<std::string> getLastCore() const;
 
   void printOrigSol() const;
   void printFormula();
+
+  std::vector<std::pair<bigint, bigint>> propagate(const std::vector<std::string>& varnames);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 

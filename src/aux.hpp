@@ -346,6 +346,14 @@ std::optional<T> optional(bool make, const T& val) {
   return std::nullopt;
 }
 
+template <typename T, typename U>
+std::vector<T> cast_vec(const std::vector<U>& in) {
+  std::vector<T> result;
+  result.resize(in.size());
+  std::transform(in.begin(), in.end(), result.begin(), [](const U& val) { return static_cast<T>(val); });
+  return result;
+}
+
 namespace rng {
 
 extern uint32_t seed; /* The seed must be initialized to non-zero */

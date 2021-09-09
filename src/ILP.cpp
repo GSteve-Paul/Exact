@@ -332,6 +332,16 @@ SolveState ILP::run() {  // NOTE: also throws AsynchronousInterrupt
   return result;
 }
 
+SolveState ILP::runFull() {  // NOTE: also throws AsynchronousInterrupt
+  if (unsatDetected) throw UnsatState();
+  SolveState result = SolveState::INPROCESSED;
+  while (result == SolveState::INPROCESSED) {
+    result = optim->optimize(assumptions);
+  }
+  unsatDetected = result == SolveState::UNSAT;
+  return result;
+}
+
 void ILP::printFormula() {
   int nbConstraints = 0;
   for (const CRef& cr : solver.getRawConstraints()) {
@@ -371,17 +381,14 @@ bool ILP::hasSolution() const {
   return result;
 }
 
-std::vector<long long> ILP::getLastSolutionFor(const std::vector<std::string>& vars) const {
+std::vector<bigint> ILP::getLastSolutionFor(const std::vector<std::string>& vars) const {
   if (!hasSolution()) throw std::invalid_argument("No solution to return.");
 
-  std::vector<long long> result;
+  std::vector<bigint> result;
   result.reserve(vars.size());
   for (const std::string& var : vars) {
     if (!name2var.count(var)) throw std::invalid_argument("No known variable " + var + ".");
-    bigint val = name2var.at(var)->getValue(solver.getLastSolution());
-    assert(val <= std::numeric_limits<long long>::max());
-    assert(val >= std::numeric_limits<long long>::lowest());
-    result.push_back(static_cast<long long>(val));
+    result.push_back(name2var.at(var)->getValue(solver.getLastSolution()));
   }
   return result;
 }
@@ -419,6 +426,69 @@ void ILP::printOrigSol() const {
       std::cout << iv->getName() << " " << val << "\n";
     }
   }
+}
+
+// NOTE: also throws AsynchronousInterrupt and resets assumptions
+std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::string>& varnames) {
+  assumptions = {};
+  SolveState result = runFull();
+  if (unsatDetected) throw UnsatState();
+  assert(result == SolveState::SAT);
+  Var marker = solver.getNbVars() + 1;
+  solver.setNbVars(marker, true);
+  assumptions = {-marker};
+
+  Ce32 invalidator = cePools.take32();
+  invalidator->addRhs(1);
+  for (const std::string& vn : varnames) {
+    for (Var v : name2var[vn]->encodingVars()) {
+      invalidator->addLhs(1, -solver.getLastSolution()[v]);
+    }
+  }
+  invalidator->addLhs(1, marker);
+
+  while (true) {
+    solver.addConstraintUnchecked(invalidator, Origin::INVALIDATOR);
+    result = runFull();
+    if (result != SolveState::SAT) break;
+    for (Var v : invalidator->getVars()) {
+      Lit invallit = invalidator->getLit(v);
+      if (solver.getLastSolution()[v] == invallit) {  // solution matches invalidator
+        invalidator->addLhs(-1, invallit);
+      }
+    }
+    assert(!invalidator->hasNoZeroes());
+    invalidator->removeZeroes();
+  }
+  assert(result == SolveState::INCONSISTENT);
+  assumptions.clear();
+
+  std::vector<std::pair<bigint, bigint>> consequences;
+  consequences.reserve(varnames.size());
+  for (const std::string& vn : varnames) {
+    IntVar* iv = name2var[vn];
+    bigint lb = iv->getLowerBound();
+    bigint ub = iv->getUpperBound();
+    if (iv->usesLogEncoding()) {
+      bigint coef = 1;
+      for (Var v : iv->encodingVars()) {
+        if (invalidator->hasLit(-v)) {
+          lb += coef;
+        }
+        if (invalidator->hasLit(v)) {
+          ub -= coef;
+        }
+        coef *= 2;
+      }
+    } else {
+      for (Var v : iv->encodingVars()) {
+        lb += invalidator->hasLit(-v);
+        ub -= invalidator->hasLit(v);
+      }
+    }
+    consequences.push_back({lb, ub});
+  }
+  return consequences;
 }
 
 }  // namespace xct

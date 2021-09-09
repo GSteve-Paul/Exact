@@ -200,4 +200,6 @@ class Exact {
    * Print Exact's internal formula.
    */
   void printFormula();
+
+  std::vector<std::pair<long long, long long> > propagate(const std::vector<std::string>& varnames);
 };

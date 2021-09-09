@@ -69,6 +69,9 @@ while result!=0:
         print("optimal:",optVal)
         break
 
+propagatedBounds = [tuple(b) for b in solver.propagate(vars)]
+print("Propagated:",{vars[i]:propagatedBounds[i] for i in range(0,len(vars)) if propagatedBounds[i]!=(0,1+(i+1)%2)})
+
 # Note that the last objective bound added enforces any new solutions to be optimal. Even the last found solution, after
 # projecting out the "aux" variable, is already optimal.
 

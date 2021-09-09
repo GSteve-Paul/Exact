@@ -184,7 +184,7 @@ std::pair<long long, long long> Exact::getBounds(const std::string& var) const {
 bool Exact::hasSolution() const { return ilp.hasSolution(); }
 
 std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
-  return ilp.getLastSolutionFor(vars);
+  return aux::cast_vec<long long, bigint>(ilp.getLastSolutionFor(vars));
 }
 
 bool Exact::hasCore() const { return ilp.hasCore(); }
@@ -194,3 +194,7 @@ std::vector<std::string> Exact::getLastCore() const { return ilp.getLastCore(); 
 void Exact::printStats() { quit::printFinalStats(ilp); }
 
 void Exact::setVerbosity(int verbosity) { options.verbosity.parse(std::to_string(verbosity)); }
+
+std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& varnames) {
+  return aux::cast_vec<std::pair<long long, long long>, std::pair<bigint, bigint>>(ilp.propagate(varnames));
+}
