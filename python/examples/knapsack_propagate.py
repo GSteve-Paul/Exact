@@ -6,9 +6,10 @@
 # You should have received a copy of the MIT License along with Exact.
 # See the file LICENSE.
 
-# This example showcases how to find the variable assignments implied by optimality, i.e., the variable assignments
-# shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse
-# the existing solver state (containing learned constraints) for optimal performance.
+# This example showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
+# The first part is identical to knapsack_implied.py, generating a state of the solver where all solutions are optimal.
+# The second part consists of the last 3 lines, which calculates the variable bounds that hold for all optimal solutions
+# where variable 1 takes value 1.
 
 import math
 
@@ -73,38 +74,9 @@ while result!=0:
         print("optimal:",optVal)
         break
 
-# Note that the last objective bound added enforces any new solutions to be optimal. Even the last found solution, after
-# projecting out the "aux" variable, is already optimal.
+# Assume variable 1 to take value 1
+solver.setAssumptions({'1'},{1})
 
-# Check that this last solution exists.
-assert solver.hasSolution()
-
-# Read out the last solution.
-sol = solver.getLastSolutionFor(vars)
-
-# To find the variable assignments implied by the set of optimal solutions, construct the intersection of those
-# solutions. For now, the single optimal solution found initializes this intersection.
-intersection = {vars[i]:sol[i] for i in range(0,len(vars))}
-
-# To find more solutions, first remove the "aux"=1 assumption, as otherwise solver.run() would only return
-# SolveState::INCONSISTENT.
-solver.setAssumptions({},{})
-
-# Continue the search, forcing the solver to find solutions that reduce the intersection
-solver.invalidateLastSol()
-while result!=0:
-    result = solver.run()
-    if result==1: # Corresponds to SolveState::SAT, so a solution has been found
-        assert solver.hasSolution()
-        # Construct a list of the variables still in the intersection
-        varlist = list(intersection.keys())
-        # Get the values for these intersection variables
-        sol = solver.getLastSolutionFor(varlist)
-        # Reduce the intersection by only keeping those variables whose value matches that of the last found solution
-        intersection = {varlist[i]:sol[i] for i in range(0,len(varlist)) if intersection[varlist[i]]==sol[i]}
-        # Invalidate the last solution over the shrunk set of intersection variables
-        result = solver.invalidateLastSol(intersection.keys())
-
-# The solver is now in an UNSAT state, meaning that no solution exists that would differ from the current intersection
-# Hence, the intersection is the set of implied assignments.
-print("Implied:",intersection)
+# Calculate the variable bounds shared by the set of optimal solutions under the assumptions
+propagatedBounds = [tuple(b) for b in solver.propagate(vars)]
+print("Propagated:",{vars[i]:propagatedBounds[i] for i in range(0,len(vars)) if propagatedBounds[i]!=(0,1+(i+1)%2)})

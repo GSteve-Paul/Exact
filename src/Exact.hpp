@@ -202,10 +202,10 @@ class Exact {
   void printFormula();
 
   /**
-   * Get lower and upper bounds implied by the constraints under the assumptions set by setAssumptions.
-   * If no solution exists under the assumptions, returns empty vector.
+   * Under the assumptions set by setAssumptions, return implied lower and upper bound for the non-assumed variables in
+   * varnames. If no solution exists under the assumptions, return empty vector.
    *
-   * @param varnames: variables for which to calculate the bounds
+   * @param varnames: variables for which to calculate the implied bounds
    * @return: a pair of bounds for each variable in varnames
    */
   std::vector<std::pair<long long, long long> > propagate(const std::vector<std::string>& varnames);

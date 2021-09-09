@@ -23,9 +23,10 @@ Either compile a shared library locally or use the published [PyPI package](http
 
 The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/master/src/Exact.hpp) contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
-Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/master/python/examples) contains two commented instructive examples.
+Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/master/python/examples) contains instructive, fully commented examples.
 - [`python/examples/knapsack_classic.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_classic.py) showcases how to solve an integer classic knapsack problem with Exact's Python interface.
 - [`python/examples/knapsack_implied.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_implied.py), elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
+- [`python/examples/knapsack_propagate.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_propagate.py), elaborates on the second and showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
 
 ## File-based usage
 

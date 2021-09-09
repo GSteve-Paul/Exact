@@ -289,7 +289,6 @@ State ILP::invalidateLastSol() {
     aux::appendTo(vars, tup.second->encodingVars());
   }
   std::pair<ID, ID> ids = solver.invalidateLastSol(vars);
-  assert(ids.second != ID_Undef);
   unsatDetected = ids.second == ID_Unsat;
   return unsatDetected ? State::UNSAT : State::SUCCESS;
 }
@@ -434,9 +433,6 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
   if (unsatDetected) throw UnsatState();
   if (result == SolveState::INCONSISTENT) return {};
   assert(result == SolveState::SAT);
-  Var marker = solver.getNbVars() + 1;
-  solver.setNbVars(marker, true);
-  assumptions.push_back(-marker);
 
   Ce32 invalidator = cePools.take32();
   invalidator->addRhs(1);
@@ -445,7 +441,15 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
       invalidator->addLhs(1, -solver.getLastSolution()[v]);
     }
   }
+  for (Lit l : assumptions) {
+    invalidator->addLhs(-1, -l);  // no need to add assumptions to invalidator
+  }
+  Var marker = solver.getNbVars() + 1;
+  solver.setNbVars(marker, true);
+  assumptions.push_back(-marker);
   invalidator->addLhs(1, marker);
+  invalidator->removeZeroes();
+  assert(invalidator->isClause());
 
   while (true) {
     solver.addConstraintUnchecked(invalidator, Origin::INVALIDATOR);
@@ -464,10 +468,9 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
   assumptions.pop_back();
   [[maybe_unused]] ID id = solver.addUnitConstraint(marker, Origin::INVALIDATOR);
   assert(id != ID_Unsat);
-  assert(invalidator->getDegree() == 1);
-  assert(invalidator->vars.back() == marker);
-  invalidator->weakenLast();
-  assert(invalidator->hasNoZeroes());
+  assert(invalidator->isClause());
+  invalidator->weaken(marker);
+  invalidator->removeZeroes();
   assert(invalidator->getDegree() == 0);
 
   std::vector<std::pair<bigint, bigint>> consequences;
@@ -498,12 +501,11 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
 
   invalidator->invert();
   int invsize = invalidator->vars.size();
+  invalidator->addRhs(invsize - invalidator->getDegree());
+  assert(invalidator->getDegree() == invsize);
   for (Lit l : assumptions) {
     invalidator->addLhs(invsize, -l);
   }
-  invalidator->addRhs(invsize - invalidator->getDegree());
-  assert(invalidator->getDegree() == invsize);
-  std::cout << invalidator << std::endl;
   // TODO: make below a learned constraint instead of input
   solver.addConstraintUnchecked(invalidator, Origin::INVALIDATOR);
 
