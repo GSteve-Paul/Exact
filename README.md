@@ -6,6 +6,10 @@ Exact is a fork of [RoundingSat](https://gitlab.com/miao_research/roundingsat) a
 The name "Exact" reflects that the answers are fully sound, as approximate and floating-point calculations only occur in heuristic parts of the algorithm.
 As such, Exact can soundly be used for verification and theorem proving, where its envisioned ability to emit machine-checkable certificates of optimality and unsatisfiability should prove useful.
 
+## Stay updated
+
+Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter.
+
 ## Features
 
 - **Native conflict analysis** over binary linear constraints, constructing full-blown cutting planes proofs.
@@ -25,8 +29,8 @@ The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/master/src/Exa
 
 Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/master/python/examples) contains instructive, fully commented examples.
 - [`python/examples/knapsack_classic.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_classic.py) showcases how to solve an integer classic knapsack problem with Exact's Python interface.
-- [`python/examples/knapsack_implied.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_implied.py), elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
-- [`python/examples/knapsack_propagate.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_propagate.py), elaborates on the second and showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
+- [`python/examples/knapsack_implied.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_implied.py) elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
+- [`python/examples/knapsack_propagate.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_propagate.py) elaborates on the second and showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
 
 ## File-based usage
 
