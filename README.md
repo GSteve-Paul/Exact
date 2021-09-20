@@ -18,10 +18,10 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter.
 - Hybrid linear (top-down) and **core-guided** (bottom-up) optimization.
 - Optional integration with the **SoPlex LP solver**.
 - Compiles on **macOS**.
-- **Python** interface with assumption solving and reuse of solver state.
+- Under development: **Python** interface with assumption solving and reuse of solver state.
 - Under development: generation of **certificates** of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://github.com/StephanGocht/VeriPB).
 
-## Python usage
+## Python interface
 
 Either compile a shared library locally or use the published [PyPI package](https://pypi.org/project/exact) (Linux only for now) via the `pip` or `poetry` package managers.
 

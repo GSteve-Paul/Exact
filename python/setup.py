@@ -10,7 +10,7 @@ from setuptools import setup
 
 setup(
     name='Exact',
-    version = "0.3.3",
+    version = "0.4.0",
     description='A Python interface to Exact',
     url='https://gitlab.com/JoD/exact',
     author='Jo Devriendt',
