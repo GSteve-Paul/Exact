@@ -44,7 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ILP.hpp"
 #include "Optimization.hpp"
 #include "Solver.hpp"
-#include "aux.hpp"
+#include "auxiliary.hpp"
 #include "globals.hpp"
 
 namespace xct {

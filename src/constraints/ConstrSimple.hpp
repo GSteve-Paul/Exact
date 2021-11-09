@@ -44,7 +44,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include "../aux.hpp"
+#include "../auxiliary.hpp"
 #include "../typedefs.hpp"
 
 namespace xct {

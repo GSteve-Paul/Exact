@@ -96,7 +96,7 @@ set(source_files
         src/datastructures/IntSet.cpp
         src/parsing.cpp
         src/datastructures/Heuristic.cpp
-        src/aux.cpp
+        src/auxiliary.cpp
         src/Optimization.cpp
         src/quit.cpp
         src/Exact.cpp
@@ -130,7 +130,7 @@ set(header_files
         src/datastructures/Heuristic.hpp
         src/Stats.hpp
         src/Options.hpp
-        src/aux.hpp
+        src/auxiliary.hpp
         src/quit.hpp
         src/Optimization.hpp
         src/propagation/Propagator.hpp

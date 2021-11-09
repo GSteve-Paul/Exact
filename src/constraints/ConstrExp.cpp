@@ -43,7 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <functional>
 #include "../Solver.hpp"
-#include "../aux.hpp"
+#include "../auxiliary.hpp"
 #include "../datastructures/Heuristic.hpp"
 #include "../propagation/Equalities.hpp"
 #include "../propagation/Implications.hpp"
