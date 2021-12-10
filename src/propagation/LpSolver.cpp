@@ -163,8 +163,7 @@ LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.getSolver()) {
 
 void LpSolver::setNbVariables(int n) {
   if (n <= getNbCols()) return;
-  soplex::LPColSetReal allCols;
-  allCols.reMax(n - getNbCols());
+  soplex::LPColSetReal allCols(n - getNbCols());
   soplex::DSVectorReal dummycol(0);
   for (Var v = getNbCols(); v < n; ++v) {
     allCols.add(soplex::LPColReal(0, dummycol, 1, 0));
@@ -583,8 +582,7 @@ void LpSolver::flushConstraints() {
   }
 
   if (!toAdd.empty()) {  // then add rows
-    soplex::LPRowSetReal rowsToAdd;
-    rowsToAdd.reMax(toAdd.size());
+    soplex::LPRowSetReal rowsToAdd(toAdd.size());
     row2data.reserve(row2data.size() + toAdd.size());
     for (auto& p : toAdd) {
       double rhs;

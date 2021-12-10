@@ -34,8 +34,8 @@ set(profile_flags "OFF"
 set(soplex "OFF"
     CACHE STRING "Use SoPlex to check for rational infeasibility.")
 
-set(soplex_pkg "${PROJECT_SOURCE_DIR}/soplex-738457b299929225240ca90227f007a86b29b120.zip"
-    CACHE STRING "SoPlex zip package, available at https://github.com/scipopt/soplex/archive/738457b299929225240ca90227f007a86b29b120.zip")
+set(soplex_pkg "${PROJECT_SOURCE_DIR}/soplex-6.0.0.tgz"
+    CACHE STRING "SoPlex zip package, available at https://soplex.zib.de/download.php?fname=soplex-6.0.0.tgz")
 
 set(coinutils "OFF"
     CACHE STRING "Coin OR Utils library to parse .mps and .lp files.")
