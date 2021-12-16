@@ -482,7 +482,10 @@ struct ConstrExp final : public ConstrExpSuper {
       reason->multiply(conflCoef);
       reason->weakenDivideRoundOrdered(reasonCoef, level);
     } else {
-      if (options.slackdiv) {
+      if (options.division.is("round-to-one")) {
+        reason->weakenDivideRoundOrdered(reasonCoef, level);
+        reason->multiply(conflCoef);
+      } else if (options.division.is("slackdiv")) {
         assert(reasonCoef / (reasonSlack + 1) < conflCoef);
         reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
         reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
@@ -509,7 +512,7 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(reason->getCoef(asserting) >= conflCoef);
     assert(reason->getCoef(asserting) < 2 * conflCoef);
     assert(reason->getSlack(level) <= 0);
-    assert(options.slackdiv || conflCoef == reason->getCoef(asserting));
+    assert(options.division.is("slackdiv") || conflCoef == reason->getCoef(asserting));
 
     for (Var v : reason->vars) {
       Lit ll = reason->getLit(v);
