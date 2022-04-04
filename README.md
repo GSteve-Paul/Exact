@@ -93,6 +93,10 @@ Next, follow the above build process, but configure with the cmake option `-Dsop
 
 The location of the SoPlex package can be configured with the cmake option `-Dsoplex_pkg=<location>`.
 
+## License
+
+Exact is licensed under the [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html). If this would hinder your intended usage, please get in touch via jodevriendt.com/contact.
+
 ## Citations
 
 Origin paper with a focus on cutting planes conflict analysis:  

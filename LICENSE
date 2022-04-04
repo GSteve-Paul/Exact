@@ -1,4 +1,11 @@
-### Code written starting from commit 5687af8c is licensed under the MIT license:
+### Current copyright & license:
+
+Copyright (c) 2022 Jo Devriendt
+
+GNU Affero General Public License version 3 - see used_licenses/COPYING.
+
+
+### From commit 5687af8c to 1ad9b921 the following copyright & license applies:
 
 Copyright (c) 2021 Jo Devriendt, KU Leuven
 
@@ -22,8 +29,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-
-### Code written before commit 5687af8c is licensed under RoundingSat's MIT license:
+### Before commit 5687af8c the following copyright & license applies:
 
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt

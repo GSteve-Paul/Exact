@@ -1,4 +1,24 @@
 /**********************************************************************
+This file is part of Exact.
+
+Copyright (c) 2022 Jo Devriendt
+
+Exact is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License version 3 as
+published by the Free Software Foundation.
+
+Exact is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+License version 3 for more details.
+
+You should have received a copy of the GNU Affero General Public
+License version 3 along with Exact. See the file used_licenses/COPYING
+or run with the flag --license=AGPLv3. If not, see
+<https://www.gnu.org/licenses/>.
+**********************************************************************/
+
+/**********************************************************************
 This file is part of the Exact program
 
 Copyright (c) 2021 Jo Devriendt, KU Leuven
@@ -44,6 +64,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include "COPYING.hpp"
 #include "EPL.hpp"
 #include "MIT.hpp"
 #include "boost.hpp"
@@ -59,7 +80,7 @@ struct Codebase {
 };
 
 std::vector<Codebase> usedCodebases = {
-    {"Exact", "The source code of Exact", "MIT"},
+    {"Exact", "The source code of Exact", "AGPLv3, MIT"},
     {"RoundingSat", "The source code of RoundingSat", "RS, MIT"},
     {"Boost", "Boost library", "Boost"},
 #ifdef WITHSOPLEX
@@ -73,14 +94,15 @@ std::vector<Codebase> usedCodebases = {
 void printLicense(const std::string& lic) {
   std::unordered_map<std::string, const char*> lic2text;
   lic2text.insert({
-      {"RS", roundingsat},
-      {"MIT", MIT},
+      {"AGPLv3", COPYING},
       {"Boost", boost},
+#if WITHCOINUTILS
+        {"EPL", EPL},
+#endif
+      {"MIT", MIT},
+      {"RS", roundingsat},
 #ifdef WITHSOPLEX
       {"ZIB", zib_academic},
-#endif
-#ifdef WITHCOINUTILS
-      {"EPL", EPL},
 #endif
   });
 

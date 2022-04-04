@@ -1,4 +1,24 @@
 /**********************************************************************
+This file is part of Exact.
+
+Copyright (c) 2022 Jo Devriendt
+
+Exact is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License version 3 as
+published by the Free Software Foundation.
+
+Exact is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+License version 3 for more details.
+
+You should have received a copy of the GNU Affero General Public
+License version 3 along with Exact. See the file used_licenses/COPYING
+or run with the flag --license=AGPLv3. If not, see
+<https://www.gnu.org/licenses/>.
+**********************************************************************/
+
+/**********************************************************************
 This file is part of the Exact program
 
 Copyright (c) 2021 Jo Devriendt, KU Leuven
@@ -181,14 +201,15 @@ struct Options {
                          "Print the license text of the given license",
                          "",
                          {
-                             "MIT",
-                             "RS",
+                             "AGPLv3",
                              "Boost",
-#ifdef WITHSOPLEX
-                             "ZIB",
-#endif
 #ifdef WITHCOINUTILS
                              "EPL",
+#endif
+                             "MIT",
+                             "RS",
+#ifdef WITHSOPLEX
+                             "ZIB",
 #endif
                          }};
   ValOption<long long> randomSeed{"seed", "Seed for the pseudo-random number generator", 1, "1 =< int",
@@ -406,8 +427,10 @@ struct Options {
   }
 
   void usage(const char* name) {
+    std::cout << "Welcome to Exact!\n\n";
+    std::cout << "Source code: https://gitlab.com/JoD/exact\n\n";
     std::cout << "Usage: " << name << " [OPTIONS] instancefile\n";
-    std::cout << "or     cat instancefile | " << name << " [OPTIONS]\n";
+    std::cout << "or     cat instancefile | " << name << " [OPTIONS]\n\n";
     std::cout << "Options:\n";
     for (Option* opt : options) opt->printUsage(24);
   }

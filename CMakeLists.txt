@@ -110,6 +110,7 @@ set(source_files
         src/used_licenses/MIT.cpp
         src/used_licenses/boost.cpp
         src/used_licenses/EPL.cpp
+        src/used_licenses/COPYING.cpp
 )
 
 set(header_files
@@ -144,6 +145,7 @@ set(header_files
         src/used_licenses/MIT.hpp
         src/used_licenses/boost.hpp
         src/used_licenses/EPL.hpp
+        src/used_licenses/COPYING.hpp
 )
 
 set(all_files ${source_files} ${header_files})
