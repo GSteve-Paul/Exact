@@ -14,14 +14,14 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/
 
 set(CMAKE_CXX_FLAGS_TESTRUNS "-O3")
 
-if (NOT CMAKE_BUILD_TYPE)
+if(NOT CMAKE_BUILD_TYPE)
     message(WARNING "Please use -DCMAKE_BUILD_TYPE=[Debug | Release | RelWithDebInfo | MinSizeRel | TestRuns]")
 endif()
 
 set(build_result "Executable"
     CACHE STRING "Result of make command: Executable, SharedLib or StaticLib.")
 
-if (NOT (build_result STREQUAL "Executable" OR build_result STREQUAL "SharedLib" OR build_result STREQUAL "StaticLib"))
+if(NOT (build_result STREQUAL "Executable" OR build_result STREQUAL "SharedLib" OR build_result STREQUAL "StaticLib"))
     message(WARNING "Please use -Dbuild_result=[Executable | SharedLib | StaticLib]")
 endif()
 
@@ -30,6 +30,14 @@ set(build_static "OFF"
 
 set(profile_flags "OFF"
     CACHE STRING "Build using gprof flag (-pg).")
+
+IF (WIN32)
+  set(unixlike "OFF"
+    CACHE STRING "Compiling on Linux or macOS.")
+ELSE()
+  set(unixlike "ON"
+    CACHE STRING "Compiling on Linux or macOS.")
+ENDIF()
 
 set(soplex "OFF"
     CACHE STRING "Use SoPlex to check for rational infeasibility.")
@@ -43,16 +51,6 @@ set(coinutils "OFF"
 set(testruns_timeout 1
     CACHE STRING "Timeout of individual test runs.")
 
-IF(soplex)
-    # provides libsoplex and ${SOPLEX_INCLUDE_DIRS}
-    include(${PROJECT_SOURCE_DIR}/cmake/soplex_build_and_load.cmake)
-endif()
-
-if(coinutils)
-    find_package(CoinUtils REQUIRED)
-    include_directories(${CoinUtils_INCLUDE_DIR})
-endif()
-
 if(build_static)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -static")
 endif()
@@ -63,6 +61,8 @@ if(profile_flags)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 endif()
 
+set(GIT_BRANCH "unknown")
+set(GIT_COMMIT_HASH "unknown")
 # Get the current working branch
 execute_process(
     COMMAND git rev-parse --abbrev-ref HEAD
@@ -80,7 +80,7 @@ execute_process(
 add_definitions("-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH}")
 add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
 set(source_files
         src/globals.cpp
@@ -152,20 +152,7 @@ set(all_files ${source_files} ${header_files})
 
 if(build_result STREQUAL "Executable")
     add_executable(Exact ${source_files})
-
-    if(soplex)
-        target_link_libraries(Exact libsoplex)
-        target_compile_definitions(Exact PUBLIC WITHSOPLEX)
-    endif()
-
-    if(coinutils)
-        target_link_libraries(Exact CoinUtils z bz2)
-        target_compile_definitions(Exact PUBLIC WITHCOINUTILS)
-    endif()
-
-    target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
     install(TARGETS Exact RUNTIME DESTINATION bin)
-
     add_custom_target(
             testruns
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test
@@ -176,30 +163,34 @@ endif()
 
 if(build_result STREQUAL "SharedLib")
     add_library(Exact SHARED ${source_files})
-
-    if(soplex)
-        target_link_libraries(Exact libsoplex)
-        target_compile_definitions(Exact PUBLIC WITHSOPLEX)
-    endif()
-
-    target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
     set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
 endif()
 
 if(build_result STREQUAL "StaticLib")
     add_library(Exact STATIC ${source_files})
-
-    if(soplex)
-        target_link_libraries(Exact libsoplex)
-        target_compile_definitions(Exact PUBLIC WITHSOPLEX)
-    endif()
-
-    target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
     set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
 endif()
 
+target_include_directories(Exact PRIVATE ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
+
+if(unixlike)
+    target_compile_definitions(Exact PUBLIC UNIXLIKE=1)
+endif()
+if(soplex)
+    # provides libsoplex and ${SOPLEX_INCLUDE_DIRS}
+    include(${PROJECT_SOURCE_DIR}/cmake/soplex_build_and_load.cmake)
+    target_link_libraries(Exact libsoplex)
+    target_compile_definitions(Exact PUBLIC WITHSOPLEX=1)
+endif()
+if(coinutils)
+    find_package(CoinUtils REQUIRED)
+    include_directories(${CoinUtils_INCLUDE_DIR})
+    target_link_libraries(Exact CoinUtils z bz2)
+    target_compile_definitions(Exact PUBLIC WITHCOINUTILS=1)
+endif()
+
 FIND_PROGRAM(CLANG_FORMAT "clang-format")
-IF(CLANG_FORMAT)
+if(CLANG_FORMAT)
     add_custom_target(
         format
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}

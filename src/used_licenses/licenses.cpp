@@ -83,26 +83,24 @@ std::vector<Codebase> usedCodebases = {
     {"Exact", "The source code of Exact", "AGPLv3, MIT"},
     {"RoundingSat", "The source code of RoundingSat", "RS, MIT"},
     {"Boost", "Boost library", "Boost"},
-#ifdef WITHSOPLEX
-    {"SoPlex", "SoPlex LP solver", "ZIB"},
-#endif
-#ifdef WITHCOINUTILS
+#if WITHCOINUTILS
     {"Coin-OR Utils", "Coin-OR Utils library", "EPL"},
+#endif
+#if WITHSOPLEX
+    {"SoPlex", "SoPlex LP solver", "ZIB"},
 #endif
 };
 
 void printLicense(const std::string& lic) {
   std::unordered_map<std::string, const char*> lic2text;
   lic2text.insert({
-      {"AGPLv3", COPYING},
-      {"Boost", boost},
+    {"AGPLv3", COPYING}, {"Boost", boost},
 #if WITHCOINUTILS
         {"EPL", EPL},
 #endif
-      {"MIT", MIT},
-      {"RS", roundingsat},
-#ifdef WITHSOPLEX
-      {"ZIB", zib_academic},
+        {"MIT", MIT}, {"RS", roundingsat},
+#if WITHSOPLEX
+        {"ZIB", zib_academic},
 #endif
   });
 

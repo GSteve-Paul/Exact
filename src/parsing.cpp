@@ -75,7 +75,7 @@ namespace xct::parsing {
 
 bigint read_bigint(const std::string& s, int start) {
   int length = s.size();
-  while (start < length && std::iswspace(s[start])) {
+  while (start < length && iswspace(s[start])) {
     ++start;
   }
   start += (start < length && s[start] == '+');
@@ -138,6 +138,7 @@ void file_read(ILP& ilp) {
       } else {
         assert(false);
       }
+      fin.close();
     }
   }
   if (logger) logger->logComment("INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW");
@@ -153,18 +154,21 @@ void opb_read(std::istream& in, ILP& ilp) {
     for (char& c : line)
       if (c == ';') c = ' ';
     bool opt_line = line.substr(0, 4) == "min:";
-    std::string line0;
-    if (opt_line)
+    bigint lb;
+    bool isInequality = false;
+    if (opt_line) {
       line = line.substr(4), assert(first_constraint);
-    else {
-      std::string symbol;
-      if (line.find(">=") != std::string::npos)
-        symbol = ">=";
-      else
-        symbol = "=";
-      assert(line.find(symbol) != std::string::npos);
-      line0 = line;
-      line = line.substr(0, line.find(symbol));
+      if (std::all_of(line.begin(), line.end(), isspace)) {
+        quit::exit_ERROR({"Empty objective function."});
+      }
+    } else {
+      size_t eqpos = line.find('=');
+      if (eqpos == std::string::npos || eqpos == 0) {
+        quit::exit_ERROR({"Incorrect constraint\n" + line});
+      }
+      lb = read_bigint(line, eqpos + 1);
+      isInequality = line[eqpos - 1] == '>';
+      line = line.substr(0, eqpos - isInequality);
     }
     first_constraint = false;
     std::istringstream is(line);
@@ -191,12 +195,11 @@ void opb_read(std::istream& in, ILP& ilp) {
       negated.emplace_back(var[0] == '~');
       vars.emplace_back(ilp.getVarFor(var.substr(negated.back() + 1)));
     }
+
     if (opt_line) {
       ilp.setObjective(coefs, vars, negated);
     } else {
-      bigint lb = read_bigint(line0, line0.find('=') + 1);
-      State res =
-          ilp.addConstraint(coefs, vars, negated, lb, aux::optional(line0.find(" = ") != std::string::npos, lb));
+      State res = ilp.addConstraint(coefs, vars, negated, lb, aux::option(!isInequality, lb));
       if (res == State::UNSAT) quit::exit_SUCCESS(ilp);
     }
   }
@@ -216,7 +219,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       ilp.setMaxSatVars();
       bool nonWhitespace = false;
       for (int i = line.size() - 1; i >= 0; --i) {
-        bool wspace = std::iswspace(line[i]);
+        bool wspace = iswspace(line[i]);
         if (nonWhitespace && wspace) {
           top = read_bigint(line, i + 1);
           break;
@@ -382,7 +385,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     coefs.pop_back();
     bigint lb = coefs.back();
     coefs.pop_back();
-    State res = ilp.addConstraint(coefs, vars, {}, aux::optional(useLB, lb), aux::optional(useUB, ub));
+    State res = ilp.addConstraint(coefs, vars, {}, aux::option(useLB, lb), aux::option(useUB, ub));
     if (res == State::UNSAT) quit::exit_SUCCESS(ilp);
   }
 }

@@ -64,20 +64,33 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define EXPANDED(x) STR(x)
 #define STR(x) #x
 
-#include <sys/resource.h>
 #include <algorithm>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <cassert>
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <list>
 #include <numeric>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#if UNIXLIKE
+namespace xct {
+inline std::ostream& operator<<(std::ostream& o, const __int128& x) {
+  if (x == std::numeric_limits<__int128>::min()) return o << "-170141183460469231731687303715884105728";
+  if (x < 0) return o << "-" << -x;
+  if (x < 10) return o << (char)(x + '0');
+  return o << x / 10 << (char)(x % 10 + '0');
+}
+}  // namespace xct
 using int128 = __int128;
+#else
+using int128 = boost::multiprecision::int128_t;
+#endif
 using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
@@ -86,13 +99,6 @@ enum class State { UNSAT, SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, INPROCESSED };
 
 namespace xct {
-
-inline std::ostream& operator<<(std::ostream& o, const __int128& x) {
-  if (x == std::numeric_limits<__int128>::min()) return o << "-170141183460469231731687303715884105728";
-  if (x < 0) return o << "-" << -x;
-  if (x < 10) return o << (char)(x + '0');
-  return o << x / 10 << (char)(x % 10 + '0');
-}
 
 template <typename T, typename U>
 std::ostream& operator<<(std::ostream& o, const std::pair<T, U>& p) {
@@ -173,13 +179,6 @@ S mod_safe(const T& p, const S& q) {
   }
 }
 
-// Minisat cpuTime function
-static inline double cpuTime() {
-  struct rusage ru;
-  getrusage(RUSAGE_SELF, &ru);
-  return (double)ru.ru_utime.tv_sec + (double)ru.ru_utime.tv_usec / 1000000;
-}
-
 template <typename T>
 T median(std::vector<T>& v) {
   assert(v.size() > 0);
@@ -220,7 +219,11 @@ T abs(const T& x) {
 }
 template <>
 inline int128 abs(const int128& x) {
+#if UNIXLIKE
   return x < 0 ? -x : x;
+#else
+  return boost::multiprecision::abs(x);
+#endif
 }
 template <>
 inline int256 abs(const int256& x) {
@@ -324,16 +327,16 @@ bigint commonDenominator(const std::vector<ratio>& ratios);
 
 template <typename T, typename U>
 T timeCall(const std::function<T(void)>& f, U& to) {
-  double start = cpuTime();
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   T result = f();
-  to += cpuTime() - start;
+  to += std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count();
   return result;
 }
 template <typename U>
 void timeCallVoid(const std::function<void(void)>& f, U& to) {
-  double start = cpuTime();
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   f();
-  to += cpuTime() - start;
+  to += std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count();
 }
 
 inline void flushexit(int status) {
@@ -361,7 +364,7 @@ SMALL cast(const LARGE& x) {
 }
 
 template <typename T>
-std::optional<T> optional(bool make, const T& val) {
+std::optional<T> option(bool make, const T& val) {
   if (make) return std::make_optional<T>(val);
   return std::nullopt;
 }

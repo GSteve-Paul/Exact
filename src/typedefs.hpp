@@ -140,11 +140,11 @@ inline bool stillFits<long long>(const long long& x) {
 }
 template <>
 inline bool stillFits<int128>(const int128& x) {
-  return aux::abs(x) <= limit128;
+  return aux::abs(x) <= static_cast<int128>(limit128);
 }
 template <>
 inline bool stillFits<int256>(const int256& x) {
-  return aux::abs(x) <= int256(limit256);
+  return aux::abs(x) <= static_cast<int256>(limit256);
 }
 template <>
 inline bool stillFits<bigint>([[maybe_unused]] const bigint& x) {
@@ -152,8 +152,10 @@ inline bool stillFits<bigint>([[maybe_unused]] const bigint& x) {
 }
 
 using ActValV = long double;
-const ActValV actLimitV = (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300 *
-                          (ActValV)1e300 * (ActValV)1e300 * (ActValV)1e300;  // ~1e2400 << 2^(2^13)
+const ActValV threehundredzeroes = 1e300;
+const ActValV actLimitV = threehundredzeroes * threehundredzeroes * threehundredzeroes * threehundredzeroes *
+                          threehundredzeroes * threehundredzeroes * threehundredzeroes *
+                          threehundredzeroes;  // ~1e2400 << 2^(2^13)
 
 // NOTE: max number of types is 32, as the type is stored with 5 bits in Constr
 enum class Origin {

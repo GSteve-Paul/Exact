@@ -647,8 +647,6 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
 }
 
 ID Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
-  double start = aux::cpuTime();
-
   assert(isLearned(orig));
   assert(!isUnit(getLevel(), l));
   assert(!isUnit(getLevel(), -l));
@@ -664,13 +662,11 @@ ID Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
   }
   CRef cr = attachConstraint(unit, false);
   if (cr == CRef_Unsat) {
-    stats.LEARNTIME += aux::cpuTime() - start;
     return ID_Unsat;
   }
   Constr& c = ca[cr];
   c.decreaseLBD(1);
 
-  stats.LEARNTIME += aux::cpuTime() - start;
   return c.id;
 }
 
@@ -1337,8 +1333,12 @@ State Solver::probeRestart(Lit next) {
         for (Lit l : newUnits) {
           assert(!isUnit(getLevel(), -l));
           if (!isUnit(getLevel(), l)) {
-            if (learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(next, l) : ID_Undef) ==
-                ID_Unsat) {
+            ID res = aux::timeCall<ID>(
+                [&] {
+                  return learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(next, l) : ID_Undef);
+                },
+                stats.LEARNTIME);
+            if (res == ID_Unsat) {
               return State::UNSAT;
             }
           }
@@ -1391,7 +1391,12 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     for (Lit l : candidates) {
       if (previous.has(l) && !isKnown(getPos(), l)) {
         assert(decisionLevel() == 0);
-        if (learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(seed, l) : ID_Undef) == ID_Unsat) {
+        ID res = aux::timeCall<ID>(
+            [&] {
+              return learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(seed, l) : ID_Undef);
+            },
+            stats.LEARNTIME);
+        if (res == ID_Unsat) {
           return State::UNSAT;
         }
       } else if (previous.has(-l)) {
@@ -1430,8 +1435,12 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
       if (trailSet.has(-l) && !isKnown(getPos(), l)) {
         assert(decisionLevel() == 0);
         isPool.release(trailSet);
-        if (learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(l, current) : ID_Undef) ==
-            ID_Unsat) {
+        ID res = aux::timeCall<ID>(
+            [&] {
+              return learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(l, current) : ID_Undef);
+            },
+            stats.LEARNTIME);
+        if (res == ID_Unsat) {
           return State::UNSAT;
         }
         continue;

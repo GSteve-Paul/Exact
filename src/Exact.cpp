@@ -37,21 +37,21 @@ See the file LICENSE or run with the flag --license=MIT.
 using namespace xct;
 
 int main(int argc, char** argv) {
-  stats.STARTTIME.z = aux::cpuTime();
+  stats.startTime = std::chrono::steady_clock::now();
 
   signal(SIGINT, SIGINT_exit);
-  signal(SIGTERM, SIGINT_exit);
-  signal(SIGXCPU, SIGINT_exit);
   signal(SIGINT, SIGINT_interrupt);
+  signal(SIGTERM, SIGINT_exit);
   signal(SIGTERM, SIGINT_interrupt);
+#if UNIXLIKE
+  signal(SIGXCPU, SIGINT_exit);
   signal(SIGXCPU, SIGINT_interrupt);
+#endif
 
   options.parseCommandLine(argc, argv);
 
   if (options.verbosity.get() > 0) {
-    std::cout << "c Exact 2021\n";
-    std::cout << "c branch " << EXPANDED(GIT_BRANCH) << "\n";
-    std::cout << "c commit " << EXPANDED(GIT_COMMIT_HASH) << std::endl;
+    std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
 
   if (!options.proofLog.get().empty()) {
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
               << std::endl;
   }
 
-  stats.RUNSTARTTIME.z = aux::cpuTime();
+  stats.runStartTime = std::chrono::steady_clock::now();
 
   ilp.init(true, true);
   SolveState res = SolveState::INPROCESSED;
@@ -91,14 +91,16 @@ xct::IntVar* Exact::getVariable(const std::string& name) {
 }
 
 Exact::Exact() : ilp() {
-  stats.STARTTIME.z = aux::cpuTime();
+  stats.startTime = std::chrono::steady_clock::now();
 
   signal(SIGINT, SIGINT_exit);
-  signal(SIGTERM, SIGINT_exit);
-  signal(SIGXCPU, SIGINT_exit);
   signal(SIGINT, SIGINT_interrupt);
+  signal(SIGTERM, SIGINT_exit);
   signal(SIGTERM, SIGINT_interrupt);
+#if UNIXLIKE
+  signal(SIGXCPU, SIGINT_exit);
   signal(SIGXCPU, SIGINT_interrupt);
+#endif
 
   if (!options.proofLog.get().empty()) {
     logger = std::make_shared<Logger>(options.proofLog.get());
@@ -127,7 +129,7 @@ State Exact::addConstraint(const std::vector<long long>& coefs, const std::vecto
     vs.push_back(getVariable(vars[i]));
   }
 
-  return ilp.addConstraint(cfs, vs, {}, aux::optional(useLB, lb), aux::optional(useUB, ub));
+  return ilp.addConstraint(cfs, vs, {}, aux::option(useLB, lb), aux::option(useUB, ub));
 }
 
 State Exact::addReification(const std::string& head, const std::vector<long long>& coefs,
@@ -187,7 +189,7 @@ void Exact::init(const std::vector<long long>& coefs, const std::vector<std::str
 
   ilp.init(boundObjective, addNonImplieds);
 
-  stats.RUNSTARTTIME.z = aux::cpuTime();
+  stats.runStartTime = std::chrono::steady_clock::now();
 }
 
 SolveState Exact::run() { return ilp.run(); }
@@ -216,5 +218,10 @@ void Exact::printStats() { quit::printFinalStats(ilp); }
 void Exact::setVerbosity(int verbosity) { options.verbosity.parse(std::to_string(verbosity)); }
 
 std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& varnames) {
-  return aux::cast_vec<std::pair<long long, long long>, std::pair<bigint, bigint>>(ilp.propagate(varnames));
+  std::vector<std::pair<long long, long long>> result;
+  result.reserve(varnames.size());
+  for (const std::pair<bigint, bigint>& tmp : ilp.propagate(varnames)) {
+    result.emplace_back(static_cast<long long>(tmp.first), static_cast<long long>(tmp.second));
+  }
+  return result;
 }

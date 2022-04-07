@@ -5,7 +5,7 @@ project(soplex-download NONE)
 include(ExternalProject)
 ExternalProject_Add(soplex_pkg
     URL "${soplex_pkg}"
-    URL_MD5 5645b669fed7a3e3eeef2def0377bc7c
+    URL_MD5 cc196e749fbe9372e01b4fabeb3a3af2
     CMAKE_ARGS ${soplex_cmake_args}
     SOURCE_DIR ${soplex_dir}/source
     BINARY_DIR ${soplex_dir}/build

@@ -17,8 +17,8 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter.
 - Seamless use of **arbitrary precision** arithmetic when needed.
 - Hybrid linear (top-down) and **core-guided** (bottom-up) optimization.
 - Optional integration with the **SoPlex LP solver**.
-- Compiles on **macOS**.
-- Under development: **Python** interface with assumption solving and reuse of solver state.
+- Core solver compiles on **macOS** and **Windows**.
+- Under development: **Python** interface with assumption solving and reuse of solver state (Linux only for now).
 - Under development: generation of **certificates** of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://github.com/StephanGocht/VeriPB).
 
 ## Python interface

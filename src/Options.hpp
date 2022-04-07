@@ -116,12 +116,15 @@ class BoolOption : public Option {
 
   void parse(const std::string& v) override {
     try {
-      val = std::stoi(v);
+      int x = std::stoi(v);
+      if (x == 0 || x == 1) {
+        val = x;
+      } else {
+        quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+      }
     } catch (const std::invalid_argument& ia) {
       quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
     }
-    if (val != 0 && val != 1)
-      quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
   }
 };
 
@@ -203,12 +206,12 @@ struct Options {
                          {
                              "AGPLv3",
                              "Boost",
-#ifdef WITHCOINUTILS
+#if WITHCOINUTILS
                              "EPL",
 #endif
                              "MIT",
                              "RS",
-#ifdef WITHSOPLEX
+#if WITHSOPLEX
                              "ZIB",
 #endif
                          }};
@@ -428,9 +431,13 @@ struct Options {
 
   void usage(const char* name) {
     std::cout << "Welcome to Exact!\n\n";
-    std::cout << "Source code: https://gitlab.com/JoD/exact\n\n";
+    std::cout << "Source code: https://gitlab.com/JoD/exact\n";
+    std::cout << "branch       " EXPANDED(GIT_BRANCH) "\n";
+    std::cout << "commit       " EXPANDED(GIT_COMMIT_HASH) "\n";
+    std::cout << "\n";
     std::cout << "Usage: " << name << " [OPTIONS] instancefile\n";
-    std::cout << "or     cat instancefile | " << name << " [OPTIONS]\n\n";
+    std::cout << "or     cat instancefile | " << name << " [OPTIONS]\n";
+    std::cout << "\n";
     std::cout << "Options:\n";
     for (Option* opt : options) opt->printUsage(24);
   }

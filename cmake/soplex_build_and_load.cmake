@@ -13,7 +13,6 @@ if(NOT EXISTS ${soplex_targets} OR NOT EXISTS ${soplex_config})
             ${soplex_cmake_args}
             # set CMAKE_FIND_LIBRARY_SUFFIXES ".a"
             -DCMAKE_PROJECT_SOPLEX_INCLUDE=${PROJECT_SOURCE_DIR}/cmake/soplex_Settings_Overwrite.cmake
-            -DCMAKE_EXE_LINKER_FLAGS=-static-libgcc -static-libstdc++ -static
             -DBUILD_SHARED_LIBS=OFF
             -DBoost_USE_STATIC_LIBS=ON
         )

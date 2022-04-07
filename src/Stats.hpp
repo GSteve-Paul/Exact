@@ -216,7 +216,6 @@ struct Stats {
   Stat ATMOSTONEDETTIME{0, "at-most-one detection time det"};
   Stat NATMOSTONEUNITS{0, "units derived during at-most-one detection"};
 
-  Stat STARTTIME{0, "start time"};
   Stat PARSETIME{0, "parse time"};
   Stat SOLVETIMEFREE{0, "free solve time"};
   Stat DETTIMEFREE{0, "free solve time det"};
@@ -225,7 +224,6 @@ struct Stats {
   Stat CATIME{0, "conflict analysis time"};
   Stat MINTIME{0, "learned minimize time"};
   Stat PROPTIME{0, "propagation time"};
-  Stat RUNSTARTTIME{0, "solve start time"};
   Stat TABUTIME{0, "local search time"};
   Stat TABUDETTIME{0, "local search time det"};
 
@@ -317,6 +315,9 @@ struct Stats {
   Stat TABUSOLS{0, "solutions found by local search"};
   Stat TABUFLIPS{0, "number of local search literal flips"};
   Stat NTABUUNITS{0, "units derived during local search"};
+
+  std::chrono::steady_clock::time_point startTime;
+  std::chrono::steady_clock::time_point runStartTime;
 
   void setDerivedStats() {
     DETTIME.z = getDetTime();
@@ -461,8 +462,14 @@ struct Stats {
       &NTABUUNITS,
   };
 
-  [[nodiscard]] inline long double getTime() const { return aux::cpuTime() - STARTTIME; }
-  [[nodiscard]] inline long double getRunTime() const { return aux::cpuTime() - RUNSTARTTIME; }
+  [[nodiscard]] inline long double getTime() const {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - startTime)
+        .count();
+  }
+  [[nodiscard]] inline long double getRunTime() const {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - runStartTime)
+        .count();
+  }
   [[nodiscard]] inline long double getSolveTime() const { return SOLVETIMEFREE + SOLVETIMEASSUMP; }
   // NOTE: below linear relations were determined by regression tests on experimental data,
   // so that the deterministic time correlates as closely as possible with the cpu time in seconds
