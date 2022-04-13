@@ -332,9 +332,14 @@ void ILP::init(bool boundObjective, bool addNonImplieds) {
   if (unsatDetected) throw UnsatState();
   if (optim) throw std::invalid_argument("ILP already initialized.");
 
-  options.boundUpper.parse(std::to_string(boundObjective));
-  options.pureLits.parse(std::to_string(addNonImplieds));
-  options.domBreakLim.parse(std::to_string(addNonImplieds));
+  // TODO: below should be set at option parsing time?
+  if (!boundObjective) {
+    options.boundUpper.parse("0");
+  }
+  if (!addNonImplieds) {
+    options.pureLits.parse("0");
+    options.domBreakLim.parse("0");
+  }
   asynch_interrupt = false;
   aux::rng::seed = options.randomSeed.get();
 
