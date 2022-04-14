@@ -206,76 +206,70 @@ void opb_read(std::istream& in, ILP& ilp) {
 }
 
 void wcnf_read(std::istream& in, ILP& ilp) {
-  ConstrSimple32 input;
-  bigint top = -1;
+  std::vector<ConstrSimple32> inputs;
+  char dummy;
   std::vector<bigint> objcoefs;
   std::vector<IntVar*> objvars;
   std::vector<bool> objnegated;
   for (std::string line; getline(in, line);) {
     if (line.empty() || line[0] == 'c') continue;
-    if (line[0] == 'p') {
-      assert(line.substr(0, 7) == "p wcnf ");
-      ilp.getSolver().setNbVars(std::stoll(line.substr(7)), true);
-      ilp.setMaxSatVars();
-      bool nonWhitespace = false;
-      for (int i = line.size() - 1; i >= 0; --i) {
-        bool wspace = iswspace(line[i]);
-        if (nonWhitespace && wspace) {
-          top = read_bigint(line, i + 1);
-          break;
-        }
-        nonWhitespace = nonWhitespace || !wspace;
-      }
-      assert(top >= 0);
+    quit::checkInterrupt();
+    std::istringstream is(line);
+    bigint weight = 0;
+    if (line[0] == 'h') {
+      is >> dummy;
     } else {
-      assert(top >= 0);
-      std::istringstream is(line);
-      bigint weight;
       is >> weight;
       if (weight == 0) continue;
       if (weight < 0) {
         quit::exit_ERROR({"Negative clause weight: ", line});
       }
-      input.reset();
-      input.rhs = 1;
-      Lit l;
-      while (is >> l, l) {
-        input.terms.push_back({1, l});
+    };
+    inputs.emplace_back();
+    ConstrSimple32& input = inputs.back();
+    input.rhs = 1;
+    objcoefs.push_back(weight);
+    Lit l;
+    while (is >> l, l) {
+      input.terms.push_back({1, l});
+      ilp.getSolver().setNbVars(toVar(l), true);
+    }
+    if (weight == 0) {  // hard clause
+      if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
+      inputs.pop_back();
+      objcoefs.pop_back();
+    }
+  }
+  ilp.setMaxSatVars();
+  assert(inputs.size() == objcoefs.size());
+  for (ConstrSimple32& input : inputs) {  // soft clauses
+    quit::checkInterrupt();
+    if (input.size() == 1) {              // no need to introduce auxiliary variable
+      objvars.push_back(ilp.getVarFor(std::to_string(toVar(input.terms[0].l)), true));
+      objnegated.push_back(-input.terms[0].l < 0);
+    } else {
+      Var aux = ilp.getSolver().getNbVars() + 1;
+      ilp.getSolver().setNbVars(aux, true);  // increases n to n+1
+      objvars.push_back(ilp.getVarFor(std::to_string(toVar(aux)), true));
+      objnegated.push_back(aux < 0);
+      // if (options.test.get()) {
+      for (const Term32& t : input.terms) {  // reverse implication as binary clauses
+        if (ilp.getSolver().addConstraint(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA).second ==
+            ID_Unsat)
+          quit::exit_SUCCESS(ilp);
       }
-      if (weight < top) {         // soft clause
-        if (input.size() == 1) {  // no need to introduce auxiliary variable
-          objcoefs.push_back(weight);
-          objvars.push_back(ilp.getVarFor(std::to_string(toVar(input.terms[0].l)), true));
-          objnegated.push_back(-input.terms[0].l < 0);
-        } else {
-          Var aux = ilp.getSolver().getNbVars() + 1;
-          ilp.getSolver().setNbVars(aux, true);  // increases n to n+1
-          objcoefs.push_back(weight);
-          objvars.push_back(ilp.getVarFor(std::to_string(toVar(aux)), true));
-          objnegated.push_back(aux < 0);
-          // if (options.test.get()) {
-          for (const Term32& t : input.terms) {  // reverse implication as binary clauses
-            if (ilp.getSolver().addConstraint(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA).second ==
-                ID_Unsat)
-              quit::exit_SUCCESS(ilp);
-          }
-          //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
-          // ConstrSimple32 reverse;
-          // reverse.rhs = input.size();
-          // reverse.terms.reserve(input.size() + 1);
-          // reverse.terms.push_back({input.size(), -aux});
-          // for (const Term32& t : input.terms) {
-          //  reverse.terms.push_back({1, -t.l});
-          //}
-          // if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp));
-          //}
-          input.terms.push_back({1, aux});  // implication
-          if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
-        }
-      } else {  // hard clause
-        if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
-      }
-      quit::checkInterrupt();
+      //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
+      //        ConstrSimple32 reverse;
+      //        reverse.rhs = input.size();
+      //        reverse.terms.reserve(input.size() + 1);
+      //        reverse.terms.push_back({(int) input.size(), -aux});
+      //        for (const Term32& t : input.terms) {
+      //          reverse.terms.push_back({1, -t.l});
+      //        }
+      //        if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
+      //}
+      input.terms.push_back({1, aux});  // implication
+      if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
     }
   }
   ilp.setObjective(objcoefs, objvars, objnegated);
