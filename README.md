@@ -17,7 +17,7 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter.
 - Seamless use of **arbitrary precision** arithmetic when needed.
 - Hybrid linear (top-down) and **core-guided** (bottom-up) optimization.
 - Optional integration with the **SoPlex LP solver**.
-- Core solver compiles on **macOS** and **Windows**.
+- Core solver also compiles on **macOS** and **Windows**.
 - Under development: **Python** interface with assumption solving and reuse of solver state (Linux only for now).
 - Under development: generation of **certificates** of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://github.com/StephanGocht/VeriPB).
 
@@ -76,7 +76,7 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 
 - C++17 (i.e., a reasonably recent C++ compiler)
 - [Boost](https://www.boost.org) library.
-  On a Debian/Ubuntu system, install with `sudo apt install libboost-all-dev`.
+  On a Debian/Ubuntu system, install with `sudo apt install libboost-dev`.
 - Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
   On a Debian/Ubuntu system, install with `sudo apt install coinor-libcoinutils-dev`.
 - Optionally: [SoPlex](https://soplex.zib.de) LP solver (see below)

@@ -26,11 +26,12 @@
 # You should have received a copy of the MIT License along with Exact.
 # See the file LICENSE.
 
+
 from setuptools import setup
 
 setup(
     name='Exact',
-    version = "0.4.0",
+    version = "0.5.0",
     description='A Python interface to Exact',
     url='https://gitlab.com/JoD/exact',
     author='Jo Devriendt',

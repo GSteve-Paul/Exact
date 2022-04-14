@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# usage: ./make_package.sh 0.4.0 0.5.0
+
 oldversion="= \"$1\""
 newversion="= \"$2\""
 

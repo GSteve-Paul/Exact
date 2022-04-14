@@ -14,7 +14,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/
 
 set(CMAKE_CXX_FLAGS_TESTRUNS "-O3")
 
-if(NOT CMAKE_BUILD_TYPE)
+if(NOT (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
+        CMAKE_BUILD_TYPE STREQUAL "Release" OR
+        CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
+        CMAKE_BUILD_TYPE STREQUAL "MinSizeRel" OR
+        CMAKE_BUILD_TYPE STREQUAL "TestRuns") )
     message(WARNING "Please use -DCMAKE_BUILD_TYPE=[Debug | Release | RelWithDebInfo | MinSizeRel | TestRuns]")
 endif()
 
@@ -197,6 +201,15 @@ if(CLANG_FORMAT)
         COMMAND ${CLANG_FORMAT}
         -style=file
         -i
+        ${all_files}
+    )
+    add_custom_target(
+        format_check
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        COMMAND ${CLANG_FORMAT}
+        --dry-run
+        --Werror
+        -style=file
         ${all_files}
     )
 endif()

@@ -1,0 +1,83 @@
+image: holkann/exact_ci:latest
+
+# COMPILE
+job_compile:
+  stage: build
+  script:
+    - cmake . -DCMAKE_BUILD_TYPE=TestRuns -Dcoinutils=ON
+    - make format_check
+    - make -j 10
+  artifacts:
+    paths:
+      - Exact
+      # depending on your build setup it's most likely a good idea to cache outputs to reduce the build time
+      # cache:
+      #   paths:
+      #     - "*.o"
+  only:
+    - web
+
+job_pip:
+  stage: build
+  script:
+    - pip3 install exact
+
+# TEST
+job_test_exact:
+  stage: test
+  script:
+    - ./Exact --help
+  only:
+    - web
+
+job_test_veripb:
+  stage: test
+  script:
+    - veripb --help
+  only:
+    - web
+
+
+job_tests_arbitrary:
+  stage: test
+  script:
+    - ./test/run_tests_arbitrary.sh 2 "testruns" ./Exact
+  only:
+    - web
+job_tests_lazysum:
+  stage: test
+  script:
+    - ./test/run_tests_lazysum.sh 2 "testruns" ./Exact
+  only:
+    - web
+job_tests_noproof:
+  stage: test
+  script:
+    - ./test/run_tests_noproof.sh 2 "testruns" ./Exact
+  only:
+    - web
+job_tests_reified:
+  stage: test
+  script:
+    - ./test/run_tests_reified.sh 2 "testruns" ./Exact
+  only:
+    - web
+job_tests_simple:
+  stage: test
+  script:
+    - ./test/run_tests_simple.sh 2 "testruns" ./Exact
+  only:
+    - web
+job_tests_sum:
+  stage: test
+  script:
+    - ./test/run_tests_sum.sh 2 "testruns" ./Exact
+  only:
+    - web
+
+job_test_pypi:
+  stage: test
+  script:
+    - python3 python/examples/knapsack_classic.py
+    - python3 python/examples/knapsack_implied.py
+    - python3 python/examples/knapsack_propagate.py

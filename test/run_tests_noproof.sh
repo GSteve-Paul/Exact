@@ -37,6 +37,7 @@ declare -a arr_opt=(
 "mps/neos-3004026-krka.mps*0"
 "mps/neos-3437289-erdre.mps*0"
 "mps/supportcase4.mps*0"
+"mps/issue_3.mps*3"
 "opb/opt/empty.opb*0"
 "opb/opt/normalized-single-obj-f47-DC-Side1.seq-B-2-1-EDCBAir.opb*-1593213266"
 "opb/opt/enigma.opb*0"
@@ -95,5 +96,8 @@ done
 echo "tested: $tested"
 echo "errors: $errors"
 
-# command to remove soplex asserts:
-# grep -rl "\sassert(.*" . | xargs sed -i 's/assert(/assert(true || /g'
+if [ $errors -eq 0 ]; then
+		exit 0
+else
+    exit 1
+fi
