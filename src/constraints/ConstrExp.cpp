@@ -1369,7 +1369,7 @@ void ConstrExpSuper::reverseOrder() {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::toStreamAsOPB(std::ostream& o) const {
+void ConstrExp<SMALL, LARGE>::toStreamAsOPBlhs(std::ostream& o) const {
   std::vector<Var> vs = vars;
   std::sort(vs.begin(), vs.end(), [](Var v1, Var v2) { return v1 < v2; });
   for (Var v : vs) {
@@ -1377,6 +1377,11 @@ void ConstrExp<SMALL, LARGE>::toStreamAsOPB(std::ostream& o) const {
     if (l == 0) continue;
     o << std::pair<SMALL, Lit>{getCoef(l), l} << " ";
   }
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::toStreamAsOPB(std::ostream& o) const {
+  toStreamAsOPBlhs(o);
   o << ">= " << degree << " ;";
 }
 

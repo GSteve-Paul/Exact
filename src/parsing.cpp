@@ -244,7 +244,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
   assert(inputs.size() == objcoefs.size());
   for (ConstrSimple32& input : inputs) {  // soft clauses
     quit::checkInterrupt();
-    if (input.size() == 1) {              // no need to introduce auxiliary variable
+    if (input.size() == 1) {  // no need to introduce auxiliary variable
       objvars.push_back(ilp.getVarFor(std::to_string(toVar(input.terms[0].l)), true));
       objnegated.push_back(-input.terms[0].l < 0);
     } else {
@@ -324,8 +324,10 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
                                                 static_cast<bigint>(std::floor(upper)));
   }
   if (continuousVars) std::cout << "c WARNING continuous variables are treated as integer variables" << std::endl;
-  if (unboundedVars)
-    std::cout << "c WARNING unbounded variables have custom bounds of +-" << options.intDefaultBound.get() << std::endl;
+  if (unboundedVars) {
+    std::cout << "c WARNING unbounded integer variables have custom bounds of +-" << options.intDefaultBound.get()
+              << std::endl;
+  }
 
   std::vector<ratio> ratcoefs;
   std::vector<bigint> coefs;

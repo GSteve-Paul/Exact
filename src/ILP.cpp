@@ -373,7 +373,9 @@ void ILP::printFormula() {
     nbConstraints += isNonImplied(c.getOrigin());
   }
   std::cout << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
-  std::cout << "min: " << optim->getReformObj() << "\n";
+  std::cout << "min: ";
+  optim->getReformObj()->toStreamAsOPBlhs(std::cout);
+  std::cout << "; \n";
   for (Lit l : solver.getUnits()) {
     std::cout << std::pair<int, Lit>{1, l} << " >= 1 ;\n";
   }
