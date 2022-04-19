@@ -22,6 +22,7 @@ cp ../README.md README.md
 cp ../LICENSE LICENSE
 
 cp ../build_lib/libExact.so exact/libExact.so
+strip --strip-unneeded exact/libExact.so
 
 poetry build
 # poetry publish
