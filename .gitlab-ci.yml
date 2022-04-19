@@ -17,6 +17,16 @@ job_compile:
   only:
     - web
 
+job_test_pypi:
+  stage: build
+  script:
+    - pip3 install --upgrade exact
+    - python3 python/examples/knapsack_classic.py
+    - python3 python/examples/knapsack_implied.py
+    - python3 python/examples/knapsack_propagate.py
+  only:
+    - web
+
 
 # TEST
 job_test_exact:
@@ -68,15 +78,5 @@ job_tests_sum:
   stage: test
   script:
     - ./test/run_tests_sum.sh 2 "testruns" ./Exact
-  only:
-    - web
-
-job_test_pypi:
-  stage: test
-  script:
-    - pip3 install --upgrade exact
-    - python3 python/examples/knapsack_classic.py
-    - python3 python/examples/knapsack_implied.py
-    - python3 python/examples/knapsack_propagate.py
   only:
     - web
