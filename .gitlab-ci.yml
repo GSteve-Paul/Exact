@@ -74,7 +74,9 @@ job_tests_sum:
 job_test_pypi:
   stage: test
   script:
-    - pip3 install exact
+    - pip3 install --upgrade exact
     - python3 python/examples/knapsack_classic.py
     - python3 python/examples/knapsack_implied.py
     - python3 python/examples/knapsack_propagate.py
+  only:
+    - web
