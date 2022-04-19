@@ -35,7 +35,7 @@ setup(
     description='A Python interface to Exact',
     url='https://gitlab.com/JoD/exact',
     author='Jo Devriendt',
-    license='MIT',
+    license='AGPLv3',
     packages=['exact'],
     package_dir={'exact': 'exact'},
     package_data={'exact': ['libExact.so','headers/*.hpp','headers/*/*.hpp']},
