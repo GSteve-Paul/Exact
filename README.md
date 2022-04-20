@@ -77,9 +77,17 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 - C++17 (i.e., a reasonably recent C++ compiler)
 - [Boost](https://www.boost.org) library.
   On a Debian/Ubuntu system, install with `sudo apt install libboost-dev`.
-- Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
-  On a Debian/Ubuntu system, install with `sudo apt install coinor-libcoinutils-dev`.
+- Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats. 
 - Optionally: [SoPlex](https://soplex.zib.de) LP solver (see below)
+
+## Coin-Utils
+
+For the Exact solver to parse MPS and LP file   On a Debian/Ubuntu system, install with `sudo apt install coinor-libcoinutils-dev`. On a Fedora/RedHat system, install with `sudo dnf install coin-or-CoinUtils-devel`.
+Next follow this modified build process:
+
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release  -Dcoinutils=ON ..
+    make
 
 ## SoPlex
 
