@@ -46,7 +46,7 @@ classifiers=[
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.6.9"
 cppyy = "^2.1.0"
 
 [build-system]
