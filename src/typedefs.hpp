@@ -61,8 +61,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "auxiliary.hpp"
 #include <memory>
+#include "auxiliary.hpp"
 
 namespace xct {
 
