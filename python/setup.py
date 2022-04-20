@@ -31,7 +31,7 @@ from setuptools import setup
 
 setup(
     name='Exact',
-    version = "0.5.1",
+    version = "0.5.3",
     description='A Python interface to Exact',
     url='https://gitlab.com/JoD/exact',
     author='Jo Devriendt',
