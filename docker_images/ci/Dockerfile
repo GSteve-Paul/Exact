@@ -1,4 +1,3 @@
-# Filename: Dockerfile 
 FROM gcc
 RUN apt update && apt -y install make autoconf cmake libboost-dev apt-utils clang clang-format coinor-libcoinutils-dev git python3 pip
 
