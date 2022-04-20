@@ -13,6 +13,7 @@ mkdir -p exact/headers/constraints
 mkdir -p exact/headers/datastructures
 mkdir -p exact/headers/propagation
 mkdir -p exact/headers/used_licenses
+mkdir -p exact/used_licenses
 cp ../src/constraints/*.hpp exact/headers/constraints
 cp ../src/datastructures/*.hpp exact/headers/datastructures
 cp ../src/propagation/*.hpp exact/headers/propagation
@@ -20,7 +21,14 @@ cp ../src/used_licenses/*.hpp exact/headers/used_licenses
 cp ../src/*.hpp exact/headers
 cp ../README.md README.md
 cp ../LICENSE LICENSE
+cp ../src/used_licenses/COPYING exact/used_licenses/COPYING
 
+cd ../build_lib
+cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=ON
+make -j 8
+# ninja -j 8
+
+cd ../python
 cp ../build_lib/libExact.so exact/libExact.so
 strip --strip-unneeded exact/libExact.so
 

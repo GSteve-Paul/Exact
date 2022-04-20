@@ -17,6 +17,7 @@
 /python/exact/__pycache__*
 /python/exact/headers*
 /python/exact/*.so
-/python/LICENSE
 /python/README.md
+/python/LICENSE
+/python/used_licenses/COPYING
 
