@@ -186,6 +186,7 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& o
   stratLim = stratDiv == 1 ? 1 : aux::toDouble(reformObj->getLargestCoef());
   coreguided = options.cgHybrid.get() >= 1;
   somethingHappened = false;
+  firstRun = true;
 };
 
 template <typename SMALL, typename LARGE>
@@ -478,7 +479,7 @@ State Optimization<SMALL, LARGE>::runTabu() {
     // TODO: return SAT state to python interface...
   }
   if (success) solver.lastSolToPhase();
-  if (solver.isFirstRun() && options.varInitAct) solver.ranksToAct();
+  // if (firstRun && options.varInitAct) solver.ranksToAct(); // TODO: check refactor of firstRun
   stats.NTABUUNITS += solver.getNbUnits() - currentUnits;
   if (options.verbosity.get() > 0) std::cout << "c END LOCAL SEARCH" << std::endl;
 
@@ -487,6 +488,12 @@ State Optimization<SMALL, LARGE>::runTabu() {
 
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumptions) {
+  if (firstRun) {
+    firstRun = false;
+    std::pair<State, CeSuper> res = solver.presolve();
+    if (res.first == State::UNSAT) return SolveState::UNSAT;
+  }
+
   while (true) {
     assert(upper_bound >= lower_bound);
     long double current_time = stats.getDetTime();
@@ -529,6 +536,7 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
 
     reply = aux::timeCall<SolveState>([&] { return solver.solve(); },
                                       solver.hasAssumptions() ? stats.SOLVETIMEASSUMP : stats.SOLVETIMEFREE);
+
     if (solver.hasAssumptions()) {
       stats.DETTIMEASSUMP += stats.getDetTime() - current_time;
     } else {

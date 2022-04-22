@@ -416,7 +416,7 @@ Ce64 LpSolver::rowToConstraint(int row) {
   return ce;
 }
 
-LpStatus LpSolver::checkFeasibility(bool inProcessing) {
+std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
   if (options.lpTimeRatio.get() == 1) {
     lp.setIntParam(soplex::SoPlex::ITERLIMIT, -1);  // no pivot limit
   } else {
@@ -428,7 +428,7 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
       limit = std::min<double>(limit, std::numeric_limits<int>::max());
       lp.setIntParam(soplex::SoPlex::ITERLIMIT, static_cast<int>(limit));
     } else {
-      return LpStatus::PIVOTLIMIT;  // time ratio exceeded
+      return {LpStatus::PIVOTLIMIT, CeNull()};  // time ratio exceeded
     }
   }
   if (logger) logger->logComment("Checking LP");
@@ -452,52 +452,53 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
   stats.LPSOLVETIME += lp.solveTime();
   stats.NLPNOPIVOT += pivots == 0;
 
-  if (options.verbosity.get() > 1)
+  if (options.verbosity.get() > 1) {
     std::cout << "c " << (inProcessing ? "root" : "internal") << " LP status: " << stat << std::endl;
+  }
   assert(stat != soplex::SPxSolver::Status::NO_PROBLEM);
   assert(stat <= soplex::SPxSolver::Status::OPTIMAL_UNSCALED_VIOLATIONS);
   assert(stat >= soplex::SPxSolver::Status::ERROR);
 
   if (stat == soplex::SPxSolver::Status::ABORT_ITER) {
     lpPivotMult *= 2;  // increase pivot budget when calling the LP solver
-    return LpStatus::PIVOTLIMIT;
+    return {LpStatus::PIVOTLIMIT, CeNull()};
   }
 
   if (stat == soplex::SPxSolver::Status::OPTIMAL) {
     ++stats.NLPOPTIMAL;
-    if (pivots != 0) {
-      if (options.lpLearnDuals && lp.getDual(lpMultipliers)) {
+    if (options.lpLearnDuals && pivots != 0) {
+      if (lp.getDual(lpMultipliers)) {
         CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
         if (confl) {
           ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(confl, Origin::DUAL); }, stats.LEARNTIME);
-          if (res == ID_Unsat) return LpStatus::UNSAT;
+          if (res == ID_Unsat) {
+            return {LpStatus::UNSAT, CeNull()};
+          } else {
+            return {LpStatus::OPTIMAL, confl};
+          }
         }
       } else {
         ++stats.NLPNODUAL;
         resetBasis();
       }
     }
-    if (!lp.hasSol()) {
-      ++stats.NLPNOPRIMAL;
-      resetBasis();
-    }
-    return LpStatus::OPTIMAL;
+    return {LpStatus::OPTIMAL, CeNull()};
   }
 
   if (stat == soplex::SPxSolver::Status::ABORT_CYCLING) {
     ++stats.NLPCYCLING;
     resetBasis();
-    return LpStatus::UNDETERMINED;
+    return {LpStatus::UNDETERMINED, CeNull()};
   }
   if (stat == soplex::SPxSolver::Status::SINGULAR) {
     ++stats.NLPSINGULAR;
     resetBasis();
-    return LpStatus::UNDETERMINED;
+    return {LpStatus::UNDETERMINED, CeNull()};
   }
   if (stat != soplex::SPxSolver::Status::INFEASIBLE) {
     ++stats.NLPOTHER;
     resetBasis();
-    return LpStatus::UNDETERMINED;
+    return {LpStatus::UNDETERMINED, CeNull()};
   }
 
   // Infeasible LP :)
@@ -507,24 +508,36 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
   if (!lp.getDualFarkas(lpMultipliers)) {
     ++stats.NLPNOFARKAS;
     resetBasis();
-    return LpStatus::UNDETERMINED;
+    return {LpStatus::UNDETERMINED, CeNull()};
   }
 
   CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
   if (confl) {
     ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(confl, Origin::FARKAS); }, stats.LEARNTIME);
-    if (res == ID_Unsat) return LpStatus::UNSAT;
+    if (res == ID_Unsat) {
+      return {LpStatus::UNSAT, CeNull()};
+    } else {
+      return {LpStatus::INFEASIBLE, confl};
+    }
   }
-  return LpStatus::INFEASIBLE;
+  return {LpStatus::INFEASIBLE, CeNull()};
 }
 
-State LpSolver::inProcess() {
+std::pair<State, CeSuper> LpSolver::inProcess() {
   solver.backjumpTo(0);
-  LpStatus lpstat = aux::timeCall<LpStatus>([&] { return checkFeasibility(true); }, stats.LPTOTALTIME);
-  if (lpstat == LpStatus::UNSAT) return State::UNSAT;
-  if (lpstat != LpStatus::OPTIMAL)
-    return State::SUCCESS;  // Any unsatisfiability will be handled by adding the Farkas constraint
-  if (!lp.hasSol()) return State::FAIL;
+  auto [lpstat, constraint] =
+      aux::timeCall<std::pair<LpStatus, CeSuper>>([&] { return checkFeasibility(true); }, stats.LPTOTALTIME);
+  if (lpstat == LpStatus::UNSAT) {
+    return {State::UNSAT, CeNull()};
+  }
+  if (lpstat != LpStatus::OPTIMAL) {
+    return {State::SUCCESS, constraint};  // Any unsatisfiability will be handled by adding the Farkas constraint
+  }
+  if (!lp.hasSol()) {
+    ++stats.NLPNOPRIMAL;
+    resetBasis();
+    return {State::FAIL, CeNull()};
+  }
   lp.getPrimal(lpSol);
   assert(lpSol.dim() == (int)lpSolution.size());
   for (int i = 0; i < lpSol.dim(); ++i) lpSolution[i] = lpSol[i];
@@ -540,9 +553,9 @@ State LpSolver::inProcess() {
   if (logger && (options.lpGomoryCuts || options.lpLearnedCuts)) logger->logComment("cutting");
   if (options.lpLearnedCuts) constructLearnedCandidates();  // first to avoid adding gomory cuts twice
   if (options.lpGomoryCuts) constructGomoryCandidates();
-  if (addFilteredCuts() == State::UNSAT) return State::UNSAT;
+  if (addFilteredCuts() == State::UNSAT) return {State::UNSAT, CeNull()};
   pruneCuts();
-  return State::SUCCESS;
+  return {State::SUCCESS, constraint};
 }
 
 void LpSolver::resetBasis() {

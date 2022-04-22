@@ -129,7 +129,6 @@ class Solver {
   std::vector<int> assumptions_lim;
   IntSet assumptions;
 
-  bool firstRun = true;
   std::shared_ptr<LpSolver> lpSolver;
 
   Equalities equalities;
@@ -142,7 +141,6 @@ class Solver {
   Solver(ILP& i);
   ~Solver();
   void init(const CeArb& obj);
-  bool isFirstRun() { return firstRun; }
 
   int getNbVars() const { return n; }
   void setNbVars(int nvars, bool orig);
@@ -256,8 +254,11 @@ class Solver {
 
   // ---------------------------------------------------------------------
   // Inprocessing
-  [[nodiscard]] State presolve();
-  [[nodiscard]] State inProcess();
+ public:
+  [[nodiscard]] std::pair<State, CeSuper> presolve();
+
+ private:
+  [[nodiscard]] std::pair<State, CeSuper> inProcess();
   void removeSatisfiedNonImpliedsAtRoot();
   void derivePureLits();
   void dominanceBreaking();

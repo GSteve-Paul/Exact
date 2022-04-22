@@ -161,8 +161,9 @@ class LpSolver {
   explicit LpSolver(ILP& ilp);
   void setNbVariables(int n);
 
-  [[nodiscard]] LpStatus checkFeasibility(bool inProcessing);  // TODO: don't use objective function here?
-  [[nodiscard]] State inProcess();
+  [[nodiscard]] std::pair<LpStatus, CeSuper> checkFeasibility(
+      bool inProcessing);  // TODO: don't use objective function here?
+  [[nodiscard]] std::pair<State, CeSuper> inProcess();
 
   void addConstraint(const CeSuper& c, bool removable, bool upperbound = false, bool lowerbound = false);
   void addConstraint(CRef cr, bool removable, bool upperbound = false, bool lowerbound = false);
@@ -198,11 +199,11 @@ class LpSolver {
   LpSolver(ILP& ilp) { (void)(ilp); };
   void setNbVariables([[maybe_unused]] int n){};
 
-  LpStatus checkFeasibility([[maybe_unused]] bool inProcessing) {
+  std::pair<LpStatus, CeSuper> checkFeasibility([[maybe_unused]] bool inProcessing) {
     assert(false);
-    return LpStatus::UNDETERMINED;
+    return {LpStatus::UNDETERMINED, CeNull()};
   }
-  State inProcess() { return State::FAIL; }
+  std::pair<State, ID> inProcess() { return State::FAIL; }
   bool canInProcess() { return false; }
 
   void addConstraint([[maybe_unused]] const CeSuper& c, [[maybe_unused]] bool removable,
