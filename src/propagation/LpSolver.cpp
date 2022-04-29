@@ -467,9 +467,9 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
     ++stats.NLPOPTIMAL;
     if (pivots != 0) {
       if (options.lpLearnDuals && lp.getDual(lpMultipliers)) {
-        CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
-        if (confl) {
-          ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(confl, Origin::DUAL); }, stats.LEARNTIME);
+        CeSuper dual = createLinearCombinationFarkas(lpMultipliers);
+        if (dual) {
+          ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(dual, Origin::DUAL); }, stats.LEARNTIME);
           if (res == ID_Unsat) return LpStatus::UNSAT;
         }
       } else {
