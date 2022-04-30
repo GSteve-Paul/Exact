@@ -139,6 +139,7 @@ struct ConstrExpSuper {
   virtual bool saturatedVar(Var v) const = 0;
 
   virtual void weaken(Var v) = 0;
+  virtual void weakenExcept(const IntSet& exceptLits) = 0;
 
   virtual bool hasNegativeSlack(const IntMap<int>& level) const = 0;
   virtual bool hasNegativeSlack(const IntSet& assumptions) const = 0;
@@ -285,6 +286,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void addLhs(const SMALL& cf, Lit l);  // TODO: Term?
   void weaken(const SMALL& m, Var v);
   void weaken(Var v);
+  void weakenExcept(const IntSet& exceptLits);
 
   LARGE getSlack(const IntMap<int>& level) const;
   bool hasNegativeSlack(const IntMap<int>& level) const;
@@ -350,6 +352,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void invert();
   void multiply(const SMALL& m);
   void divideRoundUp(const LARGE& d);
+  void divideRoundDown(const LARGE& d);
   void weakenDivideRound(const LARGE& div, const IntMap<int>& level, Lit asserting);
   void weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level);
   void weakenNonDivisibleNonFalsifieds(const IntMap<int>& level, const LARGE& div, Lit asserting);
