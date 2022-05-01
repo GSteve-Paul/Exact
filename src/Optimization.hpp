@@ -135,6 +135,7 @@ class Optimization final : public OptimizationSuper {
   double stratLim;
   bool coreguided;
   bool somethingHappened;
+  bool firstRun;
 
  public:
   explicit Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s);

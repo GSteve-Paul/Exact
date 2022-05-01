@@ -296,7 +296,8 @@ std::pair<CeSuper, State> Solver::runPropagation() {
 std::pair<CeSuper, State> Solver::runPropagationWithLP() {
   if (std::pair<CeSuper, State> result = runPropagation(); result.second != State::SUCCESS) return result;
   if (lpSolver) {
-    LpStatus state = aux::timeCall<LpStatus>([&] { return lpSolver->checkFeasibility(false); }, stats.LPTOTALTIME);
+    auto [state, constraint] = aux::timeCall<std::pair<LpStatus, CeSuper>>(
+        [&] { return lpSolver->checkFeasibility(false); }, stats.LPTOTALTIME);
     if (state == LpStatus::UNSAT) return {CeNull(), State::UNSAT};
     // NOTE: calling LP solver may increase the propagations on the trail due to added constraints
     if (state == LpStatus::INFEASIBLE || state == LpStatus::OPTIMAL) {
@@ -997,42 +998,39 @@ bool Solver::checkSAT(const std::vector<Lit>& assignment) {
   });
 }
 
-State Solver::inProcess() {
+std::pair<State, CeSuper> Solver::inProcess() {
   assert(decisionLevel() == 0);
   removeSatisfiedNonImpliedsAtRoot();
   if (options.pureLits) derivePureLits();
   if (options.domBreakLim.get() != 0) dominanceBreaking();
   if (options.inpAMO.get() != 0) {
     State state = aux::timeCall<State>([&] { return runAtMostOneDetection(); }, stats.ATMOSTONETIME);
-    if (state == State::UNSAT) return State::UNSAT;
+    if (state == State::UNSAT) return {State::UNSAT, CeNull()};
   }
   // TODO: timing methods should be done via wrapper methods?
 
 #if WITHSOPLEX
-  State state = State::SUCCESS;
-  if (firstRun && options.lpTimeRatio.get() > 0) {
-    lpSolver = std::make_shared<LpSolver>(ilp);
-    state = aux::timeCall<State>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);
-  } else if (lpSolver && lpSolver->canInProcess()) {
-    state = aux::timeCall<State>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);
+  if (lpSolver && lpSolver->canInProcess()) {
+    return aux::timeCall<std::pair<State, CeSuper>>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);
   }
-  if (state == State::UNSAT) return State::UNSAT;
 #endif  // WITHSOPLEX
-
-  return State::SUCCESS;
+  return {State::SUCCESS, CeNull()};
 }
 
-State Solver::presolve() {
+std::pair<State, CeSuper> Solver::presolve() {
   if (options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
-  // TODO: turn below helper code to paste a solution into a proper option
-  //  std::vector<Var> tmp{};
-  //  std::unordered_set<Var> trueVars(tmp.cbegin(), tmp.cend());
-  //  for (Var v = 1; v < getNbVars(); ++v) {
-  //    addUnitConstraint(trueVars.count(v) ? v : -v, Origin::PURE);
-  //  }
-  State state = aux::timeCall<State>([&] { return inProcess(); }, stats.INPROCESSTIME);
-  firstRun = false;
-  return state;
+
+  std::pair<State, CeSuper> res =
+      aux::timeCall<std::pair<State, CeSuper>>([&] { return inProcess(); }, stats.INPROCESSTIME);
+
+  if (res.first == State::UNSAT) return res;
+#if WITHSOPLEX
+  if (options.lpTimeRatio.get() > 0) {
+    lpSolver = std::make_shared<LpSolver>(ilp);
+    return aux::timeCall<std::pair<State, CeSuper>>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);
+  }
+#endif
+  return {State::SUCCESS, CeNull()};
 }
 
 void Solver::removeSatisfiedNonImpliedsAtRoot() {
@@ -1159,11 +1157,6 @@ void Solver::dominanceBreaking() {
 }
 
 SolveState Solver::solve() {
-  if (firstRun) {
-    if (presolve() == State::UNSAT) {
-      return SolveState::UNSAT;
-    }
-  }
   long double lastPropTime = stats.PROPTIME.z;
   long double lastCATime = stats.CATIME.z;
   long double lastNProp = stats.NPROP.z;
@@ -1244,7 +1237,7 @@ SolveState Solver::solve() {
         }
         State state = aux::timeCall<State>([&] { return reduceDB(); }, stats.CLEANUPTIME);
         if (state == State::UNSAT) return SolveState::UNSAT;
-        state = aux::timeCall<State>([&] { return inProcess(); }, stats.INPROCESSTIME);
+        state = aux::timeCall<std::pair<State, CeSuper>>([&] { return inProcess(); }, stats.INPROCESSTIME).first;
         if (state == State::UNSAT) return SolveState::UNSAT;
         return SolveState::INPROCESSED;
       }

@@ -530,6 +530,14 @@ void ConstrExpSuper::weakenLast() {
   popLast();
 }
 
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenExcept(const IntSet& exceptLits) {
+  for (Var v : vars) {
+    if (exceptLits.has(getLit(v))) continue;
+    weaken(v);
+  }
+}
+
 void ConstrExpSuper::popLast() {
   assert(!vars.empty());
   assert(!hasVar(vars.back()));
@@ -823,6 +831,20 @@ void ConstrExp<SMALL, LARGE>::divideRoundUp(const LARGE& d) {
     coefs[v] = static_cast<SMALL>(coefs[v] / d) + (coefs[v] > 0 && undivisible) - (coefs[v] < 0 && undivisible);
   }
   degree = aux::ceildiv(degree, d);
+  rhs = calcRhs();
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::divideRoundDown(const LARGE& d) {
+  assert(d > 0);
+  if (d == 1) return;
+  for (Var v : vars) {
+    weaken(-static_cast<SMALL>(coefs[v] % d), v);
+    assert(coefs[v] % d == 0);
+    coefs[v] = static_cast<SMALL>(coefs[v] / d);
+  }
+  if (plogger) Logger::proofDiv(proofBuffer, d);
+  degree = degree <= 0 ? 0 : aux::ceildiv(degree, d);
   rhs = calcRhs();
 }
 
