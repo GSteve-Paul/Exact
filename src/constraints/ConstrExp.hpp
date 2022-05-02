@@ -524,22 +524,35 @@ struct ConstrExp final : public ConstrExpSuper {
           assert(options.division.is("mindiv") || reasonSlack <= 0 || reasonCoef / (reasonSlack + 1) >= conflCoef);
           assert(!options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
           SMALL gcd = options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
-          // TODO: improve below
-          while (reasonCoef / gcd <= reasonSlack) {
-            if ((gcd % 2) == 0) {
-              gcd /= 2;
-            } else if ((gcd % 3) == 0) {
-              gcd /= 3;
-            } else if ((gcd % 5) == 0) {
-              gcd /= 5;
-            } else {
-              gcd = 1;
-              break;
+          const SMALL minDiv = reasonCoef / gcd;
+          SMALL bestDiv = minDiv;
+          if (bestDiv <= reasonSlack) {
+            // quick heuristic search for small divisor larger than slack
+            bestDiv = reasonCoef;
+            SMALL tmp;
+            SMALL pp;
+            for (int p : {5, 3, 2}) {
+              pp = 1;
+              while ((gcd % p) == 0) {
+                gcd /= p;
+                tmp = reasonCoef / gcd;
+                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                tmp = minDiv * gcd;
+                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                pp *= p;
+                tmp = reasonCoef / pp;
+                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                tmp = minDiv * pp;
+                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+              }
             }
           }
-          assert(reasonCoef / gcd > reasonSlack);
-          reason->weakenDivideRoundOrdered(reasonCoef / gcd, level);
-          reason->multiply(conflCoef / gcd);
+
+          assert(bestDiv > reasonSlack);
+          assert(reasonCoef % bestDiv == 0);
+          assert(conflCoef % (reasonCoef / bestDiv) == 0);
+          reason->weakenDivideRoundOrdered(bestDiv, level);
+          reason->multiply(conflCoef / (reasonCoef / bestDiv));
         }
       }
     }
