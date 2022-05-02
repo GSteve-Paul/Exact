@@ -186,6 +186,7 @@ struct ConstrExpSuper {
   virtual void toStreamAsOPBlhs(std::ostream& o) const = 0;
   virtual void toStreamAsOPB(std::ostream& o) const = 0;
   virtual void toStreamWithAssignment(std::ostream& o, const IntMap<int>& level, const std::vector<int>& pos) const = 0;
+  virtual void toStreamPure(std::ostream& o) const = 0;
 
   virtual int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                           const std::vector<int>& pos, IntSet& actSet) = 0;
@@ -404,6 +405,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void toStreamAsOPBlhs(std::ostream& o) const;
   void toStreamAsOPB(std::ostream& o) const;
   void toStreamWithAssignment(std::ostream& o, const IntMap<int>& level, const std::vector<int>& pos) const;
+  void toStreamPure(std::ostream& o) const;
 
   int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                   const std::vector<int>& pos, IntSet& actSet);
@@ -501,43 +503,51 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(reason->getCoef(asserting) > reason->getSlack(level));
 
     const SMALL conflCoef = getCoef(-asserting);
-    const LARGE reasonSlack = reason->getSlack(level);
-    const SMALL reasonCoef = reason->getCoef(asserting);
-    if (reasonSlack <= 0 || static_cast<SMALL>(reasonSlack) * conflCoef < reasonCoef) {
+    assert(conflCoef > 0);
+    if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0
       reason->multiply(conflCoef);
-      reason->weakenDivideRoundOrdered(reasonCoef, level);
     } else {
-      if (options.division.is("round-to-one")) {
+      if (options.multBeforeDiv) {
+        reason->multiply(conflCoef);
+      }
+      const SMALL reasonCoef = reason->getCoef(asserting);
+      assert(reasonCoef > 0);
+      if (options.division.is("rto")) {
         reason->weakenDivideRoundOrdered(reasonCoef, level);
         reason->multiply(conflCoef);
-      } else if (options.division.is("slackdiv")) {
-        assert(reasonCoef / (reasonSlack + 1) < conflCoef);
-        reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
-        reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
       } else {
-        SMALL gcd = aux::gcd(conflCoef, reasonCoef);
-        while (reasonCoef <= reasonSlack * gcd) {
-          if ((gcd % 2) == 0) {
-            gcd /= 2;
-          } else if ((gcd % 3) == 0) {
-            gcd /= 3;
-          } else if ((gcd % 5) == 0) {
-            gcd /= 5;
-          } else {
-            gcd = 1;
-            break;
+        const LARGE reasonSlack = reason->getSlack(level);
+        if (options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
+          reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
+          reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
+        } else {
+          assert(options.division.is("mindiv") || reasonSlack <= 0 || reasonCoef / (reasonSlack + 1) >= conflCoef);
+          assert(!options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
+          SMALL gcd = options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
+          // TODO: improve below
+          while (reasonCoef / gcd <= reasonSlack) {
+            if ((gcd % 2) == 0) {
+              gcd /= 2;
+            } else if ((gcd % 3) == 0) {
+              gcd /= 3;
+            } else if ((gcd % 5) == 0) {
+              gcd /= 5;
+            } else {
+              gcd = 1;
+              break;
+            }
           }
+          assert(reasonCoef / gcd > reasonSlack);
+          reason->weakenDivideRoundOrdered(reasonCoef / gcd, level);
+          reason->multiply(conflCoef / gcd);
         }
-        assert(reasonCoef / gcd > reasonSlack);
-        reason->weakenDivideRoundOrdered(reasonCoef / gcd, level);
-        reason->multiply(conflCoef / gcd);
       }
     }
 
     assert(reason->getCoef(asserting) >= conflCoef);
     assert(reason->getCoef(asserting) < 2 * conflCoef);
     assert(reason->getSlack(level) <= 0);
-    assert(options.division.is("slackdiv") || conflCoef == reason->getCoef(asserting));
+    assert(options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
     for (Var v : reason->vars) {
       Lit ll = reason->getLit(v);
@@ -552,18 +562,11 @@ struct ConstrExp final : public ConstrExpSuper {
     LARGE oldDegree = getDegree();
     addUp(reason);
 
-    SMALL largestCF = getLargestCoef(reason->vars);
-    if (oldDegree <= getDegree() && oldDegree <= largestCF) {
-      if (largestCF > getDegree()) {
-        saturate(reason->vars, false, false);
-        largestCF = static_cast<SMALL>(getDegree());
-      }
-    } else {
-      largestCF = getLargestCoef();
-      if (largestCF > getDegree()) {
-        saturate(false, false);
-        largestCF = static_cast<SMALL>(getDegree());
-      }
+    std::vector<Var>& varsToCheck = oldDegree <= getDegree() ? reason->vars : vars;
+    SMALL largestCF = getLargestCoef(varsToCheck);
+    if (largestCF > getDegree()) {
+      saturate(varsToCheck, false, false);
+      largestCF = static_cast<SMALL>(getDegree());
     }
     fixOverflow(level, options.bitsOverflow.get(), options.bitsReduced.get(), largestCF, 0);
     assert(getCoef(-asserting) <= 0);

@@ -279,8 +279,11 @@ struct Options {
       "lp-cut-maxcos",
       "Upper bound on cosine of angle between cuts added in one round, higher means cuts can be more parallel", 0.1,
       "0 =< float =< 1", [](const double& x) -> bool { return 0 <= x && x <= 1; }};
-  EnumOption division{
-      "ca-division", "Division method during conflict analysis", "multdiv", {"round-to-one", "slackdiv", "multdiv"}};
+  BoolOption multBeforeDiv{"ca-multiply", "Multiply reason with the asserting literal's conflict coefficient", true};
+  EnumOption division{"ca-division",
+                      "Division method to round the reason to non-positive slack",
+                      "mindiv",
+                      {"rto", "slack+1", "mindiv"}};
   BoolOption weakenNonImplying{"ca-weaken-nonimplying",
                                "Weaken non-implying falsified literals from learned constraints", true};
   BoolOption learnedMin{"ca-min", "Minimize learned constraints through generalized self-subsumption.", true};
@@ -369,6 +372,7 @@ struct Options {
       &lpLearnedCuts,
       &lpGomoryCutLimit,
       &lpMaxCutCos,
+      &multBeforeDiv,
       &division,
       &weakenNonImplying,
       &learnedMin,

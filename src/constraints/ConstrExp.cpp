@@ -739,13 +739,15 @@ void ConstrExp<SMALL, LARGE>::invert() {
  * @post: the degree and rhs are less than 2^bitOverflow * INF
  * @post: if overflow happened, all division until 2^bitReduce happened
  * @post: the constraint remains conflicting or propagating on asserting
+ *
+ * NOTE: largestCoef sometimes is the largest coef "to be checked".
+ * If larger coefs exist, no overflow should be possible.
  */
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce,
                                           const SMALL& largestCoef, Lit asserting) {
   assert(hasNoZeroes());
   assert(isSaturated());
-  assert(largestCoef == getLargestCoef());
   if (bitOverflow == 0) {
     return;
   }
@@ -753,11 +755,14 @@ void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverf
   assert(bitReduce > 0);
   assert(bitOverflow >= bitReduce);
   LARGE maxVal = std::max<LARGE>(largestCoef, std::max(degree, aux::abs(rhs)) / INF);
-  assert(maxVal == getCutoffVal());
   if (maxVal > 0 && (int)aux::msb(maxVal) >= bitOverflow) {
+    assert(getCutoffVal() == maxVal);
     LARGE div = aux::ceildiv<LARGE>(maxVal, aux::pow<LARGE>(2, bitReduce) - 1);
     assert(aux::ceildiv<LARGE>(maxVal, div) <= aux::pow<LARGE>(2, bitReduce) - 1);
     weakenDivideRound(div, level, asserting);
+  } else {
+    // check that largestCoef indeed is big enough
+    assert(getCutoffVal() <= 0 || (int)aux::msb(getCutoffVal()) < bitOverflow);
   }
   assert(isSaturated());
   assert(hasNoZeroes());
@@ -1420,7 +1425,17 @@ void ConstrExp<SMALL, LARGE>::toStreamWithAssignment(std::ostream& o, const IntM
                             : (isFalse(level, l) ? "f" + std::to_string(level[-l]) : "t" + std::to_string(level[l])))
       << " ";
   }
-  o << ">= " << degree << "(" << getSlack(level) << ")";
+  o << ">= " << degree << " (" << getSlack(level) << ")";
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::toStreamPure(std::ostream& o) const {
+  std::vector<Var> vs = vars;
+  for (Var v : vs) {
+    Lit l = getLit(v);
+    o << (l == 0 ? std::pair<SMALL, Lit>{0, v} : std::pair<SMALL, Lit>{getCoef(l), l}) << " ";
+  }
+  std::cout << ">= " << degree << " (" << rhs << ")";
 }
 
 template <typename SMALL, typename LARGE>
@@ -1477,7 +1492,7 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
   }
 
   assert(getDegree() > 0);
-  if (oldDegree <= getDegree() && oldDegree <= largestCF) {
+  if (oldDegree <= getDegree()) {
     if (largestCF > getDegree()) {
       stats.NSATURATESTEPS += size;
       if (plogger) proofBuffer << "s ";
@@ -1492,14 +1507,10 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
         }
       }
     }
+    fixOverflow(level, options.bitsOverflow.get(), options.bitsReduced.get(), largestCF, 0);
   } else {
-    largestCF = getLargestCoef();
-    if (largestCF > getDegree()) {
-      saturate(false, false);
-      largestCF = static_cast<SMALL>(getDegree());
-    }
+    saturateAndFixOverflow(level, options.bitsOverflow.get(), options.bitsReduced.get(), 0);
   }
-  fixOverflow(level, options.bitsOverflow.get(), options.bitsReduced.get(), largestCF, 0);
   assert(getCoef(-l) == 0);
   assert(hasNegativeSlack(level));
 
