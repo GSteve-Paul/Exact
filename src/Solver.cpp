@@ -1073,6 +1073,7 @@ void Solver::derivePureLits() {
 }
 
 void Solver::dominanceBreaking() {
+  removeSatisfiedNonImpliedsAtRoot();
   std::unordered_set<Lit> inUnsaturatableConstraint;
   IntSet& saturating = isPool.take();
   IntSet& intersection = isPool.take();
@@ -1149,6 +1150,7 @@ void Solver::dominanceBreaking() {
       binaryImplicants.insert({ll, l});
       binaryImplicants.insert({-l, -ll});
       addConstraintUnchecked(ConstrSimple32{{{1, -ll}, {1, l}}, 1}, Origin::DOMBREAKER);
+      removeSatisfiedNonImpliedsAtRoot();
     }
     saturating.clear();
   }
