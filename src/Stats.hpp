@@ -303,6 +303,7 @@ struct Stats {
   Stat INPROCESSTIME{0, "inprocessing time"};
   Stat GCTIME{0, "garbage collection time"};
   Stat LEARNTIME{0, "constraint learning time"};
+  Stat HEURTIME{0, "time spent in activity heuristic"};
 
   Stat EXTERNLENGTHAVG{0, "input length average"};
   Stat EXTERNDEGREEAVG{0, "input degree average"};
@@ -354,6 +355,7 @@ struct Stats {
       &INPROCESSTIME,
       &GCTIME,
       &LEARNTIME,
+      &HEURTIME,
       &TABUTIME,
       &TABUDETTIME,
       &ATMOSTONETIME,

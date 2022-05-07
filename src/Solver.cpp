@@ -78,6 +78,7 @@ Solver::Solver(ILP& i)
       nconfl_to_reduce(0),
       nconfl_to_restart(0) {
   ca.capacity(1024 * 1024);  // 4MB
+  position.resize(1, INF);
 }
 
 Solver::~Solver() {
@@ -390,7 +391,7 @@ resolve:
     if (confl->isAssertingBefore(level, decisionLevel()) != AssertionStatus::ASSERTING) goto resolve;
   }
 
-  heur->vBumpActivity(actSet.getKeys());
+  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeys()); }, stats.HEURTIME);
   isPool.release(actSet);
 
   assert(confl->hasNegativeSlack(level));
@@ -488,7 +489,8 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
     }
     undoOne();
   }
-  heur->vBumpActivity(actSet.getKeys());
+
+  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeys()); }, stats.HEURTIME);
   isPool.release(actSet);
 
   // weaken non-falsifieds
@@ -1181,7 +1183,6 @@ SolveState Solver::solve() {
     runLP = (bool)confl;
     if (confl) {
       assert(confl->hasNegativeSlack(level));
-      heur->vDecayActivity();
       ++stats.NCONFL;
       nconfl_to_restart--;
       long long nconfl = static_cast<long long>(stats.NCONFL.z);
@@ -1276,7 +1277,7 @@ SolveState Solver::solve() {
         }
       }
       if (next == 0) {
-        next = heur->pickBranchLit(getPos());
+        next = aux::timeCall<Lit>([&] { return heur->pickBranchLit(getPos()); }, stats.HEURTIME);
       }
       if (next == 0) {
         assert((int)trail.size() == getNbVars());
@@ -1290,7 +1291,7 @@ SolveState Solver::solve() {
       if (options.inpProbing && decisionLevel() == 0 && toVar(lastRestartNext) != toVar(next)) {
         State state = aux::timeCall<State>([&] { return probeRestart(next); }, stats.PROBETIME);
         if (state == State::UNSAT) return SolveState::UNSAT;
-        assert(isKnown(getPos(), next));  // needed as next is popped from activity heap
+        assert(isKnown(getPos(), next));  // invariant of calling heur->pickBranchLit(...)
       } else {
         decide(next);
       }
@@ -1384,7 +1385,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
       previous.add(l);
     }
     for (Lit l : candidates) {
-      if (previous.has(l) && !isKnown(getPos(), l)) {
+      if (previous.has(l) && isUnknown(getPos(), l)) {
         assert(decisionLevel() == 0);
         ID res = aux::timeCall<ID>(
             [&] {
@@ -1427,7 +1428,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     }
     backjumpTo(0, false);
     for (Lit l : cardLits) {
-      if (trailSet.has(-l) && !isKnown(getPos(), l)) {
+      if (trailSet.has(-l) && isUnknown(getPos(), l)) {
         assert(decisionLevel() == 0);
         isPool.release(trailSet);
         ID res = aux::timeCall<ID>(
@@ -1662,16 +1663,17 @@ void Solver::lastSolToPhase() {
 }
 
 void Solver::ranksToAct() {
-  ActValV nbConstrs = constraints.size();
-  for (Var v = 1; v <= getNbVars(); ++v) {
-    if (!isOrig(v)) continue;
-    freeHeur.activity[v] = std::max(cutoff, ranks[v]) + (adj[v].size() + adj[-v].size()) / nbConstrs;
-    cgHeur.activity[v] = freeHeur.activity[v];
-  }
-  freeHeur.heap.recalculate();
-  freeHeur.v_vsids_inc = next;
-  cgHeur.heap.recalculate();
-  cgHeur.v_vsids_inc = next;
+  // TODO: refactor to VMTF activity structure
+  //  ActValV nbConstrs = constraints.size();
+  //  for (Var v = 1; v <= getNbVars(); ++v) {
+  //    if (!isOrig(v)) continue;
+  //    freeHeur.activity[v] = std::max(cutoff, ranks[v]) + (adj[v].size() + adj[-v].size()) / nbConstrs;
+  //    cgHeur.activity[v] = freeHeur.activity[v];
+  //  }
+  //  freeHeur.heap.recalculate();
+  //  freeHeur.v_vsids_inc = next;
+  //  cgHeur.heap.recalculate();
+  //  cgHeur.v_vsids_inc = next;
 }
 
 }  // namespace xct

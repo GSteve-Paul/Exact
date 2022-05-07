@@ -64,59 +64,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-void OrderHeap::resize(int newsize) {
-  if (cap >= newsize) return;
-  // insert elements in such order that tie breaking remains intact
-  std::vector<Var> variables;
-  while (!empty()) variables.push_back(removeMax());
-  tree.clear();
-  while (cap < newsize) cap = cap * resize_factor + 1;
-  tree.resize(2 * (cap + 1), -1);
-  for (Var x : variables) insert(x);
-}
-
-void OrderHeap::recalculate() {  // TODO: more efficient implementation
-  // insert elements in such order that tie breaking remains intact
-  std::vector<Var> variables;
-  while (!empty()) variables.push_back(removeMax());
-  tree.clear();
-  tree.resize(2 * (cap + 1), -1);
-  for (Var x : variables) insert(x);
-}
-
-void OrderHeap::percolateUp(Var x) {
-  for (int at = x + cap + 1; at > 1; at >>= 1) {
-    if (tree[at ^ 1] == -1 || activity[x] > activity[tree[at ^ 1]])
-      tree[at >> 1] = x;
-    else
-      break;
-  }
-}
-
-bool OrderHeap::empty() const { return tree[1] == -1; }
-bool OrderHeap::inHeap(Var x) const { return tree[x + cap + 1] != -1; }
-
-void OrderHeap::insert(Var x) {
-  assert(x <= cap);
-  if (inHeap(x)) return;
-  tree[x + cap + 1] = x;
-  percolateUp(x);
-}
-
-Var OrderHeap::removeMax() {
-  Var x = tree[1];
-  assert(x != -1);
-  tree[x + cap + 1] = -1;
-  for (int at = x + cap + 1; at > 1; at >>= 1) {
-    if (tree[at ^ 1] != -1 && (tree[at] == -1 || activity[tree[at ^ 1]] > activity[tree[at]]))
-      tree[at >> 1] = tree[at ^ 1];
-    else
-      tree[at >> 1] = tree[at];
-  }
-  return x;
-}
-
-Heuristic::Heuristic() : heap(activity), nextDecision(0) {
+Heuristic::Heuristic() : nextDecision(0) {
+  phase.resize(1);
+  phase[0] = 0;
   actList.resize(1);
   actList[0].prev = 0;
   actList[0].next = 0;
@@ -125,29 +75,26 @@ Heuristic::Heuristic() : heap(activity), nextDecision(0) {
 
 int Heuristic::nVars() const { return phase.size(); }
 
+void Heuristic::swapOrder(Var v1, Var v2) {
+  ActNode tmp1 = actList[v1];
+  actList[tmp1.prev].next = v2;
+  actList[tmp1.next].prev = v2;
+  ActNode tmp2 = actList[v2];
+  actList[tmp2.prev].next = v1;
+  actList[tmp2.next].prev = v1;
+  actList[v1] = tmp2;
+  actList[v2] = tmp1;
+}
+
 void Heuristic::resize(int nvars) {
-  assert(nvars > (int)phase.size());
-  int old_n = std::max(1, nVars());
-  activity.resize(nvars, v_vsids_inc);
-  if (options.varOrder) {
-    for (Var v = old_n; v < nvars; ++v) {
-      activity[v] = 1 / static_cast<ActValV>(v);
-    }
-  } else if (options.randomSeed.get() != 1) {
-    for (Var v = old_n; v < nvars; ++v) {
-      activity[v] = v_vsids_inc * (aux::getRand(0, 100) / (float)50);
-    }
-  }
-  heap.resize(nvars);
+  assert(nvars == 1 || nvars > (int)phase.size());
+  int old_n = nVars();  // at least one after initialization
   phase.resize(nvars);
-  for (Var v = old_n; v < nvars; ++v) {
-    heap.insert(v);
-    phase[v] = -v;
-  }
   actList.resize(nvars);
   for (Var v = old_n; v < nvars; ++v) {
+    phase[v] = -v;
     ActNode& node = actList[v];
-    node.activity = -v / (double)INF;  // early variables have slightly higher initial activity
+    node.activity = -v / static_cast<double>(INF);  // early variables have slightly higher initial activity
     actList[v].next = v + 1;
     actList[v].prev = v - 1;
   }
@@ -156,11 +103,15 @@ void Heuristic::resize(int nvars) {
   actList[oldTail].next = old_n;
   actList[0].prev = nvars - 1;
   actList[nvars - 1].next = 0;
+  if (options.randomSeed.get() != 1) {
+    for (Var v = old_n; v < nvars; ++v) {
+      swapOrder(v, aux::getRand(1, nvars));
+    }
+  }
 }
 
 void Heuristic::undoOne(Var v, Lit l) {
   phase[v] = l;
-  heap.insert(v);
   nextDecision = 0;
 }
 
@@ -173,23 +124,6 @@ ActValV Heuristic::getActivity(Var v) const {
   return actList[v].activity;
 }
 
-void Heuristic::vDecayActivity() { v_vsids_inc *= (1 / options.varDecay.get()); }
-void Heuristic::vBumpActivity(Var v) {
-  assert(!options.varOrder);
-  assert(v > 0);
-  if ((activity[v] += v_vsids_inc) > actLimitV) {  // Rescale
-    for (Var x = 1; x < nVars(); ++x) {
-      activity[x] /= actLimitV;
-      activity[x] /= actLimitV;
-    }
-    v_vsids_inc /= actLimitV;
-    v_vsids_inc /= actLimitV;
-  }
-  // Update heap with respect to new activity:
-  if (heap.inHeap(v)) {
-    heap.percolateUp(v);
-  }
-}
 void Heuristic::vBumpActivity(const std::vector<Lit>& lits) {
   if (options.varOrder) {
     return;
@@ -202,7 +136,6 @@ void Heuristic::vBumpActivity(const std::vector<Lit>& lits) {
   for (Lit l : lits) {
     if (l != 0) {
       Var v = toVar(l);
-      vBumpActivity(v);
       actList[v].activity = weightOld * actList[v].activity + weightNew * nConfl;
       vars.push_back(v);
     }
@@ -229,25 +162,11 @@ void Heuristic::vBumpActivity(const std::vector<Lit>& lits) {
   nextDecision = 0;
 }
 
-Lit Heuristic::pickBranchLit2(const std::vector<int>& position) {
-  assert(testActList(position));
-  Var next = 0;
-  // Activity based decision:
-  while (next == 0 || isKnown(position, next)) {
-    if (heap.empty()) {
-      return 0;
-    } else {
-      next = heap.removeMax();
-    }
-  }
-  assert(next != 0);
-  return getPhase(next);
-}
-
+// NOTE: so far, this is only called when the returned lit will be decided shortly
 Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
   assert(testActList(position));
-  assert(!isKnown(position, 0));  // so will eventually stop
-  assert(getPhase(0) == 0);       // so will return right phase
+  assert(getPhase(0) == 0);        // so will return right phase
+  assert(isUnknown(position, 0));  // so will eventually stop
   // Activity based decision:
   if (nextDecision == 0) {
     nextDecision = actList[0].next;
@@ -258,6 +177,7 @@ Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
   return getPhase(nextDecision);
 }
 
+// NOTE: v==0 will give first in activity order
 Var Heuristic::nextInActOrder(Var v) const { return actList[v].next; }
 
 bool Heuristic::testActList(const std::vector<int>& position) const {

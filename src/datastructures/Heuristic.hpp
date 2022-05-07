@@ -65,22 +65,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-struct OrderHeap {  // segment tree (fast implementation of priority queue).
-  std::vector<ActValV>& activity;
-  int cap = 0;
-  std::vector<Var> tree = {-1, -1};
-
-  explicit OrderHeap(std::vector<ActValV>& a) : activity(a) {}
-
-  void resize(int newsize);
-  void recalculate();
-  void percolateUp(Var x);
-  [[nodiscard]] bool empty() const;
-  [[nodiscard]] bool inHeap(Var x) const;
-  void insert(Var x);
-  Var removeMax();
-};
-
 struct ActNode {
   Var prev;
   Var next;
@@ -90,10 +74,6 @@ struct ActNode {
 class Heuristic {
  public:
   std::vector<Lit> phase;
-  std::vector<ActValV> activity;
-  ActValV v_vsids_inc = 1.0;
-  OrderHeap heap;
-
   std::vector<ActNode> actList;
   Var nextDecision;
 
@@ -108,13 +88,11 @@ class Heuristic {
   Lit getPhase(Var v) const;
 
   ActValV getActivity(Var v) const;
-  void vDecayActivity();
-  void vBumpActivity(Var v);
   void vBumpActivity(const std::vector<Lit>& lits);
 
   Lit pickBranchLit(const std::vector<int>& position);
   Var nextInActOrder(Var v) const;
-  Lit pickBranchLit2(const std::vector<int>& position);
+  void swapOrder(Var v1, Var v2);
 
   bool testActList(const std::vector<int>& position) const;
   void printActList(const std::vector<int>& position) const;
