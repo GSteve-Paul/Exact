@@ -226,7 +226,7 @@ State Solver::probe(Lit l, bool deriveImplications) {
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       implications.addImplied(-trail[i], -l);  // the system may not be able to derive these
     }
-    stats.NPROBINGIMPLMEM.z = std::max<long double>(stats.NPROBINGIMPLMEM.z, implications.nImpliedsInMemory());
+    stats.NPROBINGIMPLMEM.z = std::max<StatNum>(stats.NPROBINGIMPLMEM.z, implications.nImpliedsInMemory());
   }
   return State::SUCCESS;
 }
@@ -1159,9 +1159,9 @@ void Solver::dominanceBreaking() {
 }
 
 SolveState Solver::solve() {
-  long double lastPropTime = stats.PROPTIME.z;
-  long double lastCATime = stats.CATIME.z;
-  long double lastNProp = stats.NPROP.z;
+  StatNum lastPropTime = stats.PROPTIME.z;
+  StatNum lastCATime = stats.CATIME.z;
+  StatNum lastNProp = stats.NPROP.z;
   bool runLP = false;
   while (true) {
     quit::checkInterrupt();
@@ -1228,9 +1228,9 @@ SolveState Solver::solve() {
         nconfl_to_reduce += 1 + std::pow(std::log(stats.NCONFL.z), options.dbExp.get());
 
         if (options.verbosity.get() > 0) {
-          long double propDiff = stats.PROPTIME.z - lastPropTime;
-          long double cADiff = stats.CATIME.z - lastCATime;
-          long double nPropDiff = stats.NPROP.z - lastNProp;
+          StatNum propDiff = stats.PROPTIME.z - lastPropTime;
+          StatNum cADiff = stats.CATIME.z - lastCATime;
+          StatNum nPropDiff = stats.NPROP.z - lastNProp;
           std::cout << "c INPROCESSING " << propDiff << " proptime " << nPropDiff / propDiff << " prop/sec "
                     << propDiff / cADiff << " prop/ca" << std::endl;
           lastPropTime = stats.PROPTIME.z;
@@ -1486,8 +1486,8 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
 State Solver::runAtMostOneDetection() {
   assert(decisionLevel() == 0);
   int currentUnits = trail.size();
-  long double currentDetTime = stats.getDetTime();
-  long double oldDetTime = currentDetTime;
+  DetTime currentDetTime = stats.getDetTime();
+  DetTime oldDetTime = currentDetTime;
   std::vector<Var> readd;
   std::vector<Lit> previous;
   std::unordered_set<Lit> considered;
@@ -1546,8 +1546,8 @@ void Solver::rebuildTabu() {
 bool Solver::runTabuOnce() {
   assert(stats.NCLEANUP >= 0);
   std::vector<Lit> changeds;
-  long double currentDetTime = stats.getDetTime();
-  long double oldDetTime = currentDetTime;
+  DetTime currentDetTime = stats.getDetTime();
+  DetTime oldDetTime = currentDetTime;
   while (!violatedPtrs.empty() &&
          (options.tabuLim.get() == 1 ||
           stats.TABUDETTIME < options.tabuLim.get() * std::max(options.basetime.get(), currentDetTime))) {

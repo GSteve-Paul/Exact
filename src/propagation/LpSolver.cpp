@@ -420,8 +420,8 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
   if (options.lpTimeRatio.get() == 1) {
     lp.setIntParam(soplex::SoPlex::ITERLIMIT, -1);  // no pivot limit
   } else {
-    long double nlptime = stats.getNonLpDetTime();
-    long double lptime = stats.getLpDetTime();
+    DetTime nlptime = stats.getNonLpDetTime();
+    DetTime lptime = stats.getLpDetTime();
     assert(options.lpTimeRatio.get() != 0);
     if (lptime == 1 || lptime < options.lpTimeRatio.get() * (lptime + nlptime)) {
       double limit = options.lpPivotBudget.get() * lpPivotMult;

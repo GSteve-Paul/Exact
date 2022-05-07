@@ -67,7 +67,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace xct {
 
 struct Stat {
-  long double z;
+  StatNum z;
   std::string name;
 };
 
@@ -80,93 +80,93 @@ inline void operator++(Stat& stat) { stat.z++; }
 inline void operator--(Stat& stat) { stat.z--; }
 template <typename IN>
 Stat& operator+=(Stat& stat, const IN& rhs) {
-  stat.z += static_cast<long double>(rhs);
+  stat.z += static_cast<StatNum>(rhs);
   return stat;
 }
 template <typename IN>
 Stat& operator-=(Stat& stat, const IN& rhs) {
-  stat.z -= static_cast<long double>(rhs);
+  stat.z -= static_cast<StatNum>(rhs);
   return stat;
 }
 template <typename IN>
-long double operator+(const Stat& stat, const IN& in) {
-  return stat.z + static_cast<long double>(in);
+StatNum operator+(const Stat& stat, const IN& in) {
+  return stat.z + static_cast<StatNum>(in);
 }
 template <typename IN>
-long double operator+(const IN& in, const Stat& stat) {
-  return static_cast<long double>(in) + stat.z;
+StatNum operator+(const IN& in, const Stat& stat) {
+  return static_cast<StatNum>(in) + stat.z;
 }
-inline long double operator+(const Stat& x, const Stat& y) { return x.z + y.z; }
+inline StatNum operator+(const Stat& x, const Stat& y) { return x.z + y.z; }
 template <typename IN>
-long double operator-(const Stat& stat, const IN& in) {
-  return stat.z - static_cast<long double>(in);
-}
-template <typename IN>
-long double operator-(const IN& in, const Stat& stat) {
-  return static_cast<long double>(in) - stat.z;
-}
-inline long double operator-(const Stat& x, const Stat& y) { return x.z - y.z; }
-template <typename IN>
-long double operator*(const Stat& stat, const IN& in) {
-  return stat.z * static_cast<long double>(in);
+StatNum operator-(const Stat& stat, const IN& in) {
+  return stat.z - static_cast<StatNum>(in);
 }
 template <typename IN>
-long double operator*(const IN& in, const Stat& stat) {
-  return static_cast<long double>(in) * stat.z;
+StatNum operator-(const IN& in, const Stat& stat) {
+  return static_cast<StatNum>(in) - stat.z;
 }
-inline long double operator*(const Stat& x, const Stat& y) { return x.z * y.z; }
+inline StatNum operator-(const Stat& x, const Stat& y) { return x.z - y.z; }
 template <typename IN>
-long double operator/(const Stat& stat, const IN& in) {
-  return stat.z / static_cast<long double>(in);
+StatNum operator*(const Stat& stat, const IN& in) {
+  return stat.z * static_cast<StatNum>(in);
 }
 template <typename IN>
-long double operator/(const IN& in, const Stat& stat) {
-  return static_cast<long double>(in) / stat.z;
+StatNum operator*(const IN& in, const Stat& stat) {
+  return static_cast<StatNum>(in) * stat.z;
 }
-inline long double operator/(const Stat& x, const Stat& y) { return x.z / y.z; }
+inline StatNum operator*(const Stat& x, const Stat& y) { return x.z * y.z; }
+template <typename IN>
+StatNum operator/(const Stat& stat, const IN& in) {
+  return stat.z / static_cast<StatNum>(in);
+}
+template <typename IN>
+StatNum operator/(const IN& in, const Stat& stat) {
+  return static_cast<StatNum>(in) / stat.z;
+}
+inline StatNum operator/(const Stat& x, const Stat& y) { return x.z / y.z; }
 template <typename IN>
 bool operator==(const Stat& stat, const IN& in) {
-  return stat.z == static_cast<long double>(in);
+  return stat.z == static_cast<StatNum>(in);
 }
 template <typename IN>
 bool operator==(const IN& in, const Stat& stat) {
-  return static_cast<long double>(in) == stat.z;
+  return static_cast<StatNum>(in) == stat.z;
 }
 inline bool operator==(const Stat& x, const Stat& y) { return x.z == y.z; }
 template <typename IN>
 bool operator>(const Stat& stat, const IN& in) {
-  return stat.z > static_cast<long double>(in);
+  return stat.z > static_cast<StatNum>(in);
 }
 template <typename IN>
 bool operator>(const IN& in, const Stat& stat) {
-  return static_cast<long double>(in) > stat.z;
+  return static_cast<StatNum>(in) > stat.z;
 }
 inline bool operator>(const Stat& x, const Stat& y) { return x.z > y.z; }
 template <typename IN>
 bool operator<(const Stat& stat, const IN& in) {
-  return stat.z < static_cast<long double>(in);
+  return stat.z < static_cast<StatNum>(in);
 }
 template <typename IN>
 bool operator<(const IN& in, const Stat& stat) {
-  return static_cast<long double>(in) < stat.z;
+  return static_cast<StatNum>(in) < stat.z;
 }
 inline bool operator<(const Stat& x, const Stat& y) { return x.z < y.z; }
 template <typename IN>
 bool operator<=(const Stat& stat, const IN& in) {
-  return stat.z <= static_cast<long double>(in);
+  return stat.z <= static_cast<StatNum>(in);
 }
 template <typename IN>
 bool operator<=(const IN& in, const Stat& stat) {
-  return static_cast<long double>(in) <= stat.z;
+  return static_cast<StatNum>(in) <= stat.z;
 }
 inline bool operator<=(const Stat& x, const Stat& y) { return x.z <= y.z; }
 template <typename IN>
 bool operator>=(const Stat& stat, const IN& in) {
-  return stat.z >= static_cast<long double>(in);
+  return stat.z >= static_cast<StatNum>(in);
 }
 template <typename IN>
 bool operator>=(const IN& in, const Stat& stat) {
-  return static_cast<long double>(in) >= stat.z;
+  return static_cast<StatNum>(in) >= stat.z;
 }
 inline bool operator>=(const Stat& x, const Stat& y) { return x.z >= y.z; }
 
@@ -326,11 +326,11 @@ struct Stats {
     OPTTIME.z = SOLVETIME - getSolveTime();
     LPDETTIME.z = getLpDetTime();
 
-    long double nonLearneds = NCLAUSESEXTERN + NCARDINALITIESEXTERN + NGENERALSEXTERN;
+    StatNum nonLearneds = NCLAUSESEXTERN + NCARDINALITIESEXTERN + NGENERALSEXTERN;
     EXTERNLENGTHAVG.z = (nonLearneds == 0 ? 0 : EXTERNLENGTHSUM / nonLearneds);
     EXTERNDEGREEAVG.z = (nonLearneds == 0 ? 0 : EXTERNDEGREESUM / nonLearneds);
     EXTERNSTRENGTHAVG.z = (nonLearneds == 0 ? 0 : EXTERNSTRENGTHSUM / nonLearneds);
-    long double learneds = NCLAUSESLEARNED + NCARDINALITIESLEARNED + NGENERALSLEARNED;
+    StatNum learneds = NCLAUSESLEARNED + NCARDINALITIESLEARNED + NGENERALSLEARNED;
     LEARNEDLENGTHAVG.z = (learneds == 0 ? 0 : LEARNEDLENGTHSUM / learneds);
     LEARNEDDEGREEAVG.z = (learneds == 0 ? 0 : LEARNEDDEGREESUM / learneds);
     LEARNEDSTRENGTHAVG.z = (learneds == 0 ? 0 : LEARNEDSTRENGTHSUM / learneds);
@@ -462,27 +462,27 @@ struct Stats {
       &NTABUUNITS,
   };
 
-  [[nodiscard]] inline long double getTime() const {
+  [[nodiscard]] inline StatNum getTime() const {
     return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - startTime)
         .count();
   }
-  [[nodiscard]] inline long double getRunTime() const {
+  [[nodiscard]] inline StatNum getRunTime() const {
     return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - runStartTime)
         .count();
   }
-  [[nodiscard]] inline long double getSolveTime() const { return SOLVETIMEFREE + SOLVETIMEASSUMP; }
+  [[nodiscard]] inline StatNum getSolveTime() const { return SOLVETIMEFREE + SOLVETIMEASSUMP; }
   // NOTE: below linear relations were determined by regression tests on experimental data,
   // so that the deterministic time correlates as closely as possible with the cpu time in seconds
-  [[nodiscard]] inline long double getLpDetTime() const {
+  [[nodiscard]] inline StatNum getLpDetTime() const {
     return (1 + 5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9;
   }
-  [[nodiscard]] inline long double getNonLpDetTime() const {
+  [[nodiscard]] inline StatNum getNonLpDetTime() const {
     return (1 + 49.00 * NWATCHLOOKUPS + 9.09 * NWATCHCHECKS + 3.55 * NPROPCHECKS + 60.69 * NSATURATESTEPS +
             61.86 * (NADDEDLITERALS - NLPADDEDLITERALS) + 1484.40 * NWEAKENEDNONIMPLIED + 268.51 * NTRAILPOPS) /
            1e9;
   }
 
-  [[nodiscard]] inline long double getDetTime() const { return getLpDetTime() + getNonLpDetTime(); }
+  [[nodiscard]] inline StatNum getDetTime() const { return getLpDetTime() + getNonLpDetTime(); }
 
   void print() {
     setDerivedStats();

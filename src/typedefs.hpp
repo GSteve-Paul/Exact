@@ -157,6 +157,8 @@ const ActValV threehundredzeroes = 1e300;
 const ActValV actLimitV = threehundredzeroes * threehundredzeroes * threehundredzeroes * threehundredzeroes *
                           threehundredzeroes * threehundredzeroes * threehundredzeroes *
                           threehundredzeroes;  // ~1e2400 << 2^(2^13)
+using DetTime = long double;
+using StatNum = long double;
 
 // NOTE: max number of types is 32, as the type is stored with 5 bits in Constr
 enum class Origin {

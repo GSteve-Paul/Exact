@@ -496,7 +496,7 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
 
   while (true) {
     assert(upper_bound >= lower_bound);
-    long double current_time = stats.getDetTime();
+    StatNum current_time = stats.getDetTime();
     if (reply == SolveState::INPROCESSED) {
       if (options.printCsvData) stats.printCsvLine();
       if (options.tabuLim.get() != 0) {

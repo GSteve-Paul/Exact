@@ -331,8 +331,8 @@ struct Options {
   ValOption<double> inpAMO{"inp-atmostone",
                            "Ratio of time spent detecting at-most-ones (0 means none, 1 means unlimited)", 0.1,
                            "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
-  ValOption<long double> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
-                                  "0=< float", [](const long double& x) -> bool { return x >= 0; }};
+  ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
+                              "0=< float", [](const DetTime& x) -> bool { return x >= 0; }};
 
   ValOption<int> test{"test", "Activate change under review", 0, "int",
                       []([[maybe_unused]] const int& x) -> bool { return true; }};
