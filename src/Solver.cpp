@@ -1488,25 +1488,19 @@ State Solver::runAtMostOneDetection() {
   int currentUnits = trail.size();
   DetTime currentDetTime = stats.getDetTime();
   DetTime oldDetTime = currentDetTime;
-  std::vector<Var> readd;
   std::vector<Lit> previous;
   std::unordered_set<Lit> considered;
-  Lit next = heur->pickBranchLit(getPos());
-  readd.push_back(toVar(next));
+  Lit next = heur->nextInActOrder(0);  // first in activity order
   while (next != 0 &&
          (options.inpAMO.get() == 1 ||
           stats.ATMOSTONEDETTIME < options.inpAMO.get() * std::max(options.basetime.get(), currentDetTime))) {
     previous.clear();
     if (detectAtMostOne(-next, considered, previous) == State::UNSAT) return State::UNSAT;
     if (detectAtMostOne(next, considered, previous) == State::UNSAT) return State::UNSAT;
-    next = heur->pickBranchLit(getPos());
-    readd.push_back(toVar(next));
+    next = heur->nextInActOrder(next);
     oldDetTime = currentDetTime;
     currentDetTime = stats.getDetTime();
     stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
-  }
-  for (Var v : readd) {
-    heur->heap.insert(v);
   }
   stats.NATMOSTONEUNITS += trail.size() - currentUnits;
   return State::SUCCESS;

@@ -116,7 +116,12 @@ Var OrderHeap::removeMax() {
   return x;
 }
 
-Heuristic::Heuristic() : heap(activity) {}
+Heuristic::Heuristic() : heap(activity), nextDecision(0) {
+  actList.resize(1);
+  actList[0].prev = 0;
+  actList[0].next = 0;
+  actList[0].activity = std::numeric_limits<ActValV>::lowest();
+}
 
 int Heuristic::nVars() const { return phase.size(); }
 
@@ -139,11 +144,24 @@ void Heuristic::resize(int nvars) {
     heap.insert(v);
     phase[v] = -v;
   }
+  actList.resize(nvars);
+  for (Var v = old_n; v < nvars; ++v) {
+    ActNode& node = actList[v];
+    node.activity = -v / (double)INF;  // early variables have slightly higher initial activity
+    actList[v].next = v + 1;
+    actList[v].prev = v - 1;
+  }
+  Var oldTail = actList[0].prev;
+  actList[old_n].prev = oldTail;
+  actList[oldTail].next = old_n;
+  actList[0].prev = nvars - 1;
+  actList[nvars - 1].next = 0;
 }
 
 void Heuristic::undoOne(Var v, Lit l) {
   phase[v] = l;
   heap.insert(v);
+  nextDecision = 0;
 }
 
 void Heuristic::setPhase(Var v, Lit l) { phase[v] = l; }
@@ -152,7 +170,7 @@ Lit Heuristic::getPhase(Var v) const { return phase[v]; }
 ActValV Heuristic::getActivity(Var v) const {
   assert(v > 0);
   assert(v < nVars());
-  return activity[v];
+  return actList[v].activity;
 }
 
 void Heuristic::vDecayActivity() { v_vsids_inc *= (1 / options.varDecay.get()); }
@@ -176,14 +194,43 @@ void Heuristic::vBumpActivity(const std::vector<Lit>& lits) {
   if (options.varOrder) {
     return;
   }
+  double weightNew = options.varWeight.get();
+  double weightOld = 1 - weightNew;
+  ActValV nConfl = stats.NCONFL.z;
+  std::vector<Var> vars;
+  vars.reserve(lits.size());
   for (Lit l : lits) {
     if (l != 0) {
-      vBumpActivity(toVar(l));
+      Var v = toVar(l);
+      vBumpActivity(v);
+      actList[v].activity = weightOld * actList[v].activity + weightNew * nConfl;
+      vars.push_back(v);
     }
   }
+  std::sort(vars.begin(), vars.end(),
+            [&](const Var& v1, const Var& v2) { return actList[v1].activity > actList[v2].activity; });
+  Var current = actList[0].next;
+  for (Var v : vars) {
+    const ActValV& varAct = actList[v].activity;
+    while (actList[current].activity > varAct) {
+      current = actList[current].next;
+    }
+    if (current == v) continue;
+    // eject v from list
+    actList[actList[v].next].prev = actList[v].prev;
+    actList[actList[v].prev].next = actList[v].next;
+    // insert v before current
+    Var before = actList[current].prev;
+    actList[v].prev = before;
+    actList[v].next = current;
+    actList[before].next = v;
+    actList[current].prev = v;
+  }
+  nextDecision = 0;
 }
 
-Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
+Lit Heuristic::pickBranchLit2(const std::vector<int>& position) {
+  assert(testActList(position));
   Var next = 0;
   // Activity based decision:
   while (next == 0 || isKnown(position, next)) {
@@ -195,6 +242,51 @@ Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
   }
   assert(next != 0);
   return getPhase(next);
+}
+
+Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
+  assert(testActList(position));
+  assert(!isKnown(position, 0));  // so will eventually stop
+  assert(getPhase(0) == 0);       // so will return right phase
+  // Activity based decision:
+  if (nextDecision == 0) {
+    nextDecision = actList[0].next;
+  }
+  while (isKnown(position, nextDecision)) {
+    nextDecision = actList[nextDecision].next;
+  }
+  return getPhase(nextDecision);
+}
+
+Var Heuristic::nextInActOrder(Var v) const { return actList[v].next; }
+
+bool Heuristic::testActList(const std::vector<int>& position) const {
+  // printActList(position);
+  Var current = actList[0].next;
+  int tested = 1;
+  while (current != 0) {
+    ++tested;
+    Var next = actList[current].next;
+    assert(actList[current].activity >= actList[next].activity);
+    assert(actList[next].prev == current);
+    current = next;
+  }
+  assert(tested == (int)actList.size());
+  current = actList[nextDecision].prev;
+  while (nextDecision != 0 && current != 0) {
+    assert(isKnown(position, current));
+    current = actList[current].prev;
+  }
+  return true;
+}
+
+void Heuristic::printActList(const std::vector<int>& position) const {
+  std::cout << nextDecision << " :: ";
+  for (Var v = 0; v < (int)actList.size(); ++v) {
+    std::cout << actList[v].prev << "->" << v << "->" << actList[v].next << " " << actList[v].activity << " "
+              << isKnown(position, v) << " | ";
+  }
+  std::cout << std::endl;
 }
 
 }  // namespace xct

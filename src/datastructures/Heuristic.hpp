@@ -81,12 +81,21 @@ struct OrderHeap {  // segment tree (fast implementation of priority queue).
   Var removeMax();
 };
 
+struct ActNode {
+  Var prev;
+  Var next;
+  ActValV activity;
+};
+
 class Heuristic {
  public:
   std::vector<Lit> phase;
   std::vector<ActValV> activity;
   ActValV v_vsids_inc = 1.0;
   OrderHeap heap;
+
+  std::vector<ActNode> actList;
+  Var nextDecision;
 
   int nVars() const;
 
@@ -104,6 +113,11 @@ class Heuristic {
   void vBumpActivity(const std::vector<Lit>& lits);
 
   Lit pickBranchLit(const std::vector<int>& position);
+  Var nextInActOrder(Var v) const;
+  Lit pickBranchLit2(const std::vector<int>& position);
+
+  bool testActList(const std::vector<int>& position) const;
+  void printActList(const std::vector<int>& position) const;
 };
 
 }  // namespace xct
