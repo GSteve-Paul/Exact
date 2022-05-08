@@ -207,8 +207,8 @@ class Solver {
 
   void enqueueUnit(Lit l, Var v, CRef r);
   void uncheckedEnqueue(Lit l, CRef r);
-  void undoOne(bool updateHeur = true);
-  void backjumpTo(int lvl, bool updateHeur = true);
+  void undoOne();
+  void backjumpTo(int lvl);
   void decide(Lit l);
   void propagate(Lit l, CRef r);
   [[nodiscard]] State probe(Lit l, bool deriveImplications);

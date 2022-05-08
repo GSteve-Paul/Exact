@@ -86,6 +86,10 @@ void Heuristic::swapOrder(Var v1, Var v2) {
   actList[v2] = tmp1;
 }
 
+bool Heuristic::before(Var v1, Var v2) const {
+  return actList[v1].activity > actList[v2].activity || (actList[v1].activity == actList[v2].activity && v1 < v2);
+}
+
 void Heuristic::resize(int nvars) {
   assert(nvars == 1 || nvars > (int)phase.size());
   int old_n = nVars();  // at least one after initialization
@@ -125,9 +129,6 @@ ActValV Heuristic::getActivity(Var v) const {
 }
 
 void Heuristic::vBumpActivity(const std::vector<Lit>& lits) {
-  if (options.varOrder) {
-    return;
-  }
   double weightNew = options.varWeight.get();
   double weightOld = 1 - weightNew;
   ActValV nConfl = stats.NCONFL.z;
@@ -140,8 +141,7 @@ void Heuristic::vBumpActivity(const std::vector<Lit>& lits) {
       vars.push_back(v);
     }
   }
-  std::sort(vars.begin(), vars.end(),
-            [&](const Var& v1, const Var& v2) { return actList[v1].activity > actList[v2].activity; });
+  std::sort(vars.begin(), vars.end(), [&](const Var& v1, const Var& v2) { return before(v1, v2); });
   Var current = actList[0].next;
   for (Var v : vars) {
     const ActValV& varAct = actList[v].activity;

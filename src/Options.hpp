@@ -241,12 +241,9 @@ struct Options {
                              [](double x) -> bool { return 1 <= x; }};
   ValOption<int> lubyMult{"luby-mult", "Multiplier of the Luby restart sequence", 100, "1 =< int",
                           [](const int& x) -> bool { return x >= 1; }};
-  ValOption<double> varDecay{"var-decay", "Variable heuristic VSIDS decay", 0.9, "0.5 =< float < 1",
-                             [](const double& x) -> bool { return 0.5 <= x && x < 1; }};
   ValOption<double> varWeight{
       "var-weight", "Activity weight for latest conflict variables - 0 = fixed activity, 0.5 = ASID, 1 = VMTF.", 0.99,
       "0 =< float =< 1", [](const double& x) -> bool { return 0 <= x && x <= 1; }};
-  BoolOption varOrder{"var-order", "Use fixed variable order instead of VSIDS", false};
   BoolOption varSeparate{"var-separate", "Use separate phase and activity for linear and core-guided phases", true};
   BoolOption varInitAct{"var-init", "Initialize activity based on watches and initial local search call", false};
   ValOption<int> dbDecayLBD{"db-decay", "Decay term for the LBD of constraints", 1, "0 (no decay) =< int",
@@ -359,9 +356,7 @@ struct Options {
       &boundUpper,
       &lubyBase,
       &lubyMult,
-      &varDecay,
       &varWeight,
-      &varOrder,
       &varSeparate,
       &varInitAct,
       &dbDecayLBD,

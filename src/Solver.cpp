@@ -162,7 +162,7 @@ void Solver::uncheckedEnqueue(Lit l, CRef r) {
   trail.push_back(l);
 }
 
-void Solver::undoOne(bool updateHeur) {
+void Solver::undoOne() {
   assert(!trail.empty());
   ++stats.NTRAILPOPS;
   Lit l = trail.back();
@@ -175,7 +175,7 @@ void Solver::undoOne(bool updateHeur) {
   trail.pop_back();
   level[l] = INF;
   position[v] = INF;
-  if (updateHeur) heur->undoOne(v, l);
+  heur->undoOne(v, l);
   if (isDecided(reason, v)) {
     assert(!trail_lim.empty());
     assert(trail_lim.back() == (int)trail.size());
@@ -188,9 +188,9 @@ void Solver::undoOne(bool updateHeur) {
   implications.notifyBackjump();
 }
 
-void Solver::backjumpTo(int lvl, bool updateHeur) {
+void Solver::backjumpTo(int lvl) {
   assert(lvl >= 0);
-  while (decisionLevel() > lvl) undoOne(updateHeur);
+  while (decisionLevel() > lvl) undoOne();
 }
 
 void Solver::decide(Lit l) {
@@ -1310,7 +1310,7 @@ State Solver::probeRestart(Lit next) {
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       trailSet.add(trail[i]);
     }
-    backjumpTo(0, false);
+    backjumpTo(0);
     std::vector<Lit> newUnits;
     State state = probe(next, true);
     if (state == State::UNSAT) {
@@ -1325,7 +1325,7 @@ State Solver::probeRestart(Lit next) {
         }
       }
       if (!newUnits.empty()) {
-        backjumpTo(0, false);
+        backjumpTo(0);
         for (Lit l : newUnits) {
           assert(!isUnit(getLevel(), -l));
           if (!isUnit(getLevel(), l)) {
@@ -1377,7 +1377,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
   for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
     candidates.push_back(trail[i]);
   }
-  backjumpTo(0, false);
+  backjumpTo(0);
 
   if (!previousProbe.empty()) {
     IntSet& previous = isPool.take();
@@ -1426,7 +1426,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       trailSet.add(trail[i]);
     }
-    backjumpTo(0, false);
+    backjumpTo(0);
     for (Lit l : cardLits) {
       if (trailSet.has(-l) && isUnknown(getPos(), l)) {
         assert(decisionLevel() == 0);

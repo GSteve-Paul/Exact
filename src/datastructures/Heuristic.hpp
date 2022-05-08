@@ -89,6 +89,7 @@ class Heuristic {
 
   ActValV getActivity(Var v) const;
   void vBumpActivity(const std::vector<Lit>& lits);
+  bool before(Var v1, Var v2) const;
 
   Lit pickBranchLit(const std::vector<int>& position);
   Var nextInActOrder(Var v) const;
