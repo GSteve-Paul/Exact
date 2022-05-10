@@ -70,7 +70,7 @@ Heuristic::Heuristic() : nextDecision(0) {
   actList.resize(1);
   actList[0].prev = 0;
   actList[0].next = 0;
-  actList[0].activity = std::numeric_limits<ActValV>::lowest();
+  actList[0].activity = std::numeric_limits<ActValV>::max();
 }
 
 int Heuristic::nVars() const { return phase.size(); }
@@ -101,22 +101,24 @@ void Heuristic::resize(int nvars) {
     node.activity = -v / static_cast<double>(INF);  // early variables have slightly higher initial activity
     actList[v].next = v + 1;
     actList[v].prev = v - 1;
+    assert(before(nextDecision, v));
   }
   Var oldTail = actList[0].prev;
   actList[old_n].prev = oldTail;
   actList[oldTail].next = old_n;
   actList[0].prev = nvars - 1;
   actList[nvars - 1].next = 0;
-  if (options.randomSeed.get() != 1) {
+  if (options.test.get() != 0 || options.randomSeed.get() != 1) {
     for (Var v = old_n; v < nvars; ++v) {
-      swapOrder(v, aux::getRand(1, nvars));
+      swapOrder(v, aux::getRand(1, v));  // swap to the front
+      if (before(v, nextDecision)) nextDecision = v;
     }
   }
 }
 
 void Heuristic::undoOne(Var v, Lit l) {
   phase[v] = l;
-  nextDecision = 0;
+  if (before(v, nextDecision)) nextDecision = v;
 }
 
 void Heuristic::setPhase(Var v, Lit l) { phase[v] = l; }
@@ -128,24 +130,30 @@ ActValV Heuristic::getActivity(Var v) const {
   return actList[v].activity;
 }
 
-void Heuristic::vBumpActivity(const std::vector<Lit>& lits) {
+void Heuristic::vBumpActivity(const std::vector<Lit>& lits, const std::vector<int>& position) {
   double weightNew = options.varWeight.get();
   double weightOld = 1 - weightNew;
   ActValV nConfl = stats.NCONFL.z;
   std::vector<Var> vars;
   vars.reserve(lits.size());
   for (Lit l : lits) {
-    if (l != 0) {
-      Var v = toVar(l);
-      actList[v].activity = weightOld * actList[v].activity + weightNew * nConfl;
-      vars.push_back(v);
-    }
+    assert(l != 0);
+    Var v = toVar(l);
+    actList[v].activity = weightOld * actList[v].activity + weightNew * nConfl;
+    vars.push_back(v);
   }
   std::sort(vars.begin(), vars.end(), [&](const Var& v1, const Var& v2) { return before(v1, v2); });
+  for (Var v : vars) {
+    if (before(nextDecision, v)) {
+      break;  // vars is sorted
+    } else if (isUnknown(position, v)) {
+      nextDecision = v;
+      break;  // vars is sorted
+    }
+  }
   Var current = actList[0].next;
   for (Var v : vars) {
-    const ActValV& varAct = actList[v].activity;
-    while (actList[current].activity > varAct) {
+    while (current != 0 && before(current, v)) {
       current = actList[current].next;
     }
     if (current == v) continue;
@@ -159,7 +167,6 @@ void Heuristic::vBumpActivity(const std::vector<Lit>& lits) {
     actList[before].next = v;
     actList[current].prev = v;
   }
-  nextDecision = 0;
 }
 
 // NOTE: so far, this is only called when the returned lit will be decided shortly
@@ -187,13 +194,13 @@ bool Heuristic::testActList(const std::vector<int>& position) const {
   while (current != 0) {
     ++tested;
     Var next = actList[current].next;
-    assert(actList[current].activity >= actList[next].activity);
+    assert(next == 0 || before(current, next));
     assert(actList[next].prev == current);
     current = next;
   }
   assert(tested == (int)actList.size());
-  current = actList[nextDecision].prev;
-  while (nextDecision != 0 && current != 0) {
+  current = nextDecision == 0 ? 0 : actList[nextDecision].prev;
+  while (current != 0) {
     assert(isKnown(position, current));
     current = actList[current].prev;
   }

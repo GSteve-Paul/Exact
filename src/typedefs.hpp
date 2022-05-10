@@ -153,10 +153,6 @@ inline bool stillFits<bigint>([[maybe_unused]] const bigint& x) {
 }
 
 using ActValV = long double;
-const ActValV threehundredzeroes = 1e300;
-const ActValV actLimitV = threehundredzeroes * threehundredzeroes * threehundredzeroes * threehundredzeroes *
-                          threehundredzeroes * threehundredzeroes * threehundredzeroes *
-                          threehundredzeroes;  // ~1e2400 << 2^(2^13)
 using DetTime = long double;
 using StatNum = long double;
 

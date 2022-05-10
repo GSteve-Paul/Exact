@@ -391,7 +391,7 @@ resolve:
     if (confl->isAssertingBefore(level, decisionLevel()) != AssertionStatus::ASSERTING) goto resolve;
   }
 
-  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeys()); }, stats.HEURTIME);
+  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeys(), getPos()); }, stats.HEURTIME);
   isPool.release(actSet);
 
   assert(confl->hasNegativeSlack(level));
@@ -490,7 +490,7 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
     undoOne();
   }
 
-  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeys()); }, stats.HEURTIME);
+  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeys(), getPos()); }, stats.HEURTIME);
   isPool.release(actSet);
 
   // weaken non-falsifieds
@@ -1295,6 +1295,7 @@ SolveState Solver::solve() {
       } else {
         decide(next);
       }
+      assert(isKnown(getPos(), next));
     }
   }
 }
