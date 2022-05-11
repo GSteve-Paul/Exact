@@ -397,6 +397,8 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
     if (reformObjective(core) == State::UNSAT) return State::UNSAT;
   }
   checkLazyVariables();
+  stats.LASTLB.z = static_cast<long double>(lower_bound);
+  stats.LASTUB.z = static_cast<long double>(upper_bound);
   printObjBounds();
   return State::SUCCESS;
 }
@@ -421,6 +423,8 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   if (lastUpperBound == ID_Unsat) return State::UNSAT;
   if (harden() == State::UNSAT) return State::UNSAT;
 
+  stats.LASTLB.z = static_cast<long double>(lower_bound);
+  stats.LASTUB.z = static_cast<long double>(upper_bound);
   printObjBounds();
   return State::SUCCESS;
 }
@@ -515,11 +519,23 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
         std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
         litcoefs.reserve(reformObj->nVars());
-        for (Var v : reformObj->getVars()) {
-          assert(reformObj->getLit(v) != 0);
-          double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));
-          if (cf >= stratLim) {
-            litcoefs.emplace_back(cf, v);
+        if (!options.cgReform.is("always")) {
+          for (Var v : reformObj->getVars()) {
+            assert(reformObj->getLit(v) != 0);
+            if (!solver.isOrig(v)) continue;
+            double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));
+            if (cf >= stratLim) {
+              litcoefs.emplace_back(cf, v);
+            }
+          }
+        }
+        if ((options.cgReform.is("depletion") && litcoefs.empty()) || options.cgReform.is("always")) {
+          for (Var v : reformObj->getVars()) {
+            assert(reformObj->getLit(v) != 0);
+            double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));
+            if (cf >= stratLim) {
+              litcoefs.emplace_back(cf, v);
+            }
           }
         }
         std::sort(litcoefs.begin(), litcoefs.end(), [](const Term<double>& t1, const Term<double>& t2) {

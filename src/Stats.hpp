@@ -317,6 +317,9 @@ struct Stats {
   Stat TABUFLIPS{0, "number of local search literal flips"};
   Stat NTABUUNITS{0, "units derived during local search"};
 
+  Stat LASTLB{-1, "best lower bound"};
+  Stat LASTUB{-1, "best upper bound"};
+
   std::chrono::steady_clock::time_point startTime;
   std::chrono::steady_clock::time_point runStartTime;
 
@@ -462,6 +465,8 @@ struct Stats {
       &TABUSOLS,
       &TABUFLIPS,
       &NTABUUNITS,
+      &LASTUB,
+      &LASTLB,
   };
 
   [[nodiscard]] inline StatNum getTime() const {
