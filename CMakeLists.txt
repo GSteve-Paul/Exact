@@ -86,6 +86,7 @@ add_definitions("-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH}")
 add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 set(source_files
         src/globals.cpp
