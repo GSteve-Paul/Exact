@@ -88,6 +88,7 @@ class Heuristic {
   Lit getPhase(Var v) const;
 
   ActValV getActivity(Var v) const;
+  void randomize(const std::vector<int>& position);
   void vBumpActivity(const std::vector<Lit>& lits, const std::vector<int>& position);
   bool before(Var v1, Var v2) const;
 

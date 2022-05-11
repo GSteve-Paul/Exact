@@ -75,17 +75,6 @@ Heuristic::Heuristic() : nextDecision(0) {
 
 int Heuristic::nVars() const { return phase.size(); }
 
-void Heuristic::swapOrder(Var v1, Var v2) {
-  ActNode tmp1 = actList[v1];
-  actList[tmp1.prev].next = v2;
-  actList[tmp1.next].prev = v2;
-  ActNode tmp2 = actList[v2];
-  actList[tmp2.prev].next = v1;
-  actList[tmp2.next].prev = v1;
-  actList[v1] = tmp2;
-  actList[v2] = tmp1;
-}
-
 bool Heuristic::before(Var v1, Var v2) const {
   return actList[v1].activity > actList[v2].activity || (actList[v1].activity == actList[v2].activity && v1 < v2);
 }
@@ -108,12 +97,6 @@ void Heuristic::resize(int nvars) {
   actList[oldTail].next = old_n;
   actList[0].prev = nvars - 1;
   actList[nvars - 1].next = 0;
-  if (options.test.get() != 0 || options.randomSeed.get() != 1) {
-    for (Var v = old_n; v < nvars; ++v) {
-      swapOrder(v, aux::getRand(1, v));  // swap to the front
-      if (before(v, nextDecision)) nextDecision = v;
-    }
-  }
 }
 
 void Heuristic::undoOne(Var v, Lit l) {
@@ -130,10 +113,21 @@ ActValV Heuristic::getActivity(Var v) const {
   return actList[v].activity;
 }
 
+void Heuristic::randomize(const std::vector<int>& position) {
+  std::vector<Lit> vars;
+  vars.reserve(actList.size() - 1);
+  for (Var v = 1; v < (int)actList.size(); ++v) {
+    vars.push_back(v);
+    actList[v].activity += aux::getRand(0, INF) / static_cast<double>(INF);
+  }
+  nextDecision = 0;
+  vBumpActivity(vars, position);
+}
+
 void Heuristic::vBumpActivity(const std::vector<Lit>& lits, const std::vector<int>& position) {
   double weightNew = options.varWeight.get();
   double weightOld = 1 - weightNew;
-  ActValV nConfl = stats.NCONFL.z;
+  ActValV nConfl = stats.NCONFL.z + 1;
   std::vector<Var> vars;
   vars.reserve(lits.size());
   for (Lit l : lits) {
@@ -167,11 +161,11 @@ void Heuristic::vBumpActivity(const std::vector<Lit>& lits, const std::vector<in
     actList[before].next = v;
     actList[current].prev = v;
   }
+  assert(testActList(position));
 }
 
 // NOTE: so far, this is only called when the returned lit will be decided shortly
 Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
-  assert(testActList(position));
   assert(getPhase(0) == 0);        // so will return right phase
   assert(isUnknown(position, 0));  // so will eventually stop
   // Activity based decision:
@@ -211,7 +205,7 @@ void Heuristic::printActList(const std::vector<int>& position) const {
   std::cout << nextDecision << " :: ";
   for (Var v = 0; v < (int)actList.size(); ++v) {
     std::cout << actList[v].prev << "->" << v << "->" << actList[v].next << " " << actList[v].activity << " "
-              << isKnown(position, v) << " | ";
+              << isKnown(position, v) << std::endl;
   }
   std::cout << std::endl;
 }

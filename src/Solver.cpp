@@ -126,6 +126,9 @@ void Solver::init(const CeArb& obj) {
   }
   nconfl_to_restart = options.lubyMult.get();
   nconfl_to_reduce = 1000;
+  if (options.test.get() == 1 || options.randomSeed.get() != 1) {
+    heur->randomize(getPos());
+  }
 }
 
 // ---------------------------------------------------------------------
