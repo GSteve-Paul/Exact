@@ -124,17 +124,13 @@ void Heuristic::randomize(const std::vector<int>& position) {
   vBumpActivity(vars, position);
 }
 
-void Heuristic::vBumpActivity(const std::vector<Lit>& lits, const std::vector<int>& position) {
+void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position) {
   double weightNew = options.varWeight.get();
   double weightOld = 1 - weightNew;
   ActValV nConfl = stats.NCONFL.z + 1;
-  std::vector<Var> vars;
-  vars.reserve(lits.size());
-  for (Lit l : lits) {
-    assert(l != 0);
-    Var v = toVar(l);
+  for (Var v : vars) {
+    assert(v > 0);  // not a literal, not 0
     actList[v].activity = weightOld * actList[v].activity + weightNew * nConfl;
-    vars.push_back(v);
   }
   std::sort(vars.begin(), vars.end(), [&](const Var& v1, const Var& v2) { return before(v1, v2); });
   for (Var v : vars) {

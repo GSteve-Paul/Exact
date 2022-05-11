@@ -100,6 +100,7 @@ void IntSet::clear() {
 }
 
 [[nodiscard]] const std::vector<int>& IntSet::getKeys() const { return keys; }
+[[nodiscard]] std::vector<int>& IntSet::getKeysMutable() { return keys; }
 
 [[nodiscard]] bool IntSet::has(int key) const {
   return index.reserved() > (unsigned int)2 * std::abs(key) && index[key] != _unused_();

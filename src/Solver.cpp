@@ -127,7 +127,7 @@ void Solver::init(const CeArb& obj) {
   nconfl_to_restart = options.lubyMult.get();
   nconfl_to_reduce = 1000;
   if (options.test.get() == 1 || options.randomSeed.get() != 1) {
-    heur->randomize(getPos());
+    aux::timeCallVoid([&] { heur->randomize(getPos()); }, stats.HEURTIME);
   }
 }
 
@@ -359,9 +359,7 @@ CeSuper Solver::analyze(const CeSuper& conflict) {
 
   IntSet& actSet = isPool.take();  // will hold the literals that need their activity bumped
   for (Var v : confl->getVars()) {
-    if (options.bumpLits) {
-      actSet.add(confl->getLit(v));
-    } else if (!options.bumpOnlyFalse || isFalse(level, confl->getLit(v))) {
+    if (isFalse(level, confl->getLit(v))) {
       actSet.add(v);
     }
   }
@@ -390,18 +388,18 @@ resolve:
     undoOne();
   }
   if (options.learnedMin && decisionLevel() > 0) {
-    minimize(confl, actSet);
+    minimize(confl);
     if (confl->isAssertingBefore(level, decisionLevel()) != AssertionStatus::ASSERTING) goto resolve;
   }
 
-  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeys(), getPos()); }, stats.HEURTIME);
+  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeysMutable(), getPos()); }, stats.HEURTIME);
   isPool.release(actSet);
 
   assert(confl->hasNegativeSlack(level));
   return confl;
 }
 
-void Solver::minimize(const CeSuper& conflict, IntSet& actSet) {
+void Solver::minimize(const CeSuper& conflict) {
   assert(conflict->isSaturated());
   assert(conflict->isAssertingBefore(getLevel(), decisionLevel()) == AssertionStatus::ASSERTING);
   IntSet& saturatedLits = isPool.take();
@@ -427,8 +425,8 @@ void Solver::minimize(const CeSuper& conflict, IntSet& actSet) {
     Lit l = pr.second;
     assert(conflict->getLit(toVar(l)) != 0);
     Constr& reasonC = ca[reason[toVar(l)]];
-    int lbd = aux::timeCall<bool>([&] { return reasonC.subsumeWith(conflict, -l, *this, actSet, saturatedLits); },
-                                  stats.MINTIME);
+    int lbd =
+        aux::timeCall<bool>([&] { return reasonC.subsumeWith(conflict, -l, *this, saturatedLits); }, stats.MINTIME);
     if (lbd > 0) {
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered();
@@ -493,7 +491,7 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
     undoOne();
   }
 
-  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeys(), getPos()); }, stats.HEURTIME);
+  aux::timeCallVoid([&] { heur->vBumpActivity(actSet.getKeysMutable(), getPos()); }, stats.HEURTIME);
   isPool.release(actSet);
 
   // weaken non-falsifieds

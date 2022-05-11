@@ -201,22 +201,17 @@ struct ConstrExpSuper {
   virtual int resolveWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
   virtual int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
-                          const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits) = 0;
+                          const std::vector<int>& pos, IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Lit l,
-                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
-                          IntSet& saturatedLits) = 0;
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
-                          IntSet& saturatedLits) = 0;
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
-                          IntSet& saturatedLits) = 0;
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Lit l,
-                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
-                          IntSet& saturatedLits) = 0;
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
   virtual int subsumeWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Lit l,
-                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet,
-                          IntSet& saturatedLits) = 0;
+                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
 };
 std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce);
 std::ostream& operator<<(std::ostream& o, const CeSuper& ce);
@@ -420,17 +415,17 @@ struct ConstrExp final : public ConstrExpSuper {
   int resolveWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
   int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+                  const std::vector<int>& pos, IntSet& saturatedLits);
   int subsumeWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Lit l, const IntMap<int>& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+                  const std::vector<int>& pos, IntSet& saturatedLits);
   int subsumeWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Lit l, const IntMap<int>& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+                  const std::vector<int>& pos, IntSet& saturatedLits);
   int subsumeWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Lit l, const IntMap<int>& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+                  const std::vector<int>& pos, IntSet& saturatedLits);
   int subsumeWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Lit l, const IntMap<int>& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+                  const std::vector<int>& pos, IntSet& saturatedLits);
   int subsumeWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Lit l, const IntMap<int>& level,
-                  const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits);
+                  const std::vector<int>& pos, IntSet& saturatedLits);
 
  private:
   template <typename CF, typename DG>
@@ -564,11 +559,8 @@ struct ConstrExp final : public ConstrExpSuper {
 
     for (Var v : reason->vars) {
       Lit ll = reason->getLit(v);
-      if (options.bumpLits) {
-        actSet.add(ll);
-      } else {
-        if (!options.bumpOnlyFalse || isFalse(level, ll)) actSet.add(v);
-        if (options.bumpCanceling && getLit(v) == -ll) actSet.add(-v);
+      if (isFalse(level, ll)) {
+        actSet.add(v);
       }
     }
 
@@ -591,7 +583,7 @@ struct ConstrExp final : public ConstrExpSuper {
   //@post: variable vector vars is not changed, but coefs[toVar(toSubsume)] may become 0
   template <typename CF, typename DG>
   int genericSubsume(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Lit toSubsume,
-                     const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet, IntSet& saturatedLits) {
+                     const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) {
     assert(getCoef(-toSubsume) > 0);
     assert(isSaturated());
 
@@ -629,10 +621,6 @@ struct ConstrExp final : public ConstrExpSuper {
       }
       // saturate, divide, multiply, add, saturate
       Logger::proofMult(Logger::proofDiv(proofBuffer << "s ", weakenedDeg), mult) << "+ s ";
-    }
-
-    if (options.bumpLits || options.bumpCanceling) {
-      actSet.add(toSubsume);
     }
 
     IntSet& lbdSet = isPool.take();

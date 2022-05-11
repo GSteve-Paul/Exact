@@ -85,6 +85,9 @@ struct IntSet {  // TODO: template to long long, int128, ...?
 
   void clear();
   [[nodiscard]] const std::vector<int>& getKeys() const;
+  [[nodiscard]] std::vector<int>& getKeysMutable();
+  // NOTE: mutating the keys messes up internal data structure.
+  // Only use when IntSet will be cleared afterwards.
 
   [[nodiscard]] bool has(int key) const;
   void add(int key);

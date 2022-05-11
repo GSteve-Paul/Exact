@@ -201,8 +201,8 @@ WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver
 int Clause::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const {
   return confl->resolveWith(data, size, 1, id, l, solver.getLevel(), solver.getPos(), actSet);
 }
-int Clause::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size, 1, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
+int Clause::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
+  return confl->subsumeWith(data, size, 1, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 CeSuper Clause::toExpanded(ConstrExpPools& cePools) const {
@@ -352,8 +352,8 @@ WatchStatus Cardinality::checkForPropagation(CRef cr, int& idx, [[maybe_unused]]
 int Cardinality::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const {
   return confl->resolveWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), actSet);
 }
-int Cardinality::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
+int Cardinality::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
+  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 CeSuper Cardinality::toExpanded(ConstrExpPools& cePools) const {
@@ -487,8 +487,8 @@ int Counting<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& 
   return confl->resolveWith(data, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
-int Counting<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
+int Counting<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
+  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
@@ -680,8 +680,8 @@ int Watched<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& a
   return confl->resolveWith(data, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
-int Watched<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
+int Watched<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
+  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
@@ -829,9 +829,8 @@ int CountingSafe<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver, IntS
   return confl->resolveWith(terms, size, *degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
-int CountingSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet,
-                                      IntSet& saturatedLits) const {
-  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
+int CountingSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
+  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
@@ -1025,9 +1024,8 @@ int WatchedSafe<CF, DG>::resolveWith(CeSuper confl, Lit l, Solver& solver, IntSe
   return confl->resolveWith(terms, size, *degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
-int WatchedSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet,
-                                     IntSet& saturatedLits) const {
-  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos(), actSet, saturatedLits);
+int WatchedSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
+  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>

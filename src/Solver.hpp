@@ -227,7 +227,7 @@ class Solver {
   // Conflict analysis
 
   [[nodiscard]] CeSuper analyze(const CeSuper& confl);
-  void minimize(const CeSuper& conflict, IntSet& actSet);
+  void minimize(const CeSuper& conflict);
   [[nodiscard]] State extractCore(const CeSuper& confl, Lit l_assump = 0);
 
   // ---------------------------------------------------------------------
