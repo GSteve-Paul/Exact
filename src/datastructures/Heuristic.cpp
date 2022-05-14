@@ -87,7 +87,7 @@ void Heuristic::resize(int nvars) {
   for (Var v = old_n; v < nvars; ++v) {
     phase[v] = -v;
     ActNode& node = actList[v];
-    node.activity = -v / static_cast<double>(INF);  // early variables have slightly higher initial activity
+    node.activity = -v / static_cast<ActValV>(INF);  // early variables have slightly higher initial activity
     actList[v].next = v + 1;
     actList[v].prev = v - 1;
     assert(before(nextDecision, v));
@@ -118,7 +118,7 @@ void Heuristic::randomize(const std::vector<int>& position) {
   vars.reserve(actList.size() - 1);
   for (Var v = 1; v < (int)actList.size(); ++v) {
     vars.push_back(v);
-    actList[v].activity += aux::getRand(0, INF) / static_cast<double>(INF);
+    actList[v].activity += aux::getRand(0, INF) / static_cast<ActValV>(INF);
   }
   nextDecision = 0;
   vBumpActivity(vars, position);
