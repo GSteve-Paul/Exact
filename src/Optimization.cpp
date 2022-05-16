@@ -530,6 +530,7 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
           }
         }
         if ((options.cgReform.is("depletion") && litcoefs.empty()) || options.cgReform.is("always")) {
+          if (stats.DEPLTIME.z == -1) stats.DEPLTIME.z = stats.getTime();
           for (Var v : reformObj->getVars()) {
             assert(reformObj->getLit(v) != 0);
             double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));

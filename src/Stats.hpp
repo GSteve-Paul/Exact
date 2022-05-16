@@ -319,6 +319,7 @@ struct Stats {
 
   Stat LASTLB{-1, "best lower bound"};
   Stat LASTUB{-1, "best upper bound"};
+  Stat DEPLTIME{-1, "depletion time"};
 
   std::chrono::steady_clock::time_point startTime;
   std::chrono::steady_clock::time_point runStartTime;
@@ -467,6 +468,7 @@ struct Stats {
       &NTABUUNITS,
       &LASTUB,
       &LASTLB,
+      &DEPLTIME,
   };
 
   [[nodiscard]] inline StatNum getTime() const {
