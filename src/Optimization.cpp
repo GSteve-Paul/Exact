@@ -182,6 +182,10 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& o
   origObj->copyTo(reformObj);
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   reformObj->removeEqualities(solver.getEqualities(), false);
+  if (stats.DEPLTIME.z == -1 &&
+      std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(), [&](Var v) { return solver.isOrig(v); })) {
+    stats.DEPLTIME.z = stats.getTime();
+  }
 
   reply = SolveState::INPROCESSED;
   stratDiv = options.cgStrat.get();
@@ -522,6 +526,10 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
       if (!solver.hasAssumptions()) {
         reformObj->removeEqualities(solver.getEqualities(), false);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+        if (stats.DEPLTIME.z == -1 && std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(),
+                                                   [&](Var v) { return solver.isOrig(v); })) {
+          stats.DEPLTIME.z = stats.getTime();
+        }
         std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
         litcoefs.reserve(reformObj->nVars());
         if (!options.cgReform.is("always")) {
