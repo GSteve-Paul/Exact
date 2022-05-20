@@ -142,7 +142,6 @@ struct ConstrExpSuper {
   virtual void weakenExcept(const IntSet& exceptLits) = 0;
 
   virtual bool hasNegativeSlack(const IntMap<int>& level) const = 0;
-  virtual bool hasNegativeSlack(const IntSet& assumptions) const = 0;
   virtual bool isTautology() const = 0;
   virtual bool isInconsistency() const = 0;
   virtual bool isSatisfied(const std::vector<Lit>& assignment) const = 0;
@@ -164,6 +163,7 @@ struct ConstrExpSuper {
   virtual bool largestCoefFitsIn(int bits) const = 0;
 
   virtual bool divideByGCD() = 0;
+  virtual bool divideTo(double limit, const IntMap<int>& level) = 0;
   virtual AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const = 0;
   virtual std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos) const = 0;
   virtual void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos) = 0;
@@ -286,8 +286,6 @@ struct ConstrExp final : public ConstrExpSuper {
 
   LARGE getSlack(const IntMap<int>& level) const;
   bool hasNegativeSlack(const IntMap<int>& level) const;
-  LARGE getSlack(const IntSet& assumptions) const;
-  bool hasNegativeSlack(const IntSet& assumptions) const;
   bool isTautology() const;
   bool isInconsistency() const;
   bool isSatisfied(const std::vector<Lit>& assignment) const;
@@ -357,6 +355,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
+  bool divideTo(double limit, const IntMap<int>& level);
   AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level

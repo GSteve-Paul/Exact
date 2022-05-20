@@ -109,6 +109,7 @@ void Solver::setNbVars(int nvars, bool orig) {
   tabuSol.resize(nvars + 1, 0);
   lit2cons.resize(nvars, {});
   lit2consOldSize.resize(nvars, std::numeric_limits<int>::max());
+  assumptions.resize(nvars + 1);  // ensure assumptions.getIndex() can be used as level
   if (orig) {
     for (Var v = n + 1; v <= nvars; ++v) {
       tabuSol[v] = -v;
@@ -495,7 +496,7 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   isPool.release(actSet);
 
   // weaken non-falsifieds
-  assert(lastCore->hasNegativeSlack(assumptions));
+  assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
   assert(!lastCore->isTautology());
   assert(lastCore->isSaturated());
   for (Var v : lastCore->getVars()) {
@@ -503,13 +504,14 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
       lastCore->weaken(v);
     }
   }
-  assert(lastCore->hasNegativeSlack(assumptions));
+  assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
   ID res = aux::timeCall<ID>([&] { return learnConstraint(lastCore, Origin::LEARNED); },
                              stats.LEARNTIME);  // NOTE: takes care of inconsistency
   if (res == ID_Unsat) return State::UNSAT;
   backjumpTo(0);
   lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true);
-  if (!lastCore->hasNegativeSlack(assumptions)) {  // apparently unit clauses were propagated during learnConstraint
+  if (!lastCore->hasNegativeSlack(assumptions.getIndex())) {
+    // apparently unit clauses were propagated during learnConstraint
     lastCore.makeNull();
   }
   return State::SUCCESS;
@@ -1215,7 +1217,7 @@ SolveState Solver::solve() {
       } else {
         State state = aux::timeCall<State>([&] { return extractCore(confl); }, stats.CATIME);
         if (state == State::UNSAT) return SolveState::UNSAT;
-        assert(!lastCore || lastCore->hasNegativeSlack(assumptions));
+        assert(!lastCore || lastCore->hasNegativeSlack(assumptions.getIndex()));
         return SolveState::INCONSISTENT;
       }
     } else {  // no conflict
@@ -1259,7 +1261,7 @@ SolveState Solver::solve() {
               State state = aux::timeCall<State>(
                   [&] { return extractCore(ca[reason[toVar(l)]].toExpanded(cePools), -l); }, stats.CATIME);
               if (state == State::UNSAT) return SolveState::UNSAT;
-              assert(!lastCore || lastCore->hasNegativeSlack(assumptions));
+              assert(!lastCore || lastCore->hasNegativeSlack(assumptions.getIndex()));
               return SolveState::INCONSISTENT;
             }
           }

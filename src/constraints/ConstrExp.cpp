@@ -419,19 +419,6 @@ bool ConstrExp<SMALL, LARGE>::hasNegativeSlack(const IntMap<int>& level) const {
 }
 
 template <typename SMALL, typename LARGE>
-LARGE ConstrExp<SMALL, LARGE>::getSlack(const IntSet& assumptions) const {
-  LARGE slack = -rhs;
-  for (Var v : vars)
-    if (assumptions.has(v) || (!assumptions.has(-v) && coefs[v] > 0)) slack += coefs[v];
-  return slack;
-}
-
-template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::hasNegativeSlack(const IntSet& assumptions) const {
-  return getSlack(assumptions) < 0;
-}
-
-template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isTautology() const {
   return getDegree() <= 0;
 }
@@ -988,6 +975,18 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
   }
   assert(_gcd > 1);
   divideRoundUp(_gcd);
+  return true;
+}
+
+template <typename SMALL, typename LARGE>
+bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const IntMap<int>& level) {
+  LARGE maxVal = getCutoffVal();
+  if (maxVal <= static_cast<LARGE>(limit)) {
+    return false;
+  }
+  LARGE div = aux::ceildiv(maxVal, static_cast<LARGE>(limit));  // maxVal / div =< limit
+  assert(div > 1);
+  weakenDivideRound(div, level, 0);  // TODO: weakenDivideRoundOrdered?
   return true;
 }
 

@@ -152,6 +152,7 @@ class Optimization final : public OptimizationSuper {
 
   Ce32 reduceToCardinality(const CeSuper& core);                 // does not modify core
   [[nodiscard]] State reformObjective(const CeSuper& core);      // modifies core
+  [[nodiscard]] State reformObjectiveLog(const CeSuper& core);   // modifies core
   [[nodiscard]] State handleInconsistency(const CeSuper& core);  // modifies core
   [[nodiscard]] State handleNewSolution(const std::vector<Lit>& sol);
 

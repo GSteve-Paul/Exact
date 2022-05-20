@@ -300,9 +300,18 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // 
 }
 
 template <typename SMALL, typename LARGE>
+State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
+  core->divideTo(limitAbs<int, long long>(), solver.getAssumptions().getIndex());
+  return State::SUCCESS;
+}
+
+template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // modifies core
+  State s = reformObjectiveLog(core);
+  if (s != State::SUCCESS) return s;
+  assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
   Ce32 cardCore = reduceToCardinality(core);
-  assert(cardCore->hasNegativeSlack(solver.getAssumptions()));
+  assert(cardCore->hasNegativeSlack(solver.getAssumptions().getIndex()));
   assert(cardCore->hasNoZeroes());
   stats.NCGNONCLAUSALCORES += !cardCore->isClause();
 
