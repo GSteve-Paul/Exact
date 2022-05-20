@@ -145,19 +145,19 @@ OptimizationSuper::OptimizationSuper(Solver& s) : solver(s) {}
 
 Optim OptimizationSuper::make(const CeArb& obj, Solver& solver) {
   bigint maxVal = obj->getCutoffVal();
-  if (maxVal <= limit32) {  // TODO: try to internalize this check in ConstrExp
+  if (maxVal <= static_cast<bigint>(limitAbs<int, long long>())) {  // TODO: try to internalize this check in ConstrExp
     Ce32 o = cePools.take32();
     obj->copyTo(o);
     return std::make_shared<Optimization<int, long long>>(o, solver);
-  } else if (maxVal <= limit64) {
+  } else if (maxVal <= static_cast<bigint>(limitAbs<long long, int128>())) {
     Ce64 o = cePools.take64();
     obj->copyTo(o);
     return std::make_shared<Optimization<long long, int128>>(o, solver);
-  } else if (maxVal <= static_cast<bigint>(limit96)) {
+  } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
     Ce96 o = cePools.take96();
     obj->copyTo(o);
     return std::make_shared<Optimization<int128, int128>>(o, solver);
-  } else if (maxVal <= static_cast<bigint>(limit128)) {
+  } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
     Ce128 o = cePools.take128();
     obj->copyTo(o);
     return std::make_shared<Optimization<int128, int256>>(o, solver);

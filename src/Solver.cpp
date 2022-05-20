@@ -325,19 +325,19 @@ WatchStatus Solver::checkForPropagation(CRef cr, int& idx, Lit p) {
 // Conflict analysis
 
 CeSuper getAnalysisCE(const CeSuper& conflict, int bitsOverflow, ConstrExpPools& cePools) {
-  if (bitsOverflow == 0 || bitsOverflow > conflLimit128) {
+  if (bitsOverflow == 0 || bitsOverflow > limitBitConfl<int128, int256>()) {
     CeArb confl = cePools.takeArb();
     conflict->copyTo(confl);
     return confl;
-  } else if (options.bitsOverflow.get() > conflLimit96) {
+  } else if (options.bitsOverflow.get() > limitBitConfl<int128, int128>()) {
     Ce128 confl = cePools.take128();
     conflict->copyTo(confl);
     return confl;
-  } else if (options.bitsOverflow.get() > conflLimit64) {
+  } else if (options.bitsOverflow.get() > limitBitConfl<long long, int128>()) {
     Ce96 confl = cePools.take96();
     conflict->copyTo(confl);
     return confl;
-  } else if (options.bitsOverflow.get() > conflLimit32) {
+  } else if (options.bitsOverflow.get() > limitBitConfl<int, long long>()) {
     Ce64 confl = cePools.take64();
     conflict->copyTo(confl);
     return confl;

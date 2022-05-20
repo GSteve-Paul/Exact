@@ -82,21 +82,61 @@ const int INF = 1e9 + 1;  // 1e9 < 30 bits is the maximum number of variables in
 // NOTE: 31 bits is not possible due to the idx entry in the Watch struct
 const long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long long range captured by double
 
-const int limit32bit = 29;
-const int limit32 = 1e9;  // 2^29-2^30
-const int limit64bit = 60;
-const long long limit64 = 2e18;  // 2^60-2^61
-const int limit96bit = 92;
-const double limit96 = 8e27;  // 2^92-2^93
-const int limit128bit = 124;
-const double limit128 = 32e36;  // 2^124-2^125
-const int limit256bit = 252;
-const double limit256 = 1e76;  // 2^252-2^253
+template <typename CF, typename DG>
+inline double limitAbs() {
+  assert(false);
+  return -1;
+}
+template <>
+inline double limitAbs<int, long long>() {
+  return 1e9;  // 2^29-2^30
+}
+template <>
+inline double limitAbs<long long, int128>() {
+  return 2e18;  // 2^60-2^61
+}
+template <>
+inline double limitAbs<int128, int128>() {
+  return 8e27;  // 2^92-2^93
+}
+template <>
+inline double limitAbs<int128, int256>() {
+  return 32e36;  // 2^124-2^125
+}
+template <>
+inline double limitAbs<int256, bigint>() {
+  return 1e76;  // 2^252-2^253
+}
 
-const int conflLimit32 = limit32bit / 2;
-const int conflLimit64 = limit64bit / 2;
-const int conflLimit96 = limit96bit / 2;
-const int conflLimit128 = limit128bit / 2;
+template <typename CF, typename DG>
+inline int limitBit() {
+  assert(false);
+  return -1;
+}
+template <>
+inline int limitBit<int, long long>() {
+  return 29;
+}
+template <>
+inline int limitBit<long long, int128>() {
+  return 60;
+}
+template <>
+inline int limitBit<int128, int128>() {
+  return 92;
+}
+template <>
+inline int limitBit<int128, int256>() {
+  return 124;
+}
+template <>
+inline int limitBit<int256, bigint>() {
+  return 252;
+}
+template <typename CF, typename DG>
+inline int limitBitConfl() {
+  return limitBit<CF, DG>() / 2;
+}
 
 template <typename T>
 bool fits([[maybe_unused]] const bigint& x) {
@@ -104,19 +144,19 @@ bool fits([[maybe_unused]] const bigint& x) {
 }
 template <>
 inline bool fits<int>(const bigint& x) {
-  return aux::abs(x) <= bigint(limit32);
+  return aux::abs(x) <= static_cast<bigint>(limitAbs<int, long long>());
 }
 template <>
 inline bool fits<long long>(const bigint& x) {
-  return aux::abs(x) <= bigint(limit64);
+  return aux::abs(x) <= static_cast<bigint>(limitAbs<long long, int128>());
 }
 template <>
 inline bool fits<int128>(const bigint& x) {
-  return aux::abs(x) <= bigint(limit128);
+  return aux::abs(x) <= static_cast<bigint>(limitAbs<int128, int256>());
 }
 template <>
 inline bool fits<int256>(const bigint& x) {
-  return aux::abs(x) <= bigint(limit256);
+  return aux::abs(x) <= static_cast<bigint>(limitAbs<int256, bigint>());
 }
 template <>
 inline bool fits<bigint>([[maybe_unused]] const bigint& x) {
@@ -133,19 +173,19 @@ bool stillFits([[maybe_unused]] const T& x) {
 }
 template <>
 inline bool stillFits<int>(const int& x) {
-  return aux::abs(x) <= limit32;
+  return aux::abs(x) <= limitAbs<int, long long>();
 }
 template <>
 inline bool stillFits<long long>(const long long& x) {
-  return aux::abs(x) <= limit64;
+  return aux::abs(x) <= limitAbs<long long, int128>();
 }
 template <>
 inline bool stillFits<int128>(const int128& x) {
-  return aux::abs(x) <= static_cast<int128>(limit128);
+  return aux::abs(x) <= static_cast<int128>(limitAbs<int128, int256>());
 }
 template <>
 inline bool stillFits<int256>(const int256& x) {
-  return aux::abs(x) <= static_cast<int256>(limit256);
+  return aux::abs(x) <= static_cast<int256>(limitAbs<int256, bigint>());
 }
 template <>
 inline bool stillFits<bigint>([[maybe_unused]] const bigint& x) {

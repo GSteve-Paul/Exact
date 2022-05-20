@@ -107,19 +107,19 @@ ConstrExp<SMALL, LARGE>::ConstrExp(ConstrExpPool<SMALL, LARGE>& cep) : pool(cep)
 template <typename SMALL, typename LARGE>
 CeSuper ConstrExp<SMALL, LARGE>::clone(ConstrExpPools& cePools) const {
   LARGE maxVal = getCutoffVal();
-  if (maxVal <= limit32) {
+  if (maxVal <= static_cast<LARGE>(limitAbs<int, long long>())) {
     Ce32 result = cePools.take32();
     copyTo(result);
     return result;
-  } else if (maxVal <= limit64) {
+  } else if (maxVal <= static_cast<LARGE>(limitAbs<long long, int128>())) {
     Ce64 result = cePools.take64();
     copyTo(result);
     return result;
-  } else if (maxVal <= LARGE(limit96)) {
+  } else if (maxVal <= static_cast<LARGE>(limitAbs<int128, int128>())) {
     Ce96 result = cePools.take96();
     copyTo(result);
     return result;
-  } else if (maxVal <= LARGE(limit128)) {
+  } else if (maxVal <= static_cast<LARGE>(limitAbs<int128, int256>())) {
     Ce128 result = cePools.take128();
     copyTo(result);
     return result;
@@ -166,25 +166,25 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
     }
     bool useCounting = options.propCounting.get() == 1 ||
                        options.propCounting.get() > (1 - (minWatches + maxWatches) / (2 * (double)vars.size()));
-    if (maxCoef <= limit32) {
+    if (maxCoef <= static_cast<LARGE>(limitAbs<int, long long>())) {
       if (useCounting) {
         new (ca.alloc<Counting32>(vars.size())) Counting32(this, locked, id);
       } else {
         new (ca.alloc<Watched32>(vars.size())) Watched32(this, locked, id);
       }
-    } else if (maxCoef <= limit64) {
+    } else if (maxCoef <= static_cast<LARGE>(limitAbs<long long, int128>())) {
       if (useCounting) {
         new (ca.alloc<Counting64>(vars.size())) Counting64(this, locked, id);
       } else {
         new (ca.alloc<Watched64>(vars.size())) Watched64(this, locked, id);
       }
-    } else if (maxCoef <= static_cast<LARGE>(limit96)) {
+    } else if (maxCoef <= static_cast<LARGE>(limitAbs<int128, int128>())) {
       if (useCounting) {
         new (ca.alloc<Counting96>(vars.size())) Counting96(this, locked, id);
       } else {
         new (ca.alloc<Watched96>(vars.size())) Watched96(this, locked, id);
       }
-    } else if (maxCoef <= static_cast<LARGE>(limit128)) {
+    } else if (maxCoef <= static_cast<LARGE>(limitAbs<int128, int256>())) {
       if (useCounting) {
         new (ca.alloc<Counting128>(vars.size())) Counting128(this, locked, id);
       } else {
@@ -204,13 +204,13 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
 template <typename SMALL, typename LARGE>
 std::unique_ptr<ConstrSimpleSuper> ConstrExp<SMALL, LARGE>::toSimple() const {
   LARGE maxVal = getCutoffVal();
-  if (maxVal <= limit32) {
+  if (maxVal <= static_cast<LARGE>(limitAbs<int, long long>())) {
     return toSimple_<int, long long>();
-  } else if (maxVal <= limit64) {
+  } else if (maxVal <= static_cast<LARGE>(limitAbs<long long, int128>())) {
     return toSimple_<long long, int128>();
-  } else if (maxVal <= LARGE(limit96)) {
+  } else if (maxVal <= static_cast<LARGE>(limitAbs<int128, int128>())) {
     return toSimple_<int128, int128>();
-  } else if (maxVal <= LARGE(limit128)) {
+  } else if (maxVal <= static_cast<LARGE>(limitAbs<int128, int256>())) {
     return toSimple_<int128, int256>();
   } else {
     return toSimple_<bigint, bigint>();

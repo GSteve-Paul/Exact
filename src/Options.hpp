@@ -290,20 +290,20 @@ struct Options {
   ValOption<int> bitsOverflow{"bits-overflow",
                               "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
                               "unlimited or greater than 62 may use slower arbitrary precision implementations)",
-                              conflLimit96, "0 =< int", [](const int& x) -> bool { return x >= 0; }};
+                              limitBitConfl<int128, int128>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
   ValOption<int> bitsReduced{"bits-reduced",
                              "Bit width of maximum coefficient after reduction when exceeding bits-overflow (0 is "
                              "unlimited, 1 reduces to cardinalities)",
-                             limit32bit, "0 =< int", [](const int& x) -> bool { return x >= 0; }};
+                             limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
   ValOption<int> bitsLearned{
       "bits-learned",
       "Bit width of maximum coefficient for learned constraints (0 is unlimited, 1 reduces to cardinalities)",
-      limit32bit, "0 =< int", [](const int& x) -> bool { return x >= 0; }};
+      limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
   ValOption<float> cgHybrid{"cg",
                             "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
   EnumOption cgEncoding{
-      "cg-encoding", "Encoding of the extension constraints", "lazysum", {"sum", "lazysum", "reified"}};
+      "cg-encoding", "Encoding of the extension constraints", "lazysum", {"sum", "lazysum", "reified", "log"}};
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
@@ -311,7 +311,8 @@ struct Options {
       "int-orderenc",
       "Upper bound on the range size of order-encoded integer variables, any larger will be encoded binary-wise", 12,
       "2 =< int", [](const int& x) -> bool { return x >= 2; }};
-  ValOption<double> intDefaultBound{"int-infinity", "Bound used for unbounded integer variables", limit32, "0 < double",
+  ValOption<double> intDefaultBound{"int-infinity", "Bound used for unbounded integer variables",
+                                    limitAbs<int, long long>(), "0 < double",
                                     [](const double& x) -> bool { return x > 0; }};
   BoolOption pureLits{"inp-purelits", "Propagate pure literals", true};
   ValOption<long long> domBreakLim{
