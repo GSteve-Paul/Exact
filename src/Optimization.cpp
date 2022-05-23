@@ -144,7 +144,7 @@ std::ostream& operator<<(std::ostream& o, const std::shared_ptr<LazyVar>& lv) {
 OptimizationSuper::OptimizationSuper(Solver& s) : solver(s) {}
 
 Optim OptimizationSuper::make(const CeArb& obj, Solver& solver) {
-  bigint maxVal = obj->getCutoffVal();
+  bigint maxVal = obj->getCutoffVal() * INF;  // INF factor allows adding log-encoded core to the objective
   if (maxVal <= static_cast<bigint>(limitAbs<int, long long>())) {  // TODO: try to internalize this check in ConstrExp
     Ce32 o = cePools.take32();
     obj->copyTo(o);
@@ -300,8 +300,33 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // 
 }
 
 template <typename SMALL, typename LARGE>
+bool Optimization<SMALL, LARGE>::reformObjectiveLogTest(const CePtr<ConstrExp<SMALL, LARGE>>& core) const {
+  assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
+  for (int i = 1; i < core->nVars(); ++i) {
+    Lit l0 = core->getLit(core->vars[i - 1]);
+    Lit l1 = core->getLit(core->vars[i]);
+    ratio r0 = reformObj->hasLit(l0) ? reformObj->getCoef(l0) / static_cast<ratio>(core->getCoef(l0)) : 0;
+    ratio r1 = reformObj->hasLit(l1) ? reformObj->getCoef(l1) / static_cast<ratio>(core->getCoef(l1)) : 0;
+    assert(r0 >= r1);
+    assert(r0 != r1 || core->getCoef(l0) >= core->getCoef(l1));
+  }
+  return true;
+}
+
+template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   core->divideTo(limitAbs<int, long long>(), solver.getAssumptions().getIndex());
+  CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
+  core->copyTo(reduced);
+  reduced->sortWithCoefTiebreaker([&](Var v1, Var v2) {
+    const LARGE o1r2 =
+        reformObj->getLit(v1) == reduced->getLit(v1) ? aux::abs(reformObj->coefs[v1] * reduced->coefs[v2]) : 0;
+    const LARGE o2r1 =
+        reformObj->getLit(v2) == reduced->getLit(v2) ? aux::abs(reformObj->coefs[v2] * reduced->coefs[v1]) : 0;
+    return aux::sgn(o1r2 - o2r1);
+    // TODO: check whether sorting the literals is a bottleneck
+  });
+  assert(reformObjectiveLogTest(reduced));
   return State::SUCCESS;
 }
 

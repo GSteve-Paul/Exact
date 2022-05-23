@@ -150,9 +150,10 @@ class Optimization final : public OptimizationSuper {
   void checkLazyVariables();
   [[nodiscard]] State addLowerBound();
 
-  Ce32 reduceToCardinality(const CeSuper& core);                 // does not modify core
-  [[nodiscard]] State reformObjective(const CeSuper& core);      // modifies core
-  [[nodiscard]] State reformObjectiveLog(const CeSuper& core);   // modifies core
+  Ce32 reduceToCardinality(const CeSuper& core);                // does not modify core
+  [[nodiscard]] State reformObjective(const CeSuper& core);     // modifies core
+  [[nodiscard]] State reformObjectiveLog(const CeSuper& core);  // modifies core
+  [[nodiscard]] bool reformObjectiveLogTest(const CePtr<ConstrExp<SMALL, LARGE>>& core) const;
   [[nodiscard]] State handleInconsistency(const CeSuper& core);  // modifies core
   [[nodiscard]] State handleNewSolution(const std::vector<Lit>& sol);
 
