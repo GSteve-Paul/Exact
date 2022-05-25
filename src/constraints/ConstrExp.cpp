@@ -342,6 +342,20 @@ SMALL ConstrExp<SMALL, LARGE>::getCoef(Lit l) const {
 }
 
 template <typename SMALL, typename LARGE>
+SMALL ConstrExp<SMALL, LARGE>::absCoef(Var v) const {  // TODO: refactor other usages
+  assert(0 <= v);
+  assert(v < (Var)coefs.size());
+  return aux::abs(coefs[v]);
+}
+
+template <typename SMALL, typename LARGE>
+SMALL ConstrExp<SMALL, LARGE>::nthCoef(int i) const {  // TODO: refactor other usages
+  assert(0 <= i);
+  assert(i < (int)vars.size());
+  return absCoef(vars[i]);
+}
+
+template <typename SMALL, typename LARGE>
 SMALL ConstrExp<SMALL, LARGE>::getLargestCoef(const std::vector<Var>& vs) const {
   SMALL result = 0;
   for (Var v : vs) result = std::max(result, aux::abs(coefs[v]));

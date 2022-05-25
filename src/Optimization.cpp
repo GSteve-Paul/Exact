@@ -318,6 +318,23 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   core->divideTo(limitAbs<int, long long>(), solver.getAssumptions().getIndex());
   CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
+
+  //  reduced->reset(false);
+  //  reduced->addLhs(1, 1);
+  //  reduced->addLhs(2, 2);
+  //  reduced->addLhs(2, 3);
+  //  reduced->addLhs(3, 4);
+  //  reduced->addLhs(3, 5);
+  //  reduced->addRhs(options.test.get());
+  //  reformObj->reset(false);
+  //  reformObj->addLhs(2, 1);
+  //  reformObj->addLhs(3, 2);
+  //  reformObj->addLhs(4, 3);
+  //  reformObj->addLhs(4, 4);
+  //  reformObj->addLhs(5, 5);
+  //  solver.setAssumptions({-1, -2, -3, -4, -5});
+
+  // decide rational multiplier using knapsack heuristic
   reduced->sortWithCoefTiebreaker([&](Var v1, Var v2) {
     const LARGE o1r2 =
         reformObj->getLit(v1) == reduced->getLit(v1) ? aux::abs(reformObj->coefs[v1] * reduced->coefs[v2]) : 0;
@@ -325,15 +342,67 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
         reformObj->getLit(v2) == reduced->getLit(v2) ? aux::abs(reformObj->coefs[v2] * reduced->coefs[v1]) : 0;
     return aux::sgn(o1r2 - o2r1);
     // TODO: check whether sorting the literals is a bottleneck
+    // TODO: cast to LARGE when using smaller SMALL, LARGE
   });
   assert(reformObjectiveLogTest(reduced));
+  LARGE range = reduced->getDegree();
+  int i = reduced->nVars();
+  while (range >= 0 && i > 0) {
+    --i;
+    range -= reduced->nthCoef(i);
+  }
+  ++i;
+  LARGE div = reduced->nthCoef(i);
+  reduced->multiply(reformObj->absCoef(reduced->vars[i]));
+  reduced->weakenDivideRound(div, solver.getAssumptions().getIndex(), 0);  // TODO: sorted?
+  lower_bound += reduced->getDegree();
+
+  // create extended lower bound
+  range = reduced->absCoeffSum() - reduced->getDegree();
+  assert(range > 0);
+  int newvars = aux::msb(range) + 1;
+  assert((limitBit<SMALL, LARGE>()) >= newvars);
+  int oldvars = solver.getNbVars();
+  solver.setNbVars(oldvars + newvars, false);
+  SMALL base = 1;
+  for (Var var = oldvars + 1; var <= solver.getNbVars(); ++var) {
+    reduced->addLhs(-base, var);
+    range -= base;
+    base *= 2;
+    if (base > range) {
+      base = static_cast<SMALL>(range);
+    }
+  }
+  assert(range == 0);
+
+  // add as constraint
+  solver.addConstraintUnchecked(reduced, Origin::COREGUIDED);
+
+  // add other side of equality as constraint
+  reduced->invert();
+  solver.addConstraintUnchecked(reduced, Origin::COREGUIDED);
+
+  // add to objective
+  reformObj->addUp(reduced);
+  assert(lower_bound == -reformObj->getDegree());
+
+  // wrap up
+  if (addLowerBound() == State::UNSAT) return State::UNSAT;
+
+  for (Var v : core->getVars()) {
+    if (reformObj->coefs[v] == 0) {
+      core->weaken(v);
+    } else {
+      assert(reformObj->getLit(v) == core->getLit(v));
+    }
+  }
+  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  core->saturate(true, false);
   return State::SUCCESS;
 }
 
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // modifies core
-  State s = reformObjectiveLog(core);
-  if (s != State::SUCCESS) return s;
   assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
   Ce32 cardCore = reduceToCardinality(core);
   assert(cardCore->hasNegativeSlack(solver.getAssumptions().getIndex()));
@@ -428,7 +497,11 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
   --stats.NCGCOREREUSES;
   while (!core->isTautology()) {
     ++stats.NCGCOREREUSES;
-    if (reformObjective(core) == State::UNSAT) return State::UNSAT;
+    if (options.cgEncoding.is("log")) {
+      if (reformObjectiveLog(core) == State::UNSAT) return State::UNSAT;
+    } else {
+      if (reformObjective(core) == State::UNSAT) return State::UNSAT;
+    }
   }
   checkLazyVariables();
   printObjBounds();

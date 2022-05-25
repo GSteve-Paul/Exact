@@ -268,6 +268,8 @@ struct ConstrExp final : public ConstrExpSuper {
   LARGE getRhs() const;
   LARGE getDegree() const;
   SMALL getCoef(Lit l) const;
+  SMALL absCoef(Var v) const;
+  SMALL nthCoef(int i) const;
   SMALL getLargestCoef(const std::vector<Var>& vs) const;
   SMALL getLargestCoef() const;
   SMALL getSmallestCoef() const;

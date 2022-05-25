@@ -75,6 +75,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
           lhs.emplace_back(base, v);
           base *= 2;
         }
+        // TODO: last variable may have a smaller coefficient if the range is not a nice power of two - 1
         solver.addConstraintUnchecked(ConstrSimpleArb({lhs}, -range), Origin::FORMULA);
       } else {  // binary order constraints
         for (Var var = oldvars + 1; var < oldvars + newvars; ++var) {

@@ -165,7 +165,7 @@ class Solver {
   void addConstraintUnchecked(const T& c, Origin orig) {
     // NOTE: logging of the inconsistency happened in addInputConstraint
     [[maybe_unused]] auto [_, id] = addConstraint(c, orig);
-    assert(id != ID_Unsat);
+    assert(id != ID_Unsat);  // use regular addConstraint if it could be an inconsistency
   }
   [[nodiscard]] std::pair<ID, ID> invalidateLastSol(const std::vector<Var>& vars);
 
