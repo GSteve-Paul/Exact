@@ -318,6 +318,8 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   core->divideTo(limitAbs<int, long long>(), solver.getAssumptions().getIndex());
   CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
+  //  std::cout << core << std::endl;
+  //  std::cout << reformObj << std::endl;
 
   //  reduced->reset(false);
   //  reduced->addLhs(1, 1);
@@ -352,10 +354,14 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
     range -= reduced->nthCoef(i);
   }
   ++i;
+  assert(i < reduced->nVars());  // should hold if saturated
   LARGE div = reduced->nthCoef(i);
-  reduced->multiply(reformObj->absCoef(reduced->vars[i]));
+  SMALL mult = reformObj->getCoef(reduced->getLit(reduced->vars[i]));
+  if (mult <= 0) {
+    return State::FAIL;  // the core is no proper lower bound for the objective (after previous reformulations)
+  }
+  reduced->multiply(mult);
   reduced->weakenDivideRound(div, solver.getAssumptions().getIndex(), 0);  // TODO: sorted?
-  lower_bound += reduced->getDegree();
 
   // create extended lower bound
   range = reduced->absCoeffSum() - reduced->getDegree();
@@ -384,18 +390,11 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
 
   // add to objective
   reformObj->addUp(reduced);
-  assert(lower_bound == -reformObj->getDegree());
+  lower_bound = -reformObj->getDegree();
 
   // wrap up
   if (addLowerBound() == State::UNSAT) return State::UNSAT;
 
-  for (Var v : core->getVars()) {
-    if (reformObj->coefs[v] == 0) {
-      core->weaken(v);
-    } else {
-      assert(reformObj->getLit(v) == core->getLit(v));
-    }
-  }
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   core->saturate(true, false);
   return State::SUCCESS;
@@ -495,14 +494,20 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
   }
   assert(!core->hasNegativeSlack(solver.getLevel()));  // Would be handled by solver's learnConstraint
   --stats.NCGCOREREUSES;
-  while (!core->isTautology()) {
-    ++stats.NCGCOREREUSES;
-    if (options.cgEncoding.is("log")) {
-      if (reformObjectiveLog(core) == State::UNSAT) return State::UNSAT;
-    } else {
+  if (options.cgEncoding.is("log") || options.test.get() != 0) {
+    State result = State::SUCCESS;
+    while (result == State::SUCCESS) {
+      ++stats.NCGCOREREUSES;
+      result = reformObjectiveLog(core);
+    }
+    if (result == State::UNSAT) return State::UNSAT;
+  } else {
+    while (!core->isTautology()) {
+      ++stats.NCGCOREREUSES;
       if (reformObjective(core) == State::UNSAT) return State::UNSAT;
     }
   }
+
   checkLazyVariables();
   printObjBounds();
   return State::SUCCESS;
