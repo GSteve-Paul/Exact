@@ -300,21 +300,9 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // 
 }
 
 template <typename SMALL, typename LARGE>
-bool Optimization<SMALL, LARGE>::reformObjectiveLogTest(const CePtr<ConstrExp<SMALL, LARGE>>& core) const {
-  assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
-  for (int i = 1; i < core->nVars(); ++i) {
-    Lit l0 = core->getLit(core->vars[i - 1]);
-    Lit l1 = core->getLit(core->vars[i]);
-    ratio r0 = reformObj->hasLit(l0) ? reformObj->getCoef(l0) / static_cast<ratio>(core->getCoef(l0)) : 0;
-    ratio r1 = reformObj->hasLit(l1) ? reformObj->getCoef(l1) / static_cast<ratio>(core->getCoef(l1)) : 0;
-    assert(r0 >= r1);
-    assert(r0 != r1 || core->getCoef(l0) >= core->getCoef(l1));
-  }
-  return true;
-}
-
-template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
+  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  core->saturate(true, false);
   core->divideTo(limitAbs<int, long long>(), solver.getAssumptions().getIndex());
   CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
@@ -346,7 +334,6 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
     // TODO: check whether sorting the literals is a bottleneck
     // TODO: cast to LARGE when using smaller SMALL, LARGE
   });
-  assert(reformObjectiveLogTest(reduced));
   LARGE range = reduced->getDegree();
   int i = reduced->nVars();
   while (range >= 0 && i > 0) {
@@ -354,7 +341,9 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
     range -= reduced->nthCoef(i);
   }
   ++i;
-  assert(i < reduced->nVars());  // should hold if saturated
+  if (i >= reduced->nVars()) {
+    return State::FAIL;  // reduced is tautology
+  }
   LARGE div = reduced->nthCoef(i);
   SMALL mult = reformObj->getCoef(reduced->getLit(reduced->vars[i]));
   if (mult <= 0) {
@@ -395,8 +384,6 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   // wrap up
   if (addLowerBound() == State::UNSAT) return State::UNSAT;
 
-  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  core->saturate(true, false);
   return State::SUCCESS;
 }
 
