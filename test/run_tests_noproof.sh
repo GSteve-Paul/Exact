@@ -81,7 +81,7 @@ for j in "${arr_opt[@]}"; do
         exit 1
     fi
     obj="$(cut -d'*' -f2 <<<$j)"
-    echo "running $binary $formula $options"
+    echo "running $binary $formula $options --seed=3"
     output=`$binary $formula $options 2>&1 | awk '/^o|Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
     if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
         errors=`expr 1000 + $errors`

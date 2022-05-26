@@ -89,7 +89,7 @@ for idx in "${!arr_lazy[@]}"; do
             exit 1
         fi
         obj="$(cut -d'*' -f2 <<<$j)"
-        echo "running $binary $formula $options --cg-encoding=$lazy --proof-log=$logfile"
+        echo "running $binary $formula $options --cg-encoding=$lazy --proof-log=$logfile --seed=4"
         output=`$binary $formula $options --cg-encoding=$lazy --proof-log=$logfile 2>&1 | awk '/^o|Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
         if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
             errors=`expr 1000 + $errors`
