@@ -301,6 +301,10 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // 
 
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
+  aux::predicate<Lit> toWeaken = [&](Lit l) { return !solver.getAssumptions().has(-l); };
+  if (!core->isSaturated(toWeaken)) {
+    core->weaken(toWeaken);
+  }
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   core->saturate(true, false);
   core->divideTo(limitAbs<int, long long>(), solver.getAssumptions().getIndex());
@@ -342,11 +346,22 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   }
   ++i;
   if (i >= reduced->nVars()) {
+    //    std::cout << "NO VARS " << std::endl;
     return State::FAIL;  // reduced is tautology
   }
   LARGE div = reduced->nthCoef(i);
   SMALL mult = reformObj->getCoef(reduced->getLit(reduced->vars[i]));
   if (mult <= 0) {
+    for (Var v : reduced->vars) {
+      if (!reformObj->hasLit(reduced->getLit(v))) {
+        reduced->weaken(v);
+      }
+    }
+    reduced->removeZeroes();
+    reduced->saturate(true, false);
+    //    std::cout << "NO BOUND " << std::endl;
+    //    std::cout << reduced << std::endl;
+    //    std::cout << reformObj->getCoef(reduced->getLit(reduced->vars.back())) << std::endl;
     return State::FAIL;  // the core is no proper lower bound for the objective (after previous reformulations)
   }
   reduced->multiply(mult);
@@ -370,7 +385,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   }
   assert(range == 0);
 
-  // add as constraint
+  // add extended lower bound as constraint
   solver.addConstraintUnchecked(reduced, Origin::COREGUIDED);
 
   // add other side of equality as constraint
@@ -390,6 +405,17 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // modifies core
   assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
+  for (Var v : core->getVars()) {
+    Lit l = core->getLit(v);
+    if (reformObj->getCoef(l) <= 0) {
+      core->weaken(v);
+    }
+  }
+  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  core->saturate(true, false);
+  if (!core->hasNegativeSlack(solver.getAssumptions().getIndex())) {
+    return State::FAIL;
+  }
   Ce32 cardCore = reduceToCardinality(core);
   assert(cardCore->hasNegativeSlack(solver.getAssumptions().getIndex()));
   assert(cardCore->hasNoZeroes());
@@ -447,16 +473,6 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
     lazyVars.back().lv->addAtMostConstraint(reified);
   }
   if (addLowerBound() == State::UNSAT) return State::UNSAT;
-
-  for (Var v : core->getVars()) {
-    if (reformObj->coefs[v] == 0) {
-      core->weaken(v);
-    } else {
-      assert(reformObj->getLit(v) == core->getLit(v));
-    }
-  }
-  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  core->saturate(true, false);
   return State::SUCCESS;
 }
 
@@ -481,19 +497,19 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
   }
   assert(!core->hasNegativeSlack(solver.getLevel()));  // Would be handled by solver's learnConstraint
   --stats.NCGCOREREUSES;
-  if (options.cgEncoding.is("log") || options.test.get() != 0) {
-    State result = State::SUCCESS;
+  State result = State::SUCCESS;
+  if (options.cgEncoding.is("log")) {
     while (result == State::SUCCESS) {
       ++stats.NCGCOREREUSES;
       result = reformObjectiveLog(core);
     }
-    if (result == State::UNSAT) return State::UNSAT;
   } else {
-    while (!core->isTautology()) {
+    while (result == State::SUCCESS) {
       ++stats.NCGCOREREUSES;
-      if (reformObjective(core) == State::UNSAT) return State::UNSAT;
+      result = reformObjective(core);
     }
   }
+  if (result == State::UNSAT) return State::UNSAT;
 
   checkLazyVariables();
   printObjBounds();

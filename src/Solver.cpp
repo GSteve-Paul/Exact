@@ -499,12 +499,6 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
   assert(!lastCore->isTautology());
   assert(lastCore->isSaturated());
-  for (Var v : lastCore->getVars()) {
-    if (!assumptions.has(-lastCore->getLit(v))) {
-      lastCore->weaken(v);
-    }
-  }
-  assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
   ID res = aux::timeCall<ID>([&] { return learnConstraint(lastCore, Origin::LEARNED); },
                              stats.LEARNTIME);  // NOTE: takes care of inconsistency
   if (res == ID_Unsat) return State::UNSAT;

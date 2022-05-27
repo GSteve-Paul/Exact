@@ -532,10 +532,11 @@ void ConstrExpSuper::weakenLast() {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenExcept(const IntSet& exceptLits) {
+void ConstrExp<SMALL, LARGE>::weaken(const aux::predicate<Lit>& toWeaken) {
   for (Var v : vars) {
-    if (exceptLits.has(getLit(v))) continue;
-    weaken(v);
+    if (toWeaken(getLit(v))) {
+      weaken(v);
+    }
   }
 }
 
@@ -713,6 +714,21 @@ void ConstrExp<SMALL, LARGE>::saturate(bool check, bool sorted) {
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isSaturated() const {
   return getLargestCoef() <= degree;
+}
+
+template <typename SMALL, typename LARGE>
+bool ConstrExp<SMALL, LARGE>::isSaturated(const aux::predicate<Lit>& toWeaken) const {
+  SMALL largest = 0;
+  LARGE weakenedDeg = degree;
+  for (Var v : vars) {
+    SMALL cf = aux::abs(coefs[v]);
+    if (toWeaken(getLit(v))) {
+      weakenedDeg -= cf;
+    } else {
+      largest = std::max(largest, cf);
+    }
+  }
+  return largest <= weakenedDeg;
 }
 
 template <typename SMALL, typename LARGE>

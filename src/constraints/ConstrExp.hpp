@@ -139,7 +139,7 @@ struct ConstrExpSuper {
   virtual bool saturatedVar(Var v) const = 0;
 
   virtual void weaken(Var v) = 0;
-  virtual void weakenExcept(const IntSet& exceptLits) = 0;
+  virtual void weaken(const aux::predicate<Lit>& toWeaken) = 0;
 
   virtual bool hasNegativeSlack(const IntMap<int>& level) const = 0;
   virtual bool isTautology() const = 0;
@@ -156,6 +156,7 @@ struct ConstrExpSuper {
   virtual void saturate(const std::vector<Var>& vs, bool check, bool sorted) = 0;
   virtual void saturate(bool check, bool sorted) = 0;
   virtual bool isSaturated() const = 0;
+  virtual bool isSaturated(const aux::predicate<Lit>& toWeaken) const = 0;
   virtual void getSaturatedLits(IntSet& out) const = 0;
   virtual void saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, Lit asserting) = 0;
   virtual void saturateAndFixOverflowRational(const std::vector<double>& lpSolution) = 0;
@@ -284,7 +285,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void addLhs(const SMALL& cf, Lit l);  // TODO: Term?
   void weaken(const SMALL& m, Var v);
   void weaken(Var v);
-  void weakenExcept(const IntSet& exceptLits);
+  void weaken(const aux::predicate<Lit>& toWeaken);
 
   LARGE getSlack(const IntMap<int>& level) const;
   bool hasNegativeSlack(const IntMap<int>& level) const;
@@ -308,6 +309,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void saturate(Var v);
   void saturate(bool check, bool sorted);
   bool isSaturated() const;
+  bool isSaturated(const aux::predicate<Lit>& toWeaken) const;
   void getSaturatedLits(IntSet& out) const;
   /*
    * Fixes overflow

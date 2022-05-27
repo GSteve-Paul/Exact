@@ -387,6 +387,9 @@ uint32_t getRand(uint32_t min, uint32_t max);
 uint64_t hash(uint64_t x);
 uint64_t hashForSet(const std::vector<int>& ints);
 
+template <typename... Args>
+using predicate = std::function<bool(Args...)>;
+
 }  // namespace aux
 
 }  // namespace xct
