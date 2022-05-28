@@ -21,7 +21,7 @@ echo "options: $options"
 echo ""
 
 declare -a arr_lazy=(
-sum
+log
 # lazysum
 # reified
 )
