@@ -301,13 +301,20 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // 
 
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
-  aux::predicate<Lit> toWeaken = [&](Lit l) { return !solver.getAssumptions().has(-l); };
+  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  aux::predicate<Lit> toWeaken = [&](Lit l) { return !reformObj->hasLit(l); };
   if (!core->isSaturated(toWeaken)) {
     core->weaken(toWeaken);
+    core->removeZeroes();
   }
-  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   core->saturate(true, false);
-  core->divideTo(limitAbs<int, long long>(), solver.getAssumptions().getIndex());
+  if (core->isTautology()) {
+    return State::FAIL;
+  }
+  // the following operations do not turn core/reduced into a tautology
+  aux::predicate<Lit> falsified = [&](Lit l) { return reformObj->hasLit(l); };
+  core->divideTo(limitAbs<int, long long>(), falsified);
+  assert(!core->isTautology());
   CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
   //  std::cout << core << std::endl;
@@ -345,27 +352,12 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
     range -= reduced->nthCoef(i);
   }
   ++i;
-  if (i >= reduced->nVars()) {
-    //    std::cout << "NO VARS " << std::endl;
-    return State::FAIL;  // reduced is tautology
-  }
+  assert(i <= reduced->nVars());
   LARGE div = reduced->nthCoef(i);
   SMALL mult = reformObj->getCoef(reduced->getLit(reduced->vars[i]));
-  if (mult <= 0) {
-    for (Var v : reduced->vars) {
-      if (!reformObj->hasLit(reduced->getLit(v))) {
-        reduced->weaken(v);
-      }
-    }
-    reduced->removeZeroes();
-    reduced->saturate(true, false);
-    //    std::cout << "NO BOUND " << std::endl;
-    //    std::cout << reduced << std::endl;
-    //    std::cout << reformObj->getCoef(reduced->getLit(reduced->vars.back())) << std::endl;
-    return State::FAIL;  // the core is no proper lower bound for the objective (after previous reformulations)
-  }
+  assert(mult > 0);
   reduced->multiply(mult);
-  reduced->weakenDivideRound(div, solver.getAssumptions().getIndex(), 0);  // TODO: sorted?
+  reduced->weakenDivideRound(div, falsified, 0);  // TODO: sorted?
 
   // create extended lower bound
   range = reduced->absCoeffSum() - reduced->getDegree();
@@ -405,12 +397,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // modifies core
   assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
-  for (Var v : core->getVars()) {
-    Lit l = core->getLit(v);
-    if (reformObj->getCoef(l) <= 0) {
-      core->weaken(v);
-    }
-  }
+  core->weaken([&](Lit l) { return !solver.getAssumptions().has(-l) || !reformObj->hasLit(l); });
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   core->saturate(true, false);
   if (!core->hasNegativeSlack(solver.getAssumptions().getIndex())) {

@@ -776,7 +776,8 @@ void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverf
     assert(getCutoffVal() == maxVal);
     LARGE div = aux::ceildiv<LARGE>(maxVal, aux::pow<LARGE>(2, bitReduce) - 1);
     assert(aux::ceildiv<LARGE>(maxVal, div) <= aux::pow<LARGE>(2, bitReduce) - 1);
-    weakenDivideRound(div, level, asserting);
+    weakenDivideRound(
+        div, [&](Lit l) { return isFalse(level, l); }, asserting);
   } else {
     // check that largestCoef indeed is big enough
     assert(getCutoffVal() <= 0 || (int)aux::msb(getCutoffVal()) < bitOverflow);
@@ -871,23 +872,28 @@ void ConstrExp<SMALL, LARGE>::divideRoundDown(const LARGE& d) {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const IntMap<int>& level, Lit asserting) {
+void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& falsified, Lit asserting) {
   assert(div > 0);
   if (div == 1) return;
-  weakenNonDivisibleNonFalsifieds(level, div, asserting);
-  weakenSuperfluous(div, false);
-  removeZeroes();
-  divideRoundUp(div);
-  saturate(true, false);
+  weakenNonDivisibleNonFalsifieds(falsified, div, asserting);
+  if (isTautology()) {
+    saturate(false, false);
+    removeZeroes();
+  } else {
+    weakenSuperfluous(div, false);
+    removeZeroes();
+    divideRoundUp(div);
+    saturate(true, false);
+  }
 }
 
 // NOTE: preserves ordered-ness
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level) {
+void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& falsified) {
   assert(isSortedInDecreasingCoefOrder());
   assert(div > 0);
   if (div == 1) return;
-  weakenNonDivisibleNonFalsifieds(level, div, 0);
+  weakenNonDivisibleNonFalsifieds(falsified, div, 0);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -910,12 +916,12 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
 // NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
 // NOTE: after call to weakenNonDivisibleNonFalsifieds, order can be re repaired by call to repairOrder
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenNonDivisibleNonFalsifieds(const IntMap<int>& level, const LARGE& div,
+void ConstrExp<SMALL, LARGE>::weakenNonDivisibleNonFalsifieds(const aux::predicate<Lit>& falsified, const LARGE& div,
                                                               Lit asserting) {
   assert(div > 0);
   if (div == 1) return;
   for (Var v : vars) {
-    if (coefs[v] % div != 0 && !falsified(level, v) && v != toVar(asserting)) {
+    if (coefs[v] % div != 0 && !falsified(getLit(v)) && v != toVar(asserting)) {
       weaken(-static_cast<SMALL>(coefs[v] % div), v);
     }
   }
@@ -945,7 +951,7 @@ void ConstrExp<SMALL, LARGE>::repairOrder() {
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted) {
   assert(div > 1);
-  assert(degree > 0);
+  assert(!isTautology());
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
   LARGE rem = (degree - 1) % div;
   if (!sorted) {                                             // extra iteration to weaken literals fully
@@ -1009,14 +1015,14 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
 }
 
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const IntMap<int>& level) {
+bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& falsified) {
   LARGE maxVal = getCutoffVal();
   if (maxVal <= static_cast<LARGE>(limit)) {
     return false;
   }
   LARGE div = aux::ceildiv(maxVal, static_cast<LARGE>(limit));  // maxVal / div =< limit
   assert(div > 1);
-  weakenDivideRound(div, level, 0);  // TODO: weakenDivideRoundOrdered?
+  weakenDivideRound(div, falsified, 0);  // TODO: weakenDivideRoundOrdered?
   return true;
 }
 
