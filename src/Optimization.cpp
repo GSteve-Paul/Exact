@@ -173,9 +173,7 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& o
     : OptimizationSuper(s), origObj(obj) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
   lower_bound = -origObj->getDegree();
-  stats.LASTLB.z = static_cast<StatNum>(lower_bound);
   upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
-  stats.LASTUB.z = static_cast<StatNum>(upper_bound);
 
   reformObj = cePools.take<SMALL, LARGE>();
   reformObj->stopLogging();
@@ -429,7 +427,6 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   }
   assert(mult > 0);
   lower_bound += cardCore->getDegree() * static_cast<LARGE>(mult);
-  stats.LASTLB.z = static_cast<StatNum>(lower_bound);
 
   int cardCoreUpper = static_cast<int>(std::min<LARGE>(cardCore->nVars(), normalizedUpperBound() / mult));
   if (options.cgEncoding.is("sum") || cardCore->nVars() - cardCore->getDegree() <= 1) {
@@ -475,7 +472,6 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   [[maybe_unused]] LARGE prev_lower = lower_bound;
   lower_bound = -reformObj->getDegree();
-  stats.LASTLB.z = static_cast<StatNum>(lower_bound);
 
   if (core) {
     core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -524,7 +520,6 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   for (Var v : origObj->getVars()) upper_bound += origObj->coefs[v] * (int)(sol[v] > 0);
   assert(upper_bound <= prev_val);
   assert(upper_bound < prev_val || !options.boundUpper);
-  stats.LASTUB.z = static_cast<StatNum>(upper_bound);
 
   CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
@@ -614,7 +609,8 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
     assert(upper_bound >= lower_bound);
     StatNum current_time = stats.getDetTime();
     if (reply == SolveState::INPROCESSED) {
-      if (options.printCsvData) stats.printCsvLine();
+      if (options.printCsvData)
+        stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
       if (options.tabuLim.get() != 0) {
         State state = aux::timeCall<State>([&] { return runTabu(); }, stats.TABUTIME);
         if (state == State::UNSAT) return SolveState::UNSAT;

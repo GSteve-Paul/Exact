@@ -94,8 +94,12 @@ void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
 }
 
 void quit::printFinalStats(ILP& ilp) {
-  if (options.verbosity.get() > 0) stats.print();
-  if (options.printCsvData) stats.printCsvLine();
+  if (options.verbosity.get() > 0)
+    stats.print(static_cast<StatNum>(ilp.getOptimization()->getLowerBound()),
+                static_cast<StatNum>(ilp.getOptimization()->getUpperBound()));
+  if (options.printCsvData)
+    stats.printCsvLine(static_cast<StatNum>(ilp.getOptimization()->getLowerBound()),
+                       static_cast<StatNum>(ilp.getOptimization()->getUpperBound()));
   if (options.printOpb) ilp.printFormula();
 }
 

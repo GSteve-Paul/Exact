@@ -324,7 +324,7 @@ struct Stats {
   std::chrono::steady_clock::time_point startTime;
   std::chrono::steady_clock::time_point runStartTime;
 
-  void setDerivedStats() {
+  void setDerivedStats(const StatNum& lowerbound, const StatNum& upperbound) {
     DETTIME.z = getDetTime();
     CPUTIME.z = getTime();
     SOLVETIME.z = getRunTime();
@@ -340,6 +340,9 @@ struct Stats {
     LEARNEDDEGREEAVG.z = (learneds == 0 ? 0 : LEARNEDDEGREESUM / learneds);
     LEARNEDSTRENGTHAVG.z = (learneds == 0 ? 0 : LEARNEDSTRENGTHSUM / learneds);
     LEARNEDLBDAVG.z = (learneds == 0 ? 0 : LEARNEDLBDSUM / learneds);
+
+    LASTLB.z = lowerbound;
+    LASTUB.z = upperbound;
   }
 
   const std::vector<Stat*> statsToDisplay = {
@@ -493,15 +496,15 @@ struct Stats {
 
   [[nodiscard]] inline StatNum getDetTime() const { return getLpDetTime() + getNonLpDetTime(); }
 
-  void print() {
-    setDerivedStats();
+  void print(const StatNum& lowerbound, const StatNum& upperbound) {
+    setDerivedStats(lowerbound, upperbound);
     for (Stat* s : statsToDisplay) {
       std::cout << "c " << *s << std::endl;
     }
   }
 
-  void printCsvLine() {
-    setDerivedStats();
+  void printCsvLine(const StatNum& lowerbound, const StatNum& upperbound) {
+    setDerivedStats(lowerbound, upperbound);
     std::cout << "c csvline";
     for (Stat* s : statsToDisplay) {
       aux::prettyPrint(std::cout << ",", s->z);
@@ -510,7 +513,7 @@ struct Stats {
   }
 
   void printCsvHeader() {
-    setDerivedStats();
+    setDerivedStats(std::numeric_limits<StatNum>::quiet_NaN(), std::numeric_limits<StatNum>::quiet_NaN());
     std::cout << "c csvheader";
     for (Stat* s : statsToDisplay) {
       std::cout << "," << s->name;
