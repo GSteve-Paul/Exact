@@ -170,7 +170,7 @@ Optim OptimizationSuper::make(const CeArb& obj, Solver& solver) {
 
 template <typename SMALL, typename LARGE>
 Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s)
-    : OptimizationSuper(s), origObj(obj) {
+    : OptimizationSuper(s), origObj(obj), somethingHappened(false), firstRun(true) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
   lower_bound = -origObj->getDegree();
   upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
@@ -189,8 +189,6 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& o
   stratDiv = options.cgStrat.get();
   stratLim = stratDiv == 1 ? 1 : aux::toDouble(reformObj->getLargestCoef());
   coreguided = options.cgHybrid.get() >= 1;
-  somethingHappened = false;
-  firstRun = true;
 };
 
 template <typename SMALL, typename LARGE>
@@ -622,7 +620,7 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
     }
 
     if (assumptions.empty() && coreguided) {
-      if (!solver.hasAssumptions()) {
+      while (!solver.hasAssumptions()) {
         reformObj->removeEqualities(solver.getEqualities(), false);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
         if (stats.DEPLTIME.z == -1 && std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(),
@@ -657,6 +655,11 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
         assumps.reserve(litcoefs.size());
         for (const Term<double>& t : litcoefs) assumps.push_back(-reformObj->getLit(toVar(t.l)));
         solver.setAssumptions(assumps);
+        if (assumps.size() == 0) break;
+        if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
+          if (handleInconsistency(solver.lastGlobalDual) == State::UNSAT) return SolveState::UNSAT;
+          solver.clearAssumptions();
+        }
       }
     } else {
       solver.setAssumptions(assumptions);

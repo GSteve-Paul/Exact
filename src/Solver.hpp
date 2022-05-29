@@ -99,6 +99,7 @@ class Solver {
   std::vector<Lit> lastSol = {0};
   bool foundSolution() const { return stats.NORIGVARS.z == 0 || lastSol.size() > 1; }
   CeSuper lastCore;
+  CeSuper lastGlobalDual;
   IntSet objectiveLits;
 
  private:

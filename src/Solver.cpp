@@ -79,6 +79,8 @@ Solver::Solver(ILP& i)
       nconfl_to_restart(0) {
   ca.capacity(1024 * 1024);  // 4MB
   position.resize(1, INF);
+  assert(!lastCore);
+  assert(!lastGlobalDual);
 }
 
 Solver::~Solver() {
@@ -1010,7 +1012,10 @@ std::pair<State, CeSuper> Solver::inProcess() {
 
 #if WITHSOPLEX
   if (lpSolver && lpSolver->canInProcess()) {
-    return aux::timeCall<std::pair<State, CeSuper>>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);
+    std::pair<State, CeSuper> result =
+        aux::timeCall<std::pair<State, CeSuper>>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);
+    if (result.second) lastGlobalDual = result.second;
+    return result;
   }
 #endif  // WITHSOPLEX
   return {State::SUCCESS, CeNull()};
@@ -1026,7 +1031,10 @@ std::pair<State, CeSuper> Solver::presolve() {
 #if WITHSOPLEX
   if (options.lpTimeRatio.get() > 0) {
     lpSolver = std::make_shared<LpSolver>(ilp);
-    return aux::timeCall<std::pair<State, CeSuper>>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);
+    std::pair<State, CeSuper> result =
+        aux::timeCall<std::pair<State, CeSuper>>([&] { return lpSolver->inProcess(); }, stats.LPTOTALTIME);
+    if (result.second) lastGlobalDual = result.second;
+    return result;
   }
 #endif
   return {State::SUCCESS, CeNull()};
