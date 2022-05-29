@@ -85,6 +85,7 @@ const long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long long 
 template <typename CF, typename DG>
 inline double limitAbs() {
   assert(false);
+  // NOTE: no implementation for <bigint,bigint>, as there is no limit on the resulting numbers
   return -1;
 }
 template <>
@@ -133,6 +134,11 @@ template <>
 inline int limitBit<int256, bigint>() {
   return 252;
 }
+template <>
+inline int limitBit<bigint, bigint>() {
+  return std::numeric_limits<int>::max();  // NOTE: limits numbers to 2^(2^31)-1, which should be plenty
+}
+
 template <typename CF, typename DG>
 inline int limitBitConfl() {
   return limitBit<CF, DG>() / 2;
