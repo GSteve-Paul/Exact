@@ -307,6 +307,7 @@ struct Options {
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
+  EnumOption cgReform{"cg-reform", "When the objective is reformulated", "always", {"always", "depletion", "never"}};
   ValOption<int> intEncoding{
       "int-orderenc",
       "Upper bound on the range size of order-encoded integer variables, any larger will be encoded binary-wise", 12,
@@ -332,15 +333,15 @@ struct Options {
                       []([[maybe_unused]] const int& x) -> bool { return true; }};
 
   const std::vector<Option*> options = {
-      &help,          &copyright,        &licenseInfo,   &randomSeed,      &noSolve,      &fileFormat,
-      &printOpb,      &printSol,         &printUnits,    &printCsvData,    &outputMode,   &verbosity,
-      &timeout,       &timeoutDet,       &proofLog,      &boundUpper,      &lubyBase,     &lubyMult,
-      &varWeight,     &varSeparate,      &varInitAct,    &dbDecayLBD,      &dbExp,        &dbSafeLBD,
-      &propCounting,  &lpTimeRatio,      &lpPivotBudget, &lpIntolerance,   &lpLearnDuals, &lpGomoryCuts,
-      &lpLearnedCuts, &lpGomoryCutLimit, &lpMaxCutCos,   &multBeforeDiv,   &division,     &weakenNonImplying,
-      &learnedMin,    &bitsOverflow,     &bitsReduced,   &bitsLearned,     &cgHybrid,     &cgEncoding,
-      &cgResolveProp, &cgStrat,          &intEncoding,   &intDefaultBound, &pureLits,     &domBreakLim,
-      &tabuLim,       &inpProbing,       &inpAMO,        &basetime,        &test,
+      &help,          &copyright,        &licenseInfo,   &randomSeed,    &noSolve,         &fileFormat,
+      &printOpb,      &printSol,         &printUnits,    &printCsvData,  &outputMode,      &verbosity,
+      &timeout,       &timeoutDet,       &proofLog,      &boundUpper,    &lubyBase,        &lubyMult,
+      &varWeight,     &varSeparate,      &varInitAct,    &dbDecayLBD,    &dbExp,           &dbSafeLBD,
+      &propCounting,  &lpTimeRatio,      &lpPivotBudget, &lpIntolerance, &lpLearnDuals,    &lpGomoryCuts,
+      &lpLearnedCuts, &lpGomoryCutLimit, &lpMaxCutCos,   &multBeforeDiv, &division,        &weakenNonImplying,
+      &learnedMin,    &bitsOverflow,     &bitsReduced,   &bitsLearned,   &cgHybrid,        &cgEncoding,
+      &cgResolveProp, &cgStrat,          &cgReform,      &intEncoding,   &intDefaultBound, &pureLits,
+      &domBreakLim,   &tabuLim,          &inpProbing,    &inpAMO,        &basetime,        &test,
   };
   std::unordered_map<std::string, Option*> name2opt;
 

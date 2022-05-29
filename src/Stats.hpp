@@ -317,6 +317,10 @@ struct Stats {
   Stat TABUFLIPS{0, "number of local search literal flips"};
   Stat NTABUUNITS{0, "units derived during local search"};
 
+  Stat LASTLB{std::numeric_limits<StatNum>::quiet_NaN(), "best lower bound"};
+  Stat LASTUB{std::numeric_limits<StatNum>::quiet_NaN(), "best upper bound"};
+  Stat DEPLTIME{-1, "depletion time"};
+
   std::chrono::steady_clock::time_point startTime;
   std::chrono::steady_clock::time_point runStartTime;
 
@@ -462,6 +466,9 @@ struct Stats {
       &TABUSOLS,
       &TABUFLIPS,
       &NTABUUNITS,
+      &LASTUB,
+      &LASTLB,
+      &DEPLTIME,
   };
 
   [[nodiscard]] inline StatNum getTime() const {

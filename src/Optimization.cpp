@@ -173,13 +173,19 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& o
     : OptimizationSuper(s), origObj(obj) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
   lower_bound = -origObj->getDegree();
+  stats.LASTLB.z = static_cast<StatNum>(lower_bound);
   upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
+  stats.LASTUB.z = static_cast<StatNum>(upper_bound);
 
   reformObj = cePools.take<SMALL, LARGE>();
   reformObj->stopLogging();
   origObj->copyTo(reformObj);
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   reformObj->removeEqualities(solver.getEqualities(), false);
+  if (stats.DEPLTIME.z == -1 &&
+      std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(), [&](Var v) { return solver.isOrig(v); })) {
+    stats.DEPLTIME.z = stats.getTime();
+  }
 
   reply = SolveState::INPROCESSED;
   stratDiv = options.cgStrat.get();
@@ -423,6 +429,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   }
   assert(mult > 0);
   lower_bound += cardCore->getDegree() * static_cast<LARGE>(mult);
+  stats.LASTLB.z = static_cast<StatNum>(lower_bound);
 
   int cardCoreUpper = static_cast<int>(std::min<LARGE>(cardCore->nVars(), normalizedUpperBound() / mult));
   if (options.cgEncoding.is("sum") || cardCore->nVars() - cardCore->getDegree() <= 1) {
@@ -468,6 +475,7 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   [[maybe_unused]] LARGE prev_lower = lower_bound;
   lower_bound = -reformObj->getDegree();
+  stats.LASTLB.z = static_cast<StatNum>(lower_bound);
 
   if (core) {
     core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -496,6 +504,11 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
       result = reformObjective(core);
     }
   }
+  if (stats.DEPLTIME.z == -1 &&
+      std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(), [&](Var v) { return solver.isOrig(v); })) {
+    stats.DEPLTIME.z = stats.getTime();
+  }
+
   if (result == State::UNSAT) return State::UNSAT;
 
   checkLazyVariables();
@@ -511,6 +524,7 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   for (Var v : origObj->getVars()) upper_bound += origObj->coefs[v] * (int)(sol[v] > 0);
   assert(upper_bound <= prev_val);
   assert(upper_bound < prev_val || !options.boundUpper);
+  stats.LASTUB.z = static_cast<StatNum>(upper_bound);
 
   CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
@@ -615,13 +629,29 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
       if (!solver.hasAssumptions()) {
         reformObj->removeEqualities(solver.getEqualities(), false);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+        if (stats.DEPLTIME.z == -1 && std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(),
+                                                   [&](Var v) { return solver.isOrig(v); })) {
+          stats.DEPLTIME.z = stats.getTime();
+        }
         std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
         litcoefs.reserve(reformObj->nVars());
-        for (Var v : reformObj->getVars()) {
-          assert(reformObj->getLit(v) != 0);
-          double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));
-          if (cf >= stratLim) {
-            litcoefs.emplace_back(cf, v);
+        if (!options.cgReform.is("always")) {
+          for (Var v : reformObj->getVars()) {
+            assert(reformObj->getLit(v) != 0);
+            if (!solver.isOrig(v)) continue;
+            double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));
+            if (cf >= stratLim) {
+              litcoefs.emplace_back(cf, v);
+            }
+          }
+        }
+        if ((options.cgReform.is("depletion") && litcoefs.empty()) || options.cgReform.is("always")) {
+          for (Var v : reformObj->getVars()) {
+            assert(reformObj->getLit(v) != 0);
+            double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));
+            if (cf >= stratLim) {
+              litcoefs.emplace_back(cf, v);
+            }
           }
         }
         std::sort(litcoefs.begin(), litcoefs.end(), [](const Term<double>& t1, const Term<double>& t2) {
