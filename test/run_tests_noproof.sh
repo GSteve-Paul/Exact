@@ -65,6 +65,7 @@ declare -a arr_opt=(
 "opb/opt/lseu.opb*1120"
 "opb/opt/cracpb1.opb*22199"
 "opb/opt/rs_iss_3.opb*2"
+"opb/opt/knapPI_16_1000_1000_1_-27147.opb*-27147"
 )
 
 echo "########## no proofs ##########"
