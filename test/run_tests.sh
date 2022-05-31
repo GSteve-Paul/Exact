@@ -120,7 +120,7 @@ for j in "${arr_dec[@]}"; do
 done
 
 declare -a arr_lazy=(
-log
+binary
 lazysum
 reified
 )

@@ -9,7 +9,7 @@ declare -a arr_configs=(
 "simple"
 "arbitrary"
 "noproof"
-"log"
+"binary"
 "lazysum"
 "reified"
 )

@@ -487,7 +487,7 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
   assert(!core->hasNegativeSlack(solver.getLevel()));  // Would be handled by solver's learnConstraint
   --stats.NCGCOREREUSES;
   State result = State::SUCCESS;
-  if (options.cgEncoding.is("log")) {
+  if (options.cgEncoding.is("binary")) {
     while (result == State::SUCCESS) {
       ++stats.NCGCOREREUSES;
       result = reformObjectiveLog(core);
