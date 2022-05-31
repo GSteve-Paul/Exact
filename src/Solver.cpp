@@ -926,6 +926,11 @@ State Solver::reduceDB() {
     removeConstraint(cr, true);
     ce->strongPostProcess(*this);
     if (ce->isTautology()) continue;
+    if (ce->nVars() == 0) {
+      assert(ce->isInconsistency());  // it's not a tautology ;)
+      if (logger) logger->logInconsistency(ce);
+      return State::UNSAT;
+    }
     CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates c!
     if (crnew == CRef_Unsat) return State::UNSAT;
     if (crnew == CRef_Undef) continue;

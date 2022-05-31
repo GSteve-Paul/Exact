@@ -94,12 +94,12 @@ void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
 }
 
 void quit::printFinalStats(ILP& ilp) {
-  if (options.verbosity.get() > 0)
-    stats.print(static_cast<StatNum>(ilp.getOptimization()->getLowerBound()),
-                static_cast<StatNum>(ilp.getOptimization()->getUpperBound()));
-  if (options.printCsvData)
-    stats.printCsvLine(static_cast<StatNum>(ilp.getOptimization()->getLowerBound()),
-                       static_cast<StatNum>(ilp.getOptimization()->getUpperBound()));
+  StatNum lb = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getLowerBound())
+                                     : std::numeric_limits<StatNum>::quiet_NaN();
+  StatNum ub = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getUpperBound())
+                                     : std::numeric_limits<StatNum>::quiet_NaN();
+  if (options.verbosity.get() > 0) stats.print(lb, ub);
+  if (options.printCsvData) stats.printCsvLine(lb, ub);
   if (options.printOpb) ilp.printFormula();
 }
 
