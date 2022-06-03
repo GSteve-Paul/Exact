@@ -546,8 +546,14 @@ std::pair<State, CeSuper> LpSolver::inProcess() {
   for (Var v = 1; v < getNbCols(); ++v) {
     solver.freeHeur.setPhase(v, (lpSolution[v] <= 0.5) ? -v : v);
   }
-  if (options.verbosity.get() > 0) {
-    aux::prettyPrint(std::cout << "c rational objective ", lp.objValueReal()) << std::endl;
+  double objVal = lp.objValueReal();
+  if (isfinite(objVal)) {
+    if (isnan(stats.LPOBJ.z) || stats.LPOBJ.z < objVal) {
+      stats.LPOBJ.z = objVal;
+    }
+    if (options.verbosity.get() > 0) {
+      aux::prettyPrint(std::cout << "c rational objective ", objVal) << std::endl;
+    }
   }
   candidateCuts.clear();
   if (logger && (options.lpGomoryCuts || options.lpLearnedCuts)) logger->logComment("cutting");

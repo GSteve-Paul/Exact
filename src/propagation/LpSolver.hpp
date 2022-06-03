@@ -203,7 +203,7 @@ class LpSolver {
     assert(false);
     return {LpStatus::UNDETERMINED, CeNull()};
   }
-  std::pair<State, ID> inProcess() { return State::FAIL; }
+  std::pair<State, ID> inProcess() { return {State::FAIL, ID_Undef}; }
   bool canInProcess() { return false; }
 
   void addConstraint([[maybe_unused]] const CeSuper& c, [[maybe_unused]] bool removable,

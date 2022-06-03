@@ -289,6 +289,7 @@ struct Stats {
   Stat NLPENCGOMORY{0, "LP encountered Gomory constraints"};
   Stat NLPENCFARKAS{0, "LP encountered Farkas constraints"};
   Stat NLPENCDUAL{0, "LP encountered dual constraints"};
+  Stat LPOBJ{std::numeric_limits<StatNum>::quiet_NaN(), "LP relaxation objective"};
 
   Stat NCGUNITCORES{0, "CG unit cores"};
   Stat NCGNONCLAUSALCORES{0, "CG non-clausal cores"};
@@ -367,9 +368,11 @@ struct Stats {
       &TABUDETTIME,
       &ATMOSTONETIME,
       &ATMOSTONEDETTIME,
+#if WITHSOPLEX
       &LPSOLVETIME,
       &LPTOTALTIME,
       &LPDETTIME,
+#endif  // WITHSOPLEX
       &NCORES,
       &NSOLS,
       &NPROP,
@@ -439,6 +442,17 @@ struct Stats {
       &NENCDETECTEDAMO,
       &NENCEQ,
       &NENCIMPL,
+      &NCGUNITCORES,
+      &NCGNONCLAUSALCORES,
+      &NCGCOREREUSES,
+      &TABUSOLS,
+      &TABUFLIPS,
+      &NTABUUNITS,
+      &LASTUB,
+      &LASTLB,
+      &DEPLTIME,
+#if WITHSOPLEX
+      &LPOBJ,
       &NLPADDEDROWS,
       &NLPDELETEDROWS,
       &NLPPIVOTS,
@@ -463,15 +477,7 @@ struct Stats {
       &NLPENCGOMORY,
       &NLPENCFARKAS,
       &NLPENCDUAL,
-      &NCGUNITCORES,
-      &NCGNONCLAUSALCORES,
-      &NCGCOREREUSES,
-      &TABUSOLS,
-      &TABUFLIPS,
-      &NTABUUNITS,
-      &LASTUB,
-      &LASTLB,
-      &DEPLTIME,
+#endif  // WITHSOPLEX
   };
 
   [[nodiscard]] inline StatNum getTime() const {
