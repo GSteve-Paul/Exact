@@ -314,28 +314,10 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
     return State::FAIL;
   }
   // the following operations do not turn core/reduced into a tautology
-  aux::predicate<Lit> falsified = [&](Lit l) { return reformObj->hasLit(l); };
-  core->divideTo(limitAbs<int, long long>(), falsified);
+  core->divideTo(limitAbs<int, long long>(), [&](Lit l) { return reformObj->hasLit(l); });
   assert(!core->isTautology());
   CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
-  //  std::cout << core << std::endl;
-  //  std::cout << reformObj << std::endl;
-
-  //  reduced->reset(false);
-  //  reduced->addLhs(1, 1);
-  //  reduced->addLhs(2, 2);
-  //  reduced->addLhs(2, 3);
-  //  reduced->addLhs(3, 4);
-  //  reduced->addLhs(3, 5);
-  //  reduced->addRhs(options.test.get());
-  //  reformObj->reset(false);
-  //  reformObj->addLhs(2, 1);
-  //  reformObj->addLhs(3, 2);
-  //  reformObj->addLhs(4, 3);
-  //  reformObj->addLhs(4, 4);
-  //  reformObj->addLhs(5, 5);
-  //  solver.setAssumptions({-1, -2, -3, -4, -5});
 
   // decide rational multiplier using knapsack heuristic
   reduced->sortWithCoefTiebreaker([&](Var v1, Var v2) {
@@ -359,7 +341,10 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   SMALL mult = reformObj->getCoef(reduced->getLit(reduced->vars[i]));
   assert(mult > 0);
   reduced->multiply(mult);
-  reduced->weakenDivideRound(div, falsified, 0);  // TODO: sorted?
+  reduced->weakenDivideRound(
+      div, [&](Lit l) { return reformObj->hasLit(l) && reformObj->getCoef(l) * div >= reduced->getCoef(l); }, 0);
+  // weaken all literals with a lower objective to reduced coefficient ratio than the ith literal in reduced
+  // TODO: sorted?
 
   // create extended lower bound
   range = reduced->absCoeffSum() - reduced->getDegree();
