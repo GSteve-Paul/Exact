@@ -66,6 +66,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+template <typename SMALL, typename LARGE>
 struct LazyVar {
   Solver& solver;
   int coveredVars;
@@ -76,7 +77,10 @@ struct LazyVar {
   ConstrSimple32 atLeast;  // X >= k + y1 + ... + yi
   ConstrSimple32 atMost;   // k + y1 + ... + yi-1 + (1+n-k-i)yi >= X
 
-  LazyVar(Solver& slvr, const Ce32& cardCore, int cardUpperBound, Var startVar);
+  SMALL mult;
+  LARGE exceedSum;
+
+  LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& esum, const LARGE& normUpBnd);
   ~LazyVar();
 
   void addVar(Var v);
@@ -85,16 +89,14 @@ struct LazyVar {
   void addSymBreakingConstraint(Var prevvar) const;
   void addFinalAtMost();
   [[nodiscard]] int remainingVars() const;
-  void setUpperBound(int cardUpperBound);
+  void setUpperBound(const LARGE& normalizedUpperBound);
 };
 
-std::ostream& operator<<(std::ostream& o, const std::shared_ptr<LazyVar>& lv);
-
-template <typename SMALL>
-struct LvM {
-  std::unique_ptr<LazyVar> lv;
-  SMALL m;
-};
+template <typename SMALL, typename LARGE>
+std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
+  o << lv.atLeast << "\n" << lv.atMost;
+  return o;
+}
 
 class OptimizationSuper {
  protected:
@@ -127,7 +129,7 @@ class Optimization final : public OptimizationSuper {
   ID lastLowerBound = ID_Undef;
   ID lastLowerBoundUnprocessed = ID_Undef;
 
-  std::vector<LvM<SMALL>> lazyVars;
+  std::vector<std::unique_ptr<LazyVar<SMALL, LARGE>>> lazyVars;
 
   // State variables during solve loop:
   SolveState reply;

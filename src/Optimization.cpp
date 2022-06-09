@@ -65,9 +65,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-LazyVar::LazyVar(Solver& slvr, const Ce32& cardCore, int cardUpperBound, Var startVar)
-    : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(cardUpperBound) {
-  assert(cardCore->isCardinality());
+template <typename SMALL, typename LARGE>
+LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& esum,
+                               const LARGE& normUpBnd)
+    : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(cardCore->nVars()), mult(m), exceedSum(esum) {
+  setUpperBound(normUpBnd);
   cardCore->toSimple()->copyTo(atLeast);
   atLeast.toNormalFormLit();
   assert(atLeast.rhs == cardCore->getDegree());
@@ -82,19 +84,24 @@ LazyVar::LazyVar(Solver& slvr, const Ce32& cardCore, int cardUpperBound, Var sta
   ++coveredVars;
 }
 
-LazyVar::~LazyVar() {
+template <typename SMALL, typename LARGE>
+LazyVar<SMALL, LARGE>::~LazyVar() {
   solver.dropExternal(atLeastID, false, false);
   solver.dropExternal(atMostID, false, false);
 }
 
-int LazyVar::remainingVars() const { return upperBound - coveredVars; }
-
-void LazyVar::setUpperBound(int cardUpperBound) {
-  assert(upperBound >= cardUpperBound);
-  upperBound = cardUpperBound;
+template <typename SMALL, typename LARGE>
+int LazyVar<SMALL, LARGE>::remainingVars() const {
+  return upperBound - coveredVars;
 }
 
-void LazyVar::addVar(Var v) {
+template <typename SMALL, typename LARGE>
+void LazyVar<SMALL, LARGE>::setUpperBound(const LARGE& normalizedUpperBound) {
+  upperBound = static_cast<int>(std::min<LARGE>(upperBound, (normalizedUpperBound + exceedSum) / mult));
+}
+
+template <typename SMALL, typename LARGE>
+void LazyVar<SMALL, LARGE>::addVar(Var v) {
   currentVar = v;
   atLeast.terms.emplace_back(-1, v);
   Term32& last = atMost.terms.back();
@@ -103,34 +110,33 @@ void LazyVar::addVar(Var v) {
   ++coveredVars;
 }
 
-void LazyVar::addAtLeastConstraint() {
+template <typename SMALL, typename LARGE>
+void LazyVar<SMALL, LARGE>::addAtLeastConstraint() {
   assert(atLeast.terms.back().l == currentVar);
   solver.dropExternal(atLeastID, true, false);  // TODO: should old constraints be force deleted?
   solver.addConstraintUnchecked(atLeast, Origin::COREGUIDED);
 }
 
-void LazyVar::addAtMostConstraint() {
+template <typename SMALL, typename LARGE>
+void LazyVar<SMALL, LARGE>::addAtMostConstraint() {
   assert(atMost.terms.back().l == currentVar);
   solver.dropExternal(atMostID, true, false);
   solver.addConstraintUnchecked(atMost, Origin::COREGUIDED);
 }
 
-void LazyVar::addSymBreakingConstraint(Var prevvar) const {
+template <typename SMALL, typename LARGE>
+void LazyVar<SMALL, LARGE>::addSymBreakingConstraint(Var prevvar) const {
   assert(prevvar < currentVar);
   // y-- + ~y >= 1 (equivalent to y-- >= y)
   solver.addConstraintUnchecked(ConstrSimple32({{1, prevvar}, {1, -currentVar}}, 1), Origin::COREGUIDED);
 }
 
-void LazyVar::addFinalAtMost() {
+template <typename SMALL, typename LARGE>
+void LazyVar<SMALL, LARGE>::addFinalAtMost() {
   solver.dropExternal(atMostID, true, false);
   Term32& last = atMost.terms.back();
   last = {1, last.l};
   solver.addConstraintUnchecked(atMost, Origin::COREGUIDED);
-}
-
-std::ostream& operator<<(std::ostream& o, const std::shared_ptr<LazyVar>& lv) {
-  o << lv->atLeast << "\n" << lv->atMost;
-  return o;
 }
 
 OptimizationSuper::OptimizationSuper(Solver& s) : solver(s) {}
@@ -202,10 +208,12 @@ void Optimization<SMALL, LARGE>::printObjBounds() {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::checkLazyVariables() {
+  // TODO: take *upper* bound on reformed objective into account.
+  // E.g.: objective x+y+z+w =< 3 for core x+y+z+w >= 1 means we can rewrite to x+y+z+w = 1+a+b instead of = 1+a+b+c
   for (int i = 0; i < (int)lazyVars.size(); ++i) {
-    LazyVar& lv = *lazyVars[i].lv;
+    LazyVar<SMALL, LARGE>& lv = *lazyVars[i];
     if (reformObj->getLit(lv.currentVar) == 0) {
-      lv.setUpperBound(static_cast<int>(std::min<LARGE>(lv.upperBound, normalizedUpperBound() / lazyVars[i].m)));
+      lv.setUpperBound(normalizedUpperBound());
       if (lv.remainingVars() == 0 ||
           isUnit(solver.getLevel(), -lv.currentVar)) {  // binary constraints make all new auxiliary variables unit
         lv.addFinalAtMost();
@@ -216,7 +224,7 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
         Var oldvar = lv.currentVar;
         lv.addVar(newN);
         // reformulate the objective
-        reformObj->addLhs(lazyVars[i].m, newN);
+        reformObj->addLhs(lv.mult, newN);
         // add necessary lazy constraints
         lv.addAtLeastConstraint();
         lv.addAtMostConstraint();
@@ -400,13 +408,16 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
 
   // decide rational multiplier using knapsack heuristic
   Lit cutoff = getKnapsackLit(reduced);
+  // ensure sum of coefficients fits in int
+  int maxCoef = std::min<double>(options.cgMaxCoef.get(), limitAbs<int, long long>() / reduced->nVars());
+  assert(maxCoef >= 1);
   LARGE div = reduced->getCoef(cutoff);
   assert(div > 0);
   SMALL mult = reformObj->getCoef(cutoff);
   assert(mult > 0);
   reduced->multiply(mult);
-  if (reduced->getLargestCoef() > options.cgMaxCoef.get() * div) {
-    div = aux::ceildiv(reduced->getLargestCoef(), static_cast<SMALL>(options.cgMaxCoef.get()));
+  if (reduced->getLargestCoef() > maxCoef * div) {
+    div = aux::ceildiv(reduced->getLargestCoef(), static_cast<SMALL>(maxCoef));
   }
   reduced->weakenDivideRound(
       div, [&](Lit l) { return reformObj->hasLit(l) && reformObj->getCoef(l) * div >= reduced->getCoef(l); }, 0);
@@ -475,40 +486,19 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   assert(mult > 0);
   lower_bound += cardCore->getDegree() * static_cast<LARGE>(mult);
 
-  int cardCoreUpper = static_cast<int>(std::min<LARGE>(cardCore->nVars(), normalizedUpperBound() / mult));
-  if (options.cgEncoding.is("sum") || cardCore->nVars() - cardCore->getDegree() <= 1) {
-    // add auxiliary variables
-    int oldN = solver.getNbVars();
-    int newN = oldN - static_cast<int>(cardCore->getDegree()) + cardCoreUpper;
-    assert(newN >= oldN);
-    solver.setNbVars(newN, false);
-    // reformulate the objective
-    for (Var v = oldN + 1; v <= newN; ++v) cardCore->addLhs(-1, v);
-    cardCore->invert();
-    reformObj->addUp(cardCore, mult);
-    assert(lower_bound == -reformObj->getDegree());
-    // add channeling constraints
-    solver.addConstraintUnchecked(cardCore, Origin::COREGUIDED);
-    cardCore->invert();
-    solver.addConstraintUnchecked(cardCore, Origin::COREGUIDED);
-    for (Var v = oldN + 1; v < newN; ++v) {  // add symmetry breaking constraints
-      solver.addConstraintUnchecked(ConstrSimple32({{1, v}, {1, -v - 1}}, 1), Origin::COREGUIDED);
-    }
-  } else {
-    // add auxiliary variable
-    int newN = solver.getNbVars() + 1;
-    solver.setNbVars(newN, false);
-    // reformulate the objective
-    cardCore->invert();
-    reformObj->addUp(cardCore, mult);
-    cardCore->invert();
-    reformObj->addLhs(mult, newN);  // add only one variable for now
-    assert(lower_bound == -reformObj->getDegree());
-    // add first lazy constraint
-    lazyVars.push_back({std::make_unique<LazyVar>(solver, cardCore, cardCoreUpper, newN), mult});
-    lazyVars.back().lv->addAtLeastConstraint();
-    lazyVars.back().lv->addAtMostConstraint();
-  }
+  // add auxiliary variable
+  int newN = solver.getNbVars() + 1;
+  solver.setNbVars(newN, false);
+  // reformulate the objective
+  cardCore->invert();
+  reformObj->addUp(cardCore, mult);
+  cardCore->invert();
+  reformObj->addLhs(mult, newN);  // add only one variable for now
+  assert(lower_bound == -reformObj->getDegree());
+  // add first lazy constraint
+  lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, 0, normalizedUpperBound()));
+  lazyVars.back()->addAtLeastConstraint();
+  lazyVars.back()->addAtMostConstraint();
   if (addLowerBound() == State::UNSAT) return State::UNSAT;
   return State::SUCCESS;
 }
@@ -767,5 +757,11 @@ template class Optimization<long long, int128>;
 template class Optimization<int128, int128>;
 template class Optimization<int128, int256>;
 template class Optimization<bigint, bigint>;
+
+template class LazyVar<int, long long>;
+template class LazyVar<long long, int128>;
+template class LazyVar<int128, int128>;
+template class LazyVar<int128, int256>;
+template class LazyVar<bigint, bigint>;
 
 }  // namespace xct
