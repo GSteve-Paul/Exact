@@ -320,25 +320,11 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   core->copyTo(reduced);
 
   // decide rational multiplier using knapsack heuristic
-  reduced->sortWithCoefTiebreaker([&](Var v1, Var v2) {
-    const LARGE o1r2 =
-        reformObj->getLit(v1) == reduced->getLit(v1) ? aux::abs(reformObj->coefs[v1] * reduced->coefs[v2]) : 0;
-    const LARGE o2r1 =
-        reformObj->getLit(v2) == reduced->getLit(v2) ? aux::abs(reformObj->coefs[v2] * reduced->coefs[v1]) : 0;
-    return aux::sgn(o1r2 - o2r1);
-    // TODO: check whether sorting the literals is a bottleneck
-    // TODO: cast to LARGE when using smaller SMALL, LARGE
-  });
-  LARGE range = reduced->getDegree();
-  int i = reduced->nVars();
-  while (range >= 0 && i > 0) {
-    --i;
-    range -= reduced->nthCoef(i);
-  }
-  ++i;
-  assert(i <= reduced->nVars());
-  LARGE div = reduced->nthCoef(i);
-  SMALL mult = reformObj->getCoef(reduced->getLit(reduced->vars[i]));
+
+  Lit cutoff = getKnapsackLit(reduced);
+  LARGE div = reduced->getCoef(cutoff);
+  assert(div > 0);
+  SMALL mult = reformObj->getCoef(cutoff);
   assert(mult > 0);
   reduced->multiply(mult);
   reduced->weakenDivideRound(
@@ -347,7 +333,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   // TODO: sorted?
 
   // create extended lower bound
-  range = reduced->absCoeffSum() - reduced->getDegree();
+  LARGE range = reduced->absCoeffSum() - reduced->getDegree();
   assert(range > 0);
   int newvars = aux::msb(range) + 1;
   assert((limitBit<SMALL, LARGE>()) >= newvars);
@@ -374,6 +360,93 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   // add to objective
   reformObj->addUp(reduced);
   lower_bound = -reformObj->getDegree();
+
+  // wrap up
+  if (addLowerBound() == State::UNSAT) return State::UNSAT;
+
+  return State::SUCCESS;
+}
+
+template <typename SMALL, typename LARGE>
+Lit Optimization<SMALL, LARGE>::getKnapsackLit(const CePtr<ConstrExp<SMALL, LARGE>>& core) const {
+  core->sortWithCoefTiebreaker([&](Var v1, Var v2) {
+    const LARGE o1r2 = reformObj->getLit(v1) == core->getLit(v1) ? aux::abs(reformObj->coefs[v1] * core->coefs[v2]) : 0;
+    const LARGE o2r1 = reformObj->getLit(v2) == core->getLit(v2) ? aux::abs(reformObj->coefs[v2] * core->coefs[v1]) : 0;
+    return aux::sgn(o1r2 - o2r1);
+    // TODO: check whether sorting the literals is a bottleneck
+    // TODO: cast to LARGE when using smaller SMALL, LARGE
+  });
+  LARGE range = core->getDegree();
+  int i = core->nVars();
+  while (range >= 0 && i > 0) {
+    --i;
+    range -= core->nthCoef(i);
+  }
+  ++i;
+  assert(i <= core->nVars());
+  assert(i >= 0);
+  return core->getLit(core->vars[i]);
+}
+
+template <typename SMALL, typename LARGE>
+State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
+  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  aux::predicate<Lit> toWeaken = [&](Lit l) { return !reformObj->hasLit(l); };
+  if (!core->isSaturated(toWeaken)) {
+    core->weaken(toWeaken);
+    core->removeZeroes();
+  }
+  core->saturate(true, false);
+  if (core->isTautology()) {
+    return State::FAIL;
+  }
+  CeSuper clone = core->clone(cePools);
+  // the following operations do not turn core/reduced into a tautology
+  core->divideTo(limitAbs<int, long long>(), [&](Lit l) { return reformObj->hasLit(l); });
+  assert(!core->isTautology());
+  CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
+  core->copyTo(reduced);
+
+  // decide rational multiplier using knapsack heuristic
+  Lit cutoff = getKnapsackLit(reduced);
+  LARGE div = reduced->getCoef(cutoff);
+  assert(div > 0);
+  SMALL mult = reformObj->getCoef(cutoff);
+  assert(mult > 0);
+  reduced->multiply(mult);
+  if (reduced->getLargestCoef() > options.cgMaxCoef.get() * div) {
+    div = aux::ceildiv(reduced->getLargestCoef(), static_cast<SMALL>(options.cgMaxCoef.get()));
+  }
+  reduced->weakenDivideRound(
+      div, [&](Lit l) { return reformObj->hasLit(l) && reformObj->getCoef(l) * div >= reduced->getCoef(l); }, 0);
+  // weaken all literals with a lower objective to reduced coefficient ratio than the ith literal in reduced
+  // TODO: sorted?
+  assert(reduced->getLargestCoef() <= options.cgMaxCoef.get());
+  //  std::cout << "_REDUCED " << reduced << std::endl;
+  cutoff = getKnapsackLit(reduced);
+  mult = aux::floordiv(reformObj->getCoef(cutoff), reduced->getCoef(cutoff));
+  assert(mult >= 1);
+
+  // create extended lower bound
+  assert(reduced->absCoeffSum() - reduced->getDegree() > 0);
+  assert(reduced->absCoeffSum() - reduced->getDegree() < INF - solver.getNbVars());
+  int oldvars = solver.getNbVars();
+  solver.setNbVars(oldvars + static_cast<int>(reduced->absCoeffSum() - reduced->getDegree()), false);
+  for (Var var = oldvars + 1; var <= solver.getNbVars(); ++var) {
+    reduced->addLhs(-1, var);
+  }
+
+  // add extended lower bound as constraint
+  solver.addConstraintUnchecked(reduced, Origin::COREGUIDED);
+
+  // add other side of equality as constraint
+  reduced->invert();
+  solver.addConstraintUnchecked(reduced, Origin::COREGUIDED);
+
+  // add to objective
+  reformObj->addUp(reduced, mult);
+  lower_bound = -reformObj->getDegree();
+  //  std::cout << "_REFORMED " << reformObj << std::endl;
 
   // wrap up
   if (addLowerBound() == State::UNSAT) return State::UNSAT;
@@ -476,6 +549,11 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
     while (result == State::SUCCESS) {
       ++stats.NCGCOREREUSES;
       result = reformObjectiveLog(core);
+    }
+  } else if (options.cgEncoding.is("smallsum")) {
+    while (result == State::SUCCESS) {
+      ++stats.NCGCOREREUSES;
+      result = reformObjectiveSmallSum(core);
     }
   } else {
     while (result == State::SUCCESS) {

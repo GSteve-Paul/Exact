@@ -154,7 +154,9 @@ class Optimization final : public OptimizationSuper {
   [[nodiscard]] State reformObjective(const CeSuper& core);     // modifies core
   [[nodiscard]] State reformObjectiveLog(const CeSuper& core);  // modifies core
   [[nodiscard]] bool reformObjectiveLogTest(const CePtr<ConstrExp<SMALL, LARGE>>& core) const;
-  [[nodiscard]] State handleInconsistency(const CeSuper& core);  // modifies core
+  [[nodiscard]] State reformObjectiveSmallSum(const CeSuper& core);                    // modifies core
+  [[nodiscard]] Lit getKnapsackLit(const CePtr<ConstrExp<SMALL, LARGE>>& core) const;  // modifies core
+  [[nodiscard]] State handleInconsistency(const CeSuper& core);                        // modifies core
   [[nodiscard]] State handleNewSolution(const std::vector<Lit>& sol);
 
   void logProof();
