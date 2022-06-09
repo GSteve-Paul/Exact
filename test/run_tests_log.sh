@@ -23,7 +23,7 @@ echo ""
 declare -a arr_lazy=(
 binary
 # lazysum
-# reified
+# smallsum
 )
 
 declare -a arr_opt=(

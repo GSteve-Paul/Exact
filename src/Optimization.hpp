@@ -79,11 +79,11 @@ struct LazyVar {
   LazyVar(Solver& slvr, const Ce32& cardCore, int cardUpperBound, Var startVar);
   ~LazyVar();
 
-  void addVar(Var v, bool reified);
-  void addAtLeastConstraint(bool reified);
-  void addAtMostConstraint(bool reified);
+  void addVar(Var v);
+  void addAtLeastConstraint();
+  void addAtMostConstraint();
   void addSymBreakingConstraint(Var prevvar) const;
-  void addFinalAtMost(bool reified);
+  void addFinalAtMost();
   [[nodiscard]] int remainingVars() const;
   void setUpperBound(int cardUpperBound);
 };

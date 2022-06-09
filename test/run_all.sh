@@ -11,7 +11,7 @@ declare -a arr_configs=(
 "noproof"
 "binary"
 "lazysum"
-"reified"
+"smallsum"
 )
 
 for idx in "${!arr_configs[@]}"; do

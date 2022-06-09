@@ -94,32 +94,24 @@ void LazyVar::setUpperBound(int cardUpperBound) {
   upperBound = cardUpperBound;
 }
 
-void LazyVar::addVar(Var v, bool reified) {
+void LazyVar::addVar(Var v) {
   currentVar = v;
-  if (reified) {
-    Term32& last = atLeast.terms.back();
-    last = {last.c - 1, v};
-    --atMost.rhs;
-    Term32& last2 = atMost.terms.back();
-    last2 = {remainingVars(), v};
-  } else {
-    atLeast.terms.emplace_back(-1, v);
-    Term32& last = atMost.terms.back();
-    last = {1, last.l};
-    atMost.terms.emplace_back(remainingVars(), v);
-  }
+  atLeast.terms.emplace_back(-1, v);
+  Term32& last = atMost.terms.back();
+  last = {1, last.l};
+  atMost.terms.emplace_back(remainingVars(), v);
   ++coveredVars;
 }
 
-void LazyVar::addAtLeastConstraint(bool reified) {
+void LazyVar::addAtLeastConstraint() {
   assert(atLeast.terms.back().l == currentVar);
-  solver.dropExternal(atLeastID, !reified, false);  // TODO: should non-reified constraints be force deleted?
+  solver.dropExternal(atLeastID, true, false);  // TODO: should old constraints be force deleted?
   solver.addConstraintUnchecked(atLeast, Origin::COREGUIDED);
 }
 
-void LazyVar::addAtMostConstraint(bool reified) {
+void LazyVar::addAtMostConstraint() {
   assert(atMost.terms.back().l == currentVar);
-  solver.dropExternal(atMostID, !reified, false);
+  solver.dropExternal(atMostID, true, false);
   solver.addConstraintUnchecked(atMost, Origin::COREGUIDED);
 }
 
@@ -129,8 +121,8 @@ void LazyVar::addSymBreakingConstraint(Var prevvar) const {
   solver.addConstraintUnchecked(ConstrSimple32({{1, prevvar}, {1, -currentVar}}, 1), Origin::COREGUIDED);
 }
 
-void LazyVar::addFinalAtMost(bool reified) {
-  solver.dropExternal(atMostID, !reified, false);
+void LazyVar::addFinalAtMost() {
+  solver.dropExternal(atMostID, true, false);
   Term32& last = atMost.terms.back();
   last = {1, last.l};
   solver.addConstraintUnchecked(atMost, Origin::COREGUIDED);
@@ -210,25 +202,24 @@ void Optimization<SMALL, LARGE>::printObjBounds() {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::checkLazyVariables() {
-  bool reified = options.cgEncoding.is("reified");
   for (int i = 0; i < (int)lazyVars.size(); ++i) {
     LazyVar& lv = *lazyVars[i].lv;
     if (reformObj->getLit(lv.currentVar) == 0) {
       lv.setUpperBound(static_cast<int>(std::min<LARGE>(lv.upperBound, normalizedUpperBound() / lazyVars[i].m)));
       if (lv.remainingVars() == 0 ||
           isUnit(solver.getLevel(), -lv.currentVar)) {  // binary constraints make all new auxiliary variables unit
-        lv.addFinalAtMost(reified);
+        lv.addFinalAtMost();
         aux::swapErase(lazyVars, i--);  // fully expanded, no need to keep in memory
       } else {                          // add auxiliary variable
         int newN = solver.getNbVars() + 1;
         solver.setNbVars(newN, false);
         Var oldvar = lv.currentVar;
-        lv.addVar(newN, reified);
+        lv.addVar(newN);
         // reformulate the objective
         reformObj->addLhs(lazyVars[i].m, newN);
         // add necessary lazy constraints
-        lv.addAtLeastConstraint(reified);
-        lv.addAtMostConstraint(reified);
+        lv.addAtLeastConstraint();
+        lv.addAtMostConstraint();
         lv.addSymBreakingConstraint(oldvar);
         if (lv.remainingVars() == 0) {
           aux::swapErase(lazyVars, i--);  // fully expanded, no need to keep in memory
@@ -504,7 +495,6 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
       solver.addConstraintUnchecked(ConstrSimple32({{1, v}, {1, -v - 1}}, 1), Origin::COREGUIDED);
     }
   } else {
-    bool reified = options.cgEncoding.is("reified");
     // add auxiliary variable
     int newN = solver.getNbVars() + 1;
     solver.setNbVars(newN, false);
@@ -516,8 +506,8 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
     assert(lower_bound == -reformObj->getDegree());
     // add first lazy constraint
     lazyVars.push_back({std::make_unique<LazyVar>(solver, cardCore, cardCoreUpper, newN), mult});
-    lazyVars.back().lv->addAtLeastConstraint(reified);
-    lazyVars.back().lv->addAtMostConstraint(reified);
+    lazyVars.back().lv->addAtLeastConstraint();
+    lazyVars.back().lv->addAtMostConstraint();
   }
   if (addLowerBound() == State::UNSAT) return State::UNSAT;
   return State::SUCCESS;
