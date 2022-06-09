@@ -304,7 +304,7 @@ struct Options {
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
   EnumOption cgEncoding{
       "cg-encoding", "Encoding of the extension constraints", "lazysum", {"lazysum", "binary", "smallsum"}};
-  ValOption<int> cgMaxCoef{"cg-maxcoef", "Max coefficient when reducing cores", 10, "1 =< int =< 1e9",
+  ValOption<int> cgMaxCoef{"cg-maxcoef", "Max coefficient when reducing cores", 100, "1 =< int =< 1e9",
                            [](const int& x) -> bool { return x >= 1 && x <= limitAbs<int, long long>(); }};
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",

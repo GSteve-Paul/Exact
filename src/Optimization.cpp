@@ -68,7 +68,7 @@ namespace xct {
 template <typename SMALL, typename LARGE>
 LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& esum,
                                const LARGE& normUpBnd)
-    : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(cardCore->nVars()), mult(m), exceedSum(esum) {
+    : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(cardCore->absCoeffSum()), mult(m), exceedSum(esum) {
   setUpperBound(normUpBnd);
   cardCore->toSimple()->copyTo(atLeast);
   atLeast.toNormalFormLit();
@@ -424,33 +424,42 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
   // weaken all literals with a lower objective to reduced coefficient ratio than the ith literal in reduced
   // TODO: sorted?
   assert(reduced->getLargestCoef() <= options.cgMaxCoef.get());
-  //  std::cout << "_REDUCED " << reduced << std::endl;
+  assert(reduced->absCoeffSum() - reduced->getDegree() > 0);
+  assert(reduced->absCoeffSum() - reduced->getDegree() < INF - solver.getNbVars());
+
   cutoff = getKnapsackLit(reduced);
   mult = aux::floordiv(reformObj->getCoef(cutoff), reduced->getCoef(cutoff));
   assert(mult >= 1);
-
-  // create extended lower bound
-  assert(reduced->absCoeffSum() - reduced->getDegree() > 0);
-  assert(reduced->absCoeffSum() - reduced->getDegree() < INF - solver.getNbVars());
-  int oldvars = solver.getNbVars();
-  solver.setNbVars(oldvars + static_cast<int>(reduced->absCoeffSum() - reduced->getDegree()), false);
-  for (Var var = oldvars + 1; var <= solver.getNbVars(); ++var) {
-    reduced->addLhs(-1, var);
+  Ce32 cardCore = cePools.take32();
+  reduced->copyTo(cardCore);  // TODO: simply work in Ce32?
+  reduced->multiply(mult);
+  LARGE exceedSum = 0;
+  for (Var v : reduced->getVars()) {
+    Lit l = reduced->getLit(v);
+    if (!reformObj->hasLit(l)) {
+      exceedSum += reduced->getCoef(l);
+    } else if (reformObj->getCoef(l) < reduced->getCoef(l)) {
+      exceedSum += reduced->getCoef(l) - reformObj->getCoef(l);
+    }
   }
 
-  // add extended lower bound as constraint
-  solver.addConstraintUnchecked(reduced, Origin::COREGUIDED);
+  lower_bound += (reduced->getDegree() - exceedSum);
 
-  // add other side of equality as constraint
+  // TODO: don't add LazyVar when only 1 auxiliary variable is needed.
+  // add auxiliary variable
+  int newN = solver.getNbVars() + 1;
+  solver.setNbVars(newN, false);
+  // reformulate the objective
   reduced->invert();
-  solver.addConstraintUnchecked(reduced, Origin::COREGUIDED);
-
-  // add to objective
-  reformObj->addUp(reduced, mult);
-  lower_bound = -reformObj->getDegree();
-  //  std::cout << "_REFORMED " << reformObj << std::endl;
-
-  // wrap up
+  reformObj->addUp(reduced);
+  reformObj->addLhs(mult, newN);  // add only one variable for now
+  reduced->invert();
+  assert(lower_bound == -reformObj->getDegree());  // TODO: quickly calculate exceedSum according to this invariant
+  // add first lazy constraint
+  lazyVars.push_back(
+      std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, exceedSum, normalizedUpperBound()));
+  lazyVars.back()->addAtLeastConstraint();
+  lazyVars.back()->addAtMostConstraint();
   if (addLowerBound() == State::UNSAT) return State::UNSAT;
 
   return State::SUCCESS;
