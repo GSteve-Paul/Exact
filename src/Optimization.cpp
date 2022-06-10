@@ -401,7 +401,12 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
   }
   CeSuper clone = core->clone(cePools);
   // the following operations do not turn core/reduced into a tautology
-  core->divideTo(limitAbs<int, long long>(), [&](Lit l) { return reformObj->hasLit(l); });
+  int maxCoef = static_cast<int>(std::min(reformObj->getLargestCoef(), static_cast<SMALL>(options.cgMaxCoef.get())));
+  maxCoef = std::min(maxCoef, static_cast<int>(limitAbs<int, long long>()) / core->nVars());
+  assert(maxCoef >= 1);
+  if (maxCoef == 1) return reformObjective(core);
+
+  core->divideTo(maxCoef, [&](Lit l) { return reformObj->hasLit(l); });
   assert(!core->isTautology());
   CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
@@ -409,27 +414,23 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
   // decide rational multiplier using knapsack heuristic
   Lit cutoff = getKnapsackLit(reduced);
   // ensure sum of coefficients fits in int
-  int maxCoef = std::min<double>(options.cgMaxCoef.get(), limitAbs<int, long long>() / reduced->nVars());
-  assert(maxCoef >= 1);
   LARGE div = reduced->getCoef(cutoff);
   assert(div > 0);
   SMALL mult = reformObj->getCoef(cutoff);
   assert(mult > 0);
-  reduced->multiply(mult);
-  if (reduced->getLargestCoef() > maxCoef * div) {
-    div = aux::ceildiv(reduced->getLargestCoef(), static_cast<SMALL>(maxCoef));
+  if (div > mult) {
+    reduced->multiply(mult);
+    // weaken all literals with a lower objective to reduced coefficient ratio than the ith literal in reduced
+    // TODO: sorted?
+    reduced->weakenDivideRound(
+        div, [&](Lit l) { return reformObj->hasLit(l) && reformObj->getCoef(l) * div >= reduced->getCoef(l); }, 0);
+    mult = 1;
+  } else {
+    mult /= static_cast<SMALL>(div);
   }
-  reduced->weakenDivideRound(
-      div, [&](Lit l) { return reformObj->hasLit(l) && reformObj->getCoef(l) * div >= reduced->getCoef(l); }, 0);
-  // weaken all literals with a lower objective to reduced coefficient ratio than the ith literal in reduced
-  // TODO: sorted?
   assert(reduced->getLargestCoef() <= options.cgMaxCoef.get());
   assert(reduced->absCoeffSum() - reduced->getDegree() > 0);
   assert(reduced->absCoeffSum() - reduced->getDegree() < INF - solver.getNbVars());
-
-  cutoff = getKnapsackLit(reduced);
-  mult = aux::floordiv(reformObj->getCoef(cutoff), reduced->getCoef(cutoff));
-  assert(mult >= 1);
   Ce32 cardCore = cePools.take32();
   reduced->copyTo(cardCore);  // TODO: simply work in Ce32?
   reduced->multiply(mult);
