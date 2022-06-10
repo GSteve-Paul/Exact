@@ -429,7 +429,9 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
     mult /= static_cast<SMALL>(div);
   }
   assert(reduced->getLargestCoef() <= options.cgMaxCoef.get());
-  assert(reduced->absCoeffSum() - reduced->getDegree() > 0);
+  assert(reduced->getDegree() > 0);
+  assert(reduced->absCoeffSum() - reduced->getDegree() >= 0);
+  assert(reduced->absCoeffSum() - reduced->getDegree() > 0);  // TODO: if it is 0, we have a unit constraint!
   assert(reduced->absCoeffSum() - reduced->getDegree() < INF - solver.getNbVars());
   Ce32 cardCore = cePools.take32();
   reduced->copyTo(cardCore);  // TODO: simply work in Ce32?
