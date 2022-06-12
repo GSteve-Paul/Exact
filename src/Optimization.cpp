@@ -401,7 +401,12 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
   }
   CeSuper clone = core->clone(cePools);
   // the following operations do not turn core/reduced into a tautology
-  int maxCoef = static_cast<int>(std::min(reformObj->getLargestCoef(), static_cast<SMALL>(options.cgMaxCoef.get())));
+  SMALL largestCoef = 0;
+  for (Var v : core->getVars()) {
+    largestCoef = std::max(largestCoef, reformObj->getCoef(core->getLit(v)));
+  }
+  assert(largestCoef > 0);
+  int maxCoef = static_cast<int>(std::min(largestCoef, static_cast<SMALL>(options.cgMaxCoef.get())));
   maxCoef = std::min(maxCoef, static_cast<int>(limitAbs<int, long long>()) / core->nVars());
   assert(maxCoef >= 1);
   if (maxCoef == 1) return reformObjective(core);
@@ -436,17 +441,6 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
   Ce32 cardCore = cePools.take32();
   reduced->copyTo(cardCore);  // TODO: simply work in Ce32?
   reduced->multiply(mult);
-  LARGE exceedSum = 0;
-  for (Var v : reduced->getVars()) {
-    Lit l = reduced->getLit(v);
-    if (!reformObj->hasLit(l)) {
-      exceedSum += reduced->getCoef(l);
-    } else if (reformObj->getCoef(l) < reduced->getCoef(l)) {
-      exceedSum += reduced->getCoef(l) - reformObj->getCoef(l);
-    }
-  }
-
-  lower_bound += (reduced->getDegree() - exceedSum);
 
   // TODO: don't add LazyVar when only 1 auxiliary variable is needed.
   // add auxiliary variable
@@ -457,7 +451,8 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
   reformObj->addUp(reduced);
   reformObj->addLhs(mult, newN);  // add only one variable for now
   reduced->invert();
-  assert(lower_bound == -reformObj->getDegree());  // TODO: quickly calculate exceedSum according to this invariant
+  LARGE exceedSum = reformObj->getDegree() + lower_bound + reduced->getDegree();
+  lower_bound = -reformObj->getDegree();
   // add first lazy constraint
   lazyVars.push_back(
       std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, exceedSum, normalizedUpperBound()));
