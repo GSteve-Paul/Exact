@@ -111,6 +111,8 @@ class ILP {
  public:
   ILP();
 
+  bool unsatState() { return unsatDetected; }
+
   const IntConstraint& getObjective() const { return obj; }
   Solver& getSolver() { return solver; }
   Optim getOptimization() { return optim; }

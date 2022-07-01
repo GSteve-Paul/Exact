@@ -204,7 +204,7 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
 }
 
 void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntVar*>& vars) {
-  if (unsatDetected) throw UnsatState();
+  if (unsatState()) throw UnsatState();
   if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
 
   assumptions.clear();
@@ -235,7 +235,7 @@ void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntV
 State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                          const std::vector<bool>& negated, const std::optional<bigint>& lb,
                          const std::optional<bigint>& ub) {
-  if (unsatDetected) throw UnsatState();
+  if (unsatState()) throw UnsatState();
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
 
@@ -261,7 +261,7 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
 
 State ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                           const bigint& lb) {
-  if (unsatDetected) throw UnsatState();
+  if (unsatState()) throw UnsatState();
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw std::invalid_argument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw std::invalid_argument("Head of reification is not Boolean.");
@@ -292,7 +292,7 @@ State ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const 
 }
 
 State ILP::boundObjByLastSol() {
-  if (unsatDetected) throw UnsatState();
+  if (unsatState()) throw UnsatState();
   if (!hasSolution()) throw std::invalid_argument("No solution to add objective bound.");
   State result = optim->handleNewSolution(solver.getLastSolution());
   assert(result != State::FAIL);
@@ -301,7 +301,7 @@ State ILP::boundObjByLastSol() {
 }
 
 State ILP::invalidateLastSol() {
-  if (unsatDetected) throw UnsatState();
+  if (unsatState()) throw UnsatState();
   if (!hasSolution()) throw std::invalid_argument("No solution to add objective bound.");
 
   std::vector<Var> vars;
@@ -315,7 +315,7 @@ State ILP::invalidateLastSol() {
 }
 
 State ILP::invalidateLastSol(const std::vector<std::string>& names) {
-  if (unsatDetected) throw UnsatState();
+  if (unsatState()) throw UnsatState();
   if (!hasSolution()) throw std::invalid_argument("No solution to add objective bound.");
 
   std::vector<Var> vars;
@@ -330,7 +330,6 @@ State ILP::invalidateLastSol(const std::vector<std::string>& names) {
 }
 
 void ILP::init(bool boundObjective, bool addNonImplieds) {
-  if (unsatDetected) throw UnsatState();
   if (optim) throw std::invalid_argument("ILP already initialized.");
 
   // TODO: below should be set at option parsing time?
@@ -351,14 +350,14 @@ void ILP::init(bool boundObjective, bool addNonImplieds) {
 }
 
 SolveState ILP::run() {  // NOTE: also throws AsynchronousInterrupt
-  if (unsatDetected) throw UnsatState();
+  if (unsatState()) throw UnsatState();
   SolveState result = optim->optimize(assumptions);
   unsatDetected = result == SolveState::UNSAT;
   return result;
 }
 
 SolveState ILP::runFull() {  // NOTE: also throws AsynchronousInterrupt
-  if (unsatDetected) throw UnsatState();
+  if (unsatState()) throw UnsatState();
   SolveState result = SolveState::INPROCESSED;
   while (result == SolveState::INPROCESSED) {
     result = optim->optimize(assumptions);
@@ -458,7 +457,7 @@ void ILP::printOrigSol() const {
 // NOTE: also throws AsynchronousInterrupt
 std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::string>& varnames) {
   SolveState result = runFull();
-  if (unsatDetected) throw UnsatState();
+  if (unsatState()) throw UnsatState();
   if (result == SolveState::INCONSISTENT) return {};
   assert(result == SolveState::SAT);
 
@@ -491,6 +490,9 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
     }
     assert(!invalidator->hasNoZeroes());
     invalidator->removeZeroes();
+  }
+  if (result == SolveState::UNSAT) {
+    throw std::runtime_error("Propagation is undefined for unsatisfiable problems.");
   }
   assert(result == SolveState::INCONSISTENT);
   assumptions.pop_back();

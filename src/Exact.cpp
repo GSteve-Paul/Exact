@@ -119,6 +119,7 @@ State Exact::addConstraint(const std::vector<long long>& coefs, const std::vecto
                            long long lb, bool useUB, long long ub) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (ilp.unsatState()) return State::UNSAT;
 
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
@@ -136,6 +137,7 @@ State Exact::addReification(const std::string& head, const std::vector<long long
                             const std::vector<std::string>& vars, long long lb) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (ilp.unsatState()) return State::UNSAT;
 
   std::vector<bigint> cfs;
   cfs.reserve(coefs.size());
@@ -152,6 +154,7 @@ State Exact::addReification(const std::string& head, const std::vector<long long
 void Exact::setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals) {
   if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("More than 1e9 assumptions.");
+  if (ilp.unsatState()) return;
 
   std::vector<bigint> values;
   values.reserve(vars.size());
@@ -166,9 +169,18 @@ void Exact::setAssumptions(const std::vector<std::string>& vars, const std::vect
   ilp.setAssumptions(values, vs);
 }
 
-State Exact::boundObjByLastSol() { return ilp.boundObjByLastSol(); }
-State Exact::invalidateLastSol() { return ilp.invalidateLastSol(); }
-State Exact::invalidateLastSol(const std::vector<std::string>& vars) { return ilp.invalidateLastSol(vars); }
+State Exact::boundObjByLastSol() {
+  if (ilp.unsatState()) return State::UNSAT;
+  return ilp.boundObjByLastSol();
+}
+State Exact::invalidateLastSol() {
+  if (ilp.unsatState()) return State::UNSAT;
+  return ilp.invalidateLastSol();
+}
+State Exact::invalidateLastSol(const std::vector<std::string>& vars) {
+  if (ilp.unsatState()) return State::UNSAT;
+  return ilp.invalidateLastSol(vars);
+}
 
 void Exact::printFormula() { ilp.printFormula(); }
 
@@ -192,7 +204,10 @@ void Exact::init(const std::vector<long long>& coefs, const std::vector<std::str
   stats.runStartTime = std::chrono::steady_clock::now();
 }
 
-SolveState Exact::run() { return ilp.run(); }
+SolveState Exact::run() {
+  if (ilp.unsatState()) return SolveState::UNSAT;
+  return ilp.run();
+}
 
 std::pair<long long, long long> Exact::getObjectiveBounds() const {
   return {static_cast<long long>(ilp.getLowerBound()), static_cast<long long>(ilp.getUpperBound())};
@@ -218,6 +233,9 @@ void Exact::printStats() { quit::printFinalStats(ilp); }
 void Exact::setVerbosity(int verbosity) { options.verbosity.parse(std::to_string(verbosity)); }
 
 std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& varnames) {
+  if (ilp.unsatState()) {
+    throw std::runtime_error("Propagation is undefined for unsatisfiable problems.");
+  }
   std::vector<std::pair<long long, long long>> result;
   result.reserve(varnames.size());
   for (const std::pair<bigint, bigint>& tmp : ilp.propagate(varnames)) {
