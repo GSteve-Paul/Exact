@@ -28,17 +28,25 @@ import exact
 solver = exact.Exact()
 
 # Fixing Ramsey number instance
-if len(sys.argv)!=5:
-    print("Usage: python3 ramsey.py #nodes cliquesize1 cliquesize2 symcutoff")
+if len(sys.argv)!=6:
+    print("Usage: python3 ramsey.py #nodes cliquesize1 cliquesize2 symcutoff count-breakers")
     exit(1)
 nodes = int(sys.argv[1]) # size of the graph
 cliques = [int(sys.argv[2]),int(sys.argv[3])]  # size of cliques
 cutoff = int(sys.argv[4]) # should be less than 64 so that resulting coefficients still fit in long long
+uselex = int(sys.argv[5])<2
+usecounting = int(sys.argv[5])>0
 print("Searching for complete bicolored graph with",nodes,"nodes and no blue cliques of size",cliques[0],"and no red cliques of size",cliques[1])
-print("Lex-leader symmetry breaker cutoff:",cutoff)
+if uselex:
+    print("Lex-leader symmetry breaker cutoff:",cutoff)
+if usecounting:
+    print("Using counting symmetry breaking")
 
+def normalize(v):
+    return v if v[0]<=v[1] else (v[1],v[0])
 def toVar(v):
-    return str(v[0])+"_"+str(v[1]);
+    vv = normalize(v)
+    return str(vv[0])+"_"+str(vv[1]);
 
 edges = [toVar((i,j)) for i in range(0,nodes) for j in range(i+1,nodes)]
 
@@ -74,9 +82,8 @@ for n in cliques:
 def swapif(v,swap):
     return swap[1] if v==swap[0] else swap[0] if v==swap[1] else v
 def image(v,swap):
-    img1 = swapif(v[0],swap)
-    img2 = swapif(v[1],swap)
-    return (img1,img2) if img1 <= img2 else (img2,img1)
+    return normalize((swapif(v[0],swap),swapif(v[1],swap)))
+
 order = [(i,j) for i in range(0,nodes) for j in range(i+1,nodes)]
 orderdict = {order[i]:i for i in range(0,len(order))}
 def addLexLeader(swap1,swap2):
@@ -96,13 +103,19 @@ def addLexLeader(swap1,swap2):
         c //= 2
     solver.addConstraint(coefs, vars, True, 0, False, 0)
 
-for i in range(0,nodes):
-    print(i)
-    for j in range(i+1,nodes):
-        addLexLeader((i,j),(0,0)) # swap only i and j
-        for k in range(i+1,nodes):
-            for l in range(k+1,nodes):
-                addLexLeader((i,j),(k,l))
+if uselex:
+    for i in range(0,nodes):
+        print(i)
+        for j in range(i+1,nodes):
+            addLexLeader((i,j),(0,0)) # swap only i and j
+            for k in range(i+1,nodes):
+                for l in range(k+1,nodes):
+                    addLexLeader((i,j),(k,l))
+if usecounting:
+    for i in range(0,nodes-1):
+        vars=[toVar((i,j)) for j in range(0,nodes) if j!=i]+[toVar((i+1,j)) for j in range(0,nodes) if j!=i+1]
+        coefs=([-1]*(nodes-1)) + ([1]*(nodes-1))
+        solver.addConstraint(coefs, vars, True, 0, False, 0)
 
 # Symmetry breaking on color
 if cliques[0]==cliques[1]:
