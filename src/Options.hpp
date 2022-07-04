@@ -401,6 +401,14 @@ struct Options {
 
   std::string formulaName;
 
+  void parseOption(const std::string& option, const std::string& value) {
+    if (name2opt.count(option) == 0) {
+      quit::exit_ERROR({"Unknown option: ", option, ".\nCheck usage with --help"});
+    } else {
+      name2opt[option]->parse(value);
+    }
+  }
+
   void parseCommandLine(int argc, char** argv) {
     std::unordered_map<std::string, std::string> opt_val;
     for (int i = 1; i < argc; i++) {
@@ -409,12 +417,7 @@ struct Options {
         formulaName = arg;
       } else {
         size_t eqindex = std::min(arg.size(), arg.find('='));
-        std::string inputopt = arg.substr(2, eqindex - 2);
-        if (name2opt.count(inputopt) == 0) {
-          quit::exit_ERROR({"Unknown option: ", inputopt, ".\nCheck usage with ", argv[0], " --help"});
-        } else {
-          name2opt[inputopt]->parse(arg.substr(std::min(arg.size(), eqindex + 1)));
-        }
+        parseOption(arg.substr(2, eqindex - 2), arg.substr(std::min(arg.size(), eqindex + 1)));
       }
     }
 

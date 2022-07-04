@@ -229,4 +229,13 @@ class Exact {
    * @return: a pair of bounds for each variable in varnames
    */
   std::vector<std::pair<long long, long long> > propagate(const std::vector<std::string>& varnames);
+
+  /**
+   * Set solver options. Run with --help or look at Options.hpp to find the possible options.
+   *
+   * @param option: name of the option
+   * @param value: value for the option encoded as a string. Boolean options, when passed, are set to true regardless of
+   * this value.
+   */
+  void setOption(const std::string& option, const std::string& value);
 };

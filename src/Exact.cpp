@@ -243,3 +243,5 @@ std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<
   }
   return result;
 }
+
+void Exact::setOption(const std::string& option, const std::string& value) { options.parseOption(option, value); }

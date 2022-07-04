@@ -27,6 +27,8 @@ import exact
 # Create an Exact solver instance
 solver = exact.Exact()
 
+solver.setOption("var-weight","0")
+
 # Fixing Ramsey number instance
 if len(sys.argv)!=6:
     print("Usage: python3 ramsey.py #nodes cliquesize1 cliquesize2 symcutoff count-breakers")
