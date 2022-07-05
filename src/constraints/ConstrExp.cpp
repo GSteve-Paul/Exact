@@ -476,13 +476,13 @@ unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntMap<int>& level) const {
     }
   }
   assert(i >= 0);  // constraint is asserting or conflicting
-  IntSet& lbdSet = isPool.take();
+  IntSet& lbdSet = pool.isPool.take();
   for (; i >= 0; --i) {  // gather all levels
     lbdSet.add(level[-getLit(vars[i])] % INF);
   }
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   unsigned int lbd = lbdSet.size();
-  isPool.release(lbdSet);
+  pool.isPool.release(lbdSet);
   return lbd;
 }
 
@@ -637,7 +637,7 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _sat
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::selfSubsumeImplications(const Implications& implications) {
   saturate(true, false);  // needed to get the proof to agree
-  IntSet& saturateds = isPool.take();
+  IntSet& saturateds = pool.isPool.take();
   getSaturatedLits(saturateds);
   for (Var v : vars) {
     if (coefs[v] == 0) continue;
@@ -655,7 +655,7 @@ void ConstrExp<SMALL, LARGE>::selfSubsumeImplications(const Implications& implic
       break;
     }
   }
-  isPool.release(saturateds);
+  pool.isPool.release(saturateds);
 }
 
 template <typename SMALL, typename LARGE>
@@ -1547,13 +1547,13 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
   assert(getCoef(-l) == 0);
   assert(hasNegativeSlack(level));
 
-  IntSet& lbdSet = isPool.take();
+  IntSet& lbdSet = pool.isPool.take();
   for (int i = 0; i < (int)size; ++i) {
     lbdSet.add(level[-data[i]] % INF);
   }
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   int lbd = lbdSet.size();
-  isPool.release(lbdSet);
+  pool.isPool.release(lbdSet);
   return lbd;
 }
 
@@ -1606,7 +1606,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
     Logger::proofMult(proofBuffer, mult) << "+ s ";
   }
 
-  IntSet& lbdSet = isPool.take();
+  IntSet& lbdSet = pool.isPool.take();
   for (int i = 0; i < (int)size; ++i) {
     Lit l = data[i];
     if (l == toSubsume || saturatedLits.has(l)) {
@@ -1616,7 +1616,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   int lbd = lbdSet.size();
   assert(lbd > 0);
-  isPool.release(lbdSet);
+  pool.isPool.release(lbdSet);
   return lbd;
 }
 

@@ -627,7 +627,7 @@ struct ConstrExp final : public ConstrExpSuper {
       Logger::proofMult(Logger::proofDiv(proofBuffer << "s ", weakenedDeg), mult) << "+ s ";
     }
 
-    IntSet& lbdSet = isPool.take();
+    IntSet& lbdSet = pool.isPool.take();
     for (unsigned int i = 0; i < size; ++i) {
       Lit l = terms[i].l;
       if (l == toSubsume || saturatedLits.has(l)) {
@@ -637,7 +637,7 @@ struct ConstrExp final : public ConstrExpSuper {
     lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
     int lbd = lbdSet.size();
     assert(lbd > 0);
-    isPool.release(lbdSet);
+    pool.isPool.release(lbdSet);
     return lbd;
   }
 

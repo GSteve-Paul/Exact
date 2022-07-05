@@ -112,6 +112,7 @@ class ILP {
   Options options;
   Stats stats;
   ConstrExpPools cePools;
+  IntSetPool isPool;
 
   ILP();
 

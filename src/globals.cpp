@@ -67,6 +67,4 @@ bool asynch_interrupt;
 
 std::shared_ptr<Logger> logger;
 
-IntSetPool isPool;
-
 }  // namespace xct

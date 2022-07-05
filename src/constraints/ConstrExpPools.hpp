@@ -128,6 +128,7 @@ struct ConstrExp;
 class Logger;
 class Options;
 class Stats;
+class IntSetPool;
 
 template <typename SMALL, typename LARGE>
 class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessible to ConstrExpPool?
@@ -139,15 +140,15 @@ class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessib
  public:
   Options& options;
   Stats& stats;
+  IntSetPool& isPool;
 
-  ConstrExpPool(Options& o, Stats& s) : n(0), options(o), stats(s) {}
+  ConstrExpPool(Options& o, Stats& s, IntSetPool& i);
   ~ConstrExpPool();
 
   void resize(size_t newn);
   void initializeLogging(std::shared_ptr<Logger>& lgr);
   CePtr<ConstrExp<SMALL, LARGE>> take();
   void release(ConstrExp<SMALL, LARGE>* ce);
-  Options& getOptions();
 };
 
 class ConstrExpPools {
@@ -158,7 +159,7 @@ class ConstrExpPools {
   ConstrExpPool<bigint, bigint> ceArbs;
 
  public:
-  ConstrExpPools(Options& o, Stats& s);
+  ConstrExpPools(Options& o, Stats& s, IntSetPool& i);
 
   void resize(size_t newn);
   void initializeLogging(std::shared_ptr<Logger> lgr);

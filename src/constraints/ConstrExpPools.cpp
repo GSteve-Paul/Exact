@@ -64,8 +64,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-ConstrExpPools::ConstrExpPools(Options& o, Stats& s)
-    : ce32s(o, s), ce64s(o, s), ce96s(o, s), ce128s(o, s), ceArbs(o, s) {}
+ConstrExpPools::ConstrExpPools(Options& o, Stats& s, IntSetPool& i)
+    : ce32s(o, s, i), ce64s(o, s, i), ce96s(o, s, i), ce128s(o, s, i), ceArbs(o, s, i) {}
 
 void ConstrExpPools::resize(size_t newn) {
   ce32s.resize(newn);
@@ -109,6 +109,10 @@ Ce64 ConstrExpPools::take64() { return take<long long, int128>(); }
 Ce96 ConstrExpPools::take96() { return take<int128, int128>(); }
 Ce128 ConstrExpPools::take128() { return take<int128, int256>(); }
 CeArb ConstrExpPools::takeArb() { return take<bigint, bigint>(); }
+
+template <typename SMALL, typename LARGE>
+ConstrExpPool<SMALL, LARGE>::ConstrExpPool(Options& o, Stats& s, IntSetPool& i)
+    : n(0), options(o), stats(s), isPool(i) {}
 
 template <typename SMALL, typename LARGE>
 ConstrExpPool<SMALL, LARGE>::~ConstrExpPool() {

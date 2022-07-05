@@ -373,7 +373,7 @@ CeSuper Solver::analyze(const CeSuper& conflict) {
   CeSuper confl = getAnalysisCE(conflict);
   conflict->reset(false);
 
-  IntSet& actSet = isPool.take();  // will hold the literals that need their activity bumped
+  IntSet& actSet = ilp.isPool.take();  // will hold the literals that need their activity bumped
   for (Var v : confl->getVars()) {
     if (isFalse(level, confl->getLit(v))) {
       actSet.add(v);
@@ -411,7 +411,7 @@ resolve:
   aux::timeCallVoid(
       [&] { heur->vBumpActivity(actSet.getKeysMutable(), getPos(), ilp.options.varWeight.get(), ilp.stats.NCONFL.z); },
       ilp.stats.HEURTIME);
-  isPool.release(actSet);
+  ilp.isPool.release(actSet);
 
   assert(confl->hasNegativeSlack(level));
   return confl;
@@ -420,11 +420,11 @@ resolve:
 void Solver::minimize(const CeSuper& conflict) {
   assert(conflict->isSaturated());
   assert(conflict->isAssertingBefore(getLevel(), decisionLevel()) == AssertionStatus::ASSERTING);
-  IntSet& saturatedLits = isPool.take();
+  IntSet& saturatedLits = ilp.isPool.take();
   conflict->removeZeroes();
   conflict->getSaturatedLits(saturatedLits);
   if (saturatedLits.isEmpty()) {
-    isPool.release(saturatedLits);
+    ilp.isPool.release(saturatedLits);
     return;
   }
 
@@ -452,7 +452,7 @@ void Solver::minimize(const CeSuper& conflict) {
     if (saturatedLits.isEmpty()) break;
   }
   conflict->removeZeroes();  // remove weakened literals
-  isPool.release(saturatedLits);
+  ilp.isPool.release(saturatedLits);
 }
 
 State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
@@ -494,7 +494,7 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   conflict->reset(false);
 
   // analyze conflict to the point where we have a decision core
-  IntSet& actSet = isPool.take();
+  IntSet& actSet = ilp.isPool.take();
   while (decisionLevel() > 0 && isPropagated(reason, trail.back())) {
     quit::checkInterrupt(ilp);
     Lit l = trail.back();
@@ -512,7 +512,7 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   aux::timeCallVoid(
       [&] { heur->vBumpActivity(actSet.getKeysMutable(), getPos(), ilp.options.varWeight.get(), ilp.stats.NCONFL.z); },
       ilp.stats.HEURTIME);
-  isPool.release(actSet);
+  ilp.isPool.release(actSet);
 
   // weaken non-falsifieds
   assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
@@ -1104,8 +1104,8 @@ void Solver::derivePureLits() {
 void Solver::dominanceBreaking() {
   removeSatisfiedNonImpliedsAtRoot();
   std::unordered_set<Lit> inUnsaturatableConstraint;
-  IntSet& saturating = isPool.take();
-  IntSet& intersection = isPool.take();
+  IntSet& saturating = ilp.isPool.take();
+  IntSet& intersection = ilp.isPool.take();
   for (Lit l = -getNbVars(); l <= getNbVars(); ++l) {
     if (l == 0 || !isOrig(toVar(l)) || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l))
       continue;
@@ -1183,8 +1183,8 @@ void Solver::dominanceBreaking() {
     }
     saturating.clear();
   }
-  isPool.release(saturating);
-  isPool.release(intersection);
+  ilp.isPool.release(saturating);
+  ilp.isPool.release(intersection);
 }
 
 SolveState Solver::solve() {
@@ -1334,7 +1334,7 @@ State Solver::probeRestart(Lit next) {
   if (state == State::UNSAT) {
     return State::UNSAT;
   } else if (state == State::SUCCESS) {
-    IntSet& trailSet = isPool.take();
+    IntSet& trailSet = ilp.isPool.take();
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       trailSet.add(trail[i]);
     }
@@ -1369,7 +1369,7 @@ State Solver::probeRestart(Lit next) {
         }
       }
     }
-    isPool.release(trailSet);
+    ilp.isPool.release(trailSet);
   }
   ilp.stats.NPROBINGLITS += (decisionLevel() == 0 ? trail.size() : trail_lim[0]) - oldUnits;
   if (decisionLevel() == 0 && isUnknown(getPos(), next)) {
@@ -1408,7 +1408,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
   backjumpTo(0);
 
   if (!previousProbe.empty()) {
-    IntSet& previous = isPool.take();
+    IntSet& previous = ilp.isPool.take();
     for (Lit l : previousProbe) {
       previous.add(l);
     }
@@ -1427,7 +1427,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
         equalities.merge(-seed, l);
       }
     }
-    isPool.release(previous);
+    ilp.isPool.release(previous);
   } else {
     previousProbe = candidates;
   }
@@ -1450,7 +1450,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     } else if (state == State::FAIL) {
       continue;
     }
-    IntSet& trailSet = isPool.take();
+    IntSet& trailSet = ilp.isPool.take();
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       trailSet.add(trail[i]);
     }
@@ -1458,7 +1458,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     for (Lit l : cardLits) {
       if (trailSet.has(-l) && isUnknown(getPos(), l)) {
         assert(decisionLevel() == 0);
-        isPool.release(trailSet);
+        ilp.isPool.release(trailSet);
         ID res = aux::timeCall<ID>(
             [&] {
               return learnUnitConstraint(l, Origin::PROBING, logger ? logger->logImpliedUnit(l, current) : ID_Undef);
@@ -1476,7 +1476,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
                        candidates.end());
     }
     assert(!candidates.empty());
-    isPool.release(trailSet);
+    ilp.isPool.release(trailSet);
   }
   for (Lit l : candidates) {
     cardLits.push_back(l);
