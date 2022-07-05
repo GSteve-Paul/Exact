@@ -108,7 +108,8 @@ struct ConstrExpSuper {
   bool hasNoUnits(const IntMap<int>& level) const;
   bool isUnitConstraint() const;
   // NOTE: only equivalence preserving operations over the Bools!
-  void postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst);
+  void postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur, bool sortFirst,
+                   Stats& stats);
   void strongPostProcess(Solver& solver);
 
   virtual ~ConstrExpSuper() = default;
@@ -334,7 +335,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
   template <typename S, typename L>
   void addUp(CePtr<ConstrExp<S, L>> c, const SMALL& cmult = 1) {
-    stats.NADDEDLITERALS += c->nVars();
+    pool.stats.NADDEDLITERALS += c->nVars();
     assert(cmult >= 1);
     if (plogger) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
     rhs += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->rhs);
@@ -609,7 +610,7 @@ struct ConstrExp final : public ConstrExpSuper {
     }
     cf = 0;
     saturatedLits.remove(-toSubsume);
-    ++stats.NSUBSUMESTEPS;
+    ++pool.stats.NSUBSUMESTEPS;
 
     if (plogger) {
       proofBuffer << id << " ";

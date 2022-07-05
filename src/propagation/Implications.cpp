@@ -59,7 +59,7 @@ State Implications::propagate() {
     bool added = false;
     for (Lit b : implieds[a]) {
       if (!isTrue(solver.getLevel(), b)) {
-        ++stats.NPROBINGIMPLS;
+        ++solver.getStats().NPROBINGIMPLS;
         ID id = logger ? logger->logRUP(-a, b) : ID_Undef;
         if (solver.learnClause({-a, b}, Origin::IMPLICATION, id) == ID_Unsat) return State::UNSAT;
         added = true;

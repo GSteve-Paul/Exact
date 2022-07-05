@@ -215,7 +215,7 @@ CeSuper LpSolver::createLinearCombinationFarkas(soplex::DVectorReal& mults) {
     if (factor <= 0) continue;
     assert(lp.lhsReal(r) != INFTY);
     Ce64 ce = rowToConstraint(r);
-    stats.NLPADDEDLITERALS += ce->nVars();
+    ilp.stats.NLPADDEDLITERALS += ce->nVars();
     out->addUp(ce, factor);
   }
   out->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -238,7 +238,7 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
     if (factor == 0) continue;
     Ce64 ce = rowToConstraint(r);
     if (factor < 0) ce->invert();
-    stats.NLPADDEDLITERALS += ce->nVars();
+    ilp.stats.NLPADDEDLITERALS += ce->nVars();
     lcc->addUp(ce, aux::abs(factor));
     slacks.emplace_back(-factor, r);
   }
@@ -263,7 +263,7 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
     if (factor == 0) continue;
     Ce64 ce = rowToConstraint(slk.second);
     if (factor < 0) ce->invert();
-    stats.NLPADDEDLITERALS += ce->nVars();
+    ilp.stats.NLPADDEDLITERALS += ce->nVars();
     lcc->addUp(ce, aux::abs(factor));
   }
   if (lcc->plogger) {
@@ -361,14 +361,14 @@ State LpSolver::addFilteredCuts() {
   for (int i : keptCuts) {
     CandidateCut& cc = candidateCuts[i];
     CeSuper ce = cc.simpcons.toExpanded(ilp.cePools);
-    ce->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
+    ce->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, ilp.stats);
     assert(ce->fitsInDouble());
     assert(!ce->isTautology());
     if (cc.cr == CRef_Undef) {  // Gomory cut
-      ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(ce, Origin::GOMORY); }, stats.LEARNTIME);
+      ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(ce, Origin::GOMORY); }, ilp.stats.LEARNTIME);
       if (res == ID_Unsat) return State::UNSAT;
     } else {  // learned cut
-      ++stats.NLPLEARNEDCUTS;
+      ++ilp.stats.NLPLEARNEDCUTS;
     }
     addConstraint(ce, true);
   }
@@ -382,7 +382,7 @@ void LpSolver::pruneCuts() {
   if (!lp.getDual(lpMultipliers)) return;
   for (int r = 0; r < getNbRows(); ++r)
     if (row2data[r].removable && lpMultipliers[r] == 0) {
-      ++stats.NLPDELETEDCUTS;
+      ++ilp.stats.NLPDELETEDCUTS;
       toRemove.push_back(r);
     }
 }
@@ -424,8 +424,8 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
   if (ilp.options.lpTimeRatio.get() == 1) {
     lp.setIntParam(soplex::SoPlex::ITERLIMIT, -1);  // no pivot limit
   } else {
-    DetTime nlptime = stats.getNonLpDetTime();
-    DetTime lptime = stats.getLpDetTime();
+    DetTime nlptime = ilp.stats.getNonLpDetTime();
+    DetTime lptime = ilp.stats.getLpDetTime();
     assert(ilp.options.lpTimeRatio.get() != 0);
     if (lptime == 1 || lptime < ilp.options.lpTimeRatio.get() * (lptime + nlptime)) {
       double limit = ilp.options.lpPivotBudget.get() * lpPivotMult;
@@ -449,12 +449,12 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
   // Run the LP
   soplex::SPxSolver::Status stat;
   stat = lp.optimize();
-  ++stats.NLPCALLS;
+  ++ilp.stats.NLPCALLS;
   int pivots = lp.numIterations();
-  stats.NLPPIVOTS += pivots;
-  stats.NLPOPERATIONS += pivots * (long long)lp.numNonzeros();
-  stats.LPSOLVETIME += lp.solveTime();
-  stats.NLPNOPIVOT += pivots == 0;
+  ilp.stats.NLPPIVOTS += pivots;
+  ilp.stats.NLPOPERATIONS += pivots * (long long)lp.numNonzeros();
+  ilp.stats.LPSOLVETIME += lp.solveTime();
+  ilp.stats.NLPNOPIVOT += pivots == 0;
 
   if (ilp.options.verbosity.get() > 1) {
     std::cout << "c " << (inProcessing ? "root" : "internal") << " LP status: " << stat << std::endl;
@@ -469,12 +469,12 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
   }
 
   if (stat == soplex::SPxSolver::Status::OPTIMAL) {
-    ++stats.NLPOPTIMAL;
+    ++ilp.stats.NLPOPTIMAL;
     if (ilp.options.lpLearnDuals && pivots != 0) {
       if (lp.getDual(lpMultipliers)) {
         CeSuper dual = createLinearCombinationFarkas(lpMultipliers);
         if (dual) {
-          ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(dual, Origin::DUAL); }, stats.LEARNTIME);
+          ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(dual, Origin::DUAL); }, ilp.stats.LEARNTIME);
           if (res == ID_Unsat) {
             return {LpStatus::UNSAT, CeNull()};
           } else {
@@ -482,7 +482,7 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
           }
         }
       } else {
-        ++stats.NLPNODUAL;
+        ++ilp.stats.NLPNODUAL;
         resetBasis();
       }
     }
@@ -490,34 +490,34 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
   }
 
   if (stat == soplex::SPxSolver::Status::ABORT_CYCLING) {
-    ++stats.NLPCYCLING;
+    ++ilp.stats.NLPCYCLING;
     resetBasis();
     return {LpStatus::UNDETERMINED, CeNull()};
   }
   if (stat == soplex::SPxSolver::Status::SINGULAR) {
-    ++stats.NLPSINGULAR;
+    ++ilp.stats.NLPSINGULAR;
     resetBasis();
     return {LpStatus::UNDETERMINED, CeNull()};
   }
   if (stat != soplex::SPxSolver::Status::INFEASIBLE) {
-    ++stats.NLPOTHER;
+    ++ilp.stats.NLPOTHER;
     resetBasis();
     return {LpStatus::UNDETERMINED, CeNull()};
   }
 
   // Infeasible LP :)
-  ++stats.NLPINFEAS;
+  ++ilp.stats.NLPINFEAS;
 
   // To prove that we have an inconsistency, let's build the Farkas proof
   if (!lp.getDualFarkas(lpMultipliers)) {
-    ++stats.NLPNOFARKAS;
+    ++ilp.stats.NLPNOFARKAS;
     resetBasis();
     return {LpStatus::UNDETERMINED, CeNull()};
   }
 
   CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
   if (confl) {
-    ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(confl, Origin::FARKAS); }, stats.LEARNTIME);
+    ID res = aux::timeCall<ID>([&] { return solver.learnConstraint(confl, Origin::FARKAS); }, ilp.stats.LEARNTIME);
     if (res == ID_Unsat) {
       return {LpStatus::UNSAT, CeNull()};
     } else {
@@ -530,7 +530,7 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
 std::pair<State, CeSuper> LpSolver::inProcess() {
   solver.backjumpTo(0);
   auto [lpstat, constraint] =
-      aux::timeCall<std::pair<LpStatus, CeSuper>>([&] { return checkFeasibility(true); }, stats.LPTOTALTIME);
+      aux::timeCall<std::pair<LpStatus, CeSuper>>([&] { return checkFeasibility(true); }, ilp.stats.LPTOTALTIME);
   if (lpstat == LpStatus::UNSAT) {
     return {State::UNSAT, CeNull()};
   }
@@ -538,7 +538,7 @@ std::pair<State, CeSuper> LpSolver::inProcess() {
     return {State::SUCCESS, constraint};  // Any unsatisfiability will be handled by adding the Farkas constraint
   }
   if (!lp.hasSol()) {
-    ++stats.NLPNOPRIMAL;
+    ++ilp.stats.NLPNOPRIMAL;
     resetBasis();
     return {State::FAIL, CeNull()};
   }
@@ -552,8 +552,8 @@ std::pair<State, CeSuper> LpSolver::inProcess() {
   }
   double objVal = lp.objValueReal();
   if (isfinite(objVal)) {
-    if (isnan(stats.LPOBJ.z) || stats.LPOBJ.z < objVal) {
-      stats.LPOBJ.z = objVal;
+    if (isnan(ilp.stats.LPOBJ.z) || ilp.stats.LPOBJ.z < objVal) {
+      ilp.stats.LPOBJ.z = objVal;
     }
     if (ilp.options.verbosity.get() > 0) {
       aux::prettyPrint(std::cout << "c rational objective ", objVal) << std::endl;
@@ -569,7 +569,7 @@ std::pair<State, CeSuper> LpSolver::inProcess() {
 }
 
 void LpSolver::resetBasis() {
-  ++stats.NLPRESETBASIS;
+  ++ilp.stats.NLPRESETBASIS;
   lp.clearBasis();  // and hope next iteration works fine
 }
 
@@ -610,7 +610,7 @@ void LpSolver::flushConstraints() {
   if (!toRemove.empty()) {  // first remove rows
     std::vector<int> rowsToRemove(getNbRows(), 0);
     for (int row : toRemove) {
-      stats.NLPDELETEDROWS += (rowsToRemove[row] == 0);
+      ilp.stats.NLPDELETEDROWS += (rowsToRemove[row] == 0);
       assert(row < (int)rowsToRemove.size());
       rowsToRemove[row] = -1;
     }
@@ -633,7 +633,7 @@ void LpSolver::flushConstraints() {
       convertConstraint(p.second.cs, row, rhs);
       rowsToAdd.add(soplex::LPRowReal(row, soplex::LPRowReal::Type::GREATER_EQUAL, rhs));
       row2data.emplace_back(p.first, p.second.removable);
-      ++stats.NLPADDEDROWS;
+      ++ilp.stats.NLPADDEDROWS;
     }
     lp.addRowsReal(rowsToAdd);
     toAdd.clear();

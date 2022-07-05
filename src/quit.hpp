@@ -67,7 +67,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-class Solver;
+// TODO: move these methods to ILP?
 class ILP;
 
 namespace quit {

@@ -99,7 +99,7 @@ class Solver {
 
  public:
   std::vector<Lit> lastSol = {0};
-  bool foundSolution() const { return stats.NORIGVARS.z == 0 || lastSol.size() > 1; }
+  bool foundSolution() const;
   CeSuper lastCore;
   CeSuper lastGlobalDual;
   IntSet objectiveLits;
@@ -154,11 +154,14 @@ class Solver {
     return isorig[v];
   }
 
+  Options& getOptions();
+  Stats& getStats();
   const IntMap<int>& getLevel() const { return level; }
   const std::vector<int>& getPos() const { return position; }
   Equalities& getEqualities() { return equalities; }
   Implications& getImplications() { return implications; }
   const Heuristic& getHeuristic() const { return *heur; }
+
   int decisionLevel() const { return trail_lim.size(); }
   int assumptionLevel() const { return assumptions_lim.size() - 1; }
 

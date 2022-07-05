@@ -178,9 +178,9 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& o
   origObj->copyTo(reformObj);
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   reformObj->removeEqualities(solver.getEqualities(), false);
-  if (stats.DEPLTIME.z == -1 &&
+  if (ilp.stats.DEPLTIME.z == -1 &&
       std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(), [&](Var v) { return solver.isOrig(v); })) {
-    stats.DEPLTIME.z = stats.getTime();
+    ilp.stats.DEPLTIME.z = ilp.stats.getTime();
   }
 
   reply = SolveState::INPROCESSED;
@@ -203,7 +203,7 @@ void Optimization<SMALL, LARGE>::printObjBounds() {
   } else {
     std::cout << "-";
   }
-  std::cout << " >= " << lower_bound << " @ " << stats.getTime() << "\n";
+  std::cout << " >= " << lower_bound << " @ " << ilp.stats.getTime() << "\n";
 }
 
 template <typename SMALL, typename LARGE>
@@ -475,7 +475,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   Ce32 cardCore = reduceToCardinality(core);
   assert(cardCore->hasNegativeSlack(solver.getAssumptions().getIndex()));
   assert(cardCore->hasNoZeroes());
-  stats.NCGNONCLAUSALCORES += !cardCore->isClause();
+  ilp.stats.NCGNONCLAUSALCORES += !cardCore->isClause();
 
   // adjust the lower bound
   assert(cardCore->nVars() > 0);
@@ -523,34 +523,34 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
   if (!core || core->isTautology()) {
     // only violated unit assumptions were derived
     assert(solver.assumptionsClashWithUnits());
-    ++stats.NCGUNITCORES;
+    ++ilp.stats.NCGUNITCORES;
     assert(lower_bound > prev_lower);
     if (addLowerBound() == State::UNSAT) return State::UNSAT;
     checkLazyVariables();
     return State::SUCCESS;
   }
   assert(!core->hasNegativeSlack(solver.getLevel()));  // Would be handled by solver's learnConstraint
-  --stats.NCGCOREREUSES;
+  --ilp.stats.NCGCOREREUSES;
   State result = State::SUCCESS;
   if (ilp.options.cgEncoding.is("binary")) {
     while (result == State::SUCCESS) {
-      ++stats.NCGCOREREUSES;
+      ++ilp.stats.NCGCOREREUSES;
       result = reformObjectiveLog(core);
     }
   } else if (ilp.options.cgEncoding.is("smallsum")) {
     while (result == State::SUCCESS) {
-      ++stats.NCGCOREREUSES;
+      ++ilp.stats.NCGCOREREUSES;
       result = reformObjectiveSmallSum(core);
     }
   } else {
     while (result == State::SUCCESS) {
-      ++stats.NCGCOREREUSES;
+      ++ilp.stats.NCGCOREREUSES;
       result = reformObjective(core);
     }
   }
-  if (stats.DEPLTIME.z == -1 &&
+  if (ilp.stats.DEPLTIME.z == -1 &&
       std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(), [&](Var v) { return solver.isOrig(v); })) {
-    stats.DEPLTIME.z = stats.getTime();
+    ilp.stats.DEPLTIME.z = ilp.stats.getTime();
   }
 
   if (result == State::UNSAT) return State::UNSAT;
@@ -631,7 +631,7 @@ State Optimization<SMALL, LARGE>::runTabu() {
   while (solver.runTabuOnce()) {
     assert(solver.getTabuViolatedSize() == 0);
     success = true;
-    ++stats.TABUSOLS;
+    ++ilp.stats.TABUSOLS;
     ++solutionsFound;
     if (ilp.options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT) return State::UNSAT;
     // NOTE: may flip tabuSol due to unit propagations
@@ -639,7 +639,7 @@ State Optimization<SMALL, LARGE>::runTabu() {
   }
   if (success) solver.lastSolToPhase();
   // if (firstRun && ilp.options.varInitAct) solver.ranksToAct(); // TODO: check refactor of firstRun
-  stats.NTABUUNITS += solver.getNbUnits() - currentUnits;
+  ilp.stats.NTABUUNITS += solver.getNbUnits() - currentUnits;
   if (ilp.options.verbosity.get() > 0) std::cout << "c END LOCAL SEARCH" << std::endl;
 
   return State::SUCCESS;
@@ -655,12 +655,12 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
 
   while (true) {
     assert(upper_bound >= lower_bound);
-    StatNum current_time = stats.getDetTime();
+    StatNum current_time = ilp.stats.getDetTime();
     if (reply == SolveState::INPROCESSED) {
       if (ilp.options.printCsvData)
-        stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
+        ilp.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
       if (ilp.options.tabuLim.get() != 0) {
-        State state = aux::timeCall<State>([&] { return runTabu(); }, stats.TABUTIME);
+        State state = aux::timeCall<State>([&] { return runTabu(); }, ilp.stats.TABUTIME);
         if (state == State::UNSAT) return SolveState::UNSAT;
       }
     }
@@ -673,9 +673,9 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
       while (!solver.hasAssumptions()) {
         reformObj->removeEqualities(solver.getEqualities(), false);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-        if (stats.DEPLTIME.z == -1 && std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(),
-                                                   [&](Var v) { return solver.isOrig(v); })) {
-          stats.DEPLTIME.z = stats.getTime();
+        if (ilp.stats.DEPLTIME.z == -1 && std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(),
+                                                       [&](Var v) { return solver.isOrig(v); })) {
+          ilp.stats.DEPLTIME.z = ilp.stats.getTime();
         }
         std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
         litcoefs.reserve(reformObj->nVars());
@@ -716,18 +716,18 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
     }
 
     reply = aux::timeCall<SolveState>([&] { return solver.solve(); },
-                                      solver.hasAssumptions() ? stats.SOLVETIMEASSUMP : stats.SOLVETIMEFREE);
+                                      solver.hasAssumptions() ? ilp.stats.SOLVETIMEASSUMP : ilp.stats.SOLVETIMEFREE);
 
     if (solver.hasAssumptions()) {
-      stats.DETTIMEASSUMP += stats.getDetTime() - current_time;
+      ilp.stats.DETTIMEASSUMP += ilp.stats.getDetTime() - current_time;
     } else {
-      stats.DETTIMEFREE += stats.getDetTime() - current_time;
+      ilp.stats.DETTIMEFREE += ilp.stats.getDetTime() - current_time;
     }
     if (reply == SolveState::UNSAT) {
       return SolveState::UNSAT;
     } else if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
-      ++stats.NSOLS;
+      ++ilp.stats.NSOLS;
       ++solutionsFound;
       if (ilp.options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT)
         return SolveState::UNSAT;
@@ -738,7 +738,7 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
       somethingHappened = true;
       return SolveState::SAT;
     } else if (reply == SolveState::INCONSISTENT) {
-      ++stats.NCORES;
+      ++ilp.stats.NCORES;
       somethingHappened = true;
       if (!assumptions.empty()) return SolveState::INCONSISTENT;
       assert(coreguided);  // else: core from core-guided search
@@ -751,8 +751,9 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
         stratLim = std::max<double>(stratLim / stratDiv, 1);
       }
       somethingHappened = false;
-      coreguided = ilp.options.cgHybrid.get() >= 1 ||
-                   stats.DETTIMEASSUMP < ilp.options.cgHybrid.get() * (stats.DETTIMEFREE + stats.DETTIMEASSUMP);
+      coreguided =
+          ilp.options.cgHybrid.get() >= 1 ||
+          ilp.stats.DETTIMEASSUMP < ilp.options.cgHybrid.get() * (ilp.stats.DETTIMEFREE + ilp.stats.DETTIMEASSUMP);
       return SolveState::INPROCESSED;
     } else {
       assert(false);  // should not happen

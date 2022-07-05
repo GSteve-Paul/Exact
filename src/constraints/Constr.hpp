@@ -85,6 +85,7 @@ const unsigned int MAXLBD = SAFELBD - 1;
 
 class Solver;
 class Equalities;
+class Stats;
 
 struct Constr {  // internal solver constraint optimized for fast propagation
   virtual size_t getMemSize() const = 0;
@@ -115,7 +116,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   bool isMarkedForDelete() const { return header.markedfordel; }
   bool isSeen() const { return header.seen; }
   void setSeen(bool s) { header.seen = s; }
-  void fixEncountered() const;
+  void fixEncountered(Stats& stats) const;
 
   // TODO: remove direct uses of these bigint methods, convert to ConstrExp instead
   // NOTE: useful for debugging though!
@@ -128,7 +129,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   virtual bool isAtMostOne() const = 0;
 
   virtual void initializeWatches(CRef cr, Solver& solver) = 0;
-  virtual WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& slvr) = 0;
+  virtual WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& slvr, Stats& stats) = 0;
   virtual void undoFalsified(int i) = 0;
   virtual int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const = 0;
   virtual int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const = 0;
@@ -188,7 +189,7 @@ struct Clause final : public Constr {
 
   void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified([[maybe_unused]] int i) { assert(false); }
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
@@ -256,7 +257,7 @@ struct Cardinality final : public Constr {
 
   void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified([[maybe_unused]] int i) { assert(false); }
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
@@ -315,7 +316,6 @@ struct Counting final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
-    ++stats.NCOUNTING;
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -335,7 +335,7 @@ struct Counting final : public Constr {
 
   void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
@@ -397,7 +397,6 @@ struct Watched final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
-    ++stats.NWATCHED;
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -417,7 +416,7 @@ struct Watched final : public Constr {
 
   void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
@@ -481,7 +480,6 @@ struct CountingSafe final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
-    ++stats.NCOUNTING;
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -504,7 +502,7 @@ struct CountingSafe final : public Constr {
 
   void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
@@ -567,7 +565,6 @@ struct WatchedSafe final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
-    ++stats.NWATCHED;
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -590,7 +587,7 @@ struct WatchedSafe final : public Constr {
 
   void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;

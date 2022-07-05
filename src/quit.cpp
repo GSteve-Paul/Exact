@@ -98,8 +98,8 @@ void quit::printFinalStats(ILP& ilp) {
                                      : std::numeric_limits<StatNum>::quiet_NaN();
   StatNum ub = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getUpperBound())
                                      : std::numeric_limits<StatNum>::quiet_NaN();
-  if (ilp.options.verbosity.get() > 0) stats.print(lb, ub);
-  if (ilp.options.printCsvData) stats.printCsvLine(lb, ub);
+  if (ilp.options.verbosity.get() > 0) ilp.stats.print(lb, ub);
+  if (ilp.options.printCsvData) ilp.stats.printCsvLine(lb, ub);
   if (ilp.options.printOpb) ilp.printFormula();
 }
 
@@ -171,8 +171,8 @@ void quit::exit_ERROR(const std::initializer_list<std::string>& messages) {
 }
 
 void quit::checkInterrupt(const ILP& ilp) {
-  if (asynch_interrupt || (ilp.options.timeout.get() > 0 && stats.getTime() > ilp.options.timeout.get()) ||
-      (ilp.options.timeoutDet.get() > 0 && stats.getDetTime() > ilp.options.timeoutDet.get())) {
+  if (asynch_interrupt || (ilp.options.timeout.get() > 0 && ilp.stats.getTime() > ilp.options.timeout.get()) ||
+      (ilp.options.timeoutDet.get() > 0 && ilp.stats.getDetTime() > ilp.options.timeoutDet.get())) {
     throw asynchInterrupt;
   }
 }

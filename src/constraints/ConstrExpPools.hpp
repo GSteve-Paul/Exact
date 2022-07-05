@@ -127,6 +127,7 @@ template <typename SMALL, typename LARGE>
 struct ConstrExp;
 class Logger;
 class Options;
+class Stats;
 
 template <typename SMALL, typename LARGE>
 class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessible to ConstrExpPool?
@@ -137,8 +138,9 @@ class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessib
 
  public:
   Options& options;
+  Stats& stats;
 
-  ConstrExpPool(Options& o) : n(0), options(o) {}
+  ConstrExpPool(Options& o, Stats& s) : n(0), options(o), stats(s) {}
   ~ConstrExpPool();
 
   void resize(size_t newn);
@@ -156,7 +158,7 @@ class ConstrExpPools {
   ConstrExpPool<bigint, bigint> ceArbs;
 
  public:
-  ConstrExpPools(Options& o);
+  ConstrExpPools(Options& o, Stats& s);
 
   void resize(size_t newn);
   void initializeLogging(std::shared_ptr<Logger> lgr);

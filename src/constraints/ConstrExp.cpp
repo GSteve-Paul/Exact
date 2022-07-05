@@ -166,6 +166,8 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
     }
     bool useCounting = pool.options.propCounting.get() == 1 ||
                        pool.options.propCounting.get() > (1 - (minWatches + maxWatches) / (2 * (double)vars.size()));
+    pool.stats.NCOUNTING += useCounting;
+    pool.stats.NWATCHED += !useCounting;
     if (maxCoef <= static_cast<LARGE>(limitAbs<int, long long>())) {
       if (useCounting) {
         new (ca.alloc<Counting32>(vars.size())) Counting32(this, locked, id);
@@ -642,7 +644,7 @@ void ConstrExp<SMALL, LARGE>::selfSubsumeImplications(const Implications& implic
     Lit l = getLit(v);
     for (Lit ll : implications.getImplieds(l)) {
       if (!saturateds.has(ll)) continue;
-      ++stats.NSUBSUMESTEPS;
+      ++pool.stats.NSUBSUMESTEPS;
       SMALL cf = aux::abs(coefs[v]);
       if (plogger) Logger::proofMult(proofBuffer << plogger->logRUP(-l, ll) << " ", cf) << "+ s ";
       addRhs(cf);
@@ -665,7 +667,7 @@ bool ConstrExp<SMALL, LARGE>::hasNoZeroes() const {
 // NOTE: other variables should already be saturated, otherwise proof logging will break
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, bool sorted) {
-  stats.NSATURATESTEPS += vs.size();
+  pool.stats.NSATURATESTEPS += vs.size();
   assert(check || !sorted);
   if (vars.empty() || (sorted && aux::abs(coefs[vars[0]]) <= degree) ||
       (!sorted && check && getLargestCoef() <= degree)) {
@@ -1028,7 +1030,7 @@ bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& 
 
 // NOTE: only equivalence preserving operations over the Bools!
 void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur,
-                                 bool sortFirst) {
+                                 bool sortFirst, Stats& stats) {
   removeUnitsAndZeroes(level, pos);
   assert(sortFirst || isSortedInDecreasingCoefOrder());  // NOTE: check this only after removing units and zeroes
   saturate(true, !sortFirst);
@@ -1048,7 +1050,7 @@ void ConstrExpSuper::strongPostProcess(Solver& solver) {
   [[maybe_unused]] int nvars = nNonZeroVars();
   removeEqualities(solver.getEqualities(), true);
   selfSubsumeImplications(solver.getImplications());
-  postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
+  postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, solver.getStats());
   assert(nvars >= nNonZeroVars());
 }
 
@@ -1126,7 +1128,7 @@ void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntMap<int>& level, const L
       ++weakenings;
     }
   }
-  stats.NWEAKENEDNONIMPLIED += weakenings;
+  pool.stats.NWEAKENEDNONIMPLIED += weakenings;
 }
 
 // @post: preserves order after removeZeroes()
@@ -1145,7 +1147,7 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntMap<int>& level, const 
       ++weakenings;
     }
   }
-  stats.NWEAKENEDNONIMPLYING += weakenings;
+  pool.stats.NWEAKENEDNONIMPLYING += weakenings;
   return weakenings != 0;
 }
 
@@ -1478,7 +1480,7 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
                                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
   assert(getCoef(-l) > 0);
   assert(hasNoZeroes());
-  stats.NADDEDLITERALS += size;
+  pool.stats.NADDEDLITERALS += size;
 
   for (unsigned int i = 0; i < size; ++i) {
     Lit ll = data[i];
@@ -1525,7 +1527,7 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
   assert(getDegree() > 0);
   if (oldDegree <= getDegree()) {
     if (largestCF > getDegree()) {
-      stats.NSATURATESTEPS += size;
+      pool.stats.NSATURATESTEPS += size;
       if (plogger) proofBuffer << "s ";
       largestCF = static_cast<SMALL>(degree);
       for (unsigned int i = 0; i < size; ++i) {
@@ -1561,7 +1563,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
                                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) {
   assert(isSaturated());
   assert(getCoef(-toSubsume) > 0);
-  stats.NADDEDLITERALS += size;
+  pool.stats.NADDEDLITERALS += size;
 
   int weakenedDeg = deg;
   assert(weakenedDeg > 0);
@@ -1582,7 +1584,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
   }
   cf = 0;
   saturatedLits.remove(-toSubsume);
-  ++stats.NSUBSUMESTEPS;
+  ++pool.stats.NSUBSUMESTEPS;
 
   if (plogger) {
     proofBuffer << id << " ";

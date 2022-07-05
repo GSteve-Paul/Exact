@@ -67,7 +67,7 @@ namespace xct {
 ID Logger::last_proofID = ID_Trivial;
 ID Logger::last_formID = ID_Trivial;
 
-Logger::Logger(const std::string& proof_log_name) {
+Logger::Logger(const std::string& proof_log_name, const Stats& s) : stats(s) {
   formula_out = std::ofstream(proof_log_name + ".formula");
   formula_out << "* #variable= 0 #constraint= 0\n";
   formula_out << " >= 0 ;\n";

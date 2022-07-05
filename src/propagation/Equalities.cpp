@@ -61,7 +61,7 @@ void Equalities::merge(Lit a, Lit b) {
   Lit reprBl = reprB.l;
   if (reprAl == reprBl) return;  // already equal
   assert(reprAl != -reprBl);     // no inconsistency
-  ++stats.NPROBINGEQS;
+  ++solver.getStats().NPROBINGEQS;
   auto [reprAImpReprB, reprBImpReprA] =
       logger ? logger->logEquality(a, b, reprA.id, reprAneg.id, reprB.id, reprBneg.id, reprAl, reprBl)
              : std::pair<ID, ID>{ID_Trivial, ID_Trivial};

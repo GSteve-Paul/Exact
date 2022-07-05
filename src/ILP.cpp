@@ -165,7 +165,7 @@ void IntConstraint::normalize() {
   }
 }
 
-ILP::ILP() : solver(*this), obj({}, {}, {}, 0), cePools(options) {}
+ILP::ILP() : solver(*this), obj({}, {}, {}, 0), cePools(options, stats) {}
 
 IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& lowerbound, const bigint& upperbound) {
   if (auto it = name2var.find(name); it != name2var.end()) return it->second;
@@ -269,7 +269,7 @@ State ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const 
   IntConstraint ic(coefs, vars, {}, lb);
   CeArb leq = cePools.takeArb();
   ic.toConstrExp(leq, true);
-  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
+  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, stats);
   CeArb geq = cePools.takeArb();
   leq->copyTo(geq);
   Var h = head->encodingVars()[0];

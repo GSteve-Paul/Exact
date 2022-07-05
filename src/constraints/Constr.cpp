@@ -77,7 +77,7 @@ std::ostream& operator<<(std::ostream& o, const Constr& c) {
   return o << ">= " << c.degree();
 }
 
-void Constr::fixEncountered() const {
+void Constr::fixEncountered(Stats& stats) const {  // TODO: better as method of Stats?
   const Origin o = getOrigin();
   stats.NENCFORMULA += o == Origin::FORMULA;
   stats.NENCDOMBREAKER += o == Origin::DOMBREAKER;
@@ -146,7 +146,7 @@ void Clause::initializeWatches(CRef cr, Solver& solver) {
   for (unsigned int i = 0; i < 2; ++i) adj[data[i]].emplace_back(cr, data[1 - i] - INF);  // add blocked literal
 }
 
-WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver) {
+WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats) {
   auto& level = solver.level;
   auto& adj = solver.adj;
 
@@ -299,7 +299,7 @@ void Cardinality::initializeWatches(CRef cr, Solver& solver) {
   for (unsigned int i = 0; i <= degr; ++i) adj[data[i]].emplace_back(cr, i);  // add watch index
 }
 
-WatchStatus Cardinality::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus Cardinality::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats) {
   auto& level = solver.level;
   auto& adj = solver.adj;
 
@@ -436,7 +436,8 @@ void Counting<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 }
 
 template <typename CF, typename DG>
-WatchStatus Counting<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus Counting<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
+                                                  Stats& stats) {
   auto& position = solver.position;
 
   assert(idx >= INF);
@@ -479,7 +480,6 @@ template <typename CF, typename DG>
 void Counting<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
   slack += data[i - INF].c;
-  ++stats.NWATCHLOOKUPSBJ;
 }
 
 template <typename CF, typename DG>
@@ -602,7 +602,8 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 }
 
 template <typename CF, typename DG>
-WatchStatus Watched<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus Watched<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
+                                                 Stats& stats) {
   auto& level = solver.level;
   auto& position = solver.position;
   auto& adj = solver.adj;
@@ -672,7 +673,6 @@ void Watched<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
   assert(data[i - INF].c < 0);
   watchslack -= data[i - INF].c;
-  ++stats.NWATCHLOOKUPSBJ;
 }
 
 template <typename CF, typename DG>
@@ -777,7 +777,8 @@ void CountingSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 }
 
 template <typename CF, typename DG>
-WatchStatus CountingSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus CountingSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
+                                                      Stats& stats) {
   auto& position = solver.position;
 
   assert(idx >= INF);
@@ -821,7 +822,6 @@ template <typename CF, typename DG>
 void CountingSafe<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
   *slack += terms[i - INF].c;
-  ++stats.NWATCHLOOKUPSBJ;
 }
 
 template <typename CF, typename DG>
@@ -945,7 +945,8 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 }
 
 template <typename CF, typename DG>
-WatchStatus WatchedSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus WatchedSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
+                                                     Stats& stats) {
   auto& level = solver.level;
   auto& position = solver.position;
   auto& adj = solver.adj;
@@ -1016,7 +1017,6 @@ void WatchedSafe<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
   assert(terms[i - INF].c < 0);
   *watchslack -= terms[i - INF].c;
-  ++stats.NWATCHLOOKUPSBJ;
 }
 
 template <typename CF, typename DG>

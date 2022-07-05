@@ -110,6 +110,7 @@ class ILP {
 
  public:
   Options options;
+  Stats stats;
   ConstrExpPools cePools;
 
   ILP();

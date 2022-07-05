@@ -71,12 +71,13 @@ class Logger {
   std::ofstream formula_out;
   std::ofstream proof_out;
   std::vector<ID> unitIDs;
+  const Stats& stats;
 
  public:
   static ID last_formID;
   static ID last_proofID;
 
-  explicit Logger(const std::string& proof_log_name);
+  explicit Logger(const std::string& proof_log_name, const Stats& stats);
 
   void flush();
   void logComment([[maybe_unused]] const std::string& comment);

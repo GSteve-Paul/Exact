@@ -37,8 +37,6 @@ See the file LICENSE or run with the flag --license=MIT.
 using namespace xct;
 
 int main(int argc, char** argv) {
-  stats.startTime = std::chrono::steady_clock::now();
-
   signal(SIGINT, SIGINT_exit);
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_exit);
@@ -49,6 +47,7 @@ int main(int argc, char** argv) {
 #endif
 
   ILP ilp;
+  ilp.stats.startTime = std::chrono::steady_clock::now();
 
   ilp.options.parseCommandLine(argc, argv);
 
@@ -57,20 +56,20 @@ int main(int argc, char** argv) {
   }
 
   if (!ilp.options.proofLog.get().empty()) {
-    logger = std::make_shared<Logger>(ilp.options.proofLog.get());
+    logger = std::make_shared<Logger>(ilp.options.proofLog.get(), ilp.stats);
     ilp.cePools.initializeLogging(logger);
   }
 
-  aux::timeCallVoid([&] { parsing::file_read(ilp); }, stats.PARSETIME);
+  aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.stats.PARSETIME);
 
   if (ilp.options.noSolve) quit::exit_INDETERMINATE(ilp);
-  if (ilp.options.printCsvData) stats.printCsvHeader();
+  if (ilp.options.printCsvData) ilp.stats.printCsvHeader();
   if (ilp.options.verbosity.get() > 0) {
     std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
               << std::endl;
   }
 
-  stats.runStartTime = std::chrono::steady_clock::now();
+  ilp.stats.runStartTime = std::chrono::steady_clock::now();
 
   ilp.init(true, true);
   SolveState res = SolveState::INPROCESSED;
@@ -91,7 +90,7 @@ xct::IntVar* Exact::getVariable(const std::string& name) {
 }
 
 Exact::Exact() : ilp() {
-  stats.startTime = std::chrono::steady_clock::now();
+  ilp.stats.startTime = std::chrono::steady_clock::now();
 
   signal(SIGINT, SIGINT_exit);
   signal(SIGINT, SIGINT_interrupt);
@@ -103,7 +102,7 @@ Exact::Exact() : ilp() {
 #endif
 
   if (!ilp.options.proofLog.get().empty()) {
-    logger = std::make_shared<Logger>(ilp.options.proofLog.get());
+    logger = std::make_shared<Logger>(ilp.options.proofLog.get(), ilp.stats);
     ilp.cePools.initializeLogging(logger);
   }
 }
@@ -201,7 +200,7 @@ void Exact::init(const std::vector<long long>& coefs, const std::vector<std::str
 
   ilp.init(boundObjective, addNonImplieds);
 
-  stats.runStartTime = std::chrono::steady_clock::now();
+  ilp.stats.runStartTime = std::chrono::steady_clock::now();
 }
 
 SolveState Exact::run() {
