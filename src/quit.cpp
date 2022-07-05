@@ -65,9 +65,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Optimization.hpp"
 #include "Solver.hpp"
 #include "auxiliary.hpp"
-#include "globals.hpp"
 
 namespace xct {
+
+bool asynch_interrupt;
 
 void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) {
   std::cout << pre;

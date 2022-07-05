@@ -62,7 +62,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "parsing.hpp"
 #include "ILP.hpp"
 #include "Solver.hpp"
-#include "globals.hpp"
 
 #if WITHCOINUTILS
 #include "coin/CoinLpIO.hpp"

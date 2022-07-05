@@ -66,7 +66,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logger.hpp"
 #include "../datastructures/IntSet.hpp"
 #include "../datastructures/SolverStructs.hpp"
-#include "../globals.hpp"
 #include "../typedefs.hpp"
 #include "ConstrExpPools.hpp"
 #include "ConstrSimple.hpp"

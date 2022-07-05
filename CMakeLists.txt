@@ -89,7 +89,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 set(source_files
-        src/globals.cpp
         src/constraints/Constr.cpp
         src/constraints/ConstrExp.cpp
         src/constraints/ConstrSimple.cpp
@@ -120,7 +119,6 @@ set(source_files
 )
 
 set(header_files
-        src/globals.hpp
         src/constraints/Constr.hpp
         src/constraints/ConstrExp.hpp
         src/constraints/ConstrSimple.hpp

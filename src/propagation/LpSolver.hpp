@@ -64,7 +64,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../auxiliary.hpp"
 #include "../constraints/ConstrExp.hpp"
 #include "../constraints/ConstrSimple.hpp"
-#include "../globals.hpp"
 #include "../typedefs.hpp"
 
 #if WITHSOPLEX
@@ -122,6 +121,8 @@ struct CandidateCut {
 std::ostream& operator<<(std::ostream& o, const CandidateCut& cc);
 
 class Solver;
+class ILP;
+
 class LpSolver {
   friend class Solver;
   friend struct CandidateCut;

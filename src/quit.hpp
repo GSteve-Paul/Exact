@@ -70,6 +70,8 @@ namespace xct {
 // TODO: move these methods to ILP?
 class ILP;
 
+extern bool asynch_interrupt;
+
 namespace quit {
 
 void printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive);
@@ -83,3 +85,10 @@ void checkInterrupt(const ILP& ilp);
 }  // namespace quit
 
 }  // namespace xct
+
+inline void SIGINT_interrupt([[maybe_unused]] int signum) { xct::asynch_interrupt = true; }
+
+inline void SIGINT_exit([[maybe_unused]] int signum) {
+  std::cout << "*** INTERRUPTED ***" << std::endl;
+  xct::aux::flushexit(1);
+}

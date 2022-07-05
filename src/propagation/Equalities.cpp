@@ -30,7 +30,6 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #include "Equalities.hpp"
 #include "../Solver.hpp"
-#include "../globals.hpp"
 
 namespace xct {
 
