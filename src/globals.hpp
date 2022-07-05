@@ -72,8 +72,6 @@ namespace xct {
 
 extern bool asynch_interrupt;
 
-extern std::shared_ptr<Logger> logger;
-
 }  // namespace xct
 
 inline void SIGINT_interrupt([[maybe_unused]] int signum) { xct::asynch_interrupt = true; }

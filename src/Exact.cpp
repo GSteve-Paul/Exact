@@ -48,16 +48,11 @@ int main(int argc, char** argv) {
 
   ILP ilp;
   ilp.stats.startTime = std::chrono::steady_clock::now();
-
   ilp.options.parseCommandLine(argc, argv);
+  ilp.initLogger();
 
   if (ilp.options.verbosity.get() > 0) {
     std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
-  }
-
-  if (!ilp.options.proofLog.get().empty()) {
-    logger = std::make_shared<Logger>(ilp.options.proofLog.get(), ilp.stats);
-    ilp.cePools.initializeLogging(logger);
   }
 
   aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.stats.PARSETIME);
@@ -90,8 +85,6 @@ xct::IntVar* Exact::getVariable(const std::string& name) {
 }
 
 Exact::Exact() : ilp() {
-  ilp.stats.startTime = std::chrono::steady_clock::now();
-
   signal(SIGINT, SIGINT_exit);
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_exit);
@@ -101,10 +94,8 @@ Exact::Exact() : ilp() {
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 
-  if (!ilp.options.proofLog.get().empty()) {
-    logger = std::make_shared<Logger>(ilp.options.proofLog.get(), ilp.stats);
-    ilp.cePools.initializeLogging(logger);
-  }
+  ilp.stats.startTime = std::chrono::steady_clock::now();
+  ilp.initLogger();
 }
 
 void Exact::addVariable(const std::string& name, long long lb, long long ub) {

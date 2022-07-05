@@ -410,6 +410,7 @@ struct Options {
   }
 
   void parseCommandLine(int argc, char** argv) {
+    if (argc == 0) return;
     std::unordered_map<std::string, std::string> opt_val;
     for (int i = 1; i < argc; i++) {
       std::string arg = argv[i];

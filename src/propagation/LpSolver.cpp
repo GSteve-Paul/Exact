@@ -435,7 +435,7 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
       return {LpStatus::PIVOTLIMIT, CeNull()};  // time ratio exceeded
     }
   }
-  if (logger) logger->logComment("Checking LP");
+  if (ilp.logger) ilp.logger->logComment("Checking LP");
   madeInternalCall = !inProcessing;
   flushConstraints();
 
@@ -560,7 +560,7 @@ std::pair<State, CeSuper> LpSolver::inProcess() {
     }
   }
   candidateCuts.clear();
-  if (logger && (ilp.options.lpGomoryCuts || ilp.options.lpLearnedCuts)) logger->logComment("cutting");
+  if (ilp.logger && (ilp.options.lpGomoryCuts || ilp.options.lpLearnedCuts)) ilp.logger->logComment("cutting");
   if (ilp.options.lpLearnedCuts) constructLearnedCandidates();  // first to avoid adding gomory cuts twice
   if (ilp.options.lpGomoryCuts) constructGomoryCandidates();
   if (addFilteredCuts() == State::UNSAT) return {State::UNSAT, CeNull()};
@@ -590,8 +590,8 @@ void LpSolver::addConstraint(const CeSuper& c, bool removable, bool upperbound, 
   assert(!upperbound || c->orig == Origin::UPPERBOUND);
   assert(!lowerbound || c->orig == Origin::LOWERBOUND);
   c->saturateAndFixOverflowRational(lpSolution);
-  // TODO: fix below kind of logger check
-  ID id = logger ? logger->logProofLineWithInfo(c, "LP") : ++Logger::last_proofID;
+  // TODO: fix below kind of ilp.logger check
+  ID id = ilp.logger ? ilp.logger->logProofLineWithInfo(c, "LP") : ++Logger::last_proofID;
   if (upperbound || lowerbound) {
     boundsToAdd[lowerbound].id = id;
     c->toSimple()->copyTo(boundsToAdd[lowerbound].cs);

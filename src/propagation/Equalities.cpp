@@ -42,9 +42,9 @@ const Repr& Equalities::getRepr(Lit a) {
   const Repr& reprChild = getRepr(repr.l);
   assert(toVar(reprChild.l) < toVar(repr.l));
   repr.l = reprChild.l;
-  if (logger) {
+  if (solver.getLogger()) {
     assert(reprChild.id != ID_Trivial);  // as we know that canonical[repr.l]!=repr.l
-    repr.id = logger->logResolvent(repr.id, reprChild.id);
+    repr.id = solver.getLogger()->logResolvent(repr.id, reprChild.id);
   }
   return repr;
 }
@@ -63,8 +63,9 @@ void Equalities::merge(Lit a, Lit b) {
   assert(reprAl != -reprBl);     // no inconsistency
   ++solver.getStats().NPROBINGEQS;
   auto [reprAImpReprB, reprBImpReprA] =
-      logger ? logger->logEquality(a, b, reprA.id, reprAneg.id, reprB.id, reprBneg.id, reprAl, reprBl)
-             : std::pair<ID, ID>{ID_Trivial, ID_Trivial};
+      solver.getLogger()
+          ? solver.getLogger()->logEquality(a, b, reprA.id, reprAneg.id, reprB.id, reprBneg.id, reprAl, reprBl)
+          : std::pair<ID, ID>{ID_Trivial, ID_Trivial};
   Repr& reprAlRepr = canonical[reprAl];
   Repr& reprAlNegRepr = canonical[-reprAl];
   Repr& reprBlRepr = canonical[reprBl];

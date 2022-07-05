@@ -65,6 +65,4 @@ namespace xct {
 
 bool asynch_interrupt;
 
-std::shared_ptr<Logger> logger;
-
 }  // namespace xct
