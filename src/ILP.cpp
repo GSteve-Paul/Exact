@@ -49,8 +49,8 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   return o;
 }
 
-IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub)
-    : name(n), lowerBound(lb), upperBound(ub), logEncoding(getRange() > options.intEncoding.get()) {
+IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, int loglim)
+    : name(n), lowerBound(lb), upperBound(ub), logEncoding(getRange() > loglim) {
   assert(lb <= ub);
   assert(!nameAsId || isBoolean());
 
@@ -165,12 +165,12 @@ void IntConstraint::normalize() {
   }
 }
 
-ILP::ILP() : solver(*this), obj({}, {}, {}, 0) {}
+ILP::ILP() : solver(*this), obj({}, {}, {}, 0), cePools(options) {}
 
 IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& lowerbound, const bigint& upperbound) {
   if (auto it = name2var.find(name); it != name2var.end()) return it->second;
   if (lowerbound > upperbound) throw std::invalid_argument("Lower bound of " + name + " must not exceed upper bound.");
-  vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound));
+  vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, options.intEncoding.get()));
   IntVar* iv = vars.back().get();
   name2var.insert({name, iv});
   for (Var v : iv->encodingVars()) {
@@ -346,7 +346,7 @@ void ILP::init(bool boundObjective, bool addNonImplieds) {
   CeArb o = cePools.takeArb();
   obj.toConstrExp(o, true);
   solver.init(o);
-  optim = OptimizationSuper::make(o, solver);
+  optim = OptimizationSuper::make(o, solver, *this);
 }
 
 SolveState ILP::run() {  // NOTE: also throws AsynchronousInterrupt
@@ -421,7 +421,7 @@ std::vector<bigint> ILP::getLastSolutionFor(const std::vector<std::string>& vars
 
 bool ILP::hasCore() const { return solver.assumptionsClashWithUnits() || solver.lastCore; }
 
-std::vector<std::string> ILP::getLastCore() const {
+std::vector<std::string> ILP::getLastCore() {
   if (!hasCore()) throw std::invalid_argument("No unsat core to return.");
 
   std::unordered_set<IntVar*> core;

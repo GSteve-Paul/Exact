@@ -101,6 +101,7 @@ std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
 class OptimizationSuper {
  protected:
   Solver& solver;
+  ILP& ilp;
 
  public:
   int solutionsFound = 0;
@@ -108,12 +109,12 @@ class OptimizationSuper {
   virtual bigint getLowerBound() const = 0;
   virtual CeSuper getReformObj() const = 0;
 
-  static Optim make(const CeArb& obj, Solver& solver);
+  static Optim make(const CeArb& obj, Solver& solver, ILP& ilp);
 
   [[nodiscard]] virtual SolveState optimize(const std::vector<Lit>& assumptions) = 0;
   [[nodiscard]] virtual State handleNewSolution(const std::vector<Lit>& sol) = 0;
 
-  OptimizationSuper(Solver& s);
+  OptimizationSuper(Solver& s, ILP& i);
   virtual ~OptimizationSuper() = default;
 };
 
@@ -140,7 +141,7 @@ class Optimization final : public OptimizationSuper {
   bool firstRun;
 
  public:
-  explicit Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s);
+  explicit Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s, ILP& i);
 
   LARGE normalizedLowerBound() const { return lower_bound + origObj->getDegree(); }
   LARGE normalizedUpperBound() const { return upper_bound + origObj->getDegree(); }

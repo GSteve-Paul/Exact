@@ -70,13 +70,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-extern bool asynch_interrupt;
-extern Options options;
 extern Stats stats;
+
+extern bool asynch_interrupt;
 
 extern std::shared_ptr<Logger> logger;
 
-extern ConstrExpPools cePools;
 extern IntSetPool isPool;
 
 }  // namespace xct

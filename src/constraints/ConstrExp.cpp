@@ -164,8 +164,8 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
         watchSum += aux::abs(coefs[vars[vars.size() - 1 - maxWatches]]);
       }
     }
-    bool useCounting = options.propCounting.get() == 1 ||
-                       options.propCounting.get() > (1 - (minWatches + maxWatches) / (2 * (double)vars.size()));
+    bool useCounting = pool.options.propCounting.get() == 1 ||
+                       pool.options.propCounting.get() > (1 - (minWatches + maxWatches) / (2 * (double)vars.size()));
     if (maxCoef <= static_cast<LARGE>(limitAbs<int, long long>())) {
       if (useCounting) {
         new (ca.alloc<Counting32>(vars.size())) Counting32(this, locked, id);
@@ -812,7 +812,7 @@ void ConstrExp<SMALL, LARGE>::saturateAndFixOverflowRational(const std::vector<d
     assert(d > 1);
     for (Var v : vars) {
       Lit l = getLit(v);
-      if ((l < 0 ? 1 - lpSolution[v] : lpSolution[v]) <= 1 - options.lpIntolerance.get()) {
+      if ((l < 0 ? 1 - lpSolution[v] : lpSolution[v]) <= 1 - pool.options.lpIntolerance.get()) {
         weaken(-static_cast<SMALL>(coefs[v] % d), v);
       }
     }
@@ -1165,7 +1165,7 @@ void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntMap<int>& level, const
     }
   }
   if (v_prop == -1) return;  // no propagation, no idea what to weaken
-  if (options.weakenNonImplying) {
+  if (pool.options.weakenNonImplying) {
     if (weakenNonImplying(level, aux::abs(coefs[v_prop]), slk)) {
       slk = getSlack(level);  // slack changed
     }
@@ -1538,9 +1538,9 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
         }
       }
     }
-    fixOverflow(level, options.bitsOverflow.get(), options.bitsReduced.get(), largestCF, 0);
+    fixOverflow(level, pool.options.bitsOverflow.get(), pool.options.bitsReduced.get(), largestCF, 0);
   } else {
-    saturateAndFixOverflow(level, options.bitsOverflow.get(), options.bitsReduced.get(), 0);
+    saturateAndFixOverflow(level, pool.options.bitsOverflow.get(), pool.options.bitsReduced.get(), 0);
   }
   assert(getCoef(-l) == 0);
   assert(hasNegativeSlack(level));

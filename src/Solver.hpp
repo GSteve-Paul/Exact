@@ -75,6 +75,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+class ILP;
+
 class Solver {
   friend class LpSolver;
   friend struct Constr;
@@ -137,6 +139,8 @@ class Solver {
 
   long long nconfl_to_reduce;
   long long nconfl_to_restart;
+
+  CeSuper getAnalysisCE(const CeSuper& conflict) const;
 
  public:
   Solver(ILP& i);

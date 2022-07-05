@@ -139,41 +139,41 @@ void LazyVar<SMALL, LARGE>::addFinalAtMost() {
   solver.addConstraintUnchecked(atMost, Origin::COREGUIDED);
 }
 
-OptimizationSuper::OptimizationSuper(Solver& s) : solver(s) {}
+OptimizationSuper::OptimizationSuper(Solver& s, ILP& i) : solver(s), ilp(i) {}
 
-Optim OptimizationSuper::make(const CeArb& obj, Solver& solver) {
+Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, ILP& ilp) {
   bigint maxVal = obj->getCutoffVal() * INF;  // INF factor allows adding log-encoded core to the objective
   if (maxVal <= static_cast<bigint>(limitAbs<int, long long>())) {  // TODO: try to internalize this check in ConstrExp
-    Ce32 o = cePools.take32();
+    Ce32 o = ilp.cePools.take32();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int, long long>>(o, solver);
+    return std::make_shared<Optimization<int, long long>>(o, solver, ilp);
   } else if (maxVal <= static_cast<bigint>(limitAbs<long long, int128>())) {
-    Ce64 o = cePools.take64();
+    Ce64 o = ilp.cePools.take64();
     obj->copyTo(o);
-    return std::make_shared<Optimization<long long, int128>>(o, solver);
+    return std::make_shared<Optimization<long long, int128>>(o, solver, ilp);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
-    Ce96 o = cePools.take96();
+    Ce96 o = ilp.cePools.take96();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int128, int128>>(o, solver);
+    return std::make_shared<Optimization<int128, int128>>(o, solver, ilp);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
-    Ce128 o = cePools.take128();
+    Ce128 o = ilp.cePools.take128();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int128, int256>>(o, solver);
+    return std::make_shared<Optimization<int128, int256>>(o, solver, ilp);
   } else {
-    CeArb o = cePools.takeArb();
+    CeArb o = ilp.cePools.takeArb();
     obj->copyTo(o);
-    return std::make_shared<Optimization<bigint, bigint>>(o, solver);
+    return std::make_shared<Optimization<bigint, bigint>>(o, solver, ilp);
   }
 }
 
 template <typename SMALL, typename LARGE>
-Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s)
-    : OptimizationSuper(s), origObj(obj), somethingHappened(false), firstRun(true) {
+Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s, ILP& i)
+    : OptimizationSuper(s, i), origObj(obj), somethingHappened(false), firstRun(true) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
   lower_bound = -origObj->getDegree();
   upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
 
-  reformObj = cePools.take<SMALL, LARGE>();
+  reformObj = ilp.cePools.take<SMALL, LARGE>();
   reformObj->stopLogging();
   origObj->copyTo(reformObj);
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -184,9 +184,9 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& o
   }
 
   reply = SolveState::INPROCESSED;
-  stratDiv = options.cgStrat.get();
+  stratDiv = ilp.options.cgStrat.get();
   stratLim = stratDiv == 1 ? 1 : aux::toDouble(reformObj->getLargestCoef());
-  coreguided = options.cgHybrid.get() >= 1;
+  coreguided = ilp.options.cgHybrid.get() >= 1;
 };
 
 template <typename SMALL, typename LARGE>
@@ -196,7 +196,7 @@ CeSuper Optimization<SMALL, LARGE>::getReformObj() const {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::printObjBounds() {
-  if (options.verbosity.get() == 0) return;
+  if (ilp.options.verbosity.get() == 0) return;
   std::cout << "c     bounds ";
   if (solver.foundSolution()) {
     std::cout << upper_bound;
@@ -239,7 +239,7 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
 
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::addLowerBound() {
-  CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
+  CePtr<ConstrExp<SMALL, LARGE>> aux = ilp.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->addRhs(lower_bound);
   solver.dropExternal(lastLowerBound, true, true);
@@ -253,14 +253,14 @@ State Optimization<SMALL, LARGE>::addLowerBound() {
 
 template <typename SMALL, typename LARGE>
 Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // does not modify core
-  CeSuper card = core->clone(cePools);
-  CeSuper cloneCoefOrder = card->clone(cePools);
+  CeSuper card = core->clone(ilp.cePools);
+  CeSuper cloneCoefOrder = card->clone(ilp.cePools);
   cloneCoefOrder->sortInDecreasingCoefOrder(solver.getHeuristic());
   cloneCoefOrder->reverseOrder();  // *IN*creasing coef order
   card->sortWithCoefTiebreaker(
       [&](Var v1, Var v2) { return aux::sgn(aux::abs(reformObj->coefs[v1]) - aux::abs(reformObj->coefs[v2])); });
 
-  CeSuper clone = card->clone(cePools);
+  CeSuper clone = card->clone(ilp.cePools);
   assert(clone->nVars() > 0);
   LARGE bestLowerBound = 0;
   int bestNbVars = clone->nVars();
@@ -295,7 +295,7 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // 
   assert(bestCardDegree == card->getCardinalityDegree());
   card->simplifyToCardinality(false, bestCardDegree);
 
-  Ce32 result = cePools.take32();
+  Ce32 result = ilp.cePools.take32();
   card->copyTo(result);
   return result;
 }
@@ -315,7 +315,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   // the following operations do not turn core/reduced into a tautology
   core->divideTo(limitAbs<int, long long>(), [&](Lit l) { return reformObj->hasLit(l); });
   assert(!core->isTautology());
-  CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
+  CePtr<ConstrExp<SMALL, LARGE>> reduced = ilp.cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
 
   // decide rational multiplier using knapsack heuristic
@@ -399,21 +399,21 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
   if (core->isTautology()) {
     return State::FAIL;
   }
-  CeSuper clone = core->clone(cePools);
+  CeSuper clone = core->clone(ilp.cePools);
   // the following operations do not turn core/reduced into a tautology
   SMALL largestCoef = 0;
   for (Var v : core->getVars()) {
     largestCoef = std::max(largestCoef, reformObj->getCoef(core->getLit(v)));
   }
   assert(largestCoef > 0);
-  int maxCoef = static_cast<int>(std::min(largestCoef, static_cast<SMALL>(options.cgMaxCoef.get())));
+  int maxCoef = static_cast<int>(std::min(largestCoef, static_cast<SMALL>(ilp.options.cgMaxCoef.get())));
   maxCoef = std::min(maxCoef, static_cast<int>(limitAbs<int, long long>()) / core->nVars());
   assert(maxCoef >= 1);
   if (maxCoef == 1) return reformObjective(core);
 
   core->divideTo(maxCoef, [&](Lit l) { return reformObj->hasLit(l); });
   assert(!core->isTautology());
-  CePtr<ConstrExp<SMALL, LARGE>> reduced = cePools.take<SMALL, LARGE>();
+  CePtr<ConstrExp<SMALL, LARGE>> reduced = ilp.cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
 
   // decide rational multiplier using knapsack heuristic
@@ -433,12 +433,12 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
   } else {
     mult /= static_cast<SMALL>(div);
   }
-  assert(reduced->getLargestCoef() <= options.cgMaxCoef.get());
+  assert(reduced->getLargestCoef() <= ilp.options.cgMaxCoef.get());
   assert(reduced->getDegree() > 0);
   assert(reduced->absCoeffSum() - reduced->getDegree() >= 0);
   assert(reduced->absCoeffSum() - reduced->getDegree() > 0);  // TODO: if it is 0, we have a unit constraint!
   assert(reduced->absCoeffSum() - reduced->getDegree() < INF - solver.getNbVars());
-  Ce32 cardCore = cePools.take32();
+  Ce32 cardCore = ilp.cePools.take32();
   reduced->copyTo(cardCore);  // TODO: simply work in Ce32?
   reduced->multiply(mult);
 
@@ -532,12 +532,12 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
   assert(!core->hasNegativeSlack(solver.getLevel()));  // Would be handled by solver's learnConstraint
   --stats.NCGCOREREUSES;
   State result = State::SUCCESS;
-  if (options.cgEncoding.is("binary")) {
+  if (ilp.options.cgEncoding.is("binary")) {
     while (result == State::SUCCESS) {
       ++stats.NCGCOREREUSES;
       result = reformObjectiveLog(core);
     }
-  } else if (options.cgEncoding.is("smallsum")) {
+  } else if (ilp.options.cgEncoding.is("smallsum")) {
     while (result == State::SUCCESS) {
       ++stats.NCGCOREREUSES;
       result = reformObjectiveSmallSum(core);
@@ -567,9 +567,9 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   upper_bound = -origObj->getRhs();
   for (Var v : origObj->getVars()) upper_bound += origObj->coefs[v] * (int)(sol[v] > 0);
   assert(upper_bound <= prev_val);
-  assert(upper_bound < prev_val || !options.boundUpper);
+  assert(upper_bound < prev_val || !ilp.options.boundUpper);
 
-  CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
+  CePtr<ConstrExp<SMALL, LARGE>> aux = ilp.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->invert();
   aux->addRhs(-upper_bound + 1);
@@ -591,8 +591,8 @@ void Optimization<SMALL, LARGE>::logProof() {
   assert(lastUpperBound != ID_Unsat);
   assert(lastLowerBound != ID_Undef);
   assert(lastLowerBound != ID_Unsat);
-  CePtr<ConstrExp<SMALL, LARGE>> coreAggregate = cePools.take<SMALL, LARGE>();
-  CePtr<ConstrExp<SMALL, LARGE>> aux = cePools.take<SMALL, LARGE>();
+  CePtr<ConstrExp<SMALL, LARGE>> coreAggregate = ilp.cePools.take<SMALL, LARGE>();
+  CePtr<ConstrExp<SMALL, LARGE>> aux = ilp.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->invert();
   aux->addRhs(1 - upper_bound);
@@ -624,7 +624,7 @@ State Optimization<SMALL, LARGE>::harden() {
 
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::runTabu() {
-  if (options.verbosity.get() > 1) std::cout << "RUNNING TABU" << std::endl;
+  if (ilp.options.verbosity.get() > 1) std::cout << "RUNNING TABU" << std::endl;
   int currentUnits = solver.getNbUnits();
   solver.phaseToTabu();
   bool success = false;
@@ -633,14 +633,14 @@ State Optimization<SMALL, LARGE>::runTabu() {
     success = true;
     ++stats.TABUSOLS;
     ++solutionsFound;
-    if (options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT) return State::UNSAT;
+    if (ilp.options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT) return State::UNSAT;
     // NOTE: may flip tabuSol due to unit propagations
     // TODO: return SAT state to python interface...
   }
   if (success) solver.lastSolToPhase();
-  // if (firstRun && options.varInitAct) solver.ranksToAct(); // TODO: check refactor of firstRun
+  // if (firstRun && ilp.options.varInitAct) solver.ranksToAct(); // TODO: check refactor of firstRun
   stats.NTABUUNITS += solver.getNbUnits() - currentUnits;
-  if (options.verbosity.get() > 0) std::cout << "c END LOCAL SEARCH" << std::endl;
+  if (ilp.options.verbosity.get() > 0) std::cout << "c END LOCAL SEARCH" << std::endl;
 
   return State::SUCCESS;
 }
@@ -657,14 +657,14 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
     assert(upper_bound >= lower_bound);
     StatNum current_time = stats.getDetTime();
     if (reply == SolveState::INPROCESSED) {
-      if (options.printCsvData)
+      if (ilp.options.printCsvData)
         stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
-      if (options.tabuLim.get() != 0) {
+      if (ilp.options.tabuLim.get() != 0) {
         State state = aux::timeCall<State>([&] { return runTabu(); }, stats.TABUTIME);
         if (state == State::UNSAT) return SolveState::UNSAT;
       }
     }
-    if (lower_bound >= upper_bound && options.boundUpper) {
+    if (lower_bound >= upper_bound && ilp.options.boundUpper) {
       logProof();
       return SolveState::UNSAT;  // optimality is proven
     }
@@ -679,7 +679,7 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
         }
         std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
         litcoefs.reserve(reformObj->nVars());
-        if (!options.cgReform.is("always")) {
+        if (!ilp.options.cgReform.is("always")) {
           for (Var v : reformObj->getVars()) {
             assert(reformObj->getLit(v) != 0);
             if (!solver.isOrig(v)) continue;
@@ -689,7 +689,7 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
             }
           }
         }
-        if ((options.cgReform.is("depletion") && litcoefs.empty()) || options.cgReform.is("always")) {
+        if ((ilp.options.cgReform.is("depletion") && litcoefs.empty()) || ilp.options.cgReform.is("always")) {
           for (Var v : reformObj->getVars()) {
             assert(reformObj->getLit(v) != 0);
             double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));
@@ -729,7 +729,8 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
       assert(solver.foundSolution());
       ++stats.NSOLS;
       ++solutionsFound;
-      if (options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT) return SolveState::UNSAT;
+      if (ilp.options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT)
+        return SolveState::UNSAT;
       if (coreguided) {
         solver.clearAssumptions();
         stratLim = std::max<double>(stratLim / stratDiv, 1);
@@ -750,8 +751,8 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
         stratLim = std::max<double>(stratLim / stratDiv, 1);
       }
       somethingHappened = false;
-      coreguided = options.cgHybrid.get() >= 1 ||
-                   stats.DETTIMEASSUMP < options.cgHybrid.get() * (stats.DETTIMEFREE + stats.DETTIMEASSUMP);
+      coreguided = ilp.options.cgHybrid.get() >= 1 ||
+                   stats.DETTIMEASSUMP < ilp.options.cgHybrid.get() * (stats.DETTIMEFREE + stats.DETTIMEASSUMP);
       return SolveState::INPROCESSED;
     } else {
       assert(false);  // should not happen

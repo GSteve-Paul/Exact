@@ -64,12 +64,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace xct {
 
 bool asynch_interrupt;
-Options options;
 Stats stats;
 
 std::shared_ptr<Logger> logger;
 
-ConstrExpPools cePools;
 IntSetPool isPool;
 
 }  // namespace xct

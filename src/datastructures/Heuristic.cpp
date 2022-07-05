@@ -121,11 +121,10 @@ void Heuristic::randomize(const std::vector<int>& position) {
     actList[v].activity += aux::getRand(0, INF) / static_cast<ActValV>(INF);
   }
   nextDecision = 0;
-  vBumpActivity(vars, position);
+  vBumpActivity(vars, position, 1);
 }
 
-void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position) {
-  double weightNew = options.varWeight.get();
+void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position, double weightNew) {
   double weightOld = 1 - weightNew;
   ActValV nConfl = stats.NCONFL.z + 1;
   for (Var v : vars) {

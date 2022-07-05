@@ -79,7 +79,7 @@ void exit_SUCCESS(ILP& ilp);
 void exit_INDETERMINATE(ILP& ilp);
 void exit_ERROR(const std::initializer_list<std::string>& messages);
 
-void checkInterrupt();
+void checkInterrupt(const ILP& ilp);
 }  // namespace quit
 
 }  // namespace xct

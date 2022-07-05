@@ -140,7 +140,7 @@ class LpSolver {
   // 74-x bits for the max dual multiplier
   // +++ 127 bits total, 1 to preempt off-by-one errors
   bool madeInternalCall = false;
-  bool canInProcess() const { return madeInternalCall && (options.lpGomoryCuts || options.lpLearnedCuts); }
+  bool canInProcess() const;
 
   soplex::DVectorReal lpSol;
   std::vector<double> lpSolution;

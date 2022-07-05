@@ -170,7 +170,7 @@ class Exact {
    *
    * @return: the variables in the core.
    */
-  std::vector<std::string> getLastCore() const;
+  std::vector<std::string> getLastCore();
 
   /**
    * Add an upper bound to the objective function based on the objective value of the last found solution.

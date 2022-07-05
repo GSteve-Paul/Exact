@@ -437,8 +437,8 @@ struct ConstrExp final : public ConstrExpSuper {
     orig = o;
     assert(size > 0);
     DG div = 1;
-    int bitOverflow = options.bitsOverflow.get();
-    int bitReduce = options.bitsReduced.get();
+    int bitOverflow = pool.options.bitsOverflow.get();
+    int bitReduce = pool.options.bitsReduced.get();
     if (bitOverflow > 0) {
       DG _rhs = degr;
       for (unsigned int i = 0; i < size; ++i) {
@@ -505,23 +505,23 @@ struct ConstrExp final : public ConstrExpSuper {
     if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0
       reason->multiply(conflCoef);
     } else {
-      if (options.multBeforeDiv) {
+      if (pool.options.multBeforeDiv) {
         reason->multiply(conflCoef);
       }
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
-      if (options.division.is("rto")) {
+      if (pool.options.division.is("rto")) {
         reason->weakenDivideRoundOrdered(reasonCoef, [&](Lit l) { return isFalse(level, l); });
         reason->multiply(conflCoef);
       } else {
         const LARGE reasonSlack = reason->getSlack(level);
-        if (options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
+        if (pool.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
           reason->weakenDivideRoundOrdered(reasonSlack + 1, [&](Lit l) { return isFalse(level, l); });
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
         } else {
-          assert(options.division.is("mindiv") || reasonSlack <= 0 || reasonCoef / (reasonSlack + 1) >= conflCoef);
-          assert(!options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
-          SMALL gcd = options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
+          assert(pool.options.division.is("mindiv") || reasonSlack <= 0 || reasonCoef / (reasonSlack + 1) >= conflCoef);
+          assert(!pool.options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
+          SMALL gcd = pool.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
           const SMALL minDiv = reasonCoef / gcd;
           SMALL bestDiv = minDiv;
           if (bestDiv <= reasonSlack) {
@@ -558,7 +558,7 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(reason->getCoef(asserting) >= conflCoef);
     assert(reason->getCoef(asserting) < 2 * conflCoef);
     assert(reason->getSlack(level) <= 0);
-    assert(options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
+    assert(pool.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
     for (Var v : reason->vars) {
       Lit ll = reason->getLit(v);
@@ -576,7 +576,7 @@ struct ConstrExp final : public ConstrExpSuper {
       saturate(varsToCheck, false, false);
       largestCF = static_cast<SMALL>(getDegree());
     }
-    fixOverflow(level, options.bitsOverflow.get(), options.bitsReduced.get(), largestCF, 0);
+    fixOverflow(level, pool.options.bitsOverflow.get(), pool.options.bitsReduced.get(), largestCF, 0);
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 

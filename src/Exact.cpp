@@ -48,24 +48,24 @@ int main(int argc, char** argv) {
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 
-  options.parseCommandLine(argc, argv);
+  ILP ilp;
 
-  if (options.verbosity.get() > 0) {
+  ilp.options.parseCommandLine(argc, argv);
+
+  if (ilp.options.verbosity.get() > 0) {
     std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
 
-  if (!options.proofLog.get().empty()) {
-    logger = std::make_shared<Logger>(options.proofLog.get());
-    cePools.initializeLogging(logger);
+  if (!ilp.options.proofLog.get().empty()) {
+    logger = std::make_shared<Logger>(ilp.options.proofLog.get());
+    ilp.cePools.initializeLogging(logger);
   }
-
-  ILP ilp;
 
   aux::timeCallVoid([&] { parsing::file_read(ilp); }, stats.PARSETIME);
 
-  if (options.noSolve) quit::exit_INDETERMINATE(ilp);
-  if (options.printCsvData) stats.printCsvHeader();
-  if (options.verbosity.get() > 0) {
+  if (ilp.options.noSolve) quit::exit_INDETERMINATE(ilp);
+  if (ilp.options.printCsvData) stats.printCsvHeader();
+  if (ilp.options.verbosity.get() > 0) {
     std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
               << std::endl;
   }
@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
     }
     quit::exit_SUCCESS(ilp);
   } catch (const AsynchronousInterrupt& ai) {
-    if (options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
+    if (ilp.options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
     quit::exit_INDETERMINATE(ilp);
   }
 }
@@ -102,9 +102,9 @@ Exact::Exact() : ilp() {
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 
-  if (!options.proofLog.get().empty()) {
-    logger = std::make_shared<Logger>(options.proofLog.get());
-    cePools.initializeLogging(logger);
+  if (!ilp.options.proofLog.get().empty()) {
+    logger = std::make_shared<Logger>(ilp.options.proofLog.get());
+    ilp.cePools.initializeLogging(logger);
   }
 }
 
@@ -226,11 +226,11 @@ std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>&
 
 bool Exact::hasCore() const { return ilp.hasCore(); }
 
-std::vector<std::string> Exact::getLastCore() const { return ilp.getLastCore(); }
+std::vector<std::string> Exact::getLastCore() { return ilp.getLastCore(); }
 
 void Exact::printStats() { quit::printFinalStats(ilp); }
 
-void Exact::setVerbosity(int verbosity) { options.verbosity.parse(std::to_string(verbosity)); }
+void Exact::setVerbosity(int verbosity) { ilp.options.verbosity.parse(std::to_string(verbosity)); }
 
 std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& varnames) {
   if (ilp.unsatState()) {
@@ -244,4 +244,4 @@ std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<
   return result;
 }
 
-void Exact::setOption(const std::string& option, const std::string& value) { options.parseOption(option, value); }
+void Exact::setOption(const std::string& option, const std::string& value) { ilp.options.parseOption(option, value); }

@@ -64,6 +64,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+ConstrExpPools::ConstrExpPools(Options& o) : ce32s(o), ce64s(o), ce96s(o), ce128s(o), ceArbs(o) {}
+
 void ConstrExpPools::resize(size_t newn) {
   ce32s.resize(newn);
   ce64s.resize(newn);

@@ -37,7 +37,7 @@ See the file LICENSE or run with the flag --license=MIT.
 namespace xct {
 
 struct IntVar {
-  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub);
+  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, int loglim);
 
   [[nodiscard]] const std::string& getName() const { return name; }
   [[nodiscard]] const bigint& getUpperBound() const { return upperBound; }
@@ -109,6 +109,9 @@ class ILP {
   std::vector<Lit> assumptions;  // TODO: pass assumptions to run() instead of keeping track of them here?
 
  public:
+  Options options;
+  ConstrExpPools cePools;
+
   ILP();
 
   bool unsatState() { return unsatDetected; }
@@ -149,7 +152,7 @@ class ILP {
   std::vector<bigint> getLastSolutionFor(const std::vector<std::string>& vars) const;
 
   bool hasCore() const;
-  std::vector<std::string> getLastCore() const;
+  std::vector<std::string> getLastCore();
 
   void printOrigSol() const;
   void printFormula();
