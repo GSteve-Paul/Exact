@@ -8,15 +8,13 @@
 
 # This example showcases how to solve an integer classic knapsack problem with Exact's Python interface.
 
-import math
-
 # Construct a non-trivial integer knapsack instance
 nvars = 50
-var_range = range(1,nvars+1)
+var_range = range(1, nvars + 1)
 vars = [str(x) for x in var_range]
-coefs_o = [5*x+(x%3) for x in var_range]
-coefs_c = [5*x+(x%4) for x in var_range]
-rhs_c = int(sum(coefs_c)*3/4)
+coefs_o = [5 * x + (x % 3) for x in var_range]
+coefs_c = [5 * x + (x % 4) for x in var_range]
+rhs_c = int(sum(coefs_c) * 3 / 4)
 
 # Import the exact package, e.g., from PyPI using poetry or pip
 import exact
@@ -26,7 +24,7 @@ solver = exact.Exact()
 
 # Add the variables. All have lower bound 0, but some have an upper bound of 1, others of 2.
 for v in var_range:
-    solver.addVariable(str(v),0,1+v%2)
+    solver.addVariable(str(v), 0, 1 + v % 2)
 
 # Add the knapsack constraint
 success = solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
@@ -43,7 +41,7 @@ solver.init(coefs_o, vars, True, True)
 # Run the solver
 print("run Exact:")
 result = 1
-while result!=0:
+while result != 0:
     # As long as the result is not UNSAT (== 0), the solver is kept running.
     result = solver.run()
 # Once the loop exits, the last found solution is the optimal one.
@@ -59,5 +57,4 @@ sol = solver.getLastSolutionFor(vars)
 print(sol)
 
 # And calculate its optimal value by hand for good measure.
-print(sum([sol[i]*coefs_o[i] for i in range(0,len(coefs_o))]))
-
+print(sum([sol[i] * coefs_o[i] for i in range(0, len(coefs_o))]))
