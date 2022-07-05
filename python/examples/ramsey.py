@@ -23,11 +23,6 @@ import sys
 # Import the exact package, e.g., from PyPI using poetry or pip
 import exact
 
-# Create an Exact solver instance
-solver = exact.Exact()
-
-solver.setOption("var-weight", "0")
-
 # Fixing Ramsey number instance
 if len(sys.argv) != 6:
     print("Usage: python3 ramsey.py #nodes cliquesize1 cliquesize2 symcutoff count-breakers")
@@ -132,32 +127,38 @@ if usecounting:
 if cliques[0] == cliques[1]:
     constraints += [([1], [to_var(order[0])], False, 0, True, 0)]
 
-# Add the variables
-for e in variables:
-    solver.addVariable(e, 0, 1)
-# Add the constraints
-for (coefs, vs, uselow, low, useup, up) in constraints:
-    solver.addConstraint(coefs, vs, uselow, low, useup, up)
+for i in range(0,2):
+    # Create an Exact solver instance
+    solver = exact.Exact()
 
-# Initialize Exact
-solver.init([], [], False, True)
+    solver.setOption("var-weight", "0")
 
-# solver.printFormula()
+    # Add the variables
+    for e in variables:
+        solver.addVariable(e, 0, 1)
+    # Add the constraints
+    for (coefs, vs, uselow, low, useup, up) in constraints:
+        solver.addConstraint(coefs, vs, uselow, low+i, useup, up-i)
 
-# Run Exact
-print("run Exact:")
-result = 3
-while result > 1:
-    # As long as the result is not UNSAT (== 0), the solver is kept running.
-    result = solver.run()
+    # Initialize Exact
+    solver.init([], [], False, True)
 
-solver.printStats()
+    # solver.printFormula()
 
-if result == 0:
-    assert not solver.hasSolution()
-    print("UNSAT")
-else:
-    assert solver.hasSolution()
-    print("SAT")
-    sol = solver.getLastSolutionFor(variables)
-    print(sol)
+    # Run Exact
+    print("run Exact:")
+    result = 3
+    while result > 1:
+        # As long as the result is not UNSAT (== 0), the solver is kept running.
+        result = solver.run()
+
+    solver.printStats()
+
+    if result == 0:
+        assert not solver.hasSolution()
+        print("UNSAT")
+    else:
+        assert solver.hasSolution()
+        print("SAT")
+        sol = solver.getLastSolutionFor(variables)
+        print(sol)
