@@ -212,7 +212,7 @@ CeSuper Clause::toExpanded(ConstrExpPools& cePools) const {
     result->addLhs(1, data[i]);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -363,7 +363,7 @@ CeSuper Cardinality::toExpanded(ConstrExpPools& cePools) const {
     result->addLhs(1, data[i]);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -499,7 +499,7 @@ CePtr<ConstrExp<CF, DG>> Counting<CF, DG>::expandTo(ConstrExpPools& cePools) con
     result->addLhs(data[i].c, data[i].l);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -692,7 +692,7 @@ CePtr<ConstrExp<CF, DG>> Watched<CF, DG>::expandTo(ConstrExpPools& cePools) cons
     result->addLhs(aux::abs(data[i].c), data[i].l);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -841,7 +841,7 @@ CePtr<ConstrExp<CF, DG>> CountingSafe<CF, DG>::expandTo(ConstrExpPools& cePools)
     result->addLhs(terms[i].c, terms[i].l);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -1036,7 +1036,7 @@ CePtr<ConstrExp<CF, DG>> WatchedSafe<CF, DG>::expandTo(ConstrExpPools& cePools) 
     result->addLhs(aux::abs(terms[i].c), terms[i].l);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 

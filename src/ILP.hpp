@@ -111,13 +111,11 @@ class ILP {
  public:
   Options options;
   Stats stats;
+  Logger logger;
   ConstrExpPools cePools;
   IntSetPool isPool;
-  std::shared_ptr<Logger> logger;
 
   ILP();
-
-  void initLogger();
 
   bool unsatState() { return unsatDetected; }
 

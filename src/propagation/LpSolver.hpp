@@ -128,7 +128,7 @@ class LpSolver {
   friend struct CandidateCut;
 
   soplex::SoPlex lp;
-  ILP& ilp; // TODO: needed? We already have solver?
+  ILP& ilp;  // TODO: needed? We already have solver?
   Solver& solver;
 
   double lpPivotMult = 1;

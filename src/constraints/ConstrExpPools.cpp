@@ -64,8 +64,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-ConstrExpPools::ConstrExpPools(Options& o, Stats& s, IntSetPool& i)
-    : ce32s(o, s, i), ce64s(o, s, i), ce96s(o, s, i), ce128s(o, s, i), ceArbs(o, s, i) {}
+ConstrExpPools::ConstrExpPools(Options& o, Stats& s, Logger& l, IntSetPool& i)
+    : ce32s(o, s, l, i), ce64s(o, s, l, i), ce96s(o, s, l, i), ce128s(o, s, l, i), ceArbs(o, s, l, i) {}
 
 void ConstrExpPools::resize(size_t newn) {
   ce32s.resize(newn);
@@ -73,14 +73,6 @@ void ConstrExpPools::resize(size_t newn) {
   ce96s.resize(newn);
   ce128s.resize(newn);
   ceArbs.resize(newn);
-}
-
-void ConstrExpPools::initializeLogging(std::shared_ptr<Logger> lgr) {
-  ce32s.initializeLogging(lgr);
-  ce64s.initializeLogging(lgr);
-  ce96s.initializeLogging(lgr);
-  ce128s.initializeLogging(lgr);
-  ceArbs.initializeLogging(lgr);
 }
 
 template <>
@@ -111,8 +103,8 @@ Ce128 ConstrExpPools::take128() { return take<int128, int256>(); }
 CeArb ConstrExpPools::takeArb() { return take<bigint, bigint>(); }
 
 template <typename SMALL, typename LARGE>
-ConstrExpPool<SMALL, LARGE>::ConstrExpPool(Options& o, Stats& s, IntSetPool& i)
-    : n(0), options(o), stats(s), isPool(i) {}
+ConstrExpPool<SMALL, LARGE>::ConstrExpPool(Options& o, Stats& s, Logger& l, IntSetPool& i)
+    : n(0), options(o), stats(s), logger(l), isPool(i) {}
 
 template <typename SMALL, typename LARGE>
 ConstrExpPool<SMALL, LARGE>::~ConstrExpPool() {
@@ -127,18 +119,11 @@ void ConstrExpPool<SMALL, LARGE>::resize(size_t newn) {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExpPool<SMALL, LARGE>::initializeLogging(std::shared_ptr<Logger>& lgr) {
-  plogger = lgr;
-  for (ConstrExp<SMALL, LARGE>* ce : ces) ce->initializeLogging(lgr);
-}
-
-template <typename SMALL, typename LARGE>
 CePtr<ConstrExp<SMALL, LARGE>> ConstrExpPool<SMALL, LARGE>::take() {
   assert(ces.size() < 100);  // Sanity check that no large amounts of ConstrExps are created
   if (availables.size() == 0) {
-    ces.emplace_back(new ConstrExp<SMALL, LARGE>(*this));
+    ces.emplace_back(new ConstrExp<SMALL, LARGE>(*this, logger));
     ces.back()->resize(n);
-    ces.back()->initializeLogging(plogger);
     availables.push_back(ces.back());
   }
   ConstrExp<SMALL, LARGE>* result = availables.back();

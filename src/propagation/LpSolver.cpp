@@ -267,9 +267,7 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
     ilp.stats.NLPADDEDLITERALS += ce->nVars();
     lcc->addUp(ce, aux::abs(factor));
   }
-  if (lcc->plogger) {
-    lcc->plogger->logAssumption(lcc);
-  }
+  lcc->plogger.logAssumption(lcc);
   // TODO: fix logging for Gomory cuts
 
   lcc->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -417,7 +415,7 @@ Ce64 LpSolver::rowToConstraint(int row) {
     assert(el.val != 0);
     ce->addLhs((long long)el.val, el.idx);
   }
-  if (ce->plogger) ce->resetBuffer(row2data[row].id);
+  ce->resetBuffer(row2data[row].id);
   return ce;
 }
 
@@ -436,7 +434,7 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
       return {LpStatus::PIVOTLIMIT, CeNull()};  // time ratio exceeded
     }
   }
-  if (ilp.logger) ilp.logger->logComment("Checking LP");
+  ilp.logger.logComment("Checking LP");
   madeInternalCall = !inProcessing;
   flushConstraints();
 
@@ -561,7 +559,7 @@ std::pair<State, CeSuper> LpSolver::inProcess() {
     }
   }
   candidateCuts.clear();
-  if (ilp.logger && (ilp.options.lpGomoryCuts || ilp.options.lpLearnedCuts)) ilp.logger->logComment("cutting");
+  if (ilp.options.lpGomoryCuts || ilp.options.lpLearnedCuts) ilp.logger.logComment("cutting");
   if (ilp.options.lpLearnedCuts) constructLearnedCandidates();  // first to avoid adding gomory cuts twice
   if (ilp.options.lpGomoryCuts) constructGomoryCandidates();
   if (addFilteredCuts() == State::UNSAT) return {State::UNSAT, CeNull()};
@@ -592,7 +590,7 @@ void LpSolver::addConstraint(const CeSuper& c, bool removable, bool upperbound, 
   assert(!lowerbound || c->orig == Origin::LOWERBOUND);
   c->saturateAndFixOverflowRational(lpSolution);
   // TODO: fix below kind of ilp.logger check
-  ID id = ilp.logger ? ilp.logger->logProofLineWithInfo(c, "LP") : ++Logger::last_proofID;
+  ID id = ilp.logger.logProofLineWithInfo(c, "LP");
   if (upperbound || lowerbound) {
     boundsToAdd[lowerbound].id = id;
     c->toSimple()->copyTo(boundsToAdd[lowerbound].cs);

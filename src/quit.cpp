@@ -105,7 +105,7 @@ void quit::printFinalStats(ILP& ilp) {
 }
 
 void quit::exit_SUCCESS(ILP& ilp) {
-  if (ilp.logger) ilp.logger->flush();
+  ilp.logger.flush();
   if (ilp.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
   if (ilp.hasSolution()) {
     if (ilp.options.outputMode.is("miplib")) {
@@ -135,7 +135,7 @@ void quit::exit_SUCCESS(ILP& ilp) {
 }
 
 void quit::exit_INDETERMINATE(ILP& ilp) {
-  if (ilp.logger) ilp.logger->flush();
+  ilp.logger.flush();
   if (ilp.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
   if (ilp.hasSolution()) {
     if (ilp.options.outputMode.is("miplib")) {

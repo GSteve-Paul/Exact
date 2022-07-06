@@ -138,7 +138,7 @@ void Solver::init(const CeArb& obj) {
 
 Options& Solver::getOptions() { return ilp.options; }
 Stats& Solver::getStats() { return ilp.stats; }
-std::shared_ptr<Logger> Solver::getLogger() { return ilp.logger; }
+Logger& Solver::getLogger() { return ilp.logger; }
 
 // ---------------------------------------------------------------------
 // Assignment manipulation
@@ -148,11 +148,11 @@ void Solver::enqueueUnit(Lit l, Var v, CRef r) {
   assert(ilp.stats.NUNITS == trail.size());
   ++ilp.stats.NUNITS;
   reason[v] = CRef_Undef;  // no need to keep track of reasons for unit literals
-  if (ilp.logger) {
+  if (ilp.logger.isActive()) {
     CeSuper tmp = ca[r].toExpanded(ilp.cePools);
     tmp->simplifyToUnit(level, position, v);
-    ilp.logger->logUnit(tmp);
-    assert(ilp.logger->getNbUnitIDs() == (int)trail.size() + 1);
+    ilp.logger.logUnit(tmp);
+    assert(ilp.logger.getNbUnitIDs() == (int)trail.size() + 1);
   }
   if (ilp.options.tabuLim.get() != 0 && isOrig(v) && tabuSol[v] != l) {
     cutoff = ranks[v];
@@ -365,7 +365,7 @@ CeSuper Solver::getAnalysisCE(const CeSuper& conflict) const {
 }
 
 CeSuper Solver::analyze(const CeSuper& conflict) {
-  if (ilp.logger) ilp.logger->logComment("Analyze");
+  ilp.logger.logComment("Analyze");
   assert(conflict->hasNegativeSlack(level));
   conflict->removeUnitsAndZeroes(level, position);
   conflict->saturateAndFixOverflow(getLevel(), ilp.options.bitsOverflow.get(), ilp.options.bitsReduced.get(), 0);
@@ -543,8 +543,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   assert(!constraint->hasNegativeSlack(getLevel()));
   assert(constraint->orig != Origin::UNKNOWN);
 
-  CRef cr = constraint->toConstr(
-      ca, locked, ilp.logger ? ilp.logger->logProofLineWithInfo(constraint, "Attach") : ++Logger::last_proofID);
+  CRef cr = constraint->toConstr(ca, locked, ilp.logger.logProofLineWithInfo(constraint, "Attach"));
   Constr& c = ca[cr];
   c.initializeWatches(cr, *this);
   constraints.push_back(cr);
@@ -612,10 +611,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
       CeSuper& confl = result.first;
       assert(confl);
       assert(confl->hasNegativeSlack(getLevel()));
-      if (ilp.logger) {
-        confl->removeUnitsAndZeroes(level, position);
-        ilp.logger->logInconsistency(confl);
-      }
+      ilp.logger.logInconsistency(confl, getLevel(), getPos());
       return CRef_Unsat;
     }
   }
@@ -643,7 +639,7 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   if (assertionLevel < 0) {
     backjumpTo(0);
     assert(learned->isInconsistency());
-    if (ilp.logger) ilp.logger->logInconsistency(learned);
+    ilp.logger.logInconsistency(learned, getLevel(), getPos());
     return ID_Unsat;
   }
   backjumpTo(assertionLevel);
@@ -702,21 +698,19 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
   assert(isInput(ce->orig));
   assert(decisionLevel() == 0);
   ID input = ID_Undef;
-  if (ilp.logger) {
-    switch (ce->orig) {
-      case Origin::FORMULA:
-        input = ilp.logger->logInput(ce);
-        break;
-        // TODO: reactivate below when VeriPB's redundant rule becomes stronger
-        //      case Origin::PURE:
-        //        input = ilp.logger->logPure(ce);
-        //        break;
-        //      case Origin::DOMBREAKER:
-        //        input = ilp.logger->logDomBreaker(ce);
-        //        break;
-      default:
-        input = ilp.logger->logAssumption(ce);
-    }
+  switch (ce->orig) {
+    case Origin::FORMULA:
+      input = ilp.logger.logInput(ce);
+      break;
+      // TODO: reactivate below when VeriPB's redundant rule becomes stronger
+      //      case Origin::PURE:
+      //        input = ilp.logger.logPure(ce);
+      //        break;
+      //      case Origin::DOMBREAKER:
+      //        input = ilp.logger.logDomBreaker(ce);
+      //        break;
+    default:
+      input = ilp.logger.logAssumption(ce);
   }
   ce->strongPostProcess(*this);
   if (ce->isTautology()) {
@@ -730,7 +724,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
     if (ilp.options.verbosity.get() > 0) {
       std::cout << "c Conflicting input constraint" << std::endl;
     }
-    if (ilp.logger) ilp.logger->logInconsistency(ce);
+    ilp.logger.logInconsistency(ce, getLevel(), getPos());
     return {input, ID_Unsat};
   }
 
@@ -945,7 +939,7 @@ State Solver::reduceDB() {
     if (ce->isTautology()) continue;
     if (ce->nVars() == 0) {
       assert(ce->isInconsistency());  // it's not a tautology ;)
-      if (ilp.logger) ilp.logger->logInconsistency(ce);
+      ilp.logger.logInconsistency(ce, getLevel(), getPos());
       return State::UNSAT;
     }
     CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates c!
@@ -1226,10 +1220,7 @@ SolveState Solver::solve() {
         }
       }
       if (decisionLevel() == 0) {
-        if (ilp.logger) {
-          confl->removeUnitsAndZeroes(level, position);
-          ilp.logger->logInconsistency(confl);
-        }
+        ilp.logger.logInconsistency(confl, getLevel(), getPos());
         return SolveState::UNSAT;
       } else if (decisionLevel() > assumptionLevel()) {
         CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, ilp.stats.CATIME);
@@ -1358,10 +1349,7 @@ State Solver::probeRestart(Lit next) {
           assert(!isUnit(getLevel(), -l));
           if (!isUnit(getLevel(), l)) {
             ID res = aux::timeCall<ID>(
-                [&] {
-                  return learnUnitConstraint(l, Origin::PROBING,
-                                             ilp.logger ? ilp.logger->logImpliedUnit(next, l) : ID_Undef);
-                },
+                [&] { return learnUnitConstraint(l, Origin::PROBING, ilp.logger.logImpliedUnit(next, l)); },
                 ilp.stats.LEARNTIME);
             if (res == ID_Unsat) {
               return State::UNSAT;
@@ -1417,10 +1405,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
       if (previous.has(l) && isUnknown(getPos(), l)) {
         assert(decisionLevel() == 0);
         ID res = aux::timeCall<ID>(
-            [&] {
-              return learnUnitConstraint(l, Origin::PROBING,
-                                         ilp.logger ? ilp.logger->logImpliedUnit(seed, l) : ID_Undef);
-            },
+            [&] { return learnUnitConstraint(l, Origin::PROBING, ilp.logger.logImpliedUnit(seed, l)); },
             ilp.stats.LEARNTIME);
         if (res == ID_Unsat) {
           return State::UNSAT;
@@ -1462,10 +1447,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
         assert(decisionLevel() == 0);
         ilp.isPool.release(trailSet);
         ID res = aux::timeCall<ID>(
-            [&] {
-              return learnUnitConstraint(l, Origin::PROBING,
-                                         ilp.logger ? ilp.logger->logImpliedUnit(l, current) : ID_Undef);
-            },
+            [&] { return learnUnitConstraint(l, Origin::PROBING, ilp.logger.logImpliedUnit(l, current)); },
             ilp.stats.LEARNTIME);
         if (res == ID_Unsat) {
           return State::UNSAT;
@@ -1505,9 +1487,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     }
     ++ilp.stats.ATMOSTONES;
     CeSuper ce = card.toExpanded(ilp.cePools);
-    if (ilp.logger) {
-      ce->resetBuffer(ilp.logger->logAtMostOne(card));
-    }
+    ilp.logger.logAtMostOne(card, ce);
     ID res = aux::timeCall<ID>([&] { return learnConstraint(ce, Origin::DETECTEDAMO); }, ilp.stats.LEARNTIME);
     return res == ID_Unsat ? State::UNSAT : State::SUCCESS;
   } else {

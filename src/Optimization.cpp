@@ -174,7 +174,6 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& o
   upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
 
   reformObj = ilp.cePools.take<SMALL, LARGE>();
-  reformObj->stopLogging();
   origObj->copyTo(reformObj);
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   reformObj->removeEqualities(solver.getEqualities(), false);
@@ -586,7 +585,7 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::logProof() {
-  if (!ilp.logger) return;
+  if (!ilp.logger.isActive()) return;
   assert(lastUpperBound != ID_Undef);
   assert(lastUpperBound != ID_Unsat);
   assert(lastLowerBound != ID_Undef);
@@ -605,8 +604,7 @@ void Optimization<SMALL, LARGE>::logProof() {
   coreAggregate->addUp(aux);
   assert(coreAggregate->hasNegativeSlack(solver.getLevel()));
   assert(solver.decisionLevel() == 0);
-  coreAggregate->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  ilp.logger->logInconsistency(coreAggregate);
+  ilp.logger.logInconsistency(coreAggregate, solver.getLevel(), solver.getPos());
 }
 
 template <typename SMALL, typename LARGE>

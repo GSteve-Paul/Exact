@@ -156,7 +156,7 @@ class Solver {
 
   Options& getOptions();
   Stats& getStats();
-  std::shared_ptr<Logger> getLogger();
+  Logger& getLogger();
   const IntMap<int>& getLevel() const { return level; }
   const std::vector<int>& getPos() const { return position; }
   Equalities& getEqualities() { return equalities; }

@@ -73,10 +73,7 @@ CeSuper ConstrSimple<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
     ce->addLhs(t.c, t.l);
   }
   ce->orig = orig;
-  if (ce->plogger) {
-    ce->proofBuffer.str(std::string());
-    ce->proofBuffer << proofLine;
-  }
+  ce->resetBuffer(proofLine);
   return ce;
 }
 

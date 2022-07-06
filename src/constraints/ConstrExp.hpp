@@ -87,13 +87,12 @@ struct ConstrExpSuper {
   std::vector<int> index;  // -1 implies the variable has coefficient 0
 
  public:
-  Origin orig = Origin::UNKNOWN;
+  Origin orig;
   std::stringstream proofBuffer;
-  std::shared_ptr<Logger> plogger;
+  Logger& plogger;
 
   void resetBuffer(ID proofID);
-  void initializeLogging(std::shared_ptr<Logger>& l);
-  void stopLogging();
+  void resetBuffer(const std::string& line);
 
   int nVars() const { return vars.size(); }
   int nNonZeroVars() const;
@@ -111,6 +110,7 @@ struct ConstrExpSuper {
                    Stats& stats);
   void strongPostProcess(Solver& solver);
 
+  ConstrExpSuper(Logger& log);
   virtual ~ConstrExpSuper() = default;
 
   virtual void increaseUsage() = 0;
@@ -238,17 +238,9 @@ struct ConstrExp final : public ConstrExpSuper {
   bool falsified(const IntMap<int>& level, Var v) const;
 
  public:
-  explicit ConstrExp(ConstrExpPool<SMALL, LARGE>& cep);
-  void increaseUsage() {
-    ++usageCount;
-    assert(usageCount > 0);
-  }
-  void decreaseUsage() {
-    assert(usageCount > 0);
-    if (--usageCount == 0) {
-      pool.release(this);
-    }
-  }
+  explicit ConstrExp(ConstrExpPool<SMALL, LARGE>& cep, Logger& log);
+  void increaseUsage();
+  void decreaseUsage();
 
   void copyTo(Ce32 ce) const { copyTo_(ce); }
   void copyTo(Ce64 ce) const { copyTo_(ce); }
@@ -336,7 +328,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void addUp(CePtr<ConstrExp<S, L>> c, const SMALL& cmult = 1) {
     pool.stats.NADDEDLITERALS += c->nVars();
     assert(cmult >= 1);
-    if (plogger) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
+    if (plogger.isActive()) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
     rhs += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->rhs);
     degree += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->degree);
     for (Var v : c->vars) {
@@ -472,7 +464,7 @@ struct ConstrExp final : public ConstrExpSuper {
       }
       addRhs(static_cast<LARGE>(aux::ceildiv<DG>(weakenedDegree, div)));
     }
-    if (plogger) {
+    if (plogger.isActive()) {
       resetBuffer(id);
       if (div > 1) {
         for (unsigned int i = 0; i < size; ++i) {
@@ -611,13 +603,13 @@ struct ConstrExp final : public ConstrExpSuper {
     saturatedLits.remove(-toSubsume);
     ++pool.stats.NSUBSUMESTEPS;
 
-    if (plogger) {
+    if (plogger.isActive()) {
       proofBuffer << id << " ";
       for (unsigned int i = 0; i < size; ++i) {
         Lit l = terms[i].l;
         if (isUnit(level, -l)) {
           assert(l != toSubsume);
-          Logger::proofWeakenFalseUnit(proofBuffer, plogger->getUnitID(pos[toVar(l)]), -aux::abs(terms[i].c));
+          Logger::proofWeakenFalseUnit(proofBuffer, plogger.getUnitID(pos[toVar(l)]), -aux::abs(terms[i].c));
         } else if (l != toSubsume && !saturatedLits.has(l) && !isUnit(level, -l)) {
           Logger::proofWeaken(proofBuffer, l, -aux::abs(terms[i].c));
         }
@@ -655,7 +647,7 @@ struct ConstrExp final : public ConstrExpSuper {
       assert(!out->used(v));
       out->index[v] = index[v];
     }
-    if (plogger) {
+    if (plogger.isActive()) {
       out->proofBuffer.str(std::string());
       out->proofBuffer << proofBuffer.rdbuf();
     }
@@ -668,7 +660,7 @@ struct ConstrExp final : public ConstrExpSuper {
     result->terms.reserve(vars.size());
     for (Var v : vars)
       if (coefs[v] != 0) result->terms.emplace_back(static_cast<S>(coefs[v]), v);
-    if (plogger) result->proofLine = proofBuffer.str();
+    if (plogger.isActive()) result->proofLine = proofBuffer.str();
     result->orig = orig;
     return result;
   }

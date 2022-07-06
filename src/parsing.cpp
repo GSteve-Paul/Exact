@@ -140,7 +140,7 @@ void file_read(ILP& ilp) {
       fin.close();
     }
   }
-  if (ilp.logger) ilp.logger->logComment("INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW");
+  ilp.logger.logComment("INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW");
 }
 
 void opb_read(std::istream& in, ILP& ilp) {

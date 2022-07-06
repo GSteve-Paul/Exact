@@ -135,18 +135,17 @@ class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessib
   size_t n;
   std::vector<ConstrExp<SMALL, LARGE>*> ces;
   std::vector<ConstrExp<SMALL, LARGE>*> availables;
-  std::shared_ptr<Logger> plogger;
 
  public:
   Options& options;
   Stats& stats;
+  Logger& logger;
   IntSetPool& isPool;
 
-  ConstrExpPool(Options& o, Stats& s, IntSetPool& i);
+  ConstrExpPool(Options& o, Stats& s, Logger& l, IntSetPool& i);
   ~ConstrExpPool();
 
   void resize(size_t newn);
-  void initializeLogging(std::shared_ptr<Logger>& lgr);
   CePtr<ConstrExp<SMALL, LARGE>> take();
   void release(ConstrExp<SMALL, LARGE>* ce);
 };
@@ -159,10 +158,9 @@ class ConstrExpPools {
   ConstrExpPool<bigint, bigint> ceArbs;
 
  public:
-  ConstrExpPools(Options& o, Stats& s, IntSetPool& i);
+  ConstrExpPools(Options& o, Stats& s, Logger& l, IntSetPool& i);
 
   void resize(size_t newn);
-  void initializeLogging(std::shared_ptr<Logger> lgr);
 
   template <typename SMALL, typename LARGE>
   CePtr<ConstrExp<SMALL, LARGE>> take();  // NOTE: only call specializations

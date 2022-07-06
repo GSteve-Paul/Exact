@@ -165,14 +165,7 @@ void IntConstraint::normalize() {
   }
 }
 
-ILP::ILP() : solver(*this), obj({}, {}, {}, 0), cePools(options, stats, isPool) {}
-
-void ILP::initLogger() {
-  if (!options.proofLog.get().empty()) {
-    logger = std::make_shared<Logger>(options.proofLog.get(), stats);
-    cePools.initializeLogging(logger);
-  }
-}
+ILP::ILP() : solver(*this), obj({}, {}, {}, 0), logger(stats), cePools(options, stats, logger, isPool) {}
 
 IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& lowerbound, const bigint& upperbound) {
   if (auto it = name2var.find(name); it != name2var.end()) return it->second;

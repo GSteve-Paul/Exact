@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
   ILP ilp;
   ilp.stats.startTime = std::chrono::steady_clock::now();
   ilp.options.parseCommandLine(argc, argv);
-  ilp.initLogger();
+  ilp.logger.activate(ilp.options.proofLog.get());
 
   if (ilp.options.verbosity.get() > 0) {
     std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
@@ -95,7 +95,7 @@ Exact::Exact() : ilp() {
 #endif
 
   ilp.stats.startTime = std::chrono::steady_clock::now();
-  ilp.initLogger();
+  ilp.logger.activate(ilp.options.proofLog.get());
 }
 
 void Exact::addVariable(const std::string& name, long long lb, long long ub) {
