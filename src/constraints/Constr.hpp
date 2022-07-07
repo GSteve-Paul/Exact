@@ -339,7 +339,7 @@ struct Counting final : public Constr {
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
-  CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
+  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
@@ -420,7 +420,7 @@ struct Watched final : public Constr {
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
-  CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
+  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
@@ -506,7 +506,7 @@ struct CountingSafe final : public Constr {
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
-  CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
+  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
@@ -591,7 +591,7 @@ struct WatchedSafe final : public Constr {
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
-  CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
+  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;

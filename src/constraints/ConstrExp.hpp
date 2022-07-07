@@ -113,14 +113,11 @@ struct ConstrExpSuper {
   ConstrExpSuper(Logger& log);
   virtual ~ConstrExpSuper() = default;
 
-  virtual void increaseUsage() = 0;
-  virtual void decreaseUsage() = 0;
-
-  virtual void copyTo(Ce32 ce) const = 0;
-  virtual void copyTo(Ce64 ce) const = 0;
-  virtual void copyTo(Ce96 ce) const = 0;
-  virtual void copyTo(Ce128 ce) const = 0;
-  virtual void copyTo(CeArb ce) const = 0;
+  virtual void copyTo(const Ce32& ce) const = 0;
+  virtual void copyTo(const Ce64& ce) const = 0;
+  virtual void copyTo(const Ce96& ce) const = 0;
+  virtual void copyTo(const Ce128& ce) const = 0;
+  virtual void copyTo(const CeArb& ce) const = 0;
 
   virtual CeSuper clone(ConstrExpPools& ce) const = 0;
   virtual CRef toConstr(ConstraintAllocator& ca, bool locked, ID id) const = 0;
@@ -239,17 +236,15 @@ struct ConstrExp final : public ConstrExpSuper {
 
  public:
   explicit ConstrExp(ConstrExpPool<SMALL, LARGE>& cep, Logger& log);
-  void increaseUsage();
-  void decreaseUsage();
 
-  void copyTo(Ce32 ce) const { copyTo_(ce); }
-  void copyTo(Ce64 ce) const { copyTo_(ce); }
-  void copyTo(Ce96 ce) const { copyTo_(ce); }
-  void copyTo(Ce128 ce) const { copyTo_(ce); }
-  void copyTo(CeArb ce) const { copyTo_(ce); }
+  void copyTo(const Ce32& ce) const;
+  void copyTo(const Ce64& ce) const;
+  void copyTo(const Ce96& ce) const;
+  void copyTo(const Ce128& ce) const;
+  void copyTo(const CeArb& ce) const;
 
   CeSuper clone(ConstrExpPools& ce) const;
-  CePtr<ConstrExp<SMALL, LARGE>> cloneEmpty() const;
+  CePtr<SMALL, LARGE> cloneEmpty() const;
   CRef toConstr(ConstraintAllocator& ca, bool locked, ID id) const;
   std::unique_ptr<ConstrSimpleSuper> toSimple() const;
 
@@ -325,7 +320,7 @@ struct ConstrExp final : public ConstrExpSuper {
   bool largestCoefFitsIn(int bits) const;
 
   template <typename S, typename L>
-  void addUp(CePtr<ConstrExp<S, L>> c, const SMALL& cmult = 1) {
+  void addUp(const CePtr<S, L>& c, const SMALL& cmult = 1) {
     pool.stats.NADDEDLITERALS += c->nVars();
     assert(cmult >= 1);
     if (plogger.isActive()) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
@@ -487,7 +482,7 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(getCoef(-asserting) > 0);
     assert(hasNoZeroes());
 
-    CePtr<ConstrExp<SMALL, LARGE>> reason = cloneEmpty();
+    CePtr<SMALL, LARGE> reason = cloneEmpty();
     reason->initFixOverflow(terms, size, degr, id, o, level, pos, asserting);
     assert(reason->getCoef(asserting) > 0);
     assert(reason->getCoef(asserting) > reason->getSlack(level));
@@ -633,7 +628,7 @@ struct ConstrExp final : public ConstrExpSuper {
   }
 
   template <typename S, typename L>
-  void copyTo_(CePtr<ConstrExp<S, L>> out) const {
+  void copyTo_(const CePtr<S, L>& out) const {
     // TODO: assert whether S/L can fit SMALL/LARGE? Not always possible.
     assert(out->isReset());
     out->degree = static_cast<L>(degree);

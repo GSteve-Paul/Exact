@@ -242,15 +242,15 @@ using ConstrExp128 = ConstrExp<int128, int256>;
 using ConstrExpArb = ConstrExp<bigint, bigint>;
 struct ConstrExpSuper;
 
-template <typename CE>
-struct CePtr;
-using Ce32 = CePtr<ConstrExp32>;
-using Ce64 = CePtr<ConstrExp64>;
-using Ce96 = CePtr<ConstrExp96>;
-using Ce128 = CePtr<ConstrExp128>;
-using CeArb = CePtr<ConstrExpArb>;
-using CeSuper = CePtr<ConstrExpSuper>;
-using CeNull = CePtr<ConstrExp32>;
+template <typename SMALL, typename LARGE>
+using CePtr = std::shared_ptr<ConstrExp<SMALL, LARGE>>;
+using Ce32 = std::shared_ptr<ConstrExp32>;
+using Ce64 = std::shared_ptr<ConstrExp64>;
+using Ce96 = std::shared_ptr<ConstrExp96>;
+using Ce128 = std::shared_ptr<ConstrExp128>;
+using CeArb = std::shared_ptr<ConstrExpArb>;
+using CeSuper = std::shared_ptr<ConstrExpSuper>;
+using CeNull = std::shared_ptr<ConstrExp32>;
 
 template <typename CF, typename DG>
 struct ConstrSimple;

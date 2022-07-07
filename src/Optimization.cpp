@@ -167,7 +167,7 @@ Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, ILP& ilp) {
 }
 
 template <typename SMALL, typename LARGE>
-Optimization<SMALL, LARGE>::Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s, ILP& i)
+Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, ILP& i)
     : OptimizationSuper(s, i), origObj(obj), somethingHappened(false), firstRun(true) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
   lower_bound = -origObj->getDegree();
@@ -238,7 +238,7 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
 
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::addLowerBound() {
-  CePtr<ConstrExp<SMALL, LARGE>> aux = ilp.cePools.take<SMALL, LARGE>();
+  CePtr<SMALL, LARGE> aux = ilp.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->addRhs(lower_bound);
   solver.dropExternal(lastLowerBound, true, true);
@@ -314,7 +314,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   // the following operations do not turn core/reduced into a tautology
   core->divideTo(limitAbs<int, long long>(), [&](Lit l) { return reformObj->hasLit(l); });
   assert(!core->isTautology());
-  CePtr<ConstrExp<SMALL, LARGE>> reduced = ilp.cePools.take<SMALL, LARGE>();
+  CePtr<SMALL, LARGE> reduced = ilp.cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
 
   // decide rational multiplier using knapsack heuristic
@@ -366,7 +366,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
 }
 
 template <typename SMALL, typename LARGE>
-Lit Optimization<SMALL, LARGE>::getKnapsackLit(const CePtr<ConstrExp<SMALL, LARGE>>& core) const {
+Lit Optimization<SMALL, LARGE>::getKnapsackLit(const CePtr<SMALL, LARGE>& core) const {
   core->sortWithCoefTiebreaker([&](Var v1, Var v2) {
     const LARGE o1r2 = reformObj->getLit(v1) == core->getLit(v1) ? aux::abs(reformObj->coefs[v1] * core->coefs[v2]) : 0;
     const LARGE o2r1 = reformObj->getLit(v2) == core->getLit(v2) ? aux::abs(reformObj->coefs[v2] * core->coefs[v1]) : 0;
@@ -412,7 +412,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
 
   core->divideTo(maxCoef, [&](Lit l) { return reformObj->hasLit(l); });
   assert(!core->isTautology());
-  CePtr<ConstrExp<SMALL, LARGE>> reduced = ilp.cePools.take<SMALL, LARGE>();
+  CePtr<SMALL, LARGE> reduced = ilp.cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
 
   // decide rational multiplier using knapsack heuristic
@@ -568,7 +568,7 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   assert(upper_bound <= prev_val);
   assert(upper_bound < prev_val || !ilp.options.boundUpper);
 
-  CePtr<ConstrExp<SMALL, LARGE>> aux = ilp.cePools.take<SMALL, LARGE>();
+  CePtr<SMALL, LARGE> aux = ilp.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->invert();
   aux->addRhs(-upper_bound + 1);
@@ -590,8 +590,8 @@ void Optimization<SMALL, LARGE>::logProof() {
   assert(lastUpperBound != ID_Unsat);
   assert(lastLowerBound != ID_Undef);
   assert(lastLowerBound != ID_Unsat);
-  CePtr<ConstrExp<SMALL, LARGE>> coreAggregate = ilp.cePools.take<SMALL, LARGE>();
-  CePtr<ConstrExp<SMALL, LARGE>> aux = ilp.cePools.take<SMALL, LARGE>();
+  CePtr<SMALL, LARGE> coreAggregate = ilp.cePools.take<SMALL, LARGE>();
+  CePtr<SMALL, LARGE> aux = ilp.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->invert();
   aux->addRhs(1 - upper_bound);

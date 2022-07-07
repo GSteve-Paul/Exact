@@ -525,7 +525,7 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true, ilp.stats);
   if (!lastCore->hasNegativeSlack(assumptions.getIndex())) {
     // apparently unit clauses were propagated during learnConstraint
-    lastCore.makeNull();
+    lastCore.reset();
   }
   return State::SUCCESS;
 }
@@ -1270,7 +1270,7 @@ SolveState Solver::solve() {
           if (assumptions.has(-l)) {  // found conflicting assumption
             if (isUnit(level, l)) {   // negated assumption is unit
               backjumpTo(0);
-              lastCore.makeNull();
+              lastCore.reset();
               return SolveState::INCONSISTENT;
             } else {
               State state = aux::timeCall<State>(

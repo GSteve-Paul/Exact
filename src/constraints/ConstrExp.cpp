@@ -101,17 +101,24 @@ ConstrExp<SMALL, LARGE>::ConstrExp(ConstrExpPool<SMALL, LARGE>& cep, Logger& log
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::increaseUsage() {
-  ++usageCount;
-  assert(usageCount > 0);
+void ConstrExp<SMALL, LARGE>::copyTo(const Ce32& ce) const {
+  copyTo_(ce);
 }
-
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::decreaseUsage() {
-  assert(usageCount > 0);
-  if (--usageCount == 0) {
-    pool.release(this);
-  }
+void ConstrExp<SMALL, LARGE>::copyTo(const Ce64& ce) const {
+  copyTo_(ce);
+}
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::copyTo(const Ce96& ce) const {
+  copyTo_(ce);
+}
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::copyTo(const Ce128& ce) const {
+  copyTo_(ce);
+}
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::copyTo(const CeArb& ce) const {
+  copyTo_(ce);
 }
 
 template <typename SMALL, typename LARGE>
@@ -141,7 +148,7 @@ CeSuper ConstrExp<SMALL, LARGE>::clone(ConstrExpPools& cePools) const {
 }
 
 template <typename SMALL, typename LARGE>
-CePtr<ConstrExp<SMALL, LARGE>> ConstrExp<SMALL, LARGE>::cloneEmpty() const {
+CePtr<SMALL, LARGE> ConstrExp<SMALL, LARGE>::cloneEmpty() const {
   return pool.take();
 }
 

@@ -107,38 +107,28 @@ ConstrExpPool<SMALL, LARGE>::ConstrExpPool(Options& o, Stats& s, Logger& l, IntS
     : n(0), options(o), stats(s), logger(l), isPool(i) {}
 
 template <typename SMALL, typename LARGE>
-ConstrExpPool<SMALL, LARGE>::~ConstrExpPool() {
-  for (ConstrExp<SMALL, LARGE>* ce : ces) delete ce;
-}
-
-template <typename SMALL, typename LARGE>
 void ConstrExpPool<SMALL, LARGE>::resize(size_t newn) {
   assert(n <= INF);
   n = newn;
-  for (ConstrExp<SMALL, LARGE>* ce : ces) ce->resize(n);
+  for (CePtr<SMALL, LARGE>& ce : ces) ce->resize(n);
 }
 
 template <typename SMALL, typename LARGE>
-CePtr<ConstrExp<SMALL, LARGE>> ConstrExpPool<SMALL, LARGE>::take() {
-  assert(ces.size() < 100);  // Sanity check that no large amounts of ConstrExps are created
-  if (availables.size() == 0) {
-    ces.emplace_back(new ConstrExp<SMALL, LARGE>(*this, logger));
-    ces.back()->resize(n);
-    availables.push_back(ces.back());
+CePtr<SMALL, LARGE> ConstrExpPool<SMALL, LARGE>::take() {
+  assert(ces.size() < 30);  // Sanity check that no large amounts of ConstrExps are created
+  for (int i = ces.size() - 1; i >= 0; --i) {
+    if (ces[i].unique()) {
+      ces[i]->reset(false);
+      if (i == (int)ces.size() - 1) return ces[i];
+      std::swap(ces[i], ces[i + 1]);  // slowly move free CePtr to the back
+      return ces[i + 1];
+    }
   }
-  ConstrExp<SMALL, LARGE>* result = availables.back();
-  availables.pop_back();
-  assert(result->isReset());
-  assert(result->coefs.size() == n);
-  return CePtr<ConstrExp<SMALL, LARGE>>(result);
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExpPool<SMALL, LARGE>::release(ConstrExp<SMALL, LARGE>* ce) {
-  assert(std::any_of(ces.cbegin(), ces.cend(), [&](ConstrExp<SMALL, LARGE>* i) { return i == ce; }));
-  assert(std::none_of(availables.cbegin(), availables.cend(), [&](ConstrExp<SMALL, LARGE>* i) { return i == ce; }));
-  ce->reset(false);
-  availables.push_back(ce);
+  CePtr<SMALL, LARGE> fresh = std::make_shared<ConstrExp<SMALL, LARGE>>(*this, logger);
+  fresh->resize(n);
+  assert(fresh->isReset());
+  ces.push_back(fresh);
+  return fresh;
 }
 
 template class ConstrExpPool<int, long long>;

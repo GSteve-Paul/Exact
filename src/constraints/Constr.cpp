@@ -492,8 +492,8 @@ int Counting<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& 
 }
 
 template <typename CF, typename DG>
-CePtr<ConstrExp<CF, DG>> Counting<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<ConstrExp<CF, DG>> result = cePools.take<CF, DG>();
+CePtr<CF, DG> Counting<CF, DG>::expandTo(ConstrExpPools& cePools) const {
+  CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(data[i].c, data[i].l);
@@ -685,8 +685,8 @@ int Watched<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& s
 }
 
 template <typename CF, typename DG>
-CePtr<ConstrExp<CF, DG>> Watched<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<ConstrExp<CF, DG>> result = cePools.take<CF, DG>();
+CePtr<CF, DG> Watched<CF, DG>::expandTo(ConstrExpPools& cePools) const {
+  CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(aux::abs(data[i].c), data[i].l);
@@ -834,8 +834,8 @@ int CountingSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntS
 }
 
 template <typename CF, typename DG>
-CePtr<ConstrExp<CF, DG>> CountingSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<ConstrExp<CF, DG>> result = cePools.take<CF, DG>();
+CePtr<CF, DG> CountingSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
+  CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(*degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(terms[i].c, terms[i].l);
@@ -1029,8 +1029,8 @@ int WatchedSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSe
 }
 
 template <typename CF, typename DG>
-CePtr<ConstrExp<CF, DG>> WatchedSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<ConstrExp<CF, DG>> result = cePools.take<CF, DG>();
+CePtr<CF, DG> WatchedSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
+  CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(*degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(aux::abs(terms[i].c), terms[i].l);

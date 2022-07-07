@@ -120,8 +120,8 @@ class OptimizationSuper {
 
 template <typename SMALL, typename LARGE>
 class Optimization final : public OptimizationSuper {
-  const CePtr<ConstrExp<SMALL, LARGE>> origObj;
-  CePtr<ConstrExp<SMALL, LARGE>> reformObj;
+  const CePtr<SMALL, LARGE> origObj;
+  CePtr<SMALL, LARGE> reformObj;
 
   LARGE lower_bound;
   LARGE upper_bound;
@@ -141,7 +141,7 @@ class Optimization final : public OptimizationSuper {
   bool firstRun;
 
  public:
-  explicit Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s, ILP& i);
+  explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, ILP& i);
 
   LARGE normalizedLowerBound() const { return lower_bound + origObj->getDegree(); }
   LARGE normalizedUpperBound() const { return upper_bound + origObj->getDegree(); }
@@ -156,10 +156,10 @@ class Optimization final : public OptimizationSuper {
   Ce32 reduceToCardinality(const CeSuper& core);                // does not modify core
   [[nodiscard]] State reformObjective(const CeSuper& core);     // modifies core
   [[nodiscard]] State reformObjectiveLog(const CeSuper& core);  // modifies core
-  [[nodiscard]] bool reformObjectiveLogTest(const CePtr<ConstrExp<SMALL, LARGE>>& core) const;
-  [[nodiscard]] State reformObjectiveSmallSum(const CeSuper& core);                    // modifies core
-  [[nodiscard]] Lit getKnapsackLit(const CePtr<ConstrExp<SMALL, LARGE>>& core) const;  // modifies core
-  [[nodiscard]] State handleInconsistency(const CeSuper& core);                        // modifies core
+  [[nodiscard]] bool reformObjectiveLogTest(const CePtr<SMALL, LARGE>& core) const;
+  [[nodiscard]] State reformObjectiveSmallSum(const CeSuper& core);         // modifies core
+  [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
+  [[nodiscard]] State handleInconsistency(const CeSuper& core);             // modifies core
   [[nodiscard]] State handleNewSolution(const std::vector<Lit>& sol);
 
   void logProof();

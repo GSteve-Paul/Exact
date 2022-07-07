@@ -66,63 +66,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-// shared_ptr-like wrapper around ConstrExp, ensuring it gets released back to the pool when no longer needed.
-template <typename CE>
-struct CePtr {
-  CE* ce;
-
-  // default constructor
-  CePtr() : ce(nullptr) {}
-  // regular constructor
-  explicit CePtr(CE* c) : ce(c) {
-    if (ce) ce->increaseUsage();
-  }
-  // copy constructor
-  CePtr(const CePtr<CE>& other) : ce{other.ce} {
-    if (ce) ce->increaseUsage();
-  }
-  // copy constructor allowing for polymorphism
-  template <typename T, typename = std::enable_if_t<std::is_convertible_v<T&, CE&>>>
-  CePtr(const CePtr<T>& other) : ce{other.ce} {
-    if (ce) ce->increaseUsage();
-  }
-  // move constructor
-  CePtr(CePtr<CE>&& other) noexcept : ce{other.ce} { other.ce = nullptr; }
-  // move constructor allowing for polymorphism
-  template <typename T, typename = std::enable_if_t<std::is_convertible_v<T&, CE&>>>
-  CePtr(CePtr<T>&& other) : ce{other.ce} {
-    other.ce = nullptr;
-  }
-  // destructor
-  ~CePtr() {
-    if (ce) ce->decreaseUsage();
-  }
-  // assignment operator
-  CePtr<CE>& operator=(const CePtr<CE>& other) {
-    if (this == &other) return *this;
-    if (ce) ce->decreaseUsage();
-    ce = other.ce;
-    if (ce) ce->increaseUsage();
-    return *this;
-  }
-  // move assignment operator
-  CePtr<CE>& operator=(CePtr<CE>&& other) noexcept {
-    if (this == &other) return *this;
-    if (ce) ce->decreaseUsage();
-    ce = other.ce;
-    other.ce = nullptr;
-    return *this;
-  }
-
-  CE& operator*() const { return *ce; }
-  CE* operator->() const { return ce; }
-  explicit operator bool() const { return ce; }
-  void makeNull() {
-    if (ce) ce->decreaseUsage();
-    ce = nullptr;
-  }
-};
-
 template <typename SMALL, typename LARGE>
 struct ConstrExp;
 class Logger;
@@ -133,8 +76,7 @@ class IntSetPool;
 template <typename SMALL, typename LARGE>
 class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessible to ConstrExpPool?
   size_t n;
-  std::vector<ConstrExp<SMALL, LARGE>*> ces;
-  std::vector<ConstrExp<SMALL, LARGE>*> availables;
+  std::vector<CePtr<SMALL, LARGE>> ces;
 
  public:
   Options& options;
@@ -143,11 +85,9 @@ class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessib
   IntSetPool& isPool;
 
   ConstrExpPool(Options& o, Stats& s, Logger& l, IntSetPool& i);
-  ~ConstrExpPool();
 
   void resize(size_t newn);
-  CePtr<ConstrExp<SMALL, LARGE>> take();
-  void release(ConstrExp<SMALL, LARGE>* ce);
+  CePtr<SMALL, LARGE> take();
 };
 
 class ConstrExpPools {
@@ -163,7 +103,7 @@ class ConstrExpPools {
   void resize(size_t newn);
 
   template <typename SMALL, typename LARGE>
-  CePtr<ConstrExp<SMALL, LARGE>> take();  // NOTE: only call specializations
+  CePtr<SMALL, LARGE> take();  // NOTE: only call specializations
 
   Ce32 take32();
   Ce64 take64();
