@@ -72,7 +72,7 @@ class Logger {
   std::ofstream formula_out;
   std::ofstream proof_out;
   std::vector<ID> unitIDs;
-  const Stats& stats;
+  [[maybe_unused]] const Stats& stats;
   bool active;
 
  public:

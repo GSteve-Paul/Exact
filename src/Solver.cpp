@@ -628,7 +628,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
 /**
  * Adds c as a learned constraint with origin orig.
  * Backjumps to the level where c is no longer conflicting, as otherwise we might miss propagations.
- * If conflicting at level 0, calls quit::exit_SUCCESS.
+ * If conflicting at level 0, return ID_Unsat.
  */
 ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   assert(ce);
