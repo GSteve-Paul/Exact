@@ -120,10 +120,10 @@ class BoolOption : public Option {
       if (x == 0 || x == 1) {
         val = x;
       } else {
-        quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+        throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
       }
     } catch (const std::invalid_argument& ia) {
-      quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
   }
 };
@@ -153,9 +153,11 @@ class ValOption : public Option {
     try {
       val = aux::sto<T>(v);
     } catch (const std::invalid_argument& ia) {
-      quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
-    if (!check(val)) quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+    if (!check(val)) {
+      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
+    }
   }
 };
 
@@ -185,7 +187,9 @@ class EnumOption : public Option {
   }
 
   void parse(const std::string& v) override {
-    if (!valid(v)) quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+    if (!valid(v)) {
+      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
+    }
     val = v;
   }
 
@@ -403,7 +407,7 @@ struct Options {
 
   void parseOption(const std::string& option, const std::string& value) {
     if (name2opt.count(option) == 0) {
-      quit::exit_ERROR({"Unknown option: ", option, ".\nCheck usage with --help"});
+      throw std::invalid_argument("Unknown option: " + option + ".\nCheck usage with --help");
     } else {
       name2opt[option]->parse(value);
     }

@@ -173,7 +173,7 @@ void quit::exit_ERROR(const std::initializer_list<std::string>& messages) {
 void quit::checkInterrupt(const Global& global) {
   if (asynch_interrupt || (global.options.timeout.get() > 0 && global.stats.getTime() > global.options.timeout.get()) ||
       (global.options.timeoutDet.get() > 0 && global.stats.getDetTime() > global.options.timeoutDet.get())) {
-    throw asynchInterrupt;
+    throw AsynchronousInterrupt();
   }
 }
 

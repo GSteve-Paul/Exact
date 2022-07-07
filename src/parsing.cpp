@@ -127,7 +127,9 @@ void file_read(ILP& ilp) {
       }
     } else {
       std::ifstream fin(ilp.global.options.formulaName);
-      if (!fin) quit::exit_ERROR({"Could not open ", ilp.global.options.formulaName});
+      if (!fin) {
+        throw std::invalid_argument("Could not open " + ilp.global.options.formulaName);
+      }
       if (ilp.global.options.fileFormat.is("opb")) {
         opb_read(fin, ilp);
       } else if (ilp.global.options.fileFormat.is("cnf")) {
@@ -158,12 +160,12 @@ void opb_read(std::istream& in, ILP& ilp) {
     if (opt_line) {
       line = line.substr(4), assert(first_constraint);
       if (std::all_of(line.begin(), line.end(), isspace)) {
-        quit::exit_ERROR({"Empty objective function."});
+        throw std::invalid_argument("Empty objective function.");
       }
     } else {
       size_t eqpos = line.find('=');
       if (eqpos == std::string::npos || eqpos == 0) {
-        quit::exit_ERROR({"Incorrect constraint\n" + line});
+        throw std::invalid_argument("Incorrect constraint\n" + line);
       }
       lb = read_bigint(line, eqpos + 1);
       isInequality = line[eqpos - 1] == '>';
@@ -175,10 +177,12 @@ void opb_read(std::istream& in, ILP& ilp) {
     std::vector<std::string> tokens;
     std::string tmp;
     while (is >> tmp) tokens.push_back(tmp);
-    if (tokens.size() % 2 != 0) quit::exit_ERROR({"No support for non-linear constraints."});
+    if (tokens.size() % 2 != 0) {
+      throw std::invalid_argument("No support for non-linear constraints.");
+    }
     for (int i = 0; i < (long long)tokens.size(); i += 2) {
       if (find(tokens[i].cbegin(), tokens[i].cend(), 'x') != tokens[i].cend()) {
-        quit::exit_ERROR({"No support for non-linear constraints."});
+        throw std::invalid_argument("No support for non-linear constraints.");
       }
     }
 
@@ -188,7 +192,7 @@ void opb_read(std::istream& in, ILP& ilp) {
     for (int i = 0; i < (long long)tokens.size(); i += 2) {
       const std::string& var = tokens[i + 1];
       if (var.empty() || (var[0] != '~' && var[0] != 'x') || (var[0] == '~' && var[1] != 'x')) {
-        quit::exit_ERROR({"Invalid literal token: ", var});
+        throw std::invalid_argument("Invalid literal token: " + var);
       }
       coefs.emplace_back(read_bigint(tokens[i], 0));
       negated.emplace_back(var[0] == '~');
@@ -199,7 +203,7 @@ void opb_read(std::istream& in, ILP& ilp) {
       ilp.setObjective(coefs, vars, negated);
     } else {
       State res = ilp.addConstraint(coefs, vars, negated, lb, aux::option(!isInequality, lb));
-      if (res == State::UNSAT) quit::exit_SUCCESS(ilp);
+      if (res == State::UNSAT) throw UnsatEncounter();
     }
   }
 }
@@ -221,7 +225,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       is >> weight;
       if (weight == 0) continue;
       if (weight < 0) {
-        quit::exit_ERROR({"Negative clause weight: ", line});
+        throw std::invalid_argument("Negative clause weight: " + line);
       }
     };
     inputs.emplace_back();
@@ -234,7 +238,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       ilp.getSolver().setNbVars(toVar(l), true);
     }
     if (weight == 0) {  // hard clause
-      if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
+      if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) throw UnsatEncounter();
       inputs.pop_back();
       objcoefs.pop_back();
     }
@@ -255,7 +259,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       for (const Term32& t : input.terms) {  // reverse implication as binary clauses
         if (ilp.getSolver().addConstraint(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA).second ==
             ID_Unsat)
-          quit::exit_SUCCESS(ilp);
+          throw UnsatEncounter();
       }
       //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
       //        ConstrSimple32 reverse;
@@ -265,10 +269,11 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       //        for (const Term32& t : input.terms) {
       //          reverse.terms.push_back({1, -t.l});
       //        }
-      //        if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
+      //        if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) throw UnsatEncounter();;
       //}
       input.terms.push_back({1, aux});  // implication
-      if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
+      if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) throw UnsatEncounter();
+      ;
     }
   }
   ilp.setObjective(objcoefs, objvars, objnegated);
@@ -286,7 +291,8 @@ void cnf_read(std::istream& in, ILP& ilp) {
       ilp.getSolver().setNbVars(toVar(l), true);
       input.terms.push_back({1, l});
     }
-    if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) quit::exit_SUCCESS(ilp);
+    if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) throw UnsatEncounter();
+    ;
     quit::checkInterrupt(ilp.global);
   }
 }
@@ -316,8 +322,8 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
       upper = ilp.global.options.intDefaultBound.get();
     }
     if (upper < lower) {
-      std::cout << "Conflicting bound on integer variable" << std::endl;
-      quit::exit_SUCCESS(ilp);
+      std::cout << "c Conflicting bound on integer variable" << std::endl;
+      throw UnsatEncounter();
     }
     [[maybe_unused]] IntVar* iv = ilp.getVarFor(coinutils.columnName(c), false, static_cast<bigint>(std::ceil(lower)),
                                                 static_cast<bigint>(std::floor(upper)));
@@ -381,7 +387,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     bigint lb = coefs.back();
     coefs.pop_back();
     State res = ilp.addConstraint(coefs, vars, {}, aux::option(useLB, lb), aux::option(useUB, ub));
-    if (res == State::UNSAT) quit::exit_SUCCESS(ilp);
+    if (res == State::UNSAT) throw UnsatEncounter();
   }
 }
 
@@ -412,11 +418,11 @@ void lp_read(const std::string& filename, ILP& ilp) {
 
 #else
 void mps_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] ILP& ilp) {
-  quit::exit_ERROR({"Please compile with CoinUtils to parse MPS format."});
+  throw std::invalid_argument("Please compile with CoinUtils to parse MPS format.");
 }
 
 void lp_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] ILP& ilp) {
-  quit::exit_ERROR({"Please compile with CoinUtils to parse LP format."});
+  throw std::invalid_argument("Please compile with CoinUtils to parse LP format.");
 }
 #endif
 

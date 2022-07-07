@@ -35,6 +35,34 @@ See the file LICENSE or run with the flag --license=MIT.
 
 using namespace xct;
 
+void runOnce(int argc, char** argv, ILP& ilp) {
+  ilp.global.stats.startTime = std::chrono::steady_clock::now();
+  ilp.global.options.parseCommandLine(argc, argv);
+  ilp.global.logger.activate(ilp.global.options.proofLog.get());
+
+  if (ilp.global.options.verbosity.get() > 0) {
+    std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
+  }
+
+  aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.global.stats.PARSETIME);
+
+  if (ilp.global.options.noSolve) throw AsynchronousInterrupt();
+  if (ilp.global.options.printCsvData) ilp.global.stats.printCsvHeader();
+  if (ilp.global.options.verbosity.get() > 0) {
+    std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
+              << std::endl;
+  }
+
+  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
+
+  ilp.init(true, true);
+  SolveState res = SolveState::INPROCESSED;
+
+  while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
+    res = ilp.run();
+  }
+}
+
 int main(int argc, char** argv) {
   signal(SIGINT, SIGINT_exit);
   signal(SIGINT, SIGINT_interrupt);
@@ -46,36 +74,17 @@ int main(int argc, char** argv) {
 #endif
 
   ILP ilp;
-  ilp.global.stats.startTime = std::chrono::steady_clock::now();
-  ilp.global.options.parseCommandLine(argc, argv);
-  ilp.global.logger.activate(ilp.global.options.proofLog.get());
-
-  if (ilp.global.options.verbosity.get() > 0) {
-    std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
-  }
-
-  aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.global.stats.PARSETIME);
-
-  if (ilp.global.options.noSolve) quit::exit_INDETERMINATE(ilp);
-  if (ilp.global.options.printCsvData) ilp.global.stats.printCsvHeader();
-  if (ilp.global.options.verbosity.get() > 0) {
-    std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
-              << std::endl;
-  }
-
-  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
-
-  ilp.init(true, true);
-  SolveState res = SolveState::INPROCESSED;
   try {
-    while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
-      res = ilp.run();
-    }
-    quit::exit_SUCCESS(ilp);
+    runOnce(argc, argv, ilp);
   } catch (const AsynchronousInterrupt& ai) {
     if (ilp.global.options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
     quit::exit_INDETERMINATE(ilp);
+  } catch (const UnsatEncounter& ue) {
+    quit::exit_SUCCESS(ilp);
+  } catch (const std::invalid_argument& ia) {
+    quit::exit_ERROR({ia.what()});
   }
+  quit::exit_SUCCESS(ilp);
 }
 
 xct::IntVar* Exact::getVariable(const std::string& name) {

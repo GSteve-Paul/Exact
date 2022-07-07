@@ -312,10 +312,17 @@ std::ostream& operator<<(std::ostream& o, const std::pair<CF, Lit>& cl) {
   return o << (cl.first < 0 ? "" : "+") << cl.first << (cl.second < 0 ? " ~x" : " x") << toVar(cl.second);
 }
 
-inline class AsynchronousInterrupt : public std::exception {
+class AsynchronousInterrupt : public std::exception {
  public:
   [[nodiscard]] const char* what() const throw() override { return "Program interrupted by user."; }
-} asynchInterrupt;
+};
+
+class UnsatEncounter : public std::exception {
+ public:
+  [[nodiscard]] const char* what() const throw() override {
+    return "UNSAT state reached, this exception should have been caught.";
+  }
+};
 
 using TabuRank = long long;
 
