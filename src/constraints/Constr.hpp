@@ -84,7 +84,7 @@ const unsigned int MAXLBD = SAFELBD - 1;
 
 class Solver;
 class Equalities;
-class Stats;
+struct Stats;
 
 struct Constr {  // internal solver constraint optimized for fast propagation
   virtual size_t getMemSize() const = 0;

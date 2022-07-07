@@ -193,7 +193,7 @@ class LpSolver {
 #else
 
 class Solver;
-class Global;
+struct Global;
 
 class LpSolver {
  public:

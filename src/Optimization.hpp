@@ -66,7 +66,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-class Global;
+struct Global;
 class Solver;
 
 template <typename SMALL, typename LARGE>

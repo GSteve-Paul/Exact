@@ -767,10 +767,10 @@ template class Optimization<int128, int128>;
 template class Optimization<int128, int256>;
 template class Optimization<bigint, bigint>;
 
-template class LazyVar<int, long long>;
-template class LazyVar<long long, int128>;
-template class LazyVar<int128, int128>;
-template class LazyVar<int128, int256>;
-template class LazyVar<bigint, bigint>;
+template struct LazyVar<int, long long>;
+template struct LazyVar<long long, int128>;
+template struct LazyVar<int128, int128>;
+template struct LazyVar<int128, int256>;
+template struct LazyVar<bigint, bigint>;
 
 }  // namespace xct

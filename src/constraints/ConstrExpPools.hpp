@@ -68,7 +68,7 @@ namespace xct {
 
 template <typename SMALL, typename LARGE>
 struct ConstrExp;
-class Global;
+struct Global;
 
 template <typename SMALL, typename LARGE>
 class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessible to ConstrExpPool?

@@ -69,7 +69,7 @@ namespace xct {
 
 // TODO: move these methods to ILP?
 class ILP;
-class Global;
+struct Global;
 
 extern bool asynch_interrupt;
 

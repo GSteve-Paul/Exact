@@ -78,7 +78,7 @@ class Solver;
 class Heuristic;
 class Equalities;
 class Implications;
-class IntSet;
+struct IntSet;
 
 struct ConstrExpSuper {
   // protected:
