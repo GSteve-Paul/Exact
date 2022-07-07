@@ -65,16 +65,17 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Solver.hpp"
 #include "../auxiliary.hpp"
 #include "../datastructures/Heuristic.hpp"
+#include "../datastructures/IntSet.hpp"
 #include "../propagation/Equalities.hpp"
 #include "../propagation/Implications.hpp"
 #include "Constr.hpp"
 
 namespace xct {
 
-ConstrExpSuper::ConstrExpSuper(Logger& log) : orig(Origin::UNKNOWN), plogger(log) {}
+ConstrExpSuper::ConstrExpSuper(Global& g) : global(g), orig(Origin::UNKNOWN) {}
 
 void ConstrExpSuper::resetBuffer(ID proofID) {
-  if (!plogger.isActive()) return;
+  if (!global.logger.isActive()) return;
   assert(proofID != ID_Undef);
   assert(proofID != ID_Unsat);
   proofBuffer.clear();
@@ -83,7 +84,7 @@ void ConstrExpSuper::resetBuffer(ID proofID) {
 }
 
 void ConstrExpSuper::resetBuffer(const std::string& line) {
-  if (!plogger.isActive()) return;
+  if (!global.logger.isActive()) return;
   proofBuffer.clear();
   proofBuffer.str(std::string());
   proofBuffer << line;
@@ -96,7 +97,7 @@ std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce) {
 std::ostream& operator<<(std::ostream& o, const CeSuper& ce) { return o << *ce; }
 
 template <typename SMALL, typename LARGE>
-ConstrExp<SMALL, LARGE>::ConstrExp(ConstrExpPool<SMALL, LARGE>& cep, Logger& log) : ConstrExpSuper(log), pool(cep) {
+ConstrExp<SMALL, LARGE>::ConstrExp(Global& g) : ConstrExpSuper(g) {
   reset(false);
 }
 
@@ -148,11 +149,6 @@ CeSuper ConstrExp<SMALL, LARGE>::clone(ConstrExpPools& cePools) const {
 }
 
 template <typename SMALL, typename LARGE>
-CePtr<SMALL, LARGE> ConstrExp<SMALL, LARGE>::cloneEmpty() const {
-  return pool.take();
-}
-
-template <typename SMALL, typename LARGE>
 CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID id) const {
   // assert(testConstraint());
   assert(isSortedInDecreasingCoefOrder());
@@ -181,10 +177,10 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
         watchSum += aux::abs(coefs[vars[vars.size() - 1 - maxWatches]]);
       }
     }
-    bool useCounting = pool.options.propCounting.get() == 1 ||
-                       pool.options.propCounting.get() > (1 - (minWatches + maxWatches) / (2 * (double)vars.size()));
-    pool.stats.NCOUNTING += useCounting;
-    pool.stats.NWATCHED += !useCounting;
+    bool useCounting = global.options.propCounting.get() == 1 ||
+                       global.options.propCounting.get() > (1 - (minWatches + maxWatches) / (2 * (double)vars.size()));
+    global.stats.NCOUNTING += useCounting;
+    global.stats.NWATCHED += !useCounting;
     if (maxCoef <= static_cast<LARGE>(limitAbs<int, long long>())) {
       if (useCounting) {
         new (ca.alloc<Counting32>(vars.size())) Counting32(this, locked, id);
@@ -491,13 +487,13 @@ unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntMap<int>& level) const {
     }
   }
   assert(i >= 0);  // constraint is asserting or conflicting
-  IntSet& lbdSet = pool.isPool.take();
+  IntSet& lbdSet = global.isPool.take();
   for (; i >= 0; --i) {  // gather all levels
     lbdSet.add(level[-getLit(vars[i])] % INF);
   }
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   unsigned int lbd = lbdSet.size();
-  pool.isPool.release(lbdSet);
+  global.isPool.release(lbdSet);
   return lbd;
 }
 
@@ -522,7 +518,7 @@ void ConstrExp<SMALL, LARGE>::weaken(const SMALL& m, Var v) {  // add m*(v>=0) i
   assert(v > 0);
   assert(v < (Var)coefs.size());
   assert(coefs[v] != 0);
-  if (plogger.isActive() && m != 0) {
+  if (global.logger.isActive() && m != 0) {
     Logger::proofWeaken(proofBuffer, v, m);
   }
 
@@ -567,14 +563,14 @@ void ConstrExpSuper::popLast() {
 // @post: preserves order of vars
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntMap<int>& level, const std::vector<int>& pos) {
-  if (plogger.isActive()) {
+  if (global.logger.isActive()) {
     for (Var v : vars) {
       Lit l = getLit(v);
       if (l != 0) {
         if (isUnit(level, l)) {
           Logger::proofWeaken(proofBuffer, l, -getCoef(l));
         } else if (isUnit(level, -l)) {
-          Logger::proofWeakenFalseUnit(proofBuffer, plogger.getUnitID(pos[toVar(l)]), -getCoef(l));
+          Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(pos[toVar(l)]), -getCoef(l));
         }
       }
     }
@@ -639,7 +635,8 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _sat
         addLhs(mult, -l);
         addRhs(mult);
         coefs[v] = 0;
-        if (plogger.isActive()) Logger::proofMult(proofBuffer << repr.id << " ", mult) << (_saturate ? "+ s " : "+ ");
+        if (global.logger.isActive())
+          Logger::proofMult(proofBuffer << repr.id << " ", mult) << (_saturate ? "+ s " : "+ ");
         if (_saturate) saturate(reprv);
       } else {
         addLhs(-mult, repr.l);  // revert change
@@ -652,16 +649,16 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _sat
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::selfSubsumeImplications(const Implications& implications) {
   saturate(true, false);  // needed to get the proof to agree
-  IntSet& saturateds = pool.isPool.take();
+  IntSet& saturateds = global.isPool.take();
   getSaturatedLits(saturateds);
   for (Var v : vars) {
     if (coefs[v] == 0) continue;
     Lit l = getLit(v);
     for (Lit ll : implications.getImplieds(l)) {
       if (!saturateds.has(ll)) continue;
-      ++pool.stats.NSUBSUMESTEPS;
+      ++global.stats.NSUBSUMESTEPS;
       SMALL cf = aux::abs(coefs[v]);
-      if (plogger.isActive()) Logger::proofMult(proofBuffer << plogger.logRUP(-l, ll) << " ", cf) << "+ s ";
+      if (global.logger.isActive()) Logger::proofMult(proofBuffer << global.logger.logRUP(-l, ll) << " ", cf) << "+ s ";
       addRhs(cf);
       addLhs(cf, -l);
       assert(coefs[v] == 0);
@@ -670,7 +667,7 @@ void ConstrExp<SMALL, LARGE>::selfSubsumeImplications(const Implications& implic
       break;
     }
   }
-  pool.isPool.release(saturateds);
+  global.isPool.release(saturateds);
 }
 
 template <typename SMALL, typename LARGE>
@@ -682,15 +679,15 @@ bool ConstrExp<SMALL, LARGE>::hasNoZeroes() const {
 // NOTE: other variables should already be saturated, otherwise proof logging will break
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, bool sorted) {
-  pool.stats.NSATURATESTEPS += vs.size();
+  global.stats.NSATURATESTEPS += vs.size();
   assert(check || !sorted);
   if (vars.empty() || (sorted && aux::abs(coefs[vars[0]]) <= degree) ||
       (!sorted && check && getLargestCoef() <= degree)) {
     return;
   }
   assert(getLargestCoef() > degree);
-  if (plogger.isActive()) proofBuffer << "s ";  // log saturation only if it modifies the constraint
-  SMALL smallDeg = static_cast<SMALL>(degree);  // safe cast because of above assert
+  if (global.logger.isActive()) proofBuffer << "s ";  // log saturation only if it modifies the constraint
+  SMALL smallDeg = static_cast<SMALL>(degree);        // safe cast because of above assert
   if (smallDeg <= 0) {
     reset(false);
     return;
@@ -829,7 +826,7 @@ void ConstrExp<SMALL, LARGE>::saturateAndFixOverflowRational(const std::vector<d
     assert(d > 1);
     for (Var v : vars) {
       Lit l = getLit(v);
-      if ((l < 0 ? 1 - lpSolution[v] : lpSolution[v]) <= 1 - pool.options.lpIntolerance.get()) {
+      if ((l < 0 ? 1 - lpSolution[v] : lpSolution[v]) <= 1 - global.options.lpIntolerance.get()) {
         weaken(-static_cast<SMALL>(coefs[v] % d), v);
       }
     }
@@ -854,7 +851,7 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::multiply(const SMALL& m) {
   assert(m > 0);
   if (m == 1) return;
-  if (plogger.isActive()) Logger::proofMult(proofBuffer, m);
+  if (global.logger.isActive()) Logger::proofMult(proofBuffer, m);
   for (Var v : vars) coefs[v] *= m;
   rhs *= m;
   degree *= m;
@@ -864,7 +861,7 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::divideRoundUp(const LARGE& d) {
   assert(d > 0);
   if (d == 1) return;
-  if (plogger.isActive()) Logger::proofDiv(proofBuffer, d);
+  if (global.logger.isActive()) Logger::proofDiv(proofBuffer, d);
   for (Var v : vars) {
     // divides away from zero
     bool undivisible = coefs[v] % d != 0;
@@ -883,7 +880,7 @@ void ConstrExp<SMALL, LARGE>::divideRoundDown(const LARGE& d) {
     assert(coefs[v] % d == 0);
     coefs[v] = static_cast<SMALL>(coefs[v] / d);
   }
-  if (plogger.isActive()) Logger::proofDiv(proofBuffer, d);
+  if (global.logger.isActive()) Logger::proofDiv(proofBuffer, d);
   degree = degree <= 0 ? 0 : aux::ceildiv(degree, d);
   rhs = calcRhs();
 }
@@ -1143,7 +1140,7 @@ void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntMap<int>& level, const L
       ++weakenings;
     }
   }
-  pool.stats.NWEAKENEDNONIMPLIED += weakenings;
+  global.stats.NWEAKENEDNONIMPLIED += weakenings;
 }
 
 // @post: preserves order after removeZeroes()
@@ -1162,7 +1159,7 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntMap<int>& level, const 
       ++weakenings;
     }
   }
-  pool.stats.NWEAKENEDNONIMPLYING += weakenings;
+  global.stats.NWEAKENEDNONIMPLYING += weakenings;
   return weakenings != 0;
 }
 
@@ -1182,7 +1179,7 @@ void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntMap<int>& level, const
     }
   }
   if (v_prop == -1) return;  // no propagation, no idea what to weaken
-  if (pool.options.weakenNonImplying) {
+  if (global.options.weakenNonImplying) {
     if (weakenNonImplying(level, aux::abs(coefs[v_prop]), slk)) {
       slk = getSlack(level);  // slack changed
     }
@@ -1495,7 +1492,7 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
                                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
   assert(getCoef(-l) > 0);
   assert(hasNoZeroes());
-  pool.stats.NADDEDLITERALS += size;
+  global.stats.NADDEDLITERALS += size;
 
   for (unsigned int i = 0; i < size; ++i) {
     Lit ll = data[i];
@@ -1508,14 +1505,14 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
   SMALL largestCF = 0;
   SMALL cmult = getCoef(-l);
   assert(cmult >= 1);
-  if (plogger.isActive()) {
+  if (global.logger.isActive()) {
     Logger::proofMult(proofBuffer << id << " ", cmult) << "+ ";
     for (unsigned int i = 0; i < size; ++i) {
       Lit ll = data[i];
       if (isUnit(level, ll)) {
         Logger::proofWeaken(proofBuffer, ll, -cmult);
       } else if (isUnit(level, -ll)) {
-        Logger::proofWeakenFalseUnit(proofBuffer, plogger.getUnitID(pos[toVar(ll)]), -cmult);
+        Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(pos[toVar(ll)]), -cmult);
       }
     }
   }
@@ -1542,8 +1539,8 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
   assert(getDegree() > 0);
   if (oldDegree <= getDegree()) {
     if (largestCF > getDegree()) {
-      pool.stats.NSATURATESTEPS += size;
-      if (plogger.isActive()) proofBuffer << "s ";
+      global.stats.NSATURATESTEPS += size;
+      if (global.logger.isActive()) proofBuffer << "s ";
       largestCF = static_cast<SMALL>(degree);
       for (unsigned int i = 0; i < size; ++i) {
         Var v = toVar(data[i]);
@@ -1555,20 +1552,20 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
         }
       }
     }
-    fixOverflow(level, pool.options.bitsOverflow.get(), pool.options.bitsReduced.get(), largestCF, 0);
+    fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
   } else {
-    saturateAndFixOverflow(level, pool.options.bitsOverflow.get(), pool.options.bitsReduced.get(), 0);
+    saturateAndFixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0);
   }
   assert(getCoef(-l) == 0);
   assert(hasNegativeSlack(level));
 
-  IntSet& lbdSet = pool.isPool.take();
+  IntSet& lbdSet = global.isPool.take();
   for (int i = 0; i < (int)size; ++i) {
     lbdSet.add(level[-data[i]] % INF);
   }
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   int lbd = lbdSet.size();
-  pool.isPool.release(lbdSet);
+  global.isPool.release(lbdSet);
   return lbd;
 }
 
@@ -1578,7 +1575,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
                                          const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) {
   assert(isSaturated());
   assert(getCoef(-toSubsume) > 0);
-  pool.stats.NADDEDLITERALS += size;
+  global.stats.NADDEDLITERALS += size;
 
   int weakenedDeg = deg;
   assert(weakenedDeg > 0);
@@ -1599,16 +1596,16 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
   }
   cf = 0;
   saturatedLits.remove(-toSubsume);
-  ++pool.stats.NSUBSUMESTEPS;
+  ++global.stats.NSUBSUMESTEPS;
 
-  if (plogger.isActive()) {
+  if (global.logger.isActive()) {
     proofBuffer << id << " ";
     for (unsigned int i = 0; i < size; ++i) {
       Lit l = data[i];
       if (isUnit(level, l)) {
         Logger::proofWeaken(proofBuffer, l, -1);
       } else if (isUnit(level, -l)) {
-        Logger::proofWeakenFalseUnit(proofBuffer, plogger.getUnitID(pos[toVar(l)]), -1);
+        Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(pos[toVar(l)]), -1);
       }
     }
     for (int i = 0; i < (int)size; ++i) {
@@ -1621,7 +1618,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
     Logger::proofMult(proofBuffer, mult) << "+ s ";
   }
 
-  IntSet& lbdSet = pool.isPool.take();
+  IntSet& lbdSet = global.isPool.take();
   for (int i = 0; i < (int)size; ++i) {
     Lit l = data[i];
     if (l == toSubsume || saturatedLits.has(l)) {
@@ -1631,7 +1628,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
   lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
   int lbd = lbdSet.size();
   assert(lbd > 0);
-  pool.isPool.release(lbdSet);
+  global.isPool.release(lbdSet);
   return lbd;
 }
 

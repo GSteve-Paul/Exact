@@ -31,7 +31,6 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "Exact.hpp"
 #include <csignal>
 #include <fstream>
-#include "ILP.hpp"
 #include "parsing.hpp"
 
 using namespace xct;
@@ -47,24 +46,24 @@ int main(int argc, char** argv) {
 #endif
 
   ILP ilp;
-  ilp.stats.startTime = std::chrono::steady_clock::now();
-  ilp.options.parseCommandLine(argc, argv);
-  ilp.logger.activate(ilp.options.proofLog.get());
+  ilp.global.stats.startTime = std::chrono::steady_clock::now();
+  ilp.global.options.parseCommandLine(argc, argv);
+  ilp.global.logger.activate(ilp.global.options.proofLog.get());
 
-  if (ilp.options.verbosity.get() > 0) {
+  if (ilp.global.options.verbosity.get() > 0) {
     std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
 
-  aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.stats.PARSETIME);
+  aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.global.stats.PARSETIME);
 
-  if (ilp.options.noSolve) quit::exit_INDETERMINATE(ilp);
-  if (ilp.options.printCsvData) ilp.stats.printCsvHeader();
-  if (ilp.options.verbosity.get() > 0) {
+  if (ilp.global.options.noSolve) quit::exit_INDETERMINATE(ilp);
+  if (ilp.global.options.printCsvData) ilp.global.stats.printCsvHeader();
+  if (ilp.global.options.verbosity.get() > 0) {
     std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
               << std::endl;
   }
 
-  ilp.stats.runStartTime = std::chrono::steady_clock::now();
+  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
 
   ilp.init(true, true);
   SolveState res = SolveState::INPROCESSED;
@@ -74,7 +73,7 @@ int main(int argc, char** argv) {
     }
     quit::exit_SUCCESS(ilp);
   } catch (const AsynchronousInterrupt& ai) {
-    if (ilp.options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
+    if (ilp.global.options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
     quit::exit_INDETERMINATE(ilp);
   }
 }
@@ -94,8 +93,8 @@ Exact::Exact() : ilp() {
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 
-  ilp.stats.startTime = std::chrono::steady_clock::now();
-  ilp.logger.activate(ilp.options.proofLog.get());
+  ilp.global.stats.startTime = std::chrono::steady_clock::now();
+  ilp.global.logger.activate(ilp.global.options.proofLog.get());
 }
 
 void Exact::addVariable(const std::string& name, long long lb, long long ub) {
@@ -191,7 +190,7 @@ void Exact::init(const std::vector<long long>& coefs, const std::vector<std::str
 
   ilp.init(boundObjective, addNonImplieds);
 
-  ilp.stats.runStartTime = std::chrono::steady_clock::now();
+  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
 }
 
 SolveState Exact::run() {
@@ -220,7 +219,7 @@ std::vector<std::string> Exact::getLastCore() { return ilp.getLastCore(); }
 
 void Exact::printStats() { quit::printFinalStats(ilp); }
 
-void Exact::setVerbosity(int verbosity) { ilp.options.verbosity.parse(std::to_string(verbosity)); }
+void Exact::setVerbosity(int verbosity) { ilp.global.options.verbosity.parse(std::to_string(verbosity)); }
 
 std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& varnames) {
   if (ilp.unsatState()) {
@@ -234,4 +233,6 @@ std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<
   return result;
 }
 
-void Exact::setOption(const std::string& option, const std::string& value) { ilp.options.parseOption(option, value); }
+void Exact::setOption(const std::string& option, const std::string& value) {
+  ilp.global.options.parseOption(option, value);
+}

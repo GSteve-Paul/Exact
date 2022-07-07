@@ -75,8 +75,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-class ILP;
-
 class Solver {
   friend class LpSolver;
   friend struct Constr;
@@ -103,9 +101,10 @@ class Solver {
   CeSuper lastCore;
   CeSuper lastGlobalDual;
   IntSet objectiveLits;
+  CeArb objective;
 
  private:
-  ILP& ilp;
+  Global& global;
   int n;
   std::vector<bool> isorig;
 
@@ -143,7 +142,7 @@ class Solver {
   CeSuper getAnalysisCE(const CeSuper& conflict) const;
 
  public:
-  Solver(ILP& i);
+  Solver(Global& g);
   ~Solver();
   void init(const CeArb& obj);
 

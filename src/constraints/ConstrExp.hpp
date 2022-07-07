@@ -63,8 +63,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <memory>
 #include <sstream>
-#include "../Logger.hpp"
-#include "../datastructures/IntSet.hpp"
+#include "../Global.hpp"
 #include "../datastructures/SolverStructs.hpp"
 #include "../typedefs.hpp"
 #include "ConstrExpPools.hpp"
@@ -79,6 +78,7 @@ class Solver;
 class Heuristic;
 class Equalities;
 class Implications;
+class IntSet;
 
 struct ConstrExpSuper {
   // protected:
@@ -87,9 +87,9 @@ struct ConstrExpSuper {
   std::vector<int> index;  // -1 implies the variable has coefficient 0
 
  public:
+  Global& global;
   Origin orig;
   std::stringstream proofBuffer;
-  Logger& plogger;
 
   void resetBuffer(ID proofID);
   void resetBuffer(const std::string& line);
@@ -110,7 +110,7 @@ struct ConstrExpSuper {
                    Stats& stats);
   void strongPostProcess(Solver& solver);
 
-  ConstrExpSuper(Logger& log);
+  ConstrExpSuper(Global& g);
   virtual ~ConstrExpSuper() = default;
 
   virtual void copyTo(const Ce32& ce) const = 0;
@@ -216,10 +216,6 @@ std::ostream& operator<<(std::ostream& o, const CeSuper& ce);
 
 template <typename SMALL, typename LARGE>  // LARGE should be able to fit the sum of 2^32 SMALLs
 struct ConstrExp final : public ConstrExpSuper {
- private:
-  ConstrExpPool<SMALL, LARGE>& pool;
-  long long usageCount = 0;
-
  public:
   LARGE degree = 0;
   LARGE rhs = 0;
@@ -235,7 +231,7 @@ struct ConstrExp final : public ConstrExpSuper {
   bool falsified(const IntMap<int>& level, Var v) const;
 
  public:
-  explicit ConstrExp(ConstrExpPool<SMALL, LARGE>& cep, Logger& log);
+  explicit ConstrExp(Global& g);
 
   void copyTo(const Ce32& ce) const;
   void copyTo(const Ce64& ce) const;
@@ -244,7 +240,6 @@ struct ConstrExp final : public ConstrExpSuper {
   void copyTo(const CeArb& ce) const;
 
   CeSuper clone(ConstrExpPools& ce) const;
-  CePtr<SMALL, LARGE> cloneEmpty() const;
   CRef toConstr(ConstraintAllocator& ca, bool locked, ID id) const;
   std::unique_ptr<ConstrSimpleSuper> toSimple() const;
 
@@ -321,9 +316,9 @@ struct ConstrExp final : public ConstrExpSuper {
 
   template <typename S, typename L>
   void addUp(const CePtr<S, L>& c, const SMALL& cmult = 1) {
-    pool.stats.NADDEDLITERALS += c->nVars();
+    global.stats.NADDEDLITERALS += c->nVars();
     assert(cmult >= 1);
-    if (plogger.isActive()) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
+    if (global.logger.isActive()) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
     rhs += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->rhs);
     degree += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->degree);
     for (Var v : c->vars) {
@@ -424,8 +419,8 @@ struct ConstrExp final : public ConstrExpSuper {
     orig = o;
     assert(size > 0);
     DG div = 1;
-    int bitOverflow = pool.options.bitsOverflow.get();
-    int bitReduce = pool.options.bitsReduced.get();
+    int bitOverflow = global.options.bitsOverflow.get();
+    int bitReduce = global.options.bitsReduced.get();
     if (bitOverflow > 0) {
       DG _rhs = degr;
       for (unsigned int i = 0; i < size; ++i) {
@@ -459,7 +454,7 @@ struct ConstrExp final : public ConstrExpSuper {
       }
       addRhs(static_cast<LARGE>(aux::ceildiv<DG>(weakenedDegree, div)));
     }
-    if (plogger.isActive()) {
+    if (global.logger.isActive()) {
       resetBuffer(id);
       if (div > 1) {
         for (unsigned int i = 0; i < size; ++i) {
@@ -482,7 +477,7 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(getCoef(-asserting) > 0);
     assert(hasNoZeroes());
 
-    CePtr<SMALL, LARGE> reason = cloneEmpty();
+    CePtr<SMALL, LARGE> reason = global.cePools.take<SMALL, LARGE>();
     reason->initFixOverflow(terms, size, degr, id, o, level, pos, asserting);
     assert(reason->getCoef(asserting) > 0);
     assert(reason->getCoef(asserting) > reason->getSlack(level));
@@ -492,23 +487,24 @@ struct ConstrExp final : public ConstrExpSuper {
     if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0
       reason->multiply(conflCoef);
     } else {
-      if (pool.options.multBeforeDiv) {
+      if (global.options.multBeforeDiv) {
         reason->multiply(conflCoef);
       }
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
-      if (pool.options.division.is("rto")) {
+      if (global.options.division.is("rto")) {
         reason->weakenDivideRoundOrdered(reasonCoef, [&](Lit l) { return isFalse(level, l); });
         reason->multiply(conflCoef);
       } else {
         const LARGE reasonSlack = reason->getSlack(level);
-        if (pool.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
+        if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
           reason->weakenDivideRoundOrdered(reasonSlack + 1, [&](Lit l) { return isFalse(level, l); });
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
         } else {
-          assert(pool.options.division.is("mindiv") || reasonSlack <= 0 || reasonCoef / (reasonSlack + 1) >= conflCoef);
-          assert(!pool.options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
-          SMALL gcd = pool.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
+          assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
+                 reasonCoef / (reasonSlack + 1) >= conflCoef);
+          assert(!global.options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
+          SMALL gcd = global.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
           const SMALL minDiv = reasonCoef / gcd;
           SMALL bestDiv = minDiv;
           if (bestDiv <= reasonSlack) {
@@ -545,7 +541,7 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(reason->getCoef(asserting) >= conflCoef);
     assert(reason->getCoef(asserting) < 2 * conflCoef);
     assert(reason->getSlack(level) <= 0);
-    assert(pool.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
+    assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
     for (Var v : reason->vars) {
       Lit ll = reason->getLit(v);
@@ -563,7 +559,7 @@ struct ConstrExp final : public ConstrExpSuper {
       saturate(varsToCheck, false, false);
       largestCF = static_cast<SMALL>(getDegree());
     }
-    fixOverflow(level, pool.options.bitsOverflow.get(), pool.options.bitsReduced.get(), largestCF, 0);
+    fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 
@@ -596,15 +592,15 @@ struct ConstrExp final : public ConstrExpSuper {
     }
     cf = 0;
     saturatedLits.remove(-toSubsume);
-    ++pool.stats.NSUBSUMESTEPS;
+    ++global.stats.NSUBSUMESTEPS;
 
-    if (plogger.isActive()) {
+    if (global.logger.isActive()) {
       proofBuffer << id << " ";
       for (unsigned int i = 0; i < size; ++i) {
         Lit l = terms[i].l;
         if (isUnit(level, -l)) {
           assert(l != toSubsume);
-          Logger::proofWeakenFalseUnit(proofBuffer, plogger.getUnitID(pos[toVar(l)]), -aux::abs(terms[i].c));
+          Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(pos[toVar(l)]), -aux::abs(terms[i].c));
         } else if (l != toSubsume && !saturatedLits.has(l) && !isUnit(level, -l)) {
           Logger::proofWeaken(proofBuffer, l, -aux::abs(terms[i].c));
         }
@@ -613,7 +609,7 @@ struct ConstrExp final : public ConstrExpSuper {
       Logger::proofMult(Logger::proofDiv(proofBuffer << "s ", weakenedDeg), mult) << "+ s ";
     }
 
-    IntSet& lbdSet = pool.isPool.take();
+    IntSet& lbdSet = global.isPool.take();
     for (unsigned int i = 0; i < size; ++i) {
       Lit l = terms[i].l;
       if (l == toSubsume || saturatedLits.has(l)) {
@@ -623,7 +619,7 @@ struct ConstrExp final : public ConstrExpSuper {
     lbdSet.remove(0);  // unit literals and non-falsifieds should not be counted
     int lbd = lbdSet.size();
     assert(lbd > 0);
-    pool.isPool.release(lbdSet);
+    global.isPool.release(lbdSet);
     return lbd;
   }
 
@@ -642,7 +638,7 @@ struct ConstrExp final : public ConstrExpSuper {
       assert(!out->used(v));
       out->index[v] = index[v];
     }
-    if (plogger.isActive()) {
+    if (global.logger.isActive()) {
       out->proofBuffer.str(std::string());
       out->proofBuffer << proofBuffer.rdbuf();
     }
@@ -655,7 +651,7 @@ struct ConstrExp final : public ConstrExpSuper {
     result->terms.reserve(vars.size());
     for (Var v : vars)
       if (coefs[v] != 0) result->terms.emplace_back(static_cast<S>(coefs[v]), v);
-    if (plogger.isActive()) result->proofLine = proofBuffer.str();
+    if (global.logger.isActive()) result->proofLine = proofBuffer.str();
     result->orig = orig;
     return result;
   }

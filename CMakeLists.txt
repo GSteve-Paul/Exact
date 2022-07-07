@@ -141,6 +141,7 @@ set(header_files
         src/propagation/Propagator.hpp
         src/propagation/Equalities.hpp
         src/propagation/Implications.hpp
+        src/Global.hpp
         src/Exact.hpp
 
         src/used_licenses/licenses.hpp

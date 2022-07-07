@@ -69,6 +69,7 @@ namespace xct {
 
 // TODO: move these methods to ILP?
 class ILP;
+class Global;
 
 extern bool asynch_interrupt;
 
@@ -81,7 +82,7 @@ void exit_SUCCESS(ILP& ilp);
 void exit_INDETERMINATE(ILP& ilp);
 void exit_ERROR(const std::initializer_list<std::string>& messages);
 
-void checkInterrupt(const ILP& ilp);
+void checkInterrupt(const Global& global);
 }  // namespace quit
 
 }  // namespace xct

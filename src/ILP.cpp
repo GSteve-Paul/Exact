@@ -165,12 +165,13 @@ void IntConstraint::normalize() {
   }
 }
 
-ILP::ILP() : solver(*this), obj({}, {}, {}, 0), logger(stats), cePools(options, stats, logger, isPool) {}
+ILP::ILP() : solver(global), obj({}, {}, {}, 0) {}
 
 IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& lowerbound, const bigint& upperbound) {
   if (auto it = name2var.find(name); it != name2var.end()) return it->second;
   if (lowerbound > upperbound) throw std::invalid_argument("Lower bound of " + name + " must not exceed upper bound.");
-  vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, options.intEncoding.get()));
+  vars.push_back(
+      std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, global.options.intEncoding.get()));
   IntVar* iv = vars.back().get();
   name2var.insert({name, iv});
   for (Var v : iv->encodingVars()) {
@@ -241,7 +242,7 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
 
   IntConstraint ic(coefs, vars, negated, lb, ub);
   if (ic.getLB().has_value()) {
-    CeArb input = cePools.takeArb();
+    CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, true);
     if (solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) {
       unsatDetected = true;
@@ -249,7 +250,7 @@ State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<Int
     }
   }
   if (ic.getUB().has_value()) {
-    CeArb input = cePools.takeArb();
+    CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, false);
     if (solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) {
       unsatDetected = true;
@@ -267,10 +268,10 @@ State ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const 
   if (!head->isBoolean()) throw std::invalid_argument("Head of reification is not Boolean.");
 
   IntConstraint ic(coefs, vars, {}, lb);
-  CeArb leq = cePools.takeArb();
+  CeArb leq = global.cePools.takeArb();
   ic.toConstrExp(leq, true);
-  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, stats);
-  CeArb geq = cePools.takeArb();
+  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
+  CeArb geq = global.cePools.takeArb();
   leq->copyTo(geq);
   Var h = head->encodingVars()[0];
 
@@ -334,19 +335,19 @@ void ILP::init(bool boundObjective, bool addNonImplieds) {
 
   // TODO: below should be set at option parsing time?
   if (!boundObjective) {
-    options.boundUpper.parse("0");
+    global.options.boundUpper.parse("0");
   }
   if (!addNonImplieds) {
-    options.pureLits.parse("0");
-    options.domBreakLim.parse("0");
+    global.options.pureLits.parse("0");
+    global.options.domBreakLim.parse("0");
   }
   asynch_interrupt = false;
-  aux::rng::seed = options.randomSeed.get();
+  aux::rng::seed = global.options.randomSeed.get();
 
-  CeArb o = cePools.takeArb();
+  CeArb o = global.cePools.takeArb();
   obj.toConstrExp(o, true);
   solver.init(o);
-  optim = OptimizationSuper::make(o, solver, *this);
+  optim = OptimizationSuper::make(o, solver, global);
 }
 
 SolveState ILP::run() {  // NOTE: also throws AsynchronousInterrupt
@@ -387,7 +388,7 @@ void ILP::printFormula() {
   for (const CRef& cr : solver.getRawConstraints()) {
     const Constr& c = solver.getCA()[cr];
     if (isNonImplied(c.getOrigin())) {
-      CeSuper ce = c.toExpanded(cePools);
+      CeSuper ce = c.toExpanded(global.cePools);
       ce->toStreamAsOPB(std::cout);
       std::cout << "\n";
     }
@@ -430,7 +431,7 @@ std::vector<std::string> ILP::getLastCore() {
       if (isUnit(solver.getLevel(), -l)) core.insert(var2var.at(toVar(l)));
     }
   } else {
-    CeSuper clone = solver.lastCore->clone(cePools);
+    CeSuper clone = solver.lastCore->clone(global.cePools);
     clone->simplifyToClause();
     for (Var v : clone->vars) {
       core.insert(var2var.at(v));
@@ -461,7 +462,7 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
   if (result == SolveState::INCONSISTENT) return {};
   assert(result == SolveState::SAT);
 
-  Ce32 invalidator = cePools.take32();
+  Ce32 invalidator = global.cePools.take32();
   invalidator->addRhs(1);
   for (const std::string& vn : varnames) {
     for (Var v : name2var[vn]->encodingVars()) {

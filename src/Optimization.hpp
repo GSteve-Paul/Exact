@@ -61,10 +61,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "ILP.hpp"
+#include "constraints/ConstrSimple.hpp"
 #include "typedefs.hpp"
 
 namespace xct {
+
+class Global;
+class Solver;
 
 template <typename SMALL, typename LARGE>
 struct LazyVar {
@@ -101,7 +104,7 @@ std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
 class OptimizationSuper {
  protected:
   Solver& solver;
-  ILP& ilp;
+  Global& global;
 
  public:
   int solutionsFound = 0;
@@ -109,12 +112,12 @@ class OptimizationSuper {
   virtual bigint getLowerBound() const = 0;
   virtual CeSuper getReformObj() const = 0;
 
-  static Optim make(const CeArb& obj, Solver& solver, ILP& ilp);
+  static Optim make(const CeArb& obj, Solver& solver, Global& g);
 
   [[nodiscard]] virtual SolveState optimize(const std::vector<Lit>& assumptions) = 0;
   [[nodiscard]] virtual State handleNewSolution(const std::vector<Lit>& sol) = 0;
 
-  OptimizationSuper(Solver& s, ILP& i);
+  OptimizationSuper(Solver& s, Global& g);
   virtual ~OptimizationSuper() = default;
 };
 
@@ -141,7 +144,7 @@ class Optimization final : public OptimizationSuper {
   bool firstRun;
 
  public:
-  explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, ILP& i);
+  explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, Global& g);
 
   LARGE normalizedLowerBound() const { return lower_bound + origObj->getDegree(); }
   LARGE normalizedUpperBound() const { return upper_bound + origObj->getDegree(); }

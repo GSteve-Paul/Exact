@@ -60,12 +60,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "ConstrExpPools.hpp"
+#include "../Global.hpp"
 #include "ConstrExp.hpp"
 
 namespace xct {
 
-ConstrExpPools::ConstrExpPools(Options& o, Stats& s, Logger& l, IntSetPool& i)
-    : ce32s(o, s, l, i), ce64s(o, s, l, i), ce96s(o, s, l, i), ce128s(o, s, l, i), ceArbs(o, s, l, i) {}
+ConstrExpPools::ConstrExpPools(Global& g) : ce32s(g), ce64s(g), ce96s(g), ce128s(g), ceArbs(g) {}
 
 void ConstrExpPools::resize(size_t newn) {
   ce32s.resize(newn);
@@ -103,8 +103,7 @@ Ce128 ConstrExpPools::take128() { return take<int128, int256>(); }
 CeArb ConstrExpPools::takeArb() { return take<bigint, bigint>(); }
 
 template <typename SMALL, typename LARGE>
-ConstrExpPool<SMALL, LARGE>::ConstrExpPool(Options& o, Stats& s, Logger& l, IntSetPool& i)
-    : n(0), options(o), stats(s), logger(l), isPool(i) {}
+ConstrExpPool<SMALL, LARGE>::ConstrExpPool(Global& g) : n(0), global(g) {}
 
 template <typename SMALL, typename LARGE>
 void ConstrExpPool<SMALL, LARGE>::resize(size_t newn) {
@@ -124,7 +123,7 @@ CePtr<SMALL, LARGE> ConstrExpPool<SMALL, LARGE>::take() {
       return ces[i + 1];
     }
   }
-  CePtr<SMALL, LARGE> fresh = std::make_shared<ConstrExp<SMALL, LARGE>>(*this, logger);
+  CePtr<SMALL, LARGE> fresh = std::make_shared<ConstrExp<SMALL, LARGE>>(global);
   fresh->resize(n);
   assert(fresh->isReset());
   ces.push_back(fresh);

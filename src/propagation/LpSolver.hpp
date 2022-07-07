@@ -121,14 +121,13 @@ struct CandidateCut {
 std::ostream& operator<<(std::ostream& o, const CandidateCut& cc);
 
 class Solver;
-class ILP;
 
 class LpSolver {
   friend class Solver;
   friend struct CandidateCut;
 
   soplex::SoPlex lp;
-  ILP& ilp;  // TODO: needed? We already have solver?
+  Global& global;  // TODO: needed? We already have solver?
   Solver& solver;
 
   double lpPivotMult = 1;
@@ -159,7 +158,7 @@ class LpSolver {
   std::vector<CandidateCut> candidateCuts;
 
  public:
-  explicit LpSolver(ILP& ilp);
+  explicit LpSolver(Solver& s, const CeArb& o, Global& g);
   void setNbVariables(int n);
 
   [[nodiscard]] std::pair<LpStatus, CeSuper> checkFeasibility(
@@ -193,13 +192,12 @@ class LpSolver {
 
 #else
 
-class ILP;
+class Solver;
+class Global;
 
 class LpSolver {
  public:
-  // TODO: use LpSolver([[maybe_unused]] ILP& ilp)
-  // See https://stackoverflow.com/questions/52263141/maybe-unused-and-constructors
-  LpSolver(ILP& ilp) { (void)(ilp); };
+  LpSolver([[maybe_unused]] Solver& s, [[maybe_unused]] const CeArb& o, [[maybe_unused]] Global& g){};
   void setNbVariables([[maybe_unused]] int n){};
 
   std::pair<LpStatus, CeSuper> checkFeasibility([[maybe_unused]] bool inProcessing) {

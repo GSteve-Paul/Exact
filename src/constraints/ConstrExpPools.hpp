@@ -68,10 +68,7 @@ namespace xct {
 
 template <typename SMALL, typename LARGE>
 struct ConstrExp;
-class Logger;
-class Options;
-class Stats;
-class IntSetPool;
+class Global;
 
 template <typename SMALL, typename LARGE>
 class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessible to ConstrExpPool?
@@ -79,12 +76,9 @@ class ConstrExpPool {  // TODO: private constructor for ConstrExp, only accessib
   std::vector<CePtr<SMALL, LARGE>> ces;
 
  public:
-  Options& options;
-  Stats& stats;
-  Logger& logger;
-  IntSetPool& isPool;
+  Global& global;
 
-  ConstrExpPool(Options& o, Stats& s, Logger& l, IntSetPool& i);
+  ConstrExpPool(Global& g);
 
   void resize(size_t newn);
   CePtr<SMALL, LARGE> take();
@@ -98,12 +92,12 @@ class ConstrExpPools {
   ConstrExpPool<bigint, bigint> ceArbs;
 
  public:
-  ConstrExpPools(Options& o, Stats& s, Logger& l, IntSetPool& i);
+  ConstrExpPools(Global& g);
 
   void resize(size_t newn);
 
   template <typename SMALL, typename LARGE>
-  CePtr<SMALL, LARGE> take();  // NOTE: only call specializations
+  CePtr<SMALL, LARGE> take();
 
   Ce32 take32();
   Ce64 take64();

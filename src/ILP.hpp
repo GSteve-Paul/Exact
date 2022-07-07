@@ -31,6 +31,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #pragma once
 
 #include <string>
+#include "Global.hpp"
 #include "Solver.hpp"
 #include "typedefs.hpp"
 
@@ -109,11 +110,7 @@ class ILP {
   std::vector<Lit> assumptions;  // TODO: pass assumptions to run() instead of keeping track of them here?
 
  public:
-  Options options;
-  Stats stats;
-  Logger logger;
-  ConstrExpPools cePools;
-  IntSetPool isPool;
+  Global global;
 
   ILP();
 
