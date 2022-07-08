@@ -339,12 +339,6 @@ void timeCallVoid(const std::function<void(void)>& f, U& to) {
   to += std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count();
 }
 
-inline void flushexit(int status) {
-  std::cout.flush();
-  std::cerr.flush();
-  exit(status);
-}
-
 inline std::ostream& prettyPrint(std::ostream& o, const long double& z) {
   long long iz = static_cast<long long>(z);
   if (iz == z) {

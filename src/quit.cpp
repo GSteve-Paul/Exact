@@ -67,7 +67,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-bool asynch_interrupt;
+std::atomic<bool> asynch_interrupt(false);
 
 void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) {
   std::cout << pre;
@@ -103,7 +103,7 @@ void quit::printFinalStats(ILP& ilp) {
   if (ilp.global.options.printOpb) ilp.printFormula();
 }
 
-void quit::exit_SUCCESS(ILP& ilp) {
+int quit::exit_SUCCESS(ILP& ilp) {
   ilp.global.logger.flush();
   if (ilp.global.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
   if (ilp.hasSolution()) {
@@ -122,18 +122,22 @@ void quit::exit_SUCCESS(ILP& ilp) {
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
     }
-    xct::aux::flushexit(30);
+    std::cout.flush();
+    std::cerr.flush();
+    return 30;
   } else {
     if (ilp.global.options.outputMode.is("miplib")) {
       std::cout << "=infeas=\n";
     }
     printFinalStats(ilp);
     std::cout << "s UNSATISFIABLE" << std::endl;
-    xct::aux::flushexit(20);
+    std::cout.flush();
+    std::cerr.flush();
+    return 20;
   }
 }
 
-void quit::exit_INDETERMINATE(ILP& ilp) {
+int quit::exit_INDETERMINATE(ILP& ilp) {
   ilp.global.logger.flush();
   if (ilp.global.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
   if (ilp.hasSolution()) {
@@ -152,26 +156,37 @@ void quit::exit_INDETERMINATE(ILP& ilp) {
       std::cout << "c best so far " << ilp.getUpperBound() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;
     }
-    xct::aux::flushexit(10);
+    std::cout.flush();
+    std::cerr.flush();
+    return 10;
   } else {
     if (ilp.global.options.outputMode.is("miplib")) {
       std::cout << "=unkn=\n";
     }
     printFinalStats(ilp);
     if (!ilp.global.options.noSolve) std::cout << "s UNKNOWN" << std::endl;
-    xct::aux::flushexit(0);
+    std::cout.flush();
+    std::cerr.flush();
+    return 0;
   }
 }
 
-void quit::exit_ERROR(const std::initializer_list<std::string>& messages) {
-  std::cout << "Error: ";
-  for (const std::string& m : messages) std::cout << m;
-  std::cout << std::endl;
-  xct::aux::flushexit(1);
+int quit::exit_ERROR(const std::string& message) {
+  std::cout << "Error: " << message << std::endl;
+  std::cout.flush();
+  std::cerr.flush();
+  return 1;
+}
+
+int quit::exit_EARLY() {
+  std::cout.flush();
+  std::cerr.flush();
+  return 0;
 }
 
 void quit::checkInterrupt(const Global& global) {
-  if (asynch_interrupt || (global.options.timeout.get() > 0 && global.stats.getTime() > global.options.timeout.get()) ||
+  if (asynch_interrupt.load() ||
+      (global.options.timeout.get() > 0 && global.stats.getTime() > global.options.timeout.get()) ||
       (global.options.timeoutDet.get() > 0 && global.stats.getDetTime() > global.options.timeoutDet.get())) {
     throw AsynchronousInterrupt();
   }

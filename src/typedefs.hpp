@@ -312,6 +312,11 @@ std::ostream& operator<<(std::ostream& o, const std::pair<CF, Lit>& cl) {
   return o << (cl.first < 0 ? "" : "+") << cl.first << (cl.second < 0 ? " ~x" : " x") << toVar(cl.second);
 }
 
+class EarlyTermination : public std::exception {
+ public:
+  [[nodiscard]] const char* what() const throw() override { return "Program terminated early."; }
+};
+
 class AsynchronousInterrupt : public std::exception {
  public:
   [[nodiscard]] const char* what() const throw() override { return "Program interrupted by user."; }

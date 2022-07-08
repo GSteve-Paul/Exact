@@ -64,12 +64,9 @@ void runOnce(int argc, char** argv, ILP& ilp) {
 }
 
 int main(int argc, char** argv) {
-  signal(SIGINT, SIGINT_exit);
   signal(SIGINT, SIGINT_interrupt);
-  signal(SIGTERM, SIGINT_exit);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE
-  signal(SIGXCPU, SIGINT_exit);
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 
@@ -78,13 +75,15 @@ int main(int argc, char** argv) {
     runOnce(argc, argv, ilp);
   } catch (const AsynchronousInterrupt& ai) {
     if (ilp.global.options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
-    quit::exit_INDETERMINATE(ilp);
+    return quit::exit_INDETERMINATE(ilp);
   } catch (const UnsatEncounter& ue) {
-    quit::exit_SUCCESS(ilp);
+    return quit::exit_SUCCESS(ilp);
   } catch (const std::invalid_argument& ia) {
-    quit::exit_ERROR({ia.what()});
+    return quit::exit_ERROR(ia.what());
+  } catch (const EarlyTermination& et) {
+    return quit::exit_EARLY();
   }
-  quit::exit_SUCCESS(ilp);
+  return quit::exit_SUCCESS(ilp);
 }
 
 xct::IntVar* Exact::getVariable(const std::string& name) {
@@ -93,12 +92,9 @@ xct::IntVar* Exact::getVariable(const std::string& name) {
 }
 
 Exact::Exact() : ilp() {
-  signal(SIGINT, SIGINT_exit);
   signal(SIGINT, SIGINT_interrupt);
-  signal(SIGTERM, SIGINT_exit);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE
-  signal(SIGXCPU, SIGINT_exit);
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 

@@ -341,7 +341,6 @@ void ILP::init(bool boundObjective, bool addNonImplieds) {
     global.options.pureLits.parse("0");
     global.options.domBreakLim.parse("0");
   }
-  asynch_interrupt = false;
   aux::rng::seed = global.options.randomSeed.get();
 
   CeArb o = global.cePools.takeArb();

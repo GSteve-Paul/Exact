@@ -428,13 +428,13 @@ struct Options {
 
     if (help) {
       usage(argv[0]);
-      xct::aux::flushexit(0);
+      throw EarlyTermination();
     } else if (copyright) {
       licenses::printUsed();
-      xct::aux::flushexit(0);
+      throw EarlyTermination();
     } else if (licenseInfo.get() != "") {
       licenses::printLicense(licenseInfo.get());
-      xct::aux::flushexit(0);
+      throw EarlyTermination();
     }
   }
 

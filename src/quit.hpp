@@ -61,6 +61,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <vector>
 #include "typedefs.hpp"
@@ -71,25 +72,21 @@ namespace xct {
 class ILP;
 struct Global;
 
-extern bool asynch_interrupt;
+extern std::atomic<bool> asynch_interrupt;
 
 namespace quit {
 
 void printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive);
 void printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp);
 void printFinalStats(ILP& ilp);
-void exit_SUCCESS(ILP& ilp);
-void exit_INDETERMINATE(ILP& ilp);
-void exit_ERROR(const std::initializer_list<std::string>& messages);
+int exit_SUCCESS(ILP& ilp);
+int exit_INDETERMINATE(ILP& ilp);
+int exit_ERROR(const std::string& message);
+int exit_EARLY();
 
 void checkInterrupt(const Global& global);
 }  // namespace quit
 
 }  // namespace xct
 
-inline void SIGINT_interrupt([[maybe_unused]] int signum) { xct::asynch_interrupt = true; }
-
-inline void SIGINT_exit([[maybe_unused]] int signum) {
-  std::cout << "*** INTERRUPTED ***" << std::endl;
-  xct::aux::flushexit(1);
-}
+inline void SIGINT_interrupt([[maybe_unused]] int signum) { xct::asynch_interrupt.store(true); }
