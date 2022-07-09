@@ -115,21 +115,21 @@ template <typename SMALL, typename LARGE>
 void LazyVar<SMALL, LARGE>::addAtLeastConstraint() {
   assert(atLeast.terms.back().l == currentVar);
   solver.dropExternal(atLeastID, true, false);  // TODO: should old constraints be force deleted?
-  solver.addConstraintUnchecked(atLeast, Origin::COREGUIDED);
+  solver.addConstraint(atLeast, Origin::COREGUIDED);
 }
 
 template <typename SMALL, typename LARGE>
 void LazyVar<SMALL, LARGE>::addAtMostConstraint() {
   assert(atMost.terms.back().l == currentVar);
   solver.dropExternal(atMostID, true, false);
-  solver.addConstraintUnchecked(atMost, Origin::COREGUIDED);
+  solver.addConstraint(atMost, Origin::COREGUIDED);
 }
 
 template <typename SMALL, typename LARGE>
 void LazyVar<SMALL, LARGE>::addSymBreakingConstraint(Var prevvar) const {
   assert(prevvar < currentVar);
   // y-- + ~y >= 1 (equivalent to y-- >= y)
-  solver.addConstraintUnchecked(ConstrSimple32({{1, prevvar}, {1, -currentVar}}, 1), Origin::COREGUIDED);
+  solver.addConstraint(ConstrSimple32({{1, prevvar}, {1, -currentVar}}, 1), Origin::COREGUIDED);
 }
 
 template <typename SMALL, typename LARGE>
@@ -137,7 +137,7 @@ void LazyVar<SMALL, LARGE>::addFinalAtMost() {
   solver.dropExternal(atMostID, true, false);
   Term32& last = atMost.terms.back();
   last = {1, last.l};
-  solver.addConstraintUnchecked(atMost, Origin::COREGUIDED);
+  solver.addConstraint(atMost, Origin::COREGUIDED);
 }
 
 OptimizationSuper::OptimizationSuper(Solver& s, Global& g) : solver(s), global(g) {}
@@ -238,7 +238,7 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
 }
 
 template <typename SMALL, typename LARGE>
-State Optimization<SMALL, LARGE>::addLowerBound() {
+void Optimization<SMALL, LARGE>::addLowerBound() {
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->addRhs(lower_bound);
@@ -246,9 +246,7 @@ State Optimization<SMALL, LARGE>::addLowerBound() {
   std::pair<ID, ID> res = solver.addConstraint(aux, Origin::LOWERBOUND);
   lastLowerBoundUnprocessed = res.first;
   lastLowerBound = res.second;
-  if (lastLowerBound == ID_Unsat) return State::UNSAT;
-  if (harden() == State::UNSAT) return State::UNSAT;
-  return State::SUCCESS;
+  harden();
 }
 
 template <typename SMALL, typename LARGE>
@@ -350,18 +348,18 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   assert(range == 0);
 
   // add extended lower bound as constraint
-  solver.addConstraintUnchecked(reduced, Origin::COREGUIDED);
+  solver.addConstraint(reduced, Origin::COREGUIDED);
 
   // add other side of equality as constraint
   reduced->invert();
-  solver.addConstraintUnchecked(reduced, Origin::COREGUIDED);
+  solver.addConstraint(reduced, Origin::COREGUIDED);
 
   // add to objective
   reformObj->addUp(reduced);
   lower_bound = -reformObj->getDegree();
 
   // wrap up
-  if (addLowerBound() == State::UNSAT) return State::UNSAT;
+  addLowerBound();
 
   return State::SUCCESS;
 }
@@ -458,7 +456,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
       std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, exceedSum, normalizedUpperBound()));
   lazyVars.back()->addAtLeastConstraint();
   lazyVars.back()->addAtMostConstraint();
-  if (addLowerBound() == State::UNSAT) return State::UNSAT;
+  addLowerBound();
 
   return State::SUCCESS;
 }
@@ -506,12 +504,12 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, 0, normalizedUpperBound()));
   lazyVars.back()->addAtLeastConstraint();
   lazyVars.back()->addAtMostConstraint();
-  if (addLowerBound() == State::UNSAT) return State::UNSAT;
+  addLowerBound();
   return State::SUCCESS;
 }
 
 template <typename SMALL, typename LARGE>
-State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // modifies core
+void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // modifies core
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   [[maybe_unused]] LARGE prev_lower = lower_bound;
   lower_bound = -reformObj->getDegree();
@@ -525,9 +523,9 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
     assert(solver.assumptionsClashWithUnits());
     ++global.stats.NCGUNITCORES;
     assert(lower_bound > prev_lower);
-    if (addLowerBound() == State::UNSAT) return State::UNSAT;
+    addLowerBound();
     checkLazyVariables();
-    return State::SUCCESS;
+    return;
   }
   assert(!core->hasNegativeSlack(solver.getLevel()));  // Would be handled by solver's learnConstraint
   --global.stats.NCGCOREREUSES;
@@ -553,15 +551,12 @@ State Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  //
     global.stats.DEPLTIME.z = global.stats.getTime();
   }
 
-  if (result == State::UNSAT) return State::UNSAT;
-
   checkLazyVariables();
   printObjBounds();
-  return State::SUCCESS;
 }
 
 template <typename SMALL, typename LARGE>
-State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol) {
+void Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol) {
   assert(solver.checkSAT(sol));
   [[maybe_unused]] LARGE prev_val = upper_bound;
   upper_bound = -origObj->getRhs();
@@ -577,20 +572,16 @@ State Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol)
   std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
   lastUpperBoundUnprocessed = res.first;
   lastUpperBound = res.second;
-  if (lastUpperBound == ID_Unsat) return State::UNSAT;
-  if (harden() == State::UNSAT) return State::UNSAT;
+  harden();
 
   printObjBounds();
-  return State::SUCCESS;
 }
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::logProof() {
   if (!global.logger.isActive()) return;
   assert(lastUpperBound != ID_Undef);
-  assert(lastUpperBound != ID_Unsat);
   assert(lastLowerBound != ID_Undef);
-  assert(lastLowerBound != ID_Unsat);
   CePtr<SMALL, LARGE> coreAggregate = global.cePools.take<SMALL, LARGE>();
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
@@ -609,20 +600,17 @@ void Optimization<SMALL, LARGE>::logProof() {
 }
 
 template <typename SMALL, typename LARGE>
-State Optimization<SMALL, LARGE>::harden() {
+void Optimization<SMALL, LARGE>::harden() {
   LARGE diff = upper_bound - lower_bound;
   for (Var v : reformObj->getVars()) {
     if (aux::abs(reformObj->coefs[v]) > diff) {
-      if (solver.addUnitConstraint(-reformObj->getLit(v), Origin::HARDENEDBOUND) == ID_Unsat) {
-        return State::UNSAT;
-      }
+      solver.addUnitConstraint(-reformObj->getLit(v), Origin::HARDENEDBOUND);
     }
   }
-  return State::SUCCESS;
 }
 
 template <typename SMALL, typename LARGE>
-State Optimization<SMALL, LARGE>::runTabu() {
+void Optimization<SMALL, LARGE>::runTabu() {
   if (global.options.verbosity.get() > 1) std::cout << "RUNNING TABU" << std::endl;
   int currentUnits = solver.getNbUnits();
   solver.phaseToTabu();
@@ -632,7 +620,9 @@ State Optimization<SMALL, LARGE>::runTabu() {
     success = true;
     ++global.stats.TABUSOLS;
     ++solutionsFound;
-    if (global.options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT) return State::UNSAT;
+    if (global.options.boundUpper) {
+      handleNewSolution(solver.getLastSolution());
+    }
     // NOTE: may flip tabuSol due to unit propagations
     // TODO: return SAT state to python interface...
   }
@@ -640,16 +630,13 @@ State Optimization<SMALL, LARGE>::runTabu() {
   // if (firstRun && global.options.varInitAct) solver.ranksToAct(); // TODO: check refactor of firstRun
   global.stats.NTABUUNITS += solver.getNbUnits() - currentUnits;
   if (global.options.verbosity.get() > 0) std::cout << "c END LOCAL SEARCH" << std::endl;
-
-  return State::SUCCESS;
 }
 
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumptions) {
   if (firstRun) {
     firstRun = false;
-    std::pair<State, CeSuper> res = solver.presolve();
-    if (res.first == State::UNSAT) return SolveState::UNSAT;
+    solver.presolve();
   }
 
   while (true) {
@@ -659,13 +646,12 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
       if (global.options.printCsvData)
         global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
       if (global.options.tabuLim.get() != 0) {
-        State state = aux::timeCall<State>([&] { return runTabu(); }, global.stats.TABUTIME);
-        if (state == State::UNSAT) return SolveState::UNSAT;
+        aux::timeCallVoid([&] { return runTabu(); }, global.stats.TABUTIME);
       }
     }
     if (lower_bound >= upper_bound && global.options.boundUpper) {
       logProof();
-      return SolveState::UNSAT;  // optimality is proven
+      throw UnsatEncounter();  // optimality is proven
     }
 
     if (assumptions.empty() && coreguided) {
@@ -706,7 +692,7 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
         solver.setAssumptions(assumps);
         if (assumps.size() == 0) break;
         if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
-          if (handleInconsistency(solver.lastGlobalDual) == State::UNSAT) return SolveState::UNSAT;
+          handleInconsistency(solver.lastGlobalDual);
           solver.clearAssumptions();
         }
       }
@@ -723,14 +709,13 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
     } else {
       global.stats.DETTIMEFREE += global.stats.getDetTime() - current_time;
     }
-    if (reply == SolveState::UNSAT) {
-      return SolveState::UNSAT;
-    } else if (reply == SolveState::SAT) {
+    if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
       ++global.stats.NSOLS;
       ++solutionsFound;
-      if (global.options.boundUpper && handleNewSolution(solver.getLastSolution()) == State::UNSAT)
-        return SolveState::UNSAT;
+      if (global.options.boundUpper) {
+        handleNewSolution(solver.getLastSolution());
+      }
       if (coreguided) {
         solver.clearAssumptions();
         stratLim = std::max<double>(stratLim / stratDiv, 1);
@@ -742,7 +727,7 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
       somethingHappened = true;
       if (!assumptions.empty()) return SolveState::INCONSISTENT;
       assert(coreguided);  // else: core from core-guided search
-      if (handleInconsistency(solver.lastCore) == State::UNSAT) return SolveState::UNSAT;
+      handleInconsistency(solver.lastCore);
       solver.clearAssumptions();
     } else if (reply == SolveState::INPROCESSED) {
       // NOTE: returning when inprocessing avoids long non-terminating solve calls

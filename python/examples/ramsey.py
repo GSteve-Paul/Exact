@@ -127,38 +127,38 @@ if usecounting:
 if cliques[0] == cliques[1]:
     constraints += [([1], [to_var(order[0])], False, 0, True, 0)]
 
-for i in range(0,2):
-    # Create an Exact solver instance
-    solver = exact.Exact()
 
-    solver.setOption("var-weight", "0")
+# Create an Exact solver instance
+solver = exact.Exact()
 
-    # Add the variables
-    for e in variables:
-        solver.addVariable(e, 0, 1)
-    # Add the constraints
-    for (coefs, vs, uselow, low, useup, up) in constraints:
-        solver.addConstraint(coefs, vs, uselow, low+i, useup, up-i)
+solver.setOption("var-weight", "0")
 
-    # Initialize Exact
-    solver.init([], [], False, True)
+# Add the variables
+for e in variables:
+    solver.addVariable(e, 0, 1)
+# Add the constraints
+for (coefs, vs, uselow, low, useup, up) in constraints:
+    solver.addConstraint(coefs, vs, uselow, low+i, useup, up-i)
 
-    # solver.printFormula()
+# Initialize Exact
+solver.init([], [], False, True)
 
-    # Run Exact
-    print("run Exact:")
-    result = 3
-    while result > 1:
-        # As long as the result is not UNSAT (== 0), the solver is kept running.
-        result = solver.run()
+# solver.printFormula()
 
-    solver.printStats()
+# Run Exact
+print("run Exact:")
+result = 3
+while result > 1:
+    # As long as the result is not UNSAT (== 0), the solver is kept running.
+    result = solver.run()
 
-    if result == 0:
-        assert not solver.hasSolution()
-        print("UNSAT")
-    else:
-        assert solver.hasSolution()
-        print("SAT")
-        sol = solver.getLastSolutionFor(variables)
-        print(sol)
+solver.printStats()
+
+if result == 0:
+    assert not solver.hasSolution()
+    print("UNSAT")
+else:
+    assert solver.hasSolution()
+    print("SAT")
+    sol = solver.getLastSolutionFor(variables)
+    print(sol)

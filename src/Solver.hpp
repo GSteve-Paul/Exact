@@ -165,17 +165,11 @@ class Solver {
   int decisionLevel() const { return trail_lim.size(); }
   int assumptionLevel() const { return assumptions_lim.size() - 1; }
 
-  // result: formula line id, processed id
-  [[nodiscard]] std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
-  [[nodiscard]] std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
-  [[nodiscard]] ID addUnitConstraint(Lit l, Origin orig);
-  template <typename T>
-  void addConstraintUnchecked(const T& c, Origin orig) {
-    // NOTE: logging of the inconsistency happened in addInputConstraint
-    [[maybe_unused]] auto [_, id] = addConstraint(c, orig);
-    assert(id != ID_Unsat);  // use regular addConstraint if it could be an inconsistency
-  }
-  [[nodiscard]] std::pair<ID, ID> invalidateLastSol(const std::vector<Var>& vars);
+  // @return: formula line id, processed id, needed for optimization proof logging
+  std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
+  std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
+  void addUnitConstraint(Lit l, Origin orig);
+  void invalidateLastSol(const std::vector<Var>& vars);
 
   void dropExternal(ID id, bool erasable, bool forceDelete);
   int getNbConstraints() const { return constraints.size(); }
@@ -226,9 +220,9 @@ class Solver {
    * @return: true if inconsistency is detected, false otherwise. The inconsistency is stored in confl
    */
   // TODO: don't return actual conflict, but analyze it internally? Won't work because core extraction is necessary
-  [[nodiscard]] std::pair<CeSuper, State> runDatabasePropagation();
-  [[nodiscard]] std::pair<CeSuper, State> runPropagation();
-  [[nodiscard]] std::pair<CeSuper, State> runPropagationWithLP();
+  [[nodiscard]] CeSuper runDatabasePropagation();
+  [[nodiscard]] CeSuper runPropagation();
+  [[nodiscard]] CeSuper runPropagationWithLP();
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p);
 
   // ---------------------------------------------------------------------
@@ -236,24 +230,23 @@ class Solver {
 
   [[nodiscard]] CeSuper analyze(const CeSuper& confl);
   void minimize(const CeSuper& conflict);
-  [[nodiscard]] State extractCore(const CeSuper& confl, Lit l_assump = 0);
+  void extractCore(const CeSuper& confl, Lit l_assump = 0);
 
   // ---------------------------------------------------------------------
   // Constraint management
 
-  [[nodiscard]] CRef attachConstraint(const CeSuper& constraint,
-                                      bool locked);  // returns CRef_Unsat in case of inconsistency
-  [[nodiscard]] ID learnConstraint(const CeSuper& c, Origin orig);
-  [[nodiscard]] ID learnUnitConstraint(Lit l, Origin orig, ID id);
-  [[nodiscard]] ID learnClause(const std::vector<Lit>& lits, Origin orig, ID id);
-  std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
+  [[nodiscard]] CRef attachConstraint(const CeSuper& constraint, bool locked);
   void removeConstraint(const CRef& cr, bool override = false);
+  void learnConstraint(const CeSuper& c, Origin orig);
+  void learnUnitConstraint(Lit l, Origin orig, ID id);
+  void learnClause(const std::vector<Lit>& lits, Origin orig, ID id);
+  std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
 
   // ---------------------------------------------------------------------
   // Garbage collection
 
   void garbage_collect();
-  State reduceDB();
+  void reduceDB();
 
   // ---------------------------------------------------------------------
   // Restarts
@@ -263,21 +256,21 @@ class Solver {
   // ---------------------------------------------------------------------
   // Inprocessing
  public:
-  [[nodiscard]] std::pair<State, CeSuper> presolve();
+  void presolve();
 
  private:
-  [[nodiscard]] std::pair<State, CeSuper> inProcess();
+  void inProcess();
   void removeSatisfiedNonImpliedsAtRoot();
   void derivePureLits();
   void dominanceBreaking();
   void rebuildLit2Cons();
 
   Var lastRestartNext = 0;
-  [[nodiscard]] State probeRestart(Lit next);
+  void probeRestart(Lit next);
 
-  [[nodiscard]] State detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
+  void detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
   std::unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
-  [[nodiscard]] State runAtMostOneDetection();
+  void runAtMostOneDetection();
 
   // ---------------------------------------------------------------------
   // Tabu search

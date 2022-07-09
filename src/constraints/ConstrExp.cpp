@@ -77,7 +77,6 @@ ConstrExpSuper::ConstrExpSuper(Global& g) : global(g), orig(Origin::UNKNOWN) {}
 void ConstrExpSuper::resetBuffer(ID proofID) {
   if (!global.logger.isActive()) return;
   assert(proofID != ID_Undef);
-  assert(proofID != ID_Unsat);
   proofBuffer.clear();
   proofBuffer.str(std::string());
   proofBuffer << proofID << " ";

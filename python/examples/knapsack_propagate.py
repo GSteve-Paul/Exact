@@ -33,10 +33,7 @@ for v in var_range:
 solver.addVariable("aux", 0, 1)
 
 # Add the knapsack constraint
-success = solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
-# At this point, no UNSAT state should be entered, but it's better to check.
-assert success
-# success == 0 would denote that the added constraint triggered unsatisfiability.
+solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
 
 # Initialize the solver with the knapsack objective, extended with the auxiliary variable.
 # The first True parameter disables the automatic objective upper bounding, as otherwise finding an optimal solution

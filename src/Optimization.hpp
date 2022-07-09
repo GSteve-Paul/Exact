@@ -115,7 +115,7 @@ class OptimizationSuper {
   static Optim make(const CeArb& obj, Solver& solver, Global& g);
 
   [[nodiscard]] virtual SolveState optimize(const std::vector<Lit>& assumptions) = 0;
-  [[nodiscard]] virtual State handleNewSolution(const std::vector<Lit>& sol) = 0;
+  virtual void handleNewSolution(const std::vector<Lit>& sol) = 0;
 
   OptimizationSuper(Solver& s, Global& g);
   virtual ~OptimizationSuper() = default;
@@ -154,7 +154,7 @@ class Optimization final : public OptimizationSuper {
 
   void printObjBounds();
   void checkLazyVariables();
-  [[nodiscard]] State addLowerBound();
+  void addLowerBound();
 
   Ce32 reduceToCardinality(const CeSuper& core);                // does not modify core
   [[nodiscard]] State reformObjective(const CeSuper& core);     // modifies core
@@ -162,12 +162,12 @@ class Optimization final : public OptimizationSuper {
   [[nodiscard]] bool reformObjectiveLogTest(const CePtr<SMALL, LARGE>& core) const;
   [[nodiscard]] State reformObjectiveSmallSum(const CeSuper& core);         // modifies core
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
-  [[nodiscard]] State handleInconsistency(const CeSuper& core);             // modifies core
-  [[nodiscard]] State handleNewSolution(const std::vector<Lit>& sol);
+  void handleInconsistency(const CeSuper& core);                            // modifies core
+  void handleNewSolution(const std::vector<Lit>& sol);
 
   void logProof();
-  [[nodiscard]] State harden();
-  [[nodiscard]] State runTabu();
+  void harden();
+  void runTabu();
 
   [[nodiscard]] SolveState optimize(const std::vector<Lit>& assumptions);
 };

@@ -108,14 +108,14 @@ State Equalities::propagate() {
     const Repr& repr = getRepr(l);
     bool added = false;
     if (!isTrue(solver.getLevel(), repr.l)) {
-      if (solver.learnClause({-l, repr.l}, Origin::EQUALITY, repr.id) == ID_Unsat) return State::UNSAT;
+      solver.learnClause({-l, repr.l}, Origin::EQUALITY, repr.id);
       added = true;
     }
     assert(solver.getLevel()[l] == solver.getLevel()[repr.l]);
     for (Lit ll : repr.equals) {
       if (!isTrue(solver.getLevel(), ll)) {
         assert(getRepr(ll).l == l);
-        if (solver.learnClause({-l, ll}, Origin::EQUALITY, getRepr(-ll).id) == ID_Unsat) return State::UNSAT;
+        solver.learnClause({-l, ll}, Origin::EQUALITY, getRepr(-ll).id);
         added = true;
       }
       assert(solver.getLevel()[l] == solver.getLevel()[ll]);

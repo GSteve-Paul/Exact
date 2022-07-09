@@ -95,7 +95,7 @@ using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
 
-enum class State { UNSAT, SUCCESS, FAIL };
+enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, INPROCESSED };
 
 namespace xct {

@@ -32,10 +32,7 @@ for v in var_range:
 solver.addVariable("aux", 0, 1)
 
 # Add the knapsack constraint
-success = solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
-# At this point, no UNSAT state should be entered, but it's better to check.
-assert success
-# success == 0 would denote that the added constraint triggered unsatisfiability.
+solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
 
 # Initialize the solver with the knapsack objective, extended with the auxiliary variable.
 # The first True parameter disables the automatic objective upper bounding, as otherwise finding an optimal solution
@@ -101,7 +98,7 @@ while result != 0:
         # Reduce the intersection by only keeping those variables whose value matches that of the last found solution
         intersection = {varlist[i]: sol[i] for i in range(0, len(varlist)) if intersection[varlist[i]] == sol[i]}
         # Invalidate the last solution over the shrunk set of intersection variables
-        result = solver.invalidateLastSol(intersection.keys())
+        solver.invalidateLastSol(intersection.keys())
 
 # The solver is now in an UNSAT state, meaning that no solution exists that would differ from the current intersection
 # Hence, the intersection is the set of implied assignments.

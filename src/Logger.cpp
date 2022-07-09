@@ -67,6 +67,7 @@ namespace xct {
 Logger::Logger(const Stats& s) : stats(s), active(false), last_formID(ID_Trivial), last_proofID(ID_Trivial) {}
 
 void Logger::activate(const std::string& proof_log_name) {
+  if (proof_log_name == "") return;
   flush();
   formula_out = std::ofstream(proof_log_name + ".formula");
   formula_out << "* #variable= 0 #constraint= 0\n";

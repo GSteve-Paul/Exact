@@ -27,10 +27,7 @@ for v in var_range:
     solver.addVariable(str(v), 0, 1 + v % 2)
 
 # Add the knapsack constraint
-success = solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
-# At this point, no UNSAT state should be entered, but it's better to check.
-assert success
-# success == 0 would denote that the added constraint triggered unsatisfiability.
+solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
 
 # The solver is initialized with the knapsack objective.
 # The first True parameter will make sure an objective upper bound constraint is constructed that enforces the next

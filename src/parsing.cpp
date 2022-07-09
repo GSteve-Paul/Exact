@@ -202,8 +202,7 @@ void opb_read(std::istream& in, ILP& ilp) {
     if (opt_line) {
       ilp.setObjective(coefs, vars, negated);
     } else {
-      State res = ilp.addConstraint(coefs, vars, negated, lb, aux::option(!isInequality, lb));
-      if (res == State::UNSAT) throw UnsatEncounter();
+      ilp.addConstraint(coefs, vars, negated, lb, aux::option(!isInequality, lb));
     }
   }
 }
@@ -238,7 +237,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       ilp.getSolver().setNbVars(toVar(l), true);
     }
     if (weight == 0) {  // hard clause
-      if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) throw UnsatEncounter();
+      ilp.getSolver().addConstraint(input, Origin::FORMULA);
       inputs.pop_back();
       objcoefs.pop_back();
     }
@@ -257,9 +256,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       objnegated.push_back(aux < 0);
       // if (ilp.global.options.test.get()) {
       for (const Term32& t : input.terms) {  // reverse implication as binary clauses
-        if (ilp.getSolver().addConstraint(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA).second ==
-            ID_Unsat)
-          throw UnsatEncounter();
+        ilp.getSolver().addConstraint(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
       }
       //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
       //        ConstrSimple32 reverse;
@@ -269,11 +266,10 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       //        for (const Term32& t : input.terms) {
       //          reverse.terms.push_back({1, -t.l});
       //        }
-      //        if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) throw UnsatEncounter();;
+      //        ilp.getSolver().addConstraint(input, Origin::FORMULA);
       //}
       input.terms.push_back({1, aux});  // implication
-      if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) throw UnsatEncounter();
-      ;
+      ilp.getSolver().addConstraint(input, Origin::FORMULA);
     }
   }
   ilp.setObjective(objcoefs, objvars, objnegated);
@@ -291,7 +287,7 @@ void cnf_read(std::istream& in, ILP& ilp) {
       ilp.getSolver().setNbVars(toVar(l), true);
       input.terms.push_back({1, l});
     }
-    if (ilp.getSolver().addConstraint(input, Origin::FORMULA).second == ID_Unsat) throw UnsatEncounter();
+    ilp.getSolver().addConstraint(input, Origin::FORMULA);
     ;
     quit::checkInterrupt(ilp.global);
   }
@@ -386,8 +382,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     coefs.pop_back();
     bigint lb = coefs.back();
     coefs.pop_back();
-    State res = ilp.addConstraint(coefs, vars, {}, aux::option(useLB, lb), aux::option(useUB, ub));
-    if (res == State::UNSAT) throw UnsatEncounter();
+    ilp.addConstraint(coefs, vars, {}, aux::option(useLB, lb), aux::option(useUB, ub));
   }
 }
 

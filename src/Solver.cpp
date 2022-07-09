@@ -226,14 +226,11 @@ State Solver::probe(Lit l, bool deriveImplications) {
   assert(isUnknown(getPos(), l));
   ++global.stats.NPROBINGS;
   decide(l);
-  std::pair<CeSuper, State> result =
-      aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagation(); }, global.stats.PROPTIME);
-  if (result.second == State::UNSAT) {
-    return State::UNSAT;
-  } else if (result.second == State::FAIL) {
-    CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(result.first); }, global.stats.CATIME);
-    ID res = aux::timeCall<ID>([&] { return learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
-    return res == ID_Unsat ? State::UNSAT : State::FAIL;
+  CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
+  if (confl) {
+    CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, global.stats.CATIME);
+    aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
+    return State::FAIL;
   } else if (decisionLevel() == 0) {  // some missing propagation at level 0 could be made
     return State::FAIL;
   }
@@ -252,8 +249,9 @@ State Solver::probe(Lit l, bool deriveImplications) {
 /**
  * Unit propagation with watched literals.
  * @post: all watches up to trail[qhead] have been propagated
+ * @return: a CeNull when no conflict is detected, otherwise the conflicting constraint
  */
-std::pair<CeSuper, State> Solver::runDatabasePropagation() {
+CeSuper Solver::runDatabasePropagation() {
   while (qhead < (int)trail.size()) {
     Lit p = trail[qhead++];
     std::vector<Watch>& ws = adj[-p];
@@ -283,7 +281,8 @@ std::pair<CeSuper, State> Solver::runDatabasePropagation() {
         CeSuper result = c.toExpanded(global.cePools);
         c.decreaseLBD(result->getLBD(level));
         c.fixEncountered(global.stats);
-        return {result, State::FAIL};
+        assert(result);
+        return result;
       } else {
         assert(wstat == WatchStatus::KEEPWATCH);
         Constr& c = ca[cr];
@@ -298,35 +297,31 @@ std::pair<CeSuper, State> Solver::runDatabasePropagation() {
       }
     }
   }
-  return {CeNull(), State::SUCCESS};
+  return CeNull();
 }
 
-std::pair<CeSuper, State> Solver::runPropagation() {
+CeSuper Solver::runPropagation() {
   while (true) {
-    std::pair<CeSuper, State> result = runDatabasePropagation();
-    if (result.second != State::SUCCESS) return result;
-    State res = equalities.propagate();
-    if (res == State::UNSAT) return {CeNull(), State::UNSAT};
-    if (res == State::FAIL) continue;
-    res = implications.propagate();
-    if (res == State::UNSAT) return {CeNull(), State::UNSAT};
-    if (res == State::SUCCESS) return {CeNull(), State::SUCCESS};
+    CeSuper confl = runDatabasePropagation();
+    if (confl) return confl;
+    if (equalities.propagate() == State::FAIL) continue;
+    if (implications.propagate() == State::FAIL) continue;
+    return CeNull();
   }
 }
 
-std::pair<CeSuper, State> Solver::runPropagationWithLP() {
-  if (std::pair<CeSuper, State> result = runPropagation(); result.second != State::SUCCESS) return result;
+CeSuper Solver::runPropagationWithLP() {
+  if (CeSuper result = runPropagation(); result) return result;
   if (lpSolver) {
     auto [state, constraint] = aux::timeCall<std::pair<LpStatus, CeSuper>>(
         [&] { return lpSolver->checkFeasibility(false); }, global.stats.LPTOTALTIME);
-    if (state == LpStatus::UNSAT) return {CeNull(), State::UNSAT};
     // NOTE: calling LP solver may increase the propagations on the trail due to added constraints
     if (state == LpStatus::INFEASIBLE || state == LpStatus::OPTIMAL) {
       // added a Farkas/bound constraint and potentially backjumped, so we propagate again
       return runPropagation();
     }
   }
-  return {CeNull(), State::SUCCESS};
+  return CeNull();
 }
 
 WatchStatus Solver::checkForPropagation(CRef cr, int& idx, Lit p) {
@@ -459,7 +454,7 @@ void Solver::minimize(const CeSuper& conflict) {
   global.isPool.release(saturatedLits);
 }
 
-State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
+void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   if (l_assump != 0) {  // l_assump is an assumption propagated to the opposite value
     assert(assumptions.has(l_assump));
     assert(isFalse(level, l_assump));
@@ -524,16 +519,14 @@ State Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
   assert(!lastCore->isTautology());
   assert(lastCore->isSaturated());
-  ID res = aux::timeCall<ID>([&] { return learnConstraint(lastCore, Origin::LEARNED); },
-                             global.stats.LEARNTIME);  // NOTE: takes care of inconsistency
-  if (res == ID_Unsat) return State::UNSAT;
+  aux::timeCallVoid([&] { learnConstraint(lastCore, Origin::LEARNED); },
+                    global.stats.LEARNTIME);  // NOTE: takes care of inconsistency
   backjumpTo(0);
   lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true, global.stats);
   if (!lastCore->hasNegativeSlack(assumptions.getIndex())) {
     // apparently unit clauses were propagated during learnConstraint
     lastCore.reset();
   }
-  return State::SUCCESS;
 }
 
 // ---------------------------------------------------------------------
@@ -608,17 +601,13 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   global.stats.NHARDENINGS += orig == Origin::HARDENEDBOUND;
   global.stats.NCONSREDUCED += orig == Origin::REDUCED;
 
+  // NOTE: propagation is not necessary, but do it at first level to make sure to derive as many unit lits as possible
   if (decisionLevel() == 0) {
-    std::pair<CeSuper, State> result =
-        aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagation(); }, global.stats.PROPTIME);
-    if (result.second == State::UNSAT) {
-      return CRef_Unsat;
-    } else if (result.second == State::FAIL) {
-      CeSuper& confl = result.first;
-      assert(confl);
+    CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
+    if (confl) {
       assert(confl->hasNegativeSlack(getLevel()));
       global.logger.logInconsistency(confl, getLevel(), getPos());
-      return CRef_Unsat;
+      throw UnsatEncounter();
     }
   }
 
@@ -628,9 +617,8 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
 /**
  * Adds c as a learned constraint with origin orig.
  * Backjumps to the level where c is no longer conflicting, as otherwise we might miss propagations.
- * If conflicting at level 0, return ID_Unsat.
  */
-ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
+void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   assert(ce);
   assert(isLearned(orig));
   CeSuper learned = ce->clone(global.cePools);
@@ -638,7 +626,7 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities(), true);
   learned->selfSubsumeImplications(implications);
   learned->removeUnitsAndZeroes(getLevel(), getPos());
-  if (learned->isTautology()) return ID_Undef;
+  if (learned->isTautology()) return;
   learned->saturateAndFixOverflow(getLevel(), global.options.bitsLearned.get(), global.options.bitsLearned.get(), 0);
   learned->sortInDecreasingCoefOrder(getHeuristic());
   auto [assertionLevel, isAsserting] = learned->getAssertionStatus(level, position);
@@ -646,28 +634,22 @@ ID Solver::learnConstraint(const CeSuper& ce, Origin orig) {
     backjumpTo(0);
     assert(learned->isInconsistency());
     global.logger.logInconsistency(learned, getLevel(), getPos());
-    return ID_Unsat;
+    throw UnsatEncounter();
   }
   backjumpTo(assertionLevel);
   assert(!learned->hasNegativeSlack(level));
   if (isAsserting) learned->heuristicWeakening(level, position);
   learned->postProcess(getLevel(), getPos(), getHeuristic(), false, global.stats);
   assert(learned->isSaturated());
-  if (learned->isTautology()) {
-    return ID_Undef;
-  }
+  if (learned->isTautology()) return;
   CRef cr = attachConstraint(learned, false);
-  if (cr == CRef_Unsat) {
-    return ID_Unsat;
-  }
   Constr& c = ca[cr];
   c.decreaseLBD(isAsserting ? learned->getLBD(level) : learned->nVars());
   // the LBD of non-asserting constraints is undefined, so we take a safe upper bound
   global.stats.LEARNEDLBDSUM += c.lbd();
-  return c.id;
 }
 
-ID Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
+void Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
   assert(isLearned(orig));
   assert(!isUnit(getLevel(), l));
   assert(!isUnit(getLevel(), -l));
@@ -678,27 +660,20 @@ ID Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
   unit->orig = orig;
   unit->addRhs(1);
   unit->addLhs(1, l);
-  if (id != ID_Undef) {
-    unit->resetBuffer(id);
-  }
+  unit->resetBuffer(id);
   CRef cr = attachConstraint(unit, false);
-  if (cr == CRef_Unsat) {
-    return ID_Unsat;
-  }
+  assert(cr != CRef_Undef);
   Constr& c = ca[cr];
   c.decreaseLBD(1);
-
-  return c.id;
 }
 
-ID Solver::learnClause(const std::vector<Lit>& lits, Origin orig, ID id) {
+void Solver::learnClause(const std::vector<Lit>& lits, Origin orig, ID id) {
   ConstrSimple32 clause{{}, 1, orig, std::to_string(id) + " "};
   clause.terms.reserve(lits.size());
   for (Lit l : lits) {
     clause.terms.push_back({1, l});
   }
-  return aux::timeCall<ID>([&] { return learnConstraint(clause.toExpanded(global.cePools), orig); },
-                           global.stats.LEARNTIME);
+  aux::timeCallVoid([&] { learnConstraint(clause.toExpanded(global.cePools), orig); }, global.stats.LEARNTIME);
 }
 
 std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
@@ -732,13 +707,11 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
       std::cout << "c Conflicting input constraint" << std::endl;
     }
     global.logger.logInconsistency(ce, getLevel(), getPos());
-    return {input, ID_Unsat};
+    throw UnsatEncounter();
   }
 
   CRef cr = attachConstraint(ce, true);
-  if (cr == CRef_Unsat) {
-    return {input, ID_Unsat};
-  }
+  assert(cr != CRef_Undef);
   ID id = ca[cr].id;
   Origin orig = ca[cr].getOrigin();
   if (isExternal(orig)) {
@@ -766,9 +739,9 @@ std::pair<ID, ID> Solver::addConstraint(const ConstrSimpleSuper& c, Origin orig)
   return result;
 }
 
-ID Solver::addUnitConstraint(Lit l, Origin orig) { return addConstraint(ConstrSimple32({{1, l}}, 1), orig).second; }
+void Solver::addUnitConstraint(Lit l, Origin orig) { addConstraint(ConstrSimple32({{1, l}}, 1), orig); }
 
-std::pair<ID, ID> Solver::invalidateLastSol(const std::vector<Var>& vars) {
+void Solver::invalidateLastSol(const std::vector<Var>& vars) {
   assert(foundSolution());
   ConstrSimple32 invalidator;
   invalidator.terms.reserve(global.stats.NORIGVARS.z);
@@ -776,7 +749,7 @@ std::pair<ID, ID> Solver::invalidateLastSol(const std::vector<Var>& vars) {
   for (Var v : vars) {
     invalidator.terms.push_back({1, -lastSol[v]});
   }
-  return addConstraint(invalidator, Origin::INVALIDATOR);
+  addConstraint(invalidator, Origin::INVALIDATOR);
 }
 
 void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
@@ -904,7 +877,7 @@ void Solver::garbage_collect() {
 
 // We assume in the garbage collection method that reduceDB() is the
 // only place where constraints are removed from memory.
-State Solver::reduceDB() {
+void Solver::reduceDB() {
   backjumpTo(0);  // otherwise reason CRefs need to be taken care of
   std::vector<CRef> learnts;
   learnts.reserve(constraints.size());
@@ -948,10 +921,9 @@ State Solver::reduceDB() {
     if (ce->nVars() == 0) {
       assert(ce->isInconsistency());  // it's not a tautology ;)
       global.logger.logInconsistency(ce, getLevel(), getPos());
-      return State::UNSAT;
+      throw UnsatEncounter();
     }
-    CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates c!
-    if (crnew == CRef_Unsat) return State::UNSAT;
+    CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates ce!
     if (crnew == CRef_Undef) continue;
     ca[crnew].decreaseLBD(lbd);
   }
@@ -975,8 +947,7 @@ State Solver::reduceDB() {
       ce->removeUnitsAndZeroes(getLevel(), getPos());
       if (ce->isTautology()) continue;  // possible due to further root propagations during rewriting of constraints
       ce->simplifyToCardinality(false, ce->getMaxStrengthCardinalityDegree(cardPoints));
-      ID res = aux::timeCall<ID>([&] { return learnConstraint(ce, Origin::REDUCED); }, global.stats.LEARNTIME);
-      if (res == ID_Unsat) return State::UNSAT;
+      aux::timeCallVoid([&] { learnConstraint(ce, Origin::REDUCED); }, global.stats.LEARNTIME);
     }
   }
 
@@ -995,7 +966,6 @@ State Solver::reduceDB() {
   if ((double)ca.wasted / (double)ca.at > 0.2) {
     aux::timeCallVoid([&] { garbage_collect(); }, global.stats.GCTIME);
   }
-  return State::SUCCESS;
 }
 
 // ---------------------------------------------------------------------
@@ -1023,45 +993,35 @@ bool Solver::checkSAT(const std::vector<Lit>& assignment) {
   });
 }
 
-std::pair<State, CeSuper> Solver::inProcess() {
+void Solver::inProcess() {
   assert(decisionLevel() == 0);
   removeSatisfiedNonImpliedsAtRoot();
   if (global.options.pureLits) derivePureLits();
   if (global.options.domBreakLim.get() != 0) dominanceBreaking();
   if (global.options.inpAMO.get() != 0) {
-    State state = aux::timeCall<State>([&] { return runAtMostOneDetection(); }, global.stats.ATMOSTONETIME);
-    if (state == State::UNSAT) return {State::UNSAT, CeNull()};
+    aux::timeCallVoid([&] { runAtMostOneDetection(); }, global.stats.ATMOSTONETIME);
   }
   // TODO: timing methods should be done via wrapper methods?
 
 #if WITHSOPLEX
   if (lpSolver && lpSolver->canInProcess()) {
-    std::pair<State, CeSuper> result =
-        aux::timeCall<std::pair<State, CeSuper>>([&] { return lpSolver->inProcess(); }, global.stats.LPTOTALTIME);
-    if (result.second) lastGlobalDual = result.second;
-    return result;
+    CeSuper bound = aux::timeCall<CeSuper>([&] { return lpSolver->inProcess(); }, global.stats.LPTOTALTIME);
+    if (bound) lastGlobalDual = bound;
   }
 #endif  // WITHSOPLEX
-  return {State::SUCCESS, CeNull()};
 }
 
-std::pair<State, CeSuper> Solver::presolve() {
+void Solver::presolve() {
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
+  aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
 
-  std::pair<State, CeSuper> res =
-      aux::timeCall<std::pair<State, CeSuper>>([&] { return inProcess(); }, global.stats.INPROCESSTIME);
-
-  if (res.first == State::UNSAT) return res;
 #if WITHSOPLEX
   if (global.options.lpTimeRatio.get() > 0) {
     lpSolver = std::make_shared<LpSolver>(*this, objective, global);
-    std::pair<State, CeSuper> result =
-        aux::timeCall<std::pair<State, CeSuper>>([&] { return lpSolver->inProcess(); }, global.stats.LPTOTALTIME);
-    if (result.second) lastGlobalDual = result.second;
-    return result;
+    CeSuper bound = aux::timeCall<CeSuper>([&] { return lpSolver->inProcess(); }, global.stats.LPTOTALTIME);
+    if (bound) lastGlobalDual = bound;
   }
 #endif
-  return {State::SUCCESS, CeNull()};
 }
 
 void Solver::removeSatisfiedNonImpliedsAtRoot() {
@@ -1097,8 +1057,7 @@ void Solver::derivePureLits() {
     if (l == 0 || !isOrig(toVar(l)) || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l) ||
         !lit2cons[-l].empty())
       continue;  // NOTE: core-guided variables will not be eliminated
-    [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
-    assert(id != ID_Unsat);
+    addUnitConstraint(l, Origin::PURE);
     removeSatisfiedNonImpliedsAtRoot();
   }
 }
@@ -1114,8 +1073,7 @@ void Solver::dominanceBreaking() {
     assert(saturating.isEmpty());
     std::unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
-      [[maybe_unused]] ID id = addUnitConstraint(l, Origin::PURE);
-      assert(id != ID_Unsat);
+      addUnitConstraint(l, Origin::PURE);
       removeSatisfiedNonImpliedsAtRoot();
       continue;
     }
@@ -1180,7 +1138,7 @@ void Solver::dominanceBreaking() {
     for (Lit ll : saturating.getKeys()) {
       binaryImplicants.insert({ll, l});
       binaryImplicants.insert({-l, -ll});
-      addConstraintUnchecked(ConstrSimple32{{{1, -ll}, {1, l}}, 1}, Origin::DOMBREAKER);
+      addConstraint(ConstrSimple32{{{1, -ll}, {1, l}}, 1}, Origin::DOMBREAKER);
       removeSatisfiedNonImpliedsAtRoot();
     }
     saturating.clear();
@@ -1198,15 +1156,9 @@ SolveState Solver::solve() {
     quit::checkInterrupt(global);
     CeSuper confl = CeNull();
     if (runLP) {
-      auto [cnfl, state] =
-          aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagationWithLP(); }, global.stats.PROPTIME);
-      if (state == State::UNSAT) return SolveState::UNSAT;
-      confl = cnfl;
+      confl = aux::timeCall<CeSuper>([&] { return runPropagationWithLP(); }, global.stats.PROPTIME);
     } else {
-      std::pair<CeSuper, State> result =
-          aux::timeCall<std::pair<CeSuper, State>>([&] { return runPropagation(); }, global.stats.PROPTIME);
-      if (result.second == State::UNSAT) return SolveState::UNSAT;
-      confl = result.first;
+      confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
     }
 
     runLP = (bool)confl;
@@ -1230,17 +1182,15 @@ SolveState Solver::solve() {
       }
       if (decisionLevel() == 0) {
         global.logger.logInconsistency(confl, getLevel(), getPos());
-        return SolveState::UNSAT;
+        throw UnsatEncounter();
       } else if (decisionLevel() > assumptionLevel()) {
         CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, global.stats.CATIME);
         assert(analyzed);
         assert(analyzed->hasNegativeSlack(getLevel()));
         assert(analyzed->isSaturated());
-        ID res = aux::timeCall<ID>([&] { return learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
-        if (res == ID_Unsat) return SolveState::UNSAT;
+        aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
       } else {
-        State state = aux::timeCall<State>([&] { return extractCore(confl); }, global.stats.CATIME);
-        if (state == State::UNSAT) return SolveState::UNSAT;
+        aux::timeCallVoid([&] { extractCore(confl); }, global.stats.CATIME);
         assert(!lastCore || lastCore->hasNegativeSlack(assumptions.getIndex()));
         return SolveState::INCONSISTENT;
       }
@@ -1265,10 +1215,8 @@ SolveState Solver::solve() {
           lastCATime = global.stats.CATIME.z;
           lastNProp = global.stats.NPROP.z;
         }
-        State state = aux::timeCall<State>([&] { return reduceDB(); }, global.stats.CLEANUPTIME);
-        if (state == State::UNSAT) return SolveState::UNSAT;
-        state = aux::timeCall<std::pair<State, CeSuper>>([&] { return inProcess(); }, global.stats.INPROCESSTIME).first;
-        if (state == State::UNSAT) return SolveState::UNSAT;
+        aux::timeCallVoid([&] { reduceDB(); }, global.stats.CLEANUPTIME);
+        aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
         return SolveState::INPROCESSED;
       }
       Lit next = 0;
@@ -1282,10 +1230,8 @@ SolveState Solver::solve() {
               lastCore.reset();
               return SolveState::INCONSISTENT;
             } else {
-              State state =
-                  aux::timeCall<State>([&] { return extractCore(ca[reason[toVar(l)]].toExpanded(global.cePools), -l); },
-                                       global.stats.CATIME);
-              if (state == State::UNSAT) return SolveState::UNSAT;
+              aux::timeCallVoid([&] { extractCore(ca[reason[toVar(l)]].toExpanded(global.cePools), -l); },
+                                global.stats.CATIME);
               assert(!lastCore || lastCore->hasNegativeSlack(assumptions.getIndex()));
               return SolveState::INCONSISTENT;
             }
@@ -1317,8 +1263,7 @@ SolveState Solver::solve() {
       }
       assert(next != 0);
       if (global.options.inpProbing && decisionLevel() == 0 && toVar(lastRestartNext) != toVar(next)) {
-        State state = aux::timeCall<State>([&] { return probeRestart(next); }, global.stats.PROBETIME);
-        if (state == State::UNSAT) return SolveState::UNSAT;
+        aux::timeCallVoid([&] { probeRestart(next); }, global.stats.PROBETIME);
         assert(isKnown(getPos(), next));  // invariant of calling heur->pickBranchLit(...)
       } else {
         decide(next);
@@ -1328,13 +1273,11 @@ SolveState Solver::solve() {
   }
 }
 
-State Solver::probeRestart(Lit next) {
+void Solver::probeRestart(Lit next) {
   lastRestartNext = toVar(next);
   int oldUnits = trail.size();
   State state = probe(-next, true);
-  if (state == State::UNSAT) {
-    return State::UNSAT;
-  } else if (state == State::SUCCESS) {
+  if (state == State::SUCCESS) {
     IntSet& trailSet = global.isPool.take();
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       trailSet.add(trail[i]);
@@ -1342,9 +1285,7 @@ State Solver::probeRestart(Lit next) {
     backjumpTo(0);
     std::vector<Lit> newUnits;
     State state = probe(next, true);
-    if (state == State::UNSAT) {
-      return State::UNSAT;
-    } else if (state == State::SUCCESS) {
+    if (state == State::SUCCESS) {
       for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
         Lit l = trail[i];
         if (trailSet.has(l)) {
@@ -1358,12 +1299,8 @@ State Solver::probeRestart(Lit next) {
         for (Lit l : newUnits) {
           assert(!isUnit(getLevel(), -l));
           if (!isUnit(getLevel(), l)) {
-            ID res = aux::timeCall<ID>(
-                [&] { return learnUnitConstraint(l, Origin::PROBING, global.logger.logImpliedUnit(next, l)); },
-                global.stats.LEARNTIME);
-            if (res == ID_Unsat) {
-              return State::UNSAT;
-            }
+            aux::timeCallVoid([&] { learnUnitConstraint(l, Origin::PROBING, global.logger.logImpliedUnit(next, l)); },
+                              global.stats.LEARNTIME);
           }
         }
       }
@@ -1379,22 +1316,12 @@ State Solver::probeRestart(Lit next) {
     assumptions_lim.push_back(assumptions_lim.back() + 1);
     // repair assumptions_lim
   }
-  return State::SUCCESS;
 }
 
-State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe) {
+void Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe) {
   assert(decisionLevel() == 0);
-  if (considered.count(seed)) {
-    return State::FAIL;
-  }
-  if (isKnown(getPos(), seed)) {
-    return State::SUCCESS;
-  }
-  State state = probe(-seed, true);
-  if (state == State::UNSAT) {
-    return State::UNSAT;
-  } else if (state == State::FAIL) {
-    return State::FAIL;  // found unit literals instead
+  if (considered.count(seed) || isKnown(getPos(), seed) || probe(-seed, true) == State::FAIL) {
+    return;  // if probe fails, found unit literals instead
   }
 
   // find candidates
@@ -1414,12 +1341,8 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     for (Lit l : candidates) {
       if (previous.has(l) && isUnknown(getPos(), l)) {
         assert(decisionLevel() == 0);
-        ID res = aux::timeCall<ID>(
-            [&] { return learnUnitConstraint(l, Origin::PROBING, global.logger.logImpliedUnit(seed, l)); },
-            global.stats.LEARNTIME);
-        if (res == ID_Unsat) {
-          return State::UNSAT;
-        }
+        aux::timeCallVoid([&] { learnUnitConstraint(l, Origin::PROBING, global.logger.logImpliedUnit(seed, l)); },
+                          global.stats.LEARNTIME);
       } else if (previous.has(-l)) {
         equalities.merge(-seed, l);
       }
@@ -1442,9 +1365,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     candidates.pop_back();
     if (isKnown(getPos(), current)) continue;
     State state = probe(-current, false);
-    if (state == State::UNSAT) {
-      return State::UNSAT;
-    } else if (state == State::FAIL) {
+    if (state == State::FAIL) {
       continue;
     }
     IntSet& trailSet = global.isPool.take();
@@ -1456,12 +1377,8 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
       if (trailSet.has(-l) && isUnknown(getPos(), l)) {
         assert(decisionLevel() == 0);
         global.isPool.release(trailSet);
-        ID res = aux::timeCall<ID>(
-            [&] { return learnUnitConstraint(l, Origin::PROBING, global.logger.logImpliedUnit(l, current)); },
-            global.stats.LEARNTIME);
-        if (res == ID_Unsat) {
-          return State::UNSAT;
-        }
+        aux::timeCallVoid([&] { learnUnitConstraint(l, Origin::PROBING, global.logger.logImpliedUnit(l, current)); },
+                          global.stats.LEARNTIME);
         continue;
       }
     }
@@ -1488,7 +1405,7 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     uint64_t hash = aux::hashForSet(cardLits);
     if (auto bestsize = atMostOneHashes.find(hash);
         bestsize != atMostOneHashes.end() && bestsize->second >= cardLits.size()) {
-      return State::FAIL;
+      return;
     }
     atMostOneHashes[hash] = cardLits.size();
     ConstrSimple32 card{{}, (int)cardLits.size() - 1};
@@ -1498,14 +1415,11 @@ State Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std
     ++global.stats.ATMOSTONES;
     CeSuper ce = card.toExpanded(global.cePools);
     global.logger.logAtMostOne(card, ce);
-    ID res = aux::timeCall<ID>([&] { return learnConstraint(ce, Origin::DETECTEDAMO); }, global.stats.LEARNTIME);
-    return res == ID_Unsat ? State::UNSAT : State::SUCCESS;
-  } else {
-    return State::FAIL;
+    aux::timeCallVoid([&] { learnConstraint(ce, Origin::DETECTEDAMO); }, global.stats.LEARNTIME);
   }
 }
 
-State Solver::runAtMostOneDetection() {
+void Solver::runAtMostOneDetection() {
   assert(decisionLevel() == 0);
   int currentUnits = trail.size();
   DetTime currentDetTime = global.stats.getDetTime();
@@ -1517,15 +1431,14 @@ State Solver::runAtMostOneDetection() {
                        global.stats.ATMOSTONEDETTIME <
                            global.options.inpAMO.get() * std::max(global.options.basetime.get(), currentDetTime))) {
     previous.clear();
-    if (detectAtMostOne(-next, considered, previous) == State::UNSAT) return State::UNSAT;
-    if (detectAtMostOne(next, considered, previous) == State::UNSAT) return State::UNSAT;
+    detectAtMostOne(-next, considered, previous);
+    detectAtMostOne(next, considered, previous);
     next = heur->nextInActOrder(next);
     oldDetTime = currentDetTime;
     currentDetTime = global.stats.getDetTime();
     global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
   }
   global.stats.NATMOSTONEUNITS += trail.size() - currentUnits;
-  return State::SUCCESS;
 }
 
 void Solver::addToTabu(const CRef& cr) {

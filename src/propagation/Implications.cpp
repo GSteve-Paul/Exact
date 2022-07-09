@@ -60,7 +60,7 @@ State Implications::propagate() {
       if (!isTrue(solver.getLevel(), b)) {
         ++solver.getStats().NPROBINGIMPLS;
         ID id = solver.getLogger().logRUP(-a, b);
-        if (solver.learnClause({-a, b}, Origin::IMPLICATION, id) == ID_Unsat) return State::UNSAT;
+        solver.learnClause({-a, b}, Origin::IMPLICATION, id);
         added = true;
       }
     }

@@ -37,6 +37,7 @@ See the file LICENSE or run with the flag --license=MIT.
 
 class Exact {
   xct::ILP ilp;
+  bool unsatState;
 
   xct::IntVar* getVariable(const std::string& name);
 
@@ -78,10 +79,9 @@ class Exact {
    * @param lb: the lower bound
    * @param useUB: whether or not the constraint is upper bounded
    * @param ub: the upper bound
-   * @return: State::SUCCESS (1) or State::UNSAT (0) to denote whether the constraint yielded unsatisfiability.
    */
-  State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
-                      long long lb, bool useUB, long long ub);
+  void addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
+                     long long lb, bool useUB, long long ub);
 
   /**
    * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.
@@ -90,10 +90,9 @@ class Exact {
    * @param coefs: coefficients of the constraint
    * @param vars: variables of the constraint
    * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
-   * @return: State::UNSAT (0) or State::SUCCESS (1) to denote whether the added constraint yielded unsatisfiability.
    */
-  State addReification(const std::string& head, const std::vector<long long>& coefs,
-                       const std::vector<std::string>& vars, long long lb);
+  void addReification(const std::string& head, const std::vector<long long>& coefs,
+                      const std::vector<std::string>& vars, long long lb);
 
   /**
    * Set a list of assumptions under which a(n optimal) solution is found.
@@ -174,17 +173,13 @@ class Exact {
 
   /**
    * Add an upper bound to the objective function based on the objective value of the last found solution.
-   *
-   * @return: State::UNSAT (0) or State::SUCCESS (1) to denote whether the added constraint yielded unsatisfiability.
    */
-  State boundObjByLastSol();
+  void boundObjByLastSol();
 
   /**
    * Add a constraint enforcing the exclusion of the last solution.
-   *
-   * @return: State::UNSAT (0) or State::SUCCESS (1) to denote whether the added constraint yielded unsatisfiability.
    */
-  State invalidateLastSol();
+  void invalidateLastSol();
 
   /**
    * Add a constraint enforcing the exclusion of the subset of the assignments in the last solution over a set of
@@ -193,9 +188,8 @@ class Exact {
    * This can be useful in case a small number of variables determines the rest of the variables in each solution.
    *
    * @param vars: the variables for the sub-solution.
-   * @return: State::UNSAT (0) or State::SUCCESS (1) to denote whether the added constraint yielded unsatisfiability.
    */
-  State invalidateLastSol(const std::vector<std::string>& vars);
+  void invalidateLastSol(const std::vector<std::string>& vars);
 
   /**
    * Get the current lower and upper bound on the objective function.
@@ -227,6 +221,7 @@ class Exact {
    *
    * @param varnames: variables for which to calculate the implied bounds
    * @return: a pair of bounds for each variable in varnames
+   * @throw: UnsatEncounter exception in the case the instance is unsatisfiable. Propagation is undefined in this case.
    */
   std::vector<std::pair<long long, long long> > propagate(const std::vector<std::string>& varnames);
 

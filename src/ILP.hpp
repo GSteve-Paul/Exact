@@ -89,15 +89,9 @@ class IntConstraint {
 };
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
-struct UnsatState : public std::exception {
-  const char* what() const throw() { return "Solver is in an UNSAT state."; }
-};
-
 class ILP {
   Solver solver;
   Optim optim;
-
-  bool unsatDetected = false;
 
   std::vector<std::unique_ptr<IntVar>> vars;
   IntConstraint obj;
@@ -113,8 +107,6 @@ class ILP {
   Global global;
 
   ILP();
-
-  bool unsatState() { return unsatDetected; }
 
   const IntConstraint& getObjective() const { return obj; }
   Solver& getSolver() { return solver; }
@@ -136,14 +128,14 @@ class ILP {
   SolveState run();
   SolveState runFull();
 
-  State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                      const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
-                      const std::optional<bigint>& ub = std::nullopt);
-  State addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                       const bigint& lb);
-  State boundObjByLastSol();
-  State invalidateLastSol();
-  State invalidateLastSol(const std::vector<std::string>& names);
+  void addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                     const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
+                     const std::optional<bigint>& ub = std::nullopt);
+  void addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                      const bigint& lb);
+  void boundObjByLastSol();
+  void invalidateLastSol();
+  void invalidateLastSol(const std::vector<std::string>& names);
 
   ratio getLowerBound() const;
   ratio getUpperBound() const;
