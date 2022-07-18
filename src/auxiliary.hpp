@@ -383,9 +383,8 @@ uint64_t hash(uint64_t x);
 template <typename T>
 uint64_t hashForSet(const std::vector<T>& els) {
   uint64_t result = els.size();
-  std::hash<T> hf;
   for (const T& el : els) {
-    result ^= hash(hf(el));
+    result ^= hash(std::hash<T>()(el));
   }
   return result;
 }
@@ -393,9 +392,8 @@ uint64_t hashForSet(const std::vector<T>& els) {
 template <typename T>
 uint64_t hashForList(const std::vector<T>& els) {
   uint64_t result = els.size();
-  std::hash<T> hf;
   for (const T& el : els) {
-    result ^= hash(hf(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
+    result ^= hash(std::hash<T>()(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
   }
   return result;
 }
