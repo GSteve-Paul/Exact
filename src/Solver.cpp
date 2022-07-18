@@ -1402,7 +1402,7 @@ void Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std:
     }
   }
   if (cardLits.size() > 2) {
-    uint64_t hash = aux::hashForSet(cardLits);
+    uint64_t hash = aux::hashForSet<Lit>(cardLits);
     if (auto bestsize = atMostOneHashes.find(hash);
         bestsize != atMostOneHashes.end() && bestsize->second >= cardLits.size()) {
       return;

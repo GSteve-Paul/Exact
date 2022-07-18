@@ -97,12 +97,4 @@ uint64_t hash(uint64_t x) {
   return x;
 }
 
-uint64_t hashForSet(const std::vector<int>& ints) {
-  uint64_t result = ints.size();
-  for (int i : ints) {
-    result ^= hash(i);
-  }
-  return result;
-}
-
 }  // namespace xct::aux

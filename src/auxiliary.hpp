@@ -379,7 +379,26 @@ uint32_t xorshift32();
 
 uint32_t getRand(uint32_t min, uint32_t max);
 uint64_t hash(uint64_t x);
-uint64_t hashForSet(const std::vector<int>& ints);
+
+template <typename T>
+uint64_t hashForSet(const std::vector<T>& els) {
+  uint64_t result = els.size();
+  std::hash<T> hf;
+  for (const T& el : els) {
+    result ^= hash(hf(el));
+  }
+  return result;
+}
+
+template <typename T>
+uint64_t hashForList(const std::vector<T>& els) {
+  uint64_t result = els.size();
+  std::hash<T> hf;
+  for (const T& el : els) {
+    result ^= hash(hf(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
+  }
+  return result;
+}
 
 template <typename... Args>
 using predicate = std::function<bool(Args...)>;
