@@ -907,7 +907,7 @@ State Solver::reduceDB() {
     int res = (int)ca[x].lbd() - (int)ca[y].lbd();
     return res < 0 || (res == 0 && ca[x].strength > ca[y].strength);
   });
-  long long limit = std::pow(std::log(stats.NCONFL.z), options.dbExp.get());
+  long long limit = options.dbScale.get()*std::pow(std::log(stats.NCONFL.z), options.dbExp.get());
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
   }
@@ -1230,7 +1230,7 @@ SolveState Solver::solve() {
       }
       if (stats.NCONFL >= nconfl_to_reduce) {
         ++stats.NCLEANUP;
-        nconfl_to_reduce += 1 + std::pow(std::log(stats.NCONFL.z), options.dbExp.get());
+        nconfl_to_reduce += 1 + options.dbScale.get()*std::pow(std::log(stats.NCONFL.z), options.dbExp.get());
 
         if (options.verbosity.get() > 0) {
           long double propDiff = stats.PROPTIME.z - lastPropTime;
