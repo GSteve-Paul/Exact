@@ -8,7 +8,7 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 
 ## Stay updated
 
-Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter.
+Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [reddit community](https://reddit.com/r/exact).
 
 ## Features
 
@@ -96,6 +96,10 @@ The location of the SoPlex package can be configured with the cmake option `-Dso
 ## License
 
 Exact is licensed under the [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html). If this would hinder your intended usage, please get in touch via jodevriendt.com/contact.
+
+## Benchmarks
+
+The current set of benchmarks which is used to assess performance is available [here](https://gitlab.com/JoD/exact-benchmarks).
 
 ## Citations
 
