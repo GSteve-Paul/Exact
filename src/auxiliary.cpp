@@ -87,8 +87,7 @@ uint32_t xorshift32() {
 
 uint32_t getRand(uint32_t min, uint32_t max) {
   assert(min < max);
-  return (((uint64_t) rng::xorshift32() * (uint64_t) (max-min+1)) >> 32) + min ;
-
+  return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) + min;
 }
 
 uint64_t hash(uint64_t x) {
