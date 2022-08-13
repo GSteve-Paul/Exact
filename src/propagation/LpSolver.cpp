@@ -144,7 +144,7 @@ LpSolver::LpSolver(ILP& i) : ilp(i), solver(i.getSolver()) {
   lp.setIntParam(soplex::SoPlex::SIMPLIFIER, soplex::SoPlex::SIMPLIFIER_OFF);
   lp.setIntParam(soplex::SoPlex::OBJSENSE, soplex::SoPlex::OBJSENSE_MINIMIZE);
   lp.setIntParam(soplex::SoPlex::VERBOSITY, options.verbosity.get());
-  lp.setRandomSeed(0);
+  lp.setRandomSeed(options.randomSeed.get());
 
   // add two empty rows for objective bound constraints
   while (row2data.size() < 2) {
