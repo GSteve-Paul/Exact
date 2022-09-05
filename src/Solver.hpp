@@ -135,14 +135,14 @@ class Solver {
   Equalities equalities;
   Implications implications;
 
-  long long nconfl_to_reduce;
-  long long nconfl_to_restart;
+  long long nconfl_to_reduce = 0;
+  long long nconfl_to_restart = 0;
 
  public:
   Solver(ILP& i);
   ~Solver();
   void init(const CeArb& obj);
-  bool isFirstRun() { return firstRun; }
+  bool isFirstRun() const { return firstRun; }
 
   int getNbVars() const { return n; }
   void setNbVars(int nvars, bool orig);
