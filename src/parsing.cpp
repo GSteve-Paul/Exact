@@ -363,6 +363,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
 
   // Constraints
   const CoinPackedMatrix* cpm = coinutils.getMatrixByRow();
+  if (cpm == nullptr) throw std::invalid_argument("CoinUtils parsing failed.");
   for (int r = 0; r < coinutils.getNumRows(); ++r) {
     quit::checkInterrupt();
     char rowSense = coinutils.getRowSense()[r];
@@ -382,8 +383,8 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     bool useUB = rowSense == 'L' || rowSense == 'E' || rowSense == 'R';
     ratcoefs.emplace_back(useUB ? coinutils.getRowUpper()[r] : 0);
     bigint cdenom = aux::commonDenominator(ratcoefs);
-    for (const ratio& r : ratcoefs) {
-      coefs.emplace_back(r * cdenom);
+    for (const ratio& rat : ratcoefs) {
+      coefs.emplace_back(rat * cdenom);
     }
     bigint ub = coefs.back();
     coefs.pop_back();
