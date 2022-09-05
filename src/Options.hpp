@@ -313,12 +313,20 @@ struct Options {
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
-  ValOption<int> intEncoding{
-      "int-orderenc",
-      "Upper bound on the range size of order-encoded integer variables, any larger will be encoded binary-wise", 12,
-      "2 =< int", [](const int& x) -> bool { return x >= 2; }};
-  ValOption<double> intDefaultBound{"int-infinity", "Bound used for unbounded integer variables", limit32, "0 < double",
-                                    [](const double& x) -> bool { return x > 0; }};
+  ValOption<int> ilpEncoding{"ilp-orderenc",
+                             "Upper bound on the range size of order-encoded integer variables. Integer variables with "
+                             "a larger range will use the binary encoding.",
+                             12, "2 =< int", [](const int& x) -> bool { return x >= 2; }};
+  BoolOption ilpContinuous{"ilp-continuous",
+                           "Accept continuous variables by treating them as integer variables. This restricts the "
+                           "problem and may yield UNSAT when no integer solution exists.",
+                           false};
+  BoolOption ilpUnbounded{"ilp-unbounded",
+                          "Accept unbounded integer variables by imposing default bounds. This restricts the problem "
+                          "and may yield UNSAT when no solution within the bounds exists.",
+                          true};
+  ValOption<double> ilpDefaultBound{"ilp-defbound", "Default bound used for unbounded integer variables", limit32,
+                                    "0 < double", [](const double& x) -> bool { return x > 0; }};
   BoolOption pureLits{"inp-purelits", "Propagate pure literals", true};
   ValOption<long long> domBreakLim{
       "inp-dombreaklim",
@@ -385,8 +393,9 @@ struct Options {
       &cgEncoding,
       &cgResolveProp,
       &cgStrat,
-      &intEncoding,
-      &intDefaultBound,
+      &ilpEncoding,
+      &ilpContinuous,
+      &ilpDefaultBound,
       &pureLits,
       &domBreakLim,
       &tabuLim,

@@ -301,32 +301,40 @@ bigint lcm(const bigint& x, const bigint& y) {
 template <typename T>
 void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
   // Variables
-  bool continuousVars = false;
-  bool unboundedVars = false;
   for (int c = 0; c < coinutils.getNumCols(); ++c) {
+    const std::string varname = coinutils.columnName(c);
     quit::checkInterrupt();
-    continuousVars = continuousVars || !coinutils.isInteger(c);
+    if (!coinutils.isInteger(c)) {
+      if (options.ilpContinuous) {
+        std::cout << "c WARNING continuous variable " << varname << " treated as integer" << std::endl;
+      } else {
+        throw std::invalid_argument("No support for continuous variables: " + varname);
+      }
+    }
     double lower = coinutils.getColLower()[c];
     if (aux::abs(lower) == coinutils.getInfinity()) {
-      unboundedVars = true;
-      lower = -options.intDefaultBound.get();
+      if (options.ilpUnbounded) {
+        lower = -options.ilpDefaultBound.get();
+        std::cout << "c WARNING default lower bound " << lower << " for unbounded variable " << varname << std::endl;
+      } else {
+        throw std::invalid_argument("No support for unbounded variables: " + varname);
+      }
     }
     double upper = coinutils.getColUpper()[c];
     if (aux::abs(upper) == coinutils.getInfinity()) {
-      unboundedVars = true;
-      upper = options.intDefaultBound.get();
+      if (options.ilpUnbounded) {
+        upper = options.ilpDefaultBound.get();
+        std::cout << "c WARNING default upper bound " << upper << " for unbounded variable " << varname << std::endl;
+      } else {
+        throw std::invalid_argument("No support for unbounded variables: " + varname);
+      }
     }
     if (upper < lower) {
       std::cout << "Conflicting bound on integer variable" << std::endl;
       quit::exit_SUCCESS(ilp);
     }
-    [[maybe_unused]] IntVar* iv = ilp.getVarFor(coinutils.columnName(c), false, static_cast<bigint>(std::ceil(lower)),
-                                                static_cast<bigint>(std::floor(upper)));
-  }
-  if (continuousVars) std::cout << "c WARNING continuous variables are treated as integer variables" << std::endl;
-  if (unboundedVars) {
-    std::cout << "c WARNING unbounded integer variables have custom bounds of +-" << options.intDefaultBound.get()
-              << std::endl;
+    [[maybe_unused]] IntVar* iv =
+        ilp.getVarFor(varname, false, static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)));
   }
 
   std::vector<ratio> ratcoefs;

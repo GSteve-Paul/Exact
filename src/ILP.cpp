@@ -50,7 +50,7 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
 }
 
 IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub)
-    : name(n), lowerBound(lb), upperBound(ub), logEncoding(getRange() > options.intEncoding.get()) {
+    : name(n), lowerBound(lb), upperBound(ub), logEncoding(getRange() > options.ilpEncoding.get()) {
   assert(lb <= ub);
   assert(!nameAsId || isBoolean());
 
