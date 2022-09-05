@@ -168,7 +168,11 @@ ILP::ILP() : solver(*this), obj({}, {}, {}, 0) {}
 
 IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& lowerbound, const bigint& upperbound) {
   if (auto it = name2var.find(name); it != name2var.end()) return it->second;
-  if (lowerbound > upperbound) throw std::invalid_argument("Lower bound of " + name + " must not exceed upper bound.");
+  if (lowerbound > upperbound) {
+    std::stringstream ss;
+    ss << "Lower bound " << lowerbound << " of " << name << " exceeds upper bound " << upperbound;
+    throw std::invalid_argument(ss.str());
+  }
   vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound));
   IntVar* iv = vars.back().get();
   name2var.insert({name, iv});
