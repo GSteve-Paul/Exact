@@ -474,10 +474,10 @@ struct Stats {
   // NOTE: below linear relations were determined by regression tests on experimental data,
   // so that the deterministic time correlates as closely as possible with the cpu time in seconds
   [[nodiscard]] inline long double getLpDetTime() const {
-    return (1 + 5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9;
+    return (5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9;
   }
   [[nodiscard]] inline long double getNonLpDetTime() const {
-    return (1 + 49.00 * NWATCHLOOKUPS + 9.09 * NWATCHCHECKS + 3.55 * NPROPCHECKS + 60.69 * NSATURATESTEPS +
+    return (49.00 * NWATCHLOOKUPS + 9.09 * NWATCHCHECKS + 3.55 * NPROPCHECKS + 60.69 * NSATURATESTEPS +
             61.86 * (NADDEDLITERALS - NLPADDEDLITERALS) + 1484.40 * NWEAKENEDNONIMPLIED + 268.51 * NTRAILPOPS) /
            1e9;
   }

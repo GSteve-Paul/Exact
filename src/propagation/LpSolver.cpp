@@ -423,7 +423,7 @@ LpStatus LpSolver::checkFeasibility(bool inProcessing) {
     long double nlptime = stats.getNonLpDetTime();
     long double lptime = stats.getLpDetTime();
     assert(options.lpTimeRatio.get() != 0);
-    if (lptime == 1 || lptime < options.lpTimeRatio.get() * (lptime + nlptime)) {
+    if (lptime < options.lpTimeRatio.get() * (lptime + nlptime + 1e-9)) {
       double limit = options.lpPivotBudget.get() * lpPivotMult;
       limit = std::min<double>(limit, std::numeric_limits<int>::max());
       lp.setIntParam(soplex::SoPlex::ITERLIMIT, static_cast<int>(limit));
