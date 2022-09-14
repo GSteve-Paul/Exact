@@ -52,6 +52,10 @@ Exact supports five input formats (described in more detail in [`InputFormats.md
 - `.mps` Mathematical Programming System (MPS) via the optional CoinUtils library
 - `.lp` Linear Program (LP) via the optional CoinUtils library
 
+Note that `.mps` and `.lp` allow rational variables, which are not supported by Exact.
+Additionally, these formats permit floating point values, which may lead to [tricky](https://gitlab.com/JoD/exact/-/issues/11) [issues](https://gitlab.com/JoD/exact/-/issues/12).
+Rewrite constraints with fractional values to integral ones by multiplying with the lowest common multiple of the denominators. 
+
 By default, Exact decides on the format based on the filename extension, but this can be overridden with the `--format` option.
 
 ## Compilation
