@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
     }
     quit::exit_SUCCESS(ilp);
   } catch (const AsynchronousInterrupt& ai) {
-    if (options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
+    std::cout << "c " << ai.what() << std::endl;
     quit::exit_INDETERMINATE(ilp);
   }
 }
