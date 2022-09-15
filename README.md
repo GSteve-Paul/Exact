@@ -84,6 +84,9 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 - Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
   Use cmake option `-Dcoinutils=ON` after [installing the library](https://github.com/coin-or/CoinUtils#binaries).
 - Optionally: [SoPlex](https://soplex.zib.de) LP solver (see below).
+- Optionally: [Doctest](https://github.com/doctest/doctest) unit test framework. 
+  Use cmake option `-Dwithtests=On` after installing the library on your machine.
+  (you may want to disable *their* cmake option `DOCTEST_WITH_TESTS`)
 
 ## SoPlex
 

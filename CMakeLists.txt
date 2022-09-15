@@ -23,10 +23,10 @@ if(NOT (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
 endif()
 
 set(build_result "Executable"
-    CACHE STRING "Result of make command: Executable, SharedLib or StaticLib.")
+    CACHE STRING "Result of make command: Executable, UnitTests, SharedLib or StaticLib.")
 
-if(NOT (build_result STREQUAL "Executable" OR build_result STREQUAL "SharedLib" OR build_result STREQUAL "StaticLib"))
-    message(WARNING "Please use -Dbuild_result=[Executable | SharedLib | StaticLib]")
+if(NOT (build_result STREQUAL "Executable" OR build_result STREQUAL "SharedLib" OR build_result STREQUAL "StaticLib" OR build_result STREQUAL "UnitTests"))
+    message(WARNING "Please use -Dbuild_result=[Executable | UnitTests | SharedLib | StaticLib]")
 endif()
 
 set(build_static "OFF"
@@ -108,6 +108,10 @@ set(source_files
     src/propagation/Propagator.cpp
     src/propagation/Equalities.cpp
     src/propagation/Implications.cpp
+    src/fodot/Fodot.cpp
+    src/fodot/Expression.cpp
+    src/fodot/Theory.cpp
+    src/fodot/IneqExpr.cpp
 
     src/used_licenses/licenses.cpp
     src/used_licenses/zib_academic.cpp
@@ -143,6 +147,11 @@ set(header_files
     src/propagation/Implications.hpp
     src/Global.hpp
     src/Exact.hpp
+    src/fodot/Fodot.hpp
+    src/fodot/Expression.hpp
+    src/fodot/Theory.hpp
+    src/fodot/auxiliary.hpp
+    src/fodot/IneqExpr.hpp
 
     src/used_licenses/licenses.hpp
     src/used_licenses/zib_academic.hpp
@@ -155,6 +164,7 @@ set(header_files
 
 set(main_files
     src/main.cpp
+    src/doctest/main.cpp
 )
 
 set(all_files ${source_files} ${main_files} ${header_files})
@@ -168,6 +178,14 @@ if(build_result STREQUAL "Executable")
             COMMAND ./run_tests.sh ${testruns_timeout} "testruns" ${CMAKE_CURRENT_BINARY_DIR}/Exact
     )
     add_dependencies(testruns Exact)
+endif()
+
+if(build_result STREQUAL "UnitTests")
+    find_package(doctest REQUIRED)
+    add_executable(Exact src/doctest/main.cpp ${source_files})
+    target_link_libraries(Exact doctest::doctest)
+else()
+    target_compile_definitions(Exact PUBLIC DOCTEST_CONFIG_DISABLE=1)
 endif()
 
 if(build_result STREQUAL "SharedLib")

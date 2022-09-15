@@ -31,6 +31,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "Exact.hpp"
 #include <csignal>
 #include <fstream>
+#include "fodot/Fodot.hpp"
 #include "parsing.hpp"
 
 using namespace xct;
