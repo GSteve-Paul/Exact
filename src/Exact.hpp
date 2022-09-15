@@ -54,8 +54,11 @@ class Exact {
    * @param name: name of the variable
    * @param lb: lower bound
    * @param ub: upper bound
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
   void addVariable(const std::string& name, long long lb, long long ub);
+  void addVariable(const std::string& name, const std::string& lb, const std::string& ub);
 
   /**
    * Returns a list of variables added to the solver.
@@ -65,13 +68,6 @@ class Exact {
   std::vector<std::string> getVariables() const;
 
   /**
-   * The given bounds of a previously added variable.
-   * @param var: the variable under consideration.
-   * @return: the pair of bounds (lower, upper) to the variable.
-   */
-  std::pair<long long, long long> getBounds(const std::string& var) const;
-
-  /**
    * Add a linear constraint.
    *
    * @param coefs: coefficients of the constraint
@@ -80,21 +76,11 @@ class Exact {
    * @param lb: the lower bound
    * @param useUB: whether or not the constraint is upper bounded
    * @param ub: the upper bound
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
   void addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                      long long lb, bool useUB, long long ub);
-
-  /**
-   * Add a linear constraint.
-   * Pass arbitrary large values as integer string.
-   *
-   * @param coefs: coefficients of the constraint
-   * @param vars: variables of the constraint
-   * @param useLB: whether or not the constraint is lower bounded
-   * @param lb: the lower bound
-   * @param useUB: whether or not the constraint is upper bounded
-   * @param ub: the upper bound
-   */
   void addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
                      const std::string& lb, bool useUB, const std::string& ub);
 
@@ -105,19 +91,11 @@ class Exact {
    * @param coefs: coefficients of the constraint
    * @param vars: variables of the constraint
    * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
   void addReification(const std::string& head, const std::vector<long long>& coefs,
                       const std::vector<std::string>& vars, long long lb);
-
-  /**
-   * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.
-   * Pass arbitrary large values as integer string.
-   *
-   * @param head: Boolean variable that should be true iff the constraint holds
-   * @param coefs: coefficients of the constraint
-   * @param vars: variables of the constraint
-   * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
-   */
   void addReification(const std::string& head, const std::vector<std::string>& coefs,
                       const std::vector<std::string>& vars, const std::string& lb);
 
@@ -128,21 +106,12 @@ class Exact {
    *
    * @param iv: the variable to be fixed.
    * @param val: the value the variable is fixed to
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
   void fix(const std::string& var, long long val);
-
-  /**
-   * Fix the value of a variable.
-   * Pass arbitrary large value as integer string.
-   *
-   * Fixing the variable to different values will lead to unsatisfiability.
-   *
-   * @param iv: the variable to be fixed.
-   * @param val: the value the variable is fixed to
-   */
   void fix(const std::string& var, const std::string& val);
 
-  // TODO: create value-string methods for below functions
   /**
    * Set a list of assumptions under which a(n optimal) solution is found.
    *
@@ -152,8 +121,11 @@ class Exact {
    *
    * @param vars: the variables to assume
    * @param vals: the values assumed for the variables
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
   void setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals);
+  void setAssumptions(const std::vector<std::string>& vars, const std::vector<std::string>& vals);
 
   /**
    * Initialize the solver with an objective function to be minimized.
@@ -169,8 +141,12 @@ class Exact {
    * @param addNonImplieds: allow the solver to derive non-implied constraints that are consistent with at least
    * one optimal solution. A simple example is fixing pure literals, which occur only positively or negatively in the
    * constraints. These non-implied constraints speed up search by reducing the set of solutions.
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
   void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool boundObjective,
+            bool addNonImplieds);
+  void init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool boundObjective,
             bool addNonImplieds);
 
   /**
@@ -203,8 +179,11 @@ class Exact {
    *
    * @param vars: the added variables for which the solution values should be returned.
    * @return: the solution values to the variables.
+   *
+   * Return arbitrarily large values using the string-based function variant '_arb'.
    */
   std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
+  std::vector<std::string> getLastSolutionFor_arb(const std::vector<std::string>& vars) const;
 
   /**
    * Check whether a core -- a subset of the assumptions which cannot be extended to a solution -- has been found.
@@ -244,8 +223,11 @@ class Exact {
    * Get the current lower and upper bound on the objective function.
    *
    * @return: the pair of bounds (lower, upper) to the objective.
+   *
+   * Return arbitrarily large values using the string-based function variant '_arb'.
    */
   std::pair<long long, long long> getObjectiveBounds() const;
+  std::pair<std::string, std::string> getObjectiveBounds_arb() const;
 
   /**
    * Set the verbosity level of Exact's output.
@@ -266,13 +248,16 @@ class Exact {
 
   /**
    * Under the assumptions set by setAssumptions, return implied lower and upper bound for the non-assumed variables in
-   * varnames. If no solution exists under the assumptions, return empty vector.
+   * vars. If no solution exists under the assumptions, return empty vector.
    *
-   * @param varnames: variables for which to calculate the implied bounds
-   * @return: a pair of bounds for each variable in varnames
+   * @param vars: variables for which to calculate the implied bounds
+   * @return: a pair of bounds for each variable in vars
    * @throw: UnsatEncounter exception in the case the instance is unsatisfiable. Propagation is undefined in this case.
+   *
+   * Return arbitrarily large values using the string-based function variant '_arb'.
    */
-  std::vector<std::pair<long long, long long> > propagate(const std::vector<std::string>& varnames);
+  std::vector<std::pair<long long, long long> > propagate(const std::vector<std::string>& vars);
+  std::vector<std::pair<std::string, std::string> > propagate_arb(const std::vector<std::string>& vars);
 
   /**
    * Set solver options. Run with --help or look at Options.hpp to find the possible options.

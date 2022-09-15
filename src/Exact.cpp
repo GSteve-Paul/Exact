@@ -45,7 +45,7 @@ std::vector<IntVar*> Exact::getVariables(const std::vector<std::string>& names) 
   return aux::comprehension(names, [&](const std::string& name) { return getVariable(name); });
 }
 
-// TODO: reduce below code duplication using templates
+// TODO: reduce below code duplication using templates?
 
 bigint getCoef(long long c) { return static_cast<bigint>(c); }
 bigint getCoef(const std::string& c) { return bigint(c); }
@@ -70,7 +70,12 @@ Exact::Exact() : ilp(), unsatState(false) {
 
 void Exact::addVariable(const std::string& name, long long lb, long long ub) {
   if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
-  ilp.addVar(name, lb, ub);
+  ilp.addVar(name, getCoef(lb), getCoef(ub));
+}
+
+void Exact::addVariable(const std::string& name, const std::string& lb, const std::string& ub) {
+  if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
+  ilp.addVar(name, getCoef(lb), getCoef(ub));
 }
 
 std::vector<std::string> Exact::getVariables() const {
@@ -129,6 +134,12 @@ void Exact::setAssumptions(const std::vector<std::string>& vars, const std::vect
 
   ilp.setAssumptions(getCoefs(vals), getVariables(vars));
 }
+void Exact::setAssumptions(const std::vector<std::string>& vars, const std::vector<std::string>& vals) {
+  if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
+  if (vars.size() > 1e9) throw std::invalid_argument("More than 1e9 assumptions.");
+
+  ilp.setAssumptions(getCoefs(vals), getVariables(vars));
+}
 
 void Exact::boundObjByLastSol() {
   if (unsatState) return;
@@ -166,11 +177,20 @@ void Exact::init(const std::vector<long long>& coefs, const std::vector<std::str
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {});
 
   ilp.init(boundObjective, addNonImplieds);
+}
+void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool boundObjective,
+                 bool addNonImplieds) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
+  if (unsatState) return;
 
-  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
+  ilp.setObjective(getCoefs(coefs), getVariables(vars), {});
+
+  ilp.init(boundObjective, addNonImplieds);
 }
 
 SolveState Exact::run() {
+  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
   if (unsatState) return SolveState::UNSAT;
   try {
     return ilp.run();
@@ -182,9 +202,12 @@ SolveState Exact::run() {
 std::pair<long long, long long> Exact::getObjectiveBounds() const {
   return {static_cast<long long>(ilp.getLowerBound()), static_cast<long long>(ilp.getUpperBound())};
 }
-
-std::pair<long long, long long> Exact::getBounds(const std::string& var) const {
-  return static_cast<std::pair<long long, long long>>(ilp.getBounds(getVariable(var)));
+std::pair<std::string, std::string> Exact::getObjectiveBounds_arb() const {
+  std::stringstream lower;
+  lower << ilp.getLowerBound();
+  std::stringstream upper;
+  upper << ilp.getUpperBound();
+  return {lower.str(), upper.str()};
 }
 
 bool Exact::hasSolution() const { return ilp.hasSolution(); }
@@ -192,6 +215,13 @@ bool Exact::hasSolution() const { return ilp.hasSolution(); }
 std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
   return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)),
                             [](const bigint& i) { return static_cast<long long>(i); });
+}
+std::vector<std::string> Exact::getLastSolutionFor_arb(const std::vector<std::string>& vars) const {
+  return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)), [](const bigint& i) {
+    std::stringstream ss;
+    ss << i;
+    return ss.str();
+  });
 }
 
 bool Exact::hasCore() const { return ilp.hasCore(); }
@@ -208,6 +238,16 @@ std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<
   if (unsatState) throw UnsatEncounter();
   return aux::comprehension(ilp.propagate(getVariables(vars)), [](const std::pair<bigint, bigint>& x) {
     return std::pair<long long, long long>(static_cast<long long>(x.first), static_cast<long long>(x.second));
+  });
+}
+std::vector<std::pair<std::string, std::string>> Exact::propagate_arb(const std::vector<std::string>& vars) {
+  if (unsatState) throw UnsatEncounter();
+  return aux::comprehension(ilp.propagate(getVariables(vars)), [](const std::pair<bigint, bigint>& x) {
+    std::stringstream lower;
+    lower << x.first;
+    std::stringstream upper;
+    upper << x.second;
+    return std::pair<std::string, std::string>(lower.str(), upper.str());
   });
 }
 
