@@ -304,48 +304,66 @@ bigint lcm(const bigint& x, const bigint& y) {
   return y == 0 ? x : boost::multiprecision::lcm(x, y);
 }
 
+ratio parseCoinUtilsFloat(double x, bool& firstFloat) {
+  if (firstFloat && std::floor(x) != x) {
+    std::cout << "c WARNING floating point values may not be exactly represented by double" << std::endl;
+    firstFloat = false;
+  }
+  return static_cast<ratio>(x);
+}
+
 template <typename T>
 void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
   // Variables
-  bool continuousVars = false;
-  bool unboundedVars = false;
   for (int c = 0; c < coinutils.getNumCols(); ++c) {
     quit::checkInterrupt(ilp.global);
-    continuousVars = continuousVars || !coinutils.isInteger(c);
+    const std::string varname = coinutils.columnName(c);
+    if (!coinutils.isInteger(c)) {
+      if (ilp.global.options.ilpContinuous) {
+        std::cout << "c WARNING continuous variable " << varname << " treated as integer" << std::endl;
+      } else {
+        throw std::invalid_argument("No support for continuous variables: " + varname);
+      }
+    }
     double lower = coinutils.getColLower()[c];
     if (aux::abs(lower) == coinutils.getInfinity()) {
-      unboundedVars = true;
-      lower = -ilp.global.options.intDefaultBound.get();
+      if (ilp.global.options.ilpUnbounded) {
+        lower = -ilp.global.options.ilpDefaultBound.get();
+        std::cout << "c WARNING default lower bound " << lower << " for unbounded variable " << varname << std::endl;
+      } else {
+        throw std::invalid_argument("No support for unbounded variables: " + varname);
+      }
     }
     double upper = coinutils.getColUpper()[c];
     if (aux::abs(upper) == coinutils.getInfinity()) {
-      unboundedVars = true;
-      upper = ilp.global.options.intDefaultBound.get();
+      if (ilp.global.options.ilpUnbounded) {
+        upper = ilp.global.options.ilpDefaultBound.get();
+        std::cout << "c WARNING default upper bound " << upper << " for unbounded variable " << varname << std::endl;
+      } else {
+        throw std::invalid_argument("No support for unbounded variables: " + varname);
+      }
     }
     if (upper < lower) {
       std::cout << "c Conflicting bound on integer variable" << std::endl;
       throw UnsatEncounter();
     }
-    ilp.addVar(coinutils.columnName(c), static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)));
-  }
-  if (continuousVars) std::cout << "c WARNING continuous variables are treated as integer variables" << std::endl;
-  if (unboundedVars) {
-    std::cout << "c WARNING unbounded integer variables have custom bounds of +-"
-              << ilp.global.options.intDefaultBound.get() << std::endl;
+    [[maybe_unused]] IntVar* iv =
+        ilp.addVar(varname, static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)));
   }
 
   std::vector<ratio> ratcoefs;
   std::vector<bigint> coefs;
   std::vector<IntVar*> vars;
+  bool firstFloat = true;
 
   // Objective
   for (int c = 0; c < coinutils.getNumCols(); ++c) {
     double objcoef = coinutils.getObjCoefficients()[c];
     if (objcoef == 0) continue;
-    ratcoefs.emplace_back(objcoef);
+    ratcoefs.emplace_back(parseCoinUtilsFloat(objcoef, firstFloat));
     vars.emplace_back(ilp.getVarFor(coinutils.columnName(c)));
   }
-  ratcoefs.emplace_back(coinutils.objectiveOffset());
+  ratcoefs.emplace_back(parseCoinUtilsFloat(coinutils.objectiveOffset(), firstFloat));
   bigint cdenom = aux::commonDenominator(ratcoefs);
   for (const ratio& r : ratcoefs) {
     coefs.emplace_back(r * cdenom);
@@ -360,6 +378,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
 
   // Constraints
   const CoinPackedMatrix* cpm = coinutils.getMatrixByRow();
+  if (cpm == nullptr) throw std::invalid_argument("CoinUtils parsing failed.");
   for (int r = 0; r < coinutils.getNumRows(); ++r) {
     quit::checkInterrupt(ilp.global);
     char rowSense = coinutils.getRowSense()[r];
@@ -371,16 +390,16 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     for (int c = cpm->getVectorFirst(r); c < cpm->getVectorLast(r); ++c) {
       double coef = cpm->getElements()[c];
       if (coef == 0) continue;
-      ratcoefs.emplace_back(coef);
+      ratcoefs.emplace_back(parseCoinUtilsFloat(coef, firstFloat));
       vars.emplace_back(ilp.getVarFor(coinutils.columnName(cpm->getIndices()[c])));
     }
     bool useLB = rowSense == 'G' || rowSense == 'E' || rowSense == 'R';
-    ratcoefs.emplace_back(useLB ? coinutils.getRowLower()[r] : 0);
+    ratcoefs.emplace_back(useLB ? parseCoinUtilsFloat(coinutils.getRowLower()[r], firstFloat) : 0);
     bool useUB = rowSense == 'L' || rowSense == 'E' || rowSense == 'R';
-    ratcoefs.emplace_back(useUB ? coinutils.getRowUpper()[r] : 0);
+    ratcoefs.emplace_back(useUB ? parseCoinUtilsFloat(coinutils.getRowUpper()[r], firstFloat) : 0);
     bigint cdenom = aux::commonDenominator(ratcoefs);
-    for (const ratio& r : ratcoefs) {
-      coefs.emplace_back(r * cdenom);
+    for (const ratio& rat : ratcoefs) {
+      coefs.emplace_back(rat * cdenom);
     }
     bigint ub = coefs.back();
     coefs.pop_back();

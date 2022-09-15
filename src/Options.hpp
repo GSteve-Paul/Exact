@@ -228,10 +228,6 @@ struct Options {
   VoidOption printSol{"print-sol", "Print the solution if found"};
   VoidOption printUnits{"print-units", "Print unit literals"};
   VoidOption printCsvData{"print-csv", "Print statistics in a comma-separated value format"};
-  EnumOption outputMode{"output",
-                        "Output format to be adhered to (for competitions)",
-                        "default",
-                        {"default", "maxsat", "maxsatnew", "miplib"}};
   ValOption<int> verbosity{"verbosity", "Verbosity of the output", 1, "0 =< int",
                            [](const int& x) -> bool { return x >= 0; }};
   ValOption<std::string> proofLog{"proof-log", "Filename for the proof logs, left unspecified disables proof logging",
@@ -256,6 +252,8 @@ struct Options {
                           "Exponent of the growth of the learned clause database and the inprocessing intervals, "
                           "with log(#conflicts) as base",
                           3.5, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
+  ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 1,
+                            "0 < float", [](const double& x) -> bool { return 0 < x; }};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
   ValOption<double> propCounting{"prop-counting", "Counting propagation instead of watched propagation", 0.6,
@@ -314,11 +312,19 @@ struct Options {
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
   EnumOption cgReform{"cg-reform", "When the objective is reformulated", "always", {"always", "depletion", "never"}};
-  ValOption<int> intEncoding{
-      "int-orderenc",
-      "Upper bound on the range size of order-encoded integer variables, any larger will be encoded binary-wise", 12,
-      "2 =< int", [](const int& x) -> bool { return x >= 2; }};
-  ValOption<double> intDefaultBound{"int-infinity", "Bound used for unbounded integer variables",
+  ValOption<int> ilpEncoding{"ilp-orderenc",
+                             "Upper bound on the range size of order-encoded integer variables. Integer variables with "
+                             "a larger range will use the binary encoding.",
+                             12, "2 =< int", [](const int& x) -> bool { return x >= 2; }};
+  BoolOption ilpContinuous{"ilp-continuous",
+                           "Accept continuous variables by treating them as integer variables. This restricts the "
+                           "problem and may yield UNSAT when no integer solution exists.",
+                           false};
+  BoolOption ilpUnbounded{"ilp-unbounded",
+                          "Accept unbounded integer variables by imposing default bounds. This restricts the problem "
+                          "and may yield UNSAT when no solution within the bounds exists.",
+                          true};
+  ValOption<double> ilpDefaultBound{"ilp-defbound", "Default bound used for unbounded integer variables",
                                     limitAbs<int, long long>(), "0 < double",
                                     [](const double& x) -> bool { return x > 0; }};
   BoolOption pureLits{"inp-purelits", "Propagate pure literals", true};
@@ -349,7 +355,6 @@ struct Options {
       &printSol,
       &printUnits,
       &printCsvData,
-      &outputMode,
       &verbosity,
       &timeout,
       &timeoutDet,
@@ -387,15 +392,17 @@ struct Options {
       &cgResolveProp,
       &cgStrat,
       &cgReform,
-      &intEncoding,
-      &intDefaultBound,
+      &ilpEncoding,
+      &ilpContinuous,
+      &ilpUnbounded,
+      &ilpDefaultBound,
       &pureLits,
       &domBreakLim,
       &tabuLim,
       &inpProbing,
       &inpAMO,
       &basetime,
-      &test,
+      // &test,
   };
   std::unordered_map<std::string, Option*> name2opt;
 

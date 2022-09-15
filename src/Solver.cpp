@@ -899,7 +899,8 @@ void Solver::reduceDB() {
     int res = (int)ca[x].lbd() - (int)ca[y].lbd();
     return res < 0 || (res == 0 && ca[x].strength > ca[y].strength);
   });
-  long long limit = std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
+  long long limit =
+      global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
   }
@@ -1201,8 +1202,8 @@ SolveState Solver::solve() {
       }
       if (global.stats.NCONFL >= nconfl_to_reduce) {
         ++global.stats.NCLEANUP;
-        nconfl_to_reduce += 1 + std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
-
+        nconfl_to_reduce +=
+            1 + global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
         if (global.options.verbosity.get() > 0) {
           StatNum propDiff = global.stats.PROPTIME.z - lastPropTime;
           StatNum cADiff = global.stats.CATIME.z - lastCATime;

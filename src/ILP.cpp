@@ -177,9 +177,13 @@ ILP::ILP(bool keepIn) : solver(global), obj({}, {}, {}, 0), keepInput(keepIn) {}
 
 IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, bool nameAsId) {
   assert(!getVarFor(name));
-  if (lowerbound > upperbound) throw std::invalid_argument("Lower bound of " + name + " must not exceed upper bound.");
+  if (lowerbound > upperbound) {
+    std::stringstream ss;
+    ss << "Lower bound " << lowerbound << " of " << name << " exceeds upper bound " << upperbound;
+    throw std::invalid_argument(ss.str());
+  }
   vars.push_back(
-      std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, global.options.intEncoding.get()));
+      std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, global.options.ilpEncoding.get()));
   IntVar* iv = vars.back().get();
   name2var.insert({name, iv});
   for (Var v : iv->encodingVars()) {
@@ -363,9 +367,11 @@ std::ostream& ILP::printFormula(std::ostream& out) {
     nbConstraints += isNonImplied(c.getOrigin());
   }
   out << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
-  out << "min: ";
-  optim->getReformObj()->toStreamAsOPBlhs(out);
-  out << ";\n";
+  if (optim) {
+    out << "min: ";
+    optim->getReformObj()->toStreamAsOPBlhs(out);
+    out << ";\n";
+  }
   for (Lit l : solver.getUnits()) {
     out << std::pair<int, Lit>{1, l} << " >= 1 ;\n";
   }

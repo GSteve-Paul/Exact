@@ -81,6 +81,7 @@ bool Heuristic::before(Var v1, Var v2) const {
 void Heuristic::resize(int nvars) {
   assert(nvars == 1 || nvars > (int)phase.size());
   int old_n = nVars();  // at least one after initialization
+  assert(old_n >= 1);
   phase.resize(nvars);
   actList.resize(nvars);
   for (Var v = old_n; v < nvars; ++v) {

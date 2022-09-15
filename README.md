@@ -8,7 +8,7 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 
 ## Stay updated
 
-Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter.
+Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [reddit community](https://reddit.com/r/exact).
 
 ## Features
 
@@ -51,6 +51,10 @@ Exact supports five input formats (described in more detail in [`InputFormats.md
 - `.wcnf` Weighted Conjunctive Normal Form (WCNF)
 - `.mps` Mathematical Programming System (MPS) via the optional CoinUtils library
 - `.lp` Linear Program (LP) via the optional CoinUtils library
+
+Note that `.mps` and `.lp` allow rational variables, which are not supported by Exact.
+Additionally, these formats permit floating point values, which may lead to [tricky](https://gitlab.com/JoD/exact/-/issues/11) [issues](https://gitlab.com/JoD/exact/-/issues/12).
+Rewrite constraints with fractional values to integral ones by multiplying with the lowest common multiple of the denominators. 
 
 By default, Exact decides on the format based on the filename extension, but this can be overridden with the `--format` option.
 
@@ -96,6 +100,10 @@ The location of the SoPlex package can be configured with the cmake option `-Dso
 ## License
 
 Exact is licensed under the [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html). If this would hinder your intended usage, please get in touch via jodevriendt.com/contact.
+
+## Benchmarks
+
+The current set of benchmarks which is used to assess performance is available [here](https://gitlab.com/JoD/exact-benchmarks).
 
 ## Citations
 

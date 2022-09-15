@@ -145,7 +145,7 @@ LpSolver::LpSolver(Solver& s, const CeArb& o, Global& g) : global(g), solver(s) 
   lp.setIntParam(soplex::SoPlex::SIMPLIFIER, soplex::SoPlex::SIMPLIFIER_OFF);
   lp.setIntParam(soplex::SoPlex::OBJSENSE, soplex::SoPlex::OBJSENSE_MINIMIZE);
   lp.setIntParam(soplex::SoPlex::VERBOSITY, global.options.verbosity.get());
-  lp.setRandomSeed(0);
+  lp.setRandomSeed(global.options.randomSeed.get());
 
   // add two empty rows for objective bound constraints
   while (row2data.size() < 2) {
@@ -425,7 +425,7 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
     DetTime nlptime = global.stats.getNonLpDetTime();
     DetTime lptime = global.stats.getLpDetTime();
     assert(global.options.lpTimeRatio.get() != 0);
-    if (lptime == 1 || lptime < global.options.lpTimeRatio.get() * (lptime + nlptime)) {
+    if (lptime < global.options.lpTimeRatio.get() * (lptime + nlptime + 1e-9)) {
       double limit = global.options.lpPivotBudget.get() * lpPivotMult;
       limit = std::min<double>(limit, std::numeric_limits<int>::max());
       lp.setIntParam(soplex::SoPlex::ITERLIMIT, static_cast<int>(limit));

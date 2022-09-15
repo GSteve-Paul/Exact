@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
   try {
     runOnce(argc, argv, ilp);
   } catch (const AsynchronousInterrupt& ai) {
-    if (ilp.global.options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
+    std::cout << "c " << ai.what() << std::endl;
     return quit::exit_INDETERMINATE(ilp);
   } catch (const UnsatEncounter& ue) {
     return quit::exit_SUCCESS(ilp);

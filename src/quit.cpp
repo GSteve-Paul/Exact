@@ -80,20 +80,14 @@ void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) 
 
 void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
   std::cout << "v ";
-  if (ilp.global.options.outputMode.is("maxsatnew")) {
-    for (Var v = 1; v <= ilp.getMaxSatVars(); ++v) {
-      std::cout << (lits[v] > 0);
-    }
-  } else {
-    assert(ilp.global.options.outputMode.is("maxsat"));
-    for (Var v = 1; v <= ilp.getMaxSatVars(); ++v) {
-      std::cout << lits[v] << " ";
-    }
+  for (Var v = 1; v <= ilp.getMaxSatVars(); ++v) {
+    std::cout << (lits[v] > 0);
   }
   std::cout << std::endl;
 }
 
 void quit::printFinalStats(ILP& ilp) {
+  if (ilp.global.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
   StatNum lb = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getLowerBound())
                                      : std::numeric_limits<StatNum>::quiet_NaN();
   StatNum ub = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getUpperBound())
@@ -105,32 +99,26 @@ void quit::printFinalStats(ILP& ilp) {
 
 int quit::exit_SUCCESS(ILP& ilp) {
   ilp.global.logger.flush();
-  if (ilp.global.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
+  printFinalStats(ilp);
+  bool asMiplib = ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp");
   if (ilp.hasSolution()) {
-    if (ilp.global.options.outputMode.is("miplib")) {
-      std::cout << "=obj= " << ilp.getUpperBound() << "\n";
-      ilp.printOrigSol();
-    }
-    if (ilp.global.options.outputMode.is("maxsat") || ilp.global.options.outputMode.is("maxsatnew")) {
-      printFinalStats(ilp);
+    if (asMiplib) {
+      std::cout << "=obj= " << ilp.getUpperBound() << std::endl;
+      if (ilp.global.options.printSol) ilp.printOrigSol();
+    } else if (ilp.global.options.fileFormat.is("wcnf")) {
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
-      printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
+      if (ilp.global.options.printSol) printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
     } else {
-      if (ilp.global.options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
-      printFinalStats(ilp);
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
+      if (ilp.global.options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
     }
     std::cout.flush();
     std::cerr.flush();
     return 30;
   } else {
-    if (ilp.global.options.outputMode.is("miplib")) {
-      std::cout << "=infeas=\n";
-    }
-    printFinalStats(ilp);
-    std::cout << "s UNSATISFIABLE" << std::endl;
+    std::cout << (asMiplib ? "=infeas=" : "s UNSATISFIABLE") << std::endl;
     std::cout.flush();
     std::cerr.flush();
     return 20;
@@ -139,32 +127,28 @@ int quit::exit_SUCCESS(ILP& ilp) {
 
 int quit::exit_INDETERMINATE(ILP& ilp) {
   ilp.global.logger.flush();
-  if (ilp.global.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
+  printFinalStats(ilp);
+  bool asMiplib = ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp");
   if (ilp.hasSolution()) {
-    if (ilp.global.options.outputMode.is("miplib")) {
-      std::cout << "=obj= " << ilp.getUpperBound() << "\n";
-      ilp.printOrigSol();
-    }
-    if (ilp.global.options.outputMode.is("maxsat") || ilp.global.options.outputMode.is("maxsatnew")) {
-      printFinalStats(ilp);
+    if (asMiplib) {
+      std::cout << "=obj= " << ilp.getUpperBound() << std::endl;
+      if (ilp.global.options.printSol) ilp.printOrigSol();
+    } else if (ilp.global.options.fileFormat.is("wcnf")) {
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s UNKNOWN" << std::endl;
-      printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
+      if (ilp.global.options.printSol) printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
     } else {
-      if (ilp.global.options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
-      printFinalStats(ilp);
       std::cout << "c best so far " << ilp.getUpperBound() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;
+      if (ilp.global.options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
     }
     std::cout.flush();
     std::cerr.flush();
     return 10;
   } else {
-    if (ilp.global.options.outputMode.is("miplib")) {
-      std::cout << "=unkn=\n";
-    }
-    printFinalStats(ilp);
-    if (!ilp.global.options.noSolve) std::cout << "s UNKNOWN" << std::endl;
+    if (!ilp.global.options.noSolve) {
+      std::cout << (asMiplib ? "=unkn=" : "s UNKNOWN") << std::endl;
+    };
     std::cout.flush();
     std::cerr.flush();
     return 0;
