@@ -87,6 +87,7 @@ void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
 }
 
 void quit::printFinalStats(ILP& ilp) {
+  if (options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
   if (options.verbosity.get() > 0) stats.print();
   if (options.printCsvData) stats.printCsvLine();
   if (options.printOpb) ilp.printFormula();
@@ -94,58 +95,50 @@ void quit::printFinalStats(ILP& ilp) {
 
 void quit::exit_SUCCESS(ILP& ilp) {
   if (logger) logger->flush();
-  if (options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
+  printFinalStats(ilp);
+  bool asMiplib = options.fileFormat.is("mps") || options.fileFormat.is("lp");
   if (ilp.hasSolution()) {
-    if (options.fileFormat.is("mps") || options.fileFormat.is("lp")) {
+    if (asMiplib) {
+      std::cout << "=obj= " << ilp.getUpperBound() << std::endl;
       if (options.printSol) ilp.printOrigSol();
-      std::cout << "=obj= " << ilp.getUpperBound() << "\n";
     } else if (options.fileFormat.is("wcnf")) {
-      printFinalStats(ilp);
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
       if (options.printSol) printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
     } else {
-      if (options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
-      printFinalStats(ilp);
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
+      if (options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
     }
     xct::aux::flushexit(30);
   } else {
-    if (options.fileFormat.is("mps") || options.fileFormat.is("lp")) {
-      std::cout << "=infeas=\n";
-    }
-    printFinalStats(ilp);
-    std::cout << "s UNSATISFIABLE" << std::endl;
+    std::cout << (asMiplib ? "=infeas=" : "s UNSATISFIABLE") << std::endl;
     xct::aux::flushexit(20);
   }
 }
 
 void quit::exit_INDETERMINATE(ILP& ilp) {
   if (logger) logger->flush();
-  if (options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
+  printFinalStats(ilp);
+  bool asMiplib = options.fileFormat.is("mps") || options.fileFormat.is("lp");
   if (ilp.hasSolution()) {
-    if (options.fileFormat.is("mps") || options.fileFormat.is("lp")) {
+    if (asMiplib) {
+      std::cout << "=obj= " << ilp.getUpperBound() << std::endl;
       if (options.printSol) ilp.printOrigSol();
-      std::cout << "=obj= " << ilp.getUpperBound() << "\n";
     } else if (options.fileFormat.is("wcnf")) {
-      printFinalStats(ilp);
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s UNKNOWN" << std::endl;
       if (options.printSol) printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
     } else {
-      if (options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
-      printFinalStats(ilp);
       std::cout << "c best so far " << ilp.getUpperBound() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;
+      if (options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
     }
     xct::aux::flushexit(10);
   } else {
-    if (options.fileFormat.is("mps") || options.fileFormat.is("lp")) {
-      std::cout << "=unkn=\n";
+    if (!options.noSolve) {
+      std::cout << (asMiplib ? "=unkn=" : "s UNKNOWN") << std::endl;
     }
-    printFinalStats(ilp);
-    if (!options.noSolve) std::cout << "s UNKNOWN" << std::endl;
     xct::aux::flushexit(0);
   }
 }
