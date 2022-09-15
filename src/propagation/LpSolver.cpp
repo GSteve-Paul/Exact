@@ -61,7 +61,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "LpSolver.hpp"
 #include <queue>
-#include "Solver.hpp"
+#include "../Solver.hpp"
 
 namespace xct {
 
@@ -219,8 +219,10 @@ CeSuper LpSolver::createLinearCombinationFarkas(soplex::DVectorReal& mults) {
   }
   out->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   assert(out->hasNoZeroes());
-  out->weakenSmalls(aux::toDouble(out->absCoeffSum()) / out->nVars() * global.options.lpIntolerance.get());
-  out->removeZeroes();
+  if (!out->vars.empty()) {
+    out->weakenSmalls(aux::toDouble(out->absCoeffSum()) / out->nVars() * global.options.lpIntolerance.get());
+    out->removeZeroes();
+  }
   out->saturateAndFixOverflow(solver.getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
                               0);
   return out;
@@ -271,11 +273,12 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
 
   lcc->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   lcc->saturate(true, false);
-  if (lcc->isTautology())
+  if (lcc->isTautology()) {
     lcc->reset(false);
-  else {
+  } else if (!lcc->vars.empty()) {
     assert(lcc->hasNoZeroes());
     lcc->weakenSmalls(aux::toDouble(lcc->absCoeffSum()) / lcc->nVars() * global.options.lpIntolerance.get());
+    lcc->removeZeroes();
   }
   CandidateCut result(lcc, lpSolution);
   return result;

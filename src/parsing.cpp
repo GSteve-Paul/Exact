@@ -145,6 +145,11 @@ void file_read(ILP& ilp) {
   ilp.global.logger.logComment("INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW");
 }
 
+IntVar* indexedBoolVar(ILP& ilp, const std::string& name) {
+  if (IntVar* res = ilp.getVarFor(name); res) return res;
+  return ilp.addVar(name, 0, 1, true);
+}
+
 void opb_read(std::istream& in, ILP& ilp) {
   [[maybe_unused]] bool first_constraint = true;
   std::vector<bigint> coefs;
@@ -196,7 +201,7 @@ void opb_read(std::istream& in, ILP& ilp) {
       }
       coefs.emplace_back(read_bigint(tokens[i], 0));
       negated.emplace_back(var[0] == '~');
-      vars.emplace_back(ilp.getVarFor(var.substr(negated.back() + 1)));
+      vars.emplace_back(indexedBoolVar(ilp, var.substr(negated.back() + 1)));
     }
 
     if (opt_line) {
@@ -247,12 +252,12 @@ void wcnf_read(std::istream& in, ILP& ilp) {
   for (ConstrSimple32& input : inputs) {  // soft clauses
     quit::checkInterrupt(ilp.global);
     if (input.size() == 1) {  // no need to introduce auxiliary variable
-      objvars.push_back(ilp.getVarFor(std::to_string(toVar(input.terms[0].l)), true));
+      objvars.push_back(indexedBoolVar(ilp, std::to_string(toVar(input.terms[0].l))));
       objnegated.push_back(-input.terms[0].l < 0);
     } else {
       Var aux = ilp.getSolver().getNbVars() + 1;
       ilp.getSolver().setNbVars(aux, true);  // increases n to n+1
-      objvars.push_back(ilp.getVarFor(std::to_string(toVar(aux)), true));
+      objvars.push_back(indexedBoolVar(ilp, std::to_string(toVar(aux))));
       objnegated.push_back(aux < 0);
       // if (ilp.global.options.test.get()) {
       for (const Term32& t : input.terms) {  // reverse implication as binary clauses
@@ -321,8 +326,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
       std::cout << "c Conflicting bound on integer variable" << std::endl;
       throw UnsatEncounter();
     }
-    [[maybe_unused]] IntVar* iv = ilp.getVarFor(coinutils.columnName(c), false, static_cast<bigint>(std::ceil(lower)),
-                                                static_cast<bigint>(std::floor(upper)));
+    ilp.addVar(coinutils.columnName(c), static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)));
   }
   if (continuousVars) std::cout << "c WARNING continuous variables are treated as integer variables" << std::endl;
   if (unboundedVars) {

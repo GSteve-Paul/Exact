@@ -61,6 +61,26 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "auxiliary.hpp"
 
+std::ostream& operator<<(std::ostream& o, enum SolveState state) {
+  switch (state) {
+    case (SolveState::UNSAT):
+      o << "UNSAT";
+      break;
+    case (SolveState::INCONSISTENT):
+      o << "INCONSISTENT";
+      break;
+    case (SolveState::INPROCESSED):
+      o << "INPROCESSED";
+      break;
+    case (SolveState::SAT):
+      o << "SAT";
+      break;
+    default:
+      assert(false);
+  }
+  return o;
+}
+
 namespace xct::aux {
 
 bigint commonDenominator(const std::vector<ratio>& ratios) {

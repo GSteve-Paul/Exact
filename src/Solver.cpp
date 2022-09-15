@@ -130,9 +130,7 @@ void Solver::init(const CeArb& obj) {
   }
   nconfl_to_restart = global.options.lubyMult.get();
   nconfl_to_reduce = 1000;
-  if (global.options.randomSeed.get() != 1) {
-    aux::timeCallVoid([&] { heur->randomize(getPos()); }, global.stats.HEURTIME);
-  }
+  aux::timeCallVoid([&] { heur->randomize(getPos()); }, global.stats.HEURTIME);
   objective = global.cePools.takeArb();
   obj->copyTo(objective);
 }

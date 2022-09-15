@@ -97,6 +97,7 @@ using ratio = boost::multiprecision::cpp_rational;
 
 enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, INPROCESSED };
+std::ostream& operator<<(std::ostream& o, enum SolveState state);
 
 namespace xct {
 
@@ -105,9 +106,14 @@ std::ostream& operator<<(std::ostream& o, const std::pair<T, U>& p) {
   o << p.first << "," << p.second;
   return o;
 }
-template <typename T, typename U>
-std::ostream& operator<<(std::ostream& o, const std::unordered_map<T, U>& m) {
+template <typename T, typename U, typename HASH>
+std::ostream& operator<<(std::ostream& o, const std::unordered_map<T, U, HASH>& m) {
   for (const auto& e : m) o << e << ";";
+  return o;
+}
+template <typename T, typename HASH>
+std::ostream& operator<<(std::ostream& o, const std::unordered_set<T, HASH>& m) {
+  for (const auto& e : m) o << e << " ";
   return o;
 }
 template <typename T>
@@ -193,13 +199,13 @@ double average(const std::vector<T>& v) {
   return std::accumulate(v.cbegin(), v.cend(), 0.0) / (double)v.size();
 }
 
-template <typename T>
-T min(const std::vector<T>& v) {
+template <typename CONTAINER>
+auto min(CONTAINER&& v) {
   return *std::min_element(v.cbegin(), v.cend());
 }
 
-template <typename T>
-T max(const std::vector<T>& v) {
+template <typename CONTAINER>
+auto max(CONTAINER&& v) {
   return *std::max_element(v.cbegin(), v.cend());
 }
 
@@ -363,14 +369,6 @@ std::optional<T> option(bool make, const T& val) {
   return std::nullopt;
 }
 
-template <typename T, typename U>
-std::vector<T> cast_vec(const std::vector<U>& in) {
-  std::vector<T> result;
-  result.resize(in.size());
-  std::transform(in.begin(), in.end(), result.begin(), [](const U& val) { return static_cast<T>(val); });
-  return result;
-}
-
 namespace rng {
 
 extern uint32_t seed; /* The seed must be initialized to non-zero */
@@ -400,6 +398,14 @@ uint64_t hashForList(const std::vector<T>& els) {
 
 template <typename... Args>
 using predicate = std::function<bool(Args...)>;
+
+template <typename CONTAINER, typename LAMBDA>
+auto comprehension(CONTAINER&& container, LAMBDA&& lambda) {
+  std::vector<decltype(lambda(*container.begin()))> w;
+  w.reserve(container.size());
+  std::transform(container.begin(), container.end(), std::back_inserter(w), lambda);
+  return w;
+}
 
 }  // namespace aux
 

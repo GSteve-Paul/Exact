@@ -246,7 +246,7 @@ struct Options {
   ValOption<int> lubyMult{"luby-mult", "Multiplier of the Luby restart sequence", 100, "1 =< int",
                           [](const int& x) -> bool { return x >= 1; }};
   ValOption<double> varWeight{
-      "var-weight", "Activity weight for latest conflict variables - 0 = fixed activity, 0.5 = ASID, 1 = VMTF.", 0.99,
+      "var-weight", "Activity weight for latest conflict variables - 0 = fixed activity, 0.5 = ACIDS, 1 = VMTF.", 0.99,
       "0 =< float =< 1", [](const double& x) -> bool { return 0 <= x && x <= 1; }};
   BoolOption varSeparate{"var-separate", "Use separate phase and activity for linear and core-guided phases", true};
   BoolOption varInitAct{"var-init", "Initialize activity based on watches and initial local search call", false};

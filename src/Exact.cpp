@@ -35,60 +35,26 @@ See the file LICENSE or run with the flag --license=MIT.
 
 using namespace xct;
 
-void runOnce(int argc, char** argv, ILP& ilp) {
-  ilp.global.stats.startTime = std::chrono::steady_clock::now();
-  ilp.global.options.parseCommandLine(argc, argv);
-  ilp.global.logger.activate(ilp.global.options.proofLog.get());
-
-  if (ilp.global.options.verbosity.get() > 0) {
-    std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
-  }
-
-  aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.global.stats.PARSETIME);
-
-  if (ilp.global.options.noSolve) throw AsynchronousInterrupt();
-  if (ilp.global.options.printCsvData) ilp.global.stats.printCsvHeader();
-  if (ilp.global.options.verbosity.get() > 0) {
-    std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
-              << std::endl;
-  }
-
-  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
-
-  ilp.init(true, true);
-  SolveState res = SolveState::INPROCESSED;
-
-  while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
-    res = ilp.run();
-  }
+IntVar* Exact::getVariable(const std::string& name) const {
+  IntVar* res = ilp.getVarFor(name);
+  if (!res) throw std::invalid_argument("No variable " + name + " found.");
+  return res;
 }
 
-int main(int argc, char** argv) {
-  signal(SIGINT, SIGINT_interrupt);
-  signal(SIGTERM, SIGINT_interrupt);
-#if UNIXLIKE
-  signal(SIGXCPU, SIGINT_interrupt);
-#endif
-
-  ILP ilp;
-  try {
-    runOnce(argc, argv, ilp);
-  } catch (const AsynchronousInterrupt& ai) {
-    if (ilp.global.options.outputMode.is("default")) std::cout << "c " << ai.what() << std::endl;
-    return quit::exit_INDETERMINATE(ilp);
-  } catch (const UnsatEncounter& ue) {
-    return quit::exit_SUCCESS(ilp);
-  } catch (const std::invalid_argument& ia) {
-    return quit::exit_ERROR(ia.what());
-  } catch (const EarlyTermination& et) {
-    return quit::exit_EARLY();
-  }
-  return quit::exit_SUCCESS(ilp);
+std::vector<IntVar*> Exact::getVariables(const std::vector<std::string>& names) const {
+  return aux::comprehension(names, [&](const std::string& name) { return getVariable(name); });
 }
 
-xct::IntVar* Exact::getVariable(const std::string& name) {
-  if (!ilp.hasVarFor(name)) throw std::invalid_argument("No variable " + name + " found.");
-  return ilp.getVarFor(name);
+// TODO: reduce below code duplication using templates
+
+bigint getCoef(long long c) { return static_cast<bigint>(c); }
+bigint getCoef(const std::string& c) { return bigint(c); }
+
+std::vector<bigint> getCoefs(const std::vector<long long>& cs) {
+  return aux::comprehension(cs, [](long long x) { return getCoef(x); });
+}
+std::vector<bigint> getCoefs(const std::vector<std::string>& cs) {
+  return aux::comprehension(cs, [](const std::string& x) { return getCoef(x); });
 }
 
 Exact::Exact() : ilp(), unsatState(false) {
@@ -103,11 +69,13 @@ Exact::Exact() : ilp(), unsatState(false) {
 }
 
 void Exact::addVariable(const std::string& name, long long lb, long long ub) {
-  if (ilp.hasVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
-  ilp.getVarFor(name, false, lb, ub);
+  if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
+  ilp.addVar(name, lb, ub);
 }
 
-std::vector<std::string> Exact::getVariables() const { return ilp.getVariables(); }
+std::vector<std::string> Exact::getVariables() const {
+  return aux::comprehension(ilp.getVariables(), [](IntVar* iv) { return iv->getName(); });
+}
 
 void Exact::addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                           long long lb, bool useUB, long long ub) {
@@ -115,55 +83,51 @@ void Exact::addConstraint(const std::vector<long long>& coefs, const std::vector
   if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
-  std::vector<bigint> cfs;
-  cfs.reserve(coefs.size());
-  std::vector<IntVar*> vs;
-  vs.reserve(coefs.size());
-  for (int i = 0; i < (int)coefs.size(); ++i) {
-    cfs.push_back(coefs[i]);
-    vs.push_back(getVariable(vars[i]));
-  }
-
   try {
-    ilp.addConstraint(cfs, vs, {}, aux::option(useLB, lb), aux::option(useUB, ub));
+    ilp.addConstraint(getCoefs(coefs), getVariables(vars), {}, aux::option(useLB, getCoef(lb)),
+                      aux::option(useUB, getCoef(ub)));
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
 }
+void Exact::addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
+                          const std::string& lb, bool useUB, const std::string& ub) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (unsatState) return;
 
+  try {
+    ilp.addConstraint(getCoefs(coefs), getVariables(vars), {}, aux::option(useLB, getCoef(lb)),
+                      aux::option(useUB, getCoef(ub)));
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+  }
+}
 void Exact::addReification(const std::string& head, const std::vector<long long>& coefs,
                            const std::vector<std::string>& vars, long long lb) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
-  std::vector<bigint> cfs;
-  cfs.reserve(coefs.size());
-  std::vector<IntVar*> vs;
-  vs.reserve(coefs.size());
-  for (int i = 0; i < (int)coefs.size(); ++i) {
-    cfs.push_back(coefs[i]);
-    vs.push_back(getVariable(vars[i]));
-  }
-
-  return ilp.addReification(getVariable(head), cfs, vs, bigint(lb));
+  ilp.addReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
 }
+void Exact::addReification(const std::string& head, const std::vector<std::string>& coefs,
+                           const std::vector<std::string>& vars, const std::string& lb) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (unsatState) return;
+
+  ilp.addReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+}
+
+void Exact::fix(const std::string& var, long long val) { ilp.fix(getVariable(var), getCoef(val)); }
+void Exact::fix(const std::string& var, const std::string& val) { ilp.fix(getVariable(var), getCoef(val)); }
 
 void Exact::setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals) {
   if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("More than 1e9 assumptions.");
 
-  std::vector<bigint> values;
-  values.reserve(vars.size());
-  std::vector<IntVar*> vs;
-  vs.reserve(vars.size());
-  for (int i = 0; i < (int)vars.size(); ++i) {
-    vs.push_back(getVariable(vars[i]));
-    values.push_back(vals[i]);
-    if (values.back() > vs.back()->getUpperBound() || values.back() < vs.back()->getLowerBound())
-      throw std::invalid_argument("Value for " + vars[i] + " exceeds variable bounds.");
-  }
-  ilp.setAssumptions(values, vs);
+  ilp.setAssumptions(getCoefs(vals), getVariables(vars));
 }
 
 void Exact::boundObjByLastSol() {
@@ -185,7 +149,7 @@ void Exact::invalidateLastSol() {
 void Exact::invalidateLastSol(const std::vector<std::string>& vars) {
   if (unsatState) return;
   try {
-    ilp.invalidateLastSol(vars);
+    ilp.invalidateLastSol(getVariables(vars));
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -199,15 +163,7 @@ void Exact::init(const std::vector<long long>& coefs, const std::vector<std::str
   if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
   if (unsatState) return;
 
-  std::vector<bigint> cfs;
-  cfs.reserve(coefs.size());
-  std::vector<IntVar*> vs;
-  vs.reserve(coefs.size());
-  for (int i = 0; i < (int)coefs.size(); ++i) {
-    cfs.push_back(coefs[i]);
-    vs.push_back(getVariable(vars[i]));
-  }
-  ilp.setObjective(cfs, vs, {});
+  ilp.setObjective(getCoefs(coefs), getVariables(vars), {});
 
   ilp.init(boundObjective, addNonImplieds);
 
@@ -228,32 +184,31 @@ std::pair<long long, long long> Exact::getObjectiveBounds() const {
 }
 
 std::pair<long long, long long> Exact::getBounds(const std::string& var) const {
-  if (!ilp.hasVarFor(var)) throw std::invalid_argument("No variable " + var + " found.");
-  return static_cast<std::pair<long long, long long>>(ilp.getBounds(var));
+  return static_cast<std::pair<long long, long long>>(ilp.getBounds(getVariable(var)));
 }
 
 bool Exact::hasSolution() const { return ilp.hasSolution(); }
 
 std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
-  return aux::cast_vec<long long, bigint>(ilp.getLastSolutionFor(vars));
+  return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)),
+                            [](const bigint& i) { return static_cast<long long>(i); });
 }
 
 bool Exact::hasCore() const { return ilp.hasCore(); }
 
-std::vector<std::string> Exact::getLastCore() { return ilp.getLastCore(); }
+std::vector<std::string> Exact::getLastCore() {
+  return aux::comprehension(ilp.getLastCore(), [](IntVar* iv) { return iv->getName(); });
+}
 
 void Exact::printStats() { quit::printFinalStats(ilp); }
 
 void Exact::setVerbosity(int verbosity) { ilp.global.options.verbosity.parse(std::to_string(verbosity)); }
 
-std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& varnames) {
+std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& vars) {
   if (unsatState) throw UnsatEncounter();
-  std::vector<std::pair<long long, long long>> result;
-  result.reserve(varnames.size());
-  for (const std::pair<bigint, bigint>& tmp : ilp.propagate(varnames)) {
-    result.emplace_back(static_cast<long long>(tmp.first), static_cast<long long>(tmp.second));
-  }
-  return result;
+  return aux::comprehension(ilp.propagate(getVariables(vars)), [](const std::pair<bigint, bigint>& x) {
+    return std::pair<long long, long long>(static_cast<long long>(x.first), static_cast<long long>(x.second));
+  });
 }
 
 void Exact::setOption(const std::string& option, const std::string& value) {

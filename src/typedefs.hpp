@@ -313,17 +313,17 @@ std::ostream& operator<<(std::ostream& o, const std::pair<CF, Lit>& cl) {
 
 class EarlyTermination : public std::exception {
  public:
-  [[nodiscard]] const char* what() const throw() override { return "Program terminated early."; }
+  [[nodiscard]] const char* what() const noexcept override { return "Program terminated early."; }
 };
 
 class AsynchronousInterrupt : public std::exception {
  public:
-  [[nodiscard]] const char* what() const throw() override { return "Program interrupted by user."; }
+  [[nodiscard]] const char* what() const noexcept override { return "Program interrupted by user."; }
 };
 
 class UnsatEncounter : public std::exception {
  public:
-  [[nodiscard]] const char* what() const throw() override {
+  [[nodiscard]] const char* what() const noexcept override {
     return "UNSAT state reached, this exception should have been caught.";
   }
 };

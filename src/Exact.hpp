@@ -39,7 +39,8 @@ class Exact {
   xct::ILP ilp;
   bool unsatState;
 
-  xct::IntVar* getVariable(const std::string& name);
+  xct::IntVar* getVariable(const std::string& name) const;
+  std::vector<xct::IntVar*> getVariables(const std::vector<std::string>& names) const;
 
  public:
   /**
@@ -84,6 +85,20 @@ class Exact {
                      long long lb, bool useUB, long long ub);
 
   /**
+   * Add a linear constraint.
+   * Pass arbitrary large values as integer string.
+   *
+   * @param coefs: coefficients of the constraint
+   * @param vars: variables of the constraint
+   * @param useLB: whether or not the constraint is lower bounded
+   * @param lb: the lower bound
+   * @param useUB: whether or not the constraint is upper bounded
+   * @param ub: the upper bound
+   */
+  void addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
+                     const std::string& lb, bool useUB, const std::string& ub);
+
+  /**
    * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.
    *
    * @param head: Boolean variable that should be true iff the constraint holds
@@ -94,6 +109,40 @@ class Exact {
   void addReification(const std::string& head, const std::vector<long long>& coefs,
                       const std::vector<std::string>& vars, long long lb);
 
+  /**
+   * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.
+   * Pass arbitrary large values as integer string.
+   *
+   * @param head: Boolean variable that should be true iff the constraint holds
+   * @param coefs: coefficients of the constraint
+   * @param vars: variables of the constraint
+   * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
+   */
+  void addReification(const std::string& head, const std::vector<std::string>& coefs,
+                      const std::vector<std::string>& vars, const std::string& lb);
+
+  /**
+   * Fix the value of a variable.
+   *
+   * Fixing the variable to different values will lead to unsatisfiability.
+   *
+   * @param iv: the variable to be fixed.
+   * @param val: the value the variable is fixed to
+   */
+  void fix(const std::string& var, long long val);
+
+  /**
+   * Fix the value of a variable.
+   * Pass arbitrary large value as integer string.
+   *
+   * Fixing the variable to different values will lead to unsatisfiability.
+   *
+   * @param iv: the variable to be fixed.
+   * @param val: the value the variable is fixed to
+   */
+  void fix(const std::string& var, const std::string& val);
+
+  // TODO: create value-string methods for below functions
   /**
    * Set a list of assumptions under which a(n optimal) solution is found.
    *

@@ -114,7 +114,7 @@ ActValV Heuristic::getActivity(Var v) const {
 
 void Heuristic::randomize(const std::vector<int>& position) {
   std::vector<Lit> vars;
-  vars.reserve(actList.size() - 1);
+  vars.reserve((int)actList.size() - 1);
   for (Var v = 1; v < (int)actList.size(); ++v) {
     vars.push_back(v);
     actList[v].activity += aux::getRand(0, INF) / static_cast<ActValV>(INF);
