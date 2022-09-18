@@ -165,7 +165,8 @@ void opb_read(std::istream& in, ILP& ilp) {
     if (opt_line) {
       line = line.substr(4), assert(first_constraint);
       if (std::all_of(line.begin(), line.end(), isspace)) {
-        throw std::invalid_argument("Empty objective function.");
+        std::cout << "c WARNING objective function is empty" << std::endl;
+        // TODO: global warning routine that also checks for verbosity
       }
     } else {
       size_t eqpos = line.find('=');
