@@ -183,8 +183,8 @@ std::shared_ptr<FirstOrder> all(const std::initializer_list<Scope>& scs, const T
 std::shared_ptr<FirstOrder> all(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg);
 std::shared_ptr<FirstOrder> any(const std::initializer_list<Scope>& scs, const Term& arg);
 std::shared_ptr<FirstOrder> any(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg);
-std::shared_ptr<FirstOrder> unique(const std::initializer_list<Scope>& scs, const Term& arg);
-std::shared_ptr<FirstOrder> unique(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg);
+std::shared_ptr<FirstOrder> distinct(const std::initializer_list<Scope>& scs, const Term& arg);
+std::shared_ptr<FirstOrder> distinct(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg);
 std::shared_ptr<FirstOrder> sum(const std::initializer_list<Scope>& scs, const Term& arg);
 std::shared_ptr<FirstOrder> sum(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg);
 std::shared_ptr<FirstOrder> count(const std::initializer_list<Scope>& scs, const Term& arg);

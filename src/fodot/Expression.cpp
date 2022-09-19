@@ -29,10 +29,10 @@ or run with the flag --license=AGPLv3. If not, see
 namespace fodot {
 
 std::vector<std::pair<Op, std::string>> op2repr = {
-    {Op::Not, "not"},    {Op::And, "and"},    {Op::Or, "or"},           {Op::Implies, "implies"}, {Op::Iff, "iff"},
-    {Op::Equals, "="},   {Op::Greater, ">="}, {Op::StrictGreater, ">"}, {Op::Plus, "+"},          {Op::Minus, "-"},
-    {Op::Forall, "all"}, {Op::Exists, "any"}, {Op::Sum, "sum"},         {Op::Alldiff, "unique"},  {Op::Count, "count"}};
-// TODO: "unique" could also be "exclusive" or "mutually exclusive".
+    {Op::Not, "not"}, {Op::And, "and"},          {Op::Or, "or"},      {Op::Implies, "implies"},
+    {Op::Iff, "iff"}, {Op::Equals, "="},         {Op::Greater, ">="}, {Op::StrictGreater, ">"},
+    {Op::Plus, "+"},  {Op::Minus, "-"},          {Op::Forall, "all"}, {Op::Exists, "any"},
+    {Op::Sum, "sum"}, {Op::Alldiff, "distinct"}, {Op::Count, "count"}};
 
 const std::string& getString(Op o) {
   for (const auto& p : op2repr)
@@ -202,11 +202,11 @@ std::shared_ptr<FirstOrder> any(const std::initializer_list<Scope>& scs, const T
 std::shared_ptr<FirstOrder> any(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg) {
   return any({{vs, f}}, arg);
 }
-std::shared_ptr<FirstOrder> unique(const std::initializer_list<Scope>& scs, const Term& arg) {
+std::shared_ptr<FirstOrder> distinct(const std::initializer_list<Scope>& scs, const Term& arg) {
   return std::make_shared<FirstOrder>(Op::Alldiff, scs, arg);
 }
-std::shared_ptr<FirstOrder> unique(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg) {
-  return unique({{vs, f}}, arg);
+std::shared_ptr<FirstOrder> distinct(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg) {
+  return distinct({{vs, f}}, arg);
 }
 std::shared_ptr<FirstOrder> sum(const std::initializer_list<Scope>& scs, const Term& arg) {
   return std::make_shared<FirstOrder>(Op::Sum, scs, arg);
@@ -1050,9 +1050,9 @@ TEST_CASE("Unique") {
   Var x("p");
   Term t_p = V("p");
   Term t_in = A(*in, {t_p});
-  Term t_unique = unique({"p"}, *r, t_in);
+  Term t_unique = distinct({"p"}, *r, t_in);
 
-  CHECK(t_unique->getRepr() == "unique(hole(p) for p in pigeon)");
+  CHECK(t_unique->getRepr() == "distinct(hole(p) for p in pigeon)");
   CHECK(t_unique->instantiateVars()->getRepr() ==
         "and(1>=+(\"h1\"=hole(\"p1\"),\"h1\"=hole(\"p2\"),\"h1\"=hole(\"p3\"),\"h1\"=hole(\"p4\")),1>=+(\"h2\"=hole("
         "\"p1\"),\"h2\"=hole(\"p2\"),\"h2\"=hole(\"p3\"),\"h2\"=hole(\"p4\")),1>=+(\"h3\"=hole(\"p1\"),\"h3\"=hole("
@@ -1072,7 +1072,8 @@ TEST_CASE("Unique") {
       "hole(\"p1\")=\"h2\" -1 hole(\"p2\")=\"h2\" -1 hole(\"p3\")=\"h2\" -1 hole(\"p4\")=\"h2\" >= -1\n"
       "(-hole(\"p1\")=\"h3\"+-hole(\"p2\")=\"h3\"+-hole(\"p3\")=\"h3\"+-hole(\"p4\")=\"h3\">=-1) <=> -1 "
       "hole(\"p1\")=\"h3\" -1 hole(\"p2\")=\"h3\" -1 hole(\"p3\")=\"h3\" -1 hole(\"p4\")=\"h3\" >= -1\n"
-      "-1 hole(\"p1\")=\"h1\" -1 hole(\"p2\")=\"h1\" -1 hole(\"p3\")=\"h1\" -1 hole(\"p4\")=\"h1\" -7 [unique(hole(p) "
+      "-1 hole(\"p1\")=\"h1\" -1 hole(\"p2\")=\"h1\" -1 hole(\"p3\")=\"h1\" -1 hole(\"p4\")=\"h1\" -7 "
+      "[distinct(hole(p) "
       "for p in pigeon)] 2 (-hole(\"p1\")=\"h2\"+-hole(\"p2\")=\"h2\"+-hole(\"p3\")=\"h2\"+-hole(\"p4\")=\"h2\">=-1) 2 "
       "(-hole(\"p1\")=\"h3\"+-hole(\"p2\")=\"h3\"+-hole(\"p3\")=\"h3\"+-hole(\"p4\")=\"h3\">=-1) >= -4\n"
       "1 >= 1 hole(\"p1\")=\"h1\" 1 hole(\"p1\")=\"h2\" 1 hole(\"p1\")=\"h3\" >= 1\n"
