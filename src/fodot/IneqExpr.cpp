@@ -253,7 +253,7 @@ void Geq::addTo(xct::ILP& ilp) const {
   ilp.addReification(head, coefs, vars, {}, -argument->offset);
 }
 void Geq::addToAsTop(xct::ILP& ilp) const {
-  assert(!ilp.getVarFor(getRepr()));  // should be handled by tseitinization
+  assert(!ilp.getVarFor(getRepr()));  // identical formulas should be handled by tseitinization
   std::vector<bigint> coefs;
   coefs.reserve(argument->terms.size());
   std::vector<xct::IntVar*> vars;

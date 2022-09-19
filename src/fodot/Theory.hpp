@@ -51,6 +51,7 @@ class Vocabulary {  // TODO: merge with theory?
   Functor* createInterpreted(const std::string& name, const std::vector<Tup>& inter, const DomEl& otherwise);
   std::vector<Functor*> createConstructed(const std::string& type, const std::string& func,
                                           const std::vector<std::pair<std::string, Functor*>>& attributes);
+  Functor* createBuiltin(const std::string& repr, const std::vector<DomEl>& range);
   Functor* createTseitin(const std::string& repr);
 
   bool hasFunctor(const std::string& name);
@@ -65,6 +66,8 @@ class Theory {
  public:
   Vocabulary voc;
   std::vector<Term> constraints;
+  Functor* objF = nullptr;
+  Term objective;
 
   void addTo(xct::ILP& ilp);
 

@@ -105,7 +105,7 @@ uint32_t xorshift32() {
 
 }  // namespace rng
 
-uint32_t getRand(uint32_t min, uint32_t max) {
+int32_t getRand(int32_t min, int32_t max) {
   assert(min < max);
   return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) + min;
 }

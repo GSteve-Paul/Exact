@@ -143,11 +143,13 @@ std::vector<Functor*> Vocabulary::createConstructed(const std::string& type, con
   }
   return res;
 }
-Functor* Vocabulary::createTseitin(const std::string& repr) {
+Functor* Vocabulary::createBuiltin(const std::string& repr, const std::vector<DomEl>& range) {
+  assert(!range.empty());
   std::string name = toBuiltin(repr);
   if (hasFunctor(name)) return nullptr;
-  return createBoolean(name, {});
+  return createFunctor(name, {getType(range[0])}, range);
 }
+Functor* Vocabulary::createTseitin(const std::string& repr) { return createBuiltin(repr, {true, false}); }
 
 bool Vocabulary::hasFunctor(const std::string& name) { return name2functor.find(name) != name2functor.cend(); }
 
@@ -252,6 +254,14 @@ void Theory::addTo(xct::ILP& ilp) {
       tseitin2constr.push_back({t_tseitin, it});
     }
   }
+  IneqTerm translatedObj;
+  if (objective) {
+    assert(objective->type == Type::INT);
+    std::string name = objective->getRepr();
+    objF = voc.createBuiltin(name, xct::aux::comprehension(objective->getRange(), [](const DomEl& d) { return d; }));
+    translatedObj = O("=", A(*objF, {}), objective)->translateFull();
+    translatedObj->collectDomains();
+  }
   voc.addTo(ilp);
   std::vector<xct::IntVar*> assumptions;
   assumptions.reserve(tseitin2constr.size());
@@ -263,6 +273,11 @@ void Theory::addTo(xct::ILP& ilp) {
     }  // else tc.second is tautology // TODO: add assert!
   }
   ilp.setAssumptions(std::vector<bigint>(assumptions.size(), 1), assumptions);
+  if (translatedObj) {
+    assert(objF);
+    translatedObj->addToAsTop(ilp);
+    ilp.setObjective({1}, {ilp.getVarFor(A(*objF, {})->getRepr())}, {false});
+  }
 }
 
 void Theory::addMijnCollega() {
@@ -430,7 +445,13 @@ void Theory::addMijnCollega() {
 
   Dienst.setDefault(false);
   aansluitend.setDefault(false);
-  std::cout << aansluitend << std::endl;
+
+  Functor& voorkeur = *voc.createFunctor("voorkeur", {Type::STRING, Type::STRING, Type::INT}, getIntRange({-5, 5}));
+  for (const auto& p : Professional.getInterAsSet()) {
+    for (const auto& d : Dienst.getInterAsSet()) {
+      voorkeur.setInter({p, d}, xct::aux::getRand(-5, 5));
+    }
+  }
 
   Functor& maxDiensten = *voc.createFunctor("maxDiensten", {Type::STRING, Type::INT}, getIntRange({0, 500}));
   for (const auto& p : Professional.getInterAsSet()) {
@@ -510,8 +531,10 @@ void Theory::addMijnCollega() {
       O(">=", D(2),
         count({"d1"}, Dienst,
               O("and", O("=", A(toegewezen, d1), p), O("=<", d, A(dag, d1)), O("=<", A(dag, d1), O("+", d, D(1)))))));
-  std::cout << t7 << std::endl;
   constraints.push_back(t7);
+  // totale voorkeur:
+  // sum{p in Professional, d in Dienst : voorkeur(p,d) if toegewezen(d)=p else 0}
+  objective = sum({{{"p"}, Professional}, {{"d"}, Dienst}}, A(voorkeur, p, d));
 }
 
 std::ostream& operator<<(std::ostream& o, const Theory& theo) {
