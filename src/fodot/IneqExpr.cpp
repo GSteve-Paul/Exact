@@ -425,14 +425,14 @@ TEST_CASE("falseIffMin and trueIffMax") {
   Term t_Q = std::make_shared<Application>(f_Q, std::vector<Term>());
   std::vector<Term> args = {t_P, t_Q};
   Term t_iff = std::make_shared<Binary>(Op::Iff, t_P, t_Q);
-  IneqTerm t_iff_in = t_iff->translate()->pushNegation()->toIneq()->flatten();
+  IneqTerm t_iff_in = t_iff->rewrite()->pushNegation()->toIneq()->flatten();
   [[maybe_unused]] const Geq* geq = dynamic_cast<const Geq*>(t_iff_in.get());
   CHECK(geq != nullptr);
   CHECK(geq->trueIffMax());
   CHECK(!geq->falseIffMin());
   args = {t_P};
   Term t_and = std::make_shared<Nary>(Op::And, args);
-  IneqTerm t_and_in = t_and->translate()->pushNegation()->toIneq()->flatten();
+  IneqTerm t_and_in = t_and->rewrite()->pushNegation()->toIneq()->flatten();
   geq = dynamic_cast<const Geq*>(t_and_in.get());
   CHECK(geq != nullptr);
   CHECK(geq->trueIffMax());
@@ -444,18 +444,18 @@ TEST_CASE("falseIffMin and trueIffMax") {
   args = {t_g, t_h};
   Term t_plus = std::make_shared<Nary>(Op::Plus, args);
   Term t_sg = std::make_shared<Binary>(Op::StrictGreater, t_plus, D(0));
-  IneqTerm it_sg = t_sg->translate()->pushNegation()->toIneq()->flatten();
+  IneqTerm it_sg = t_sg->rewrite()->pushNegation()->toIneq()->flatten();
   geq = dynamic_cast<const Geq*>(it_sg.get());
   CHECK(geq != nullptr);
   CHECK(!geq->trueIffMax());
   CHECK(!geq->falseIffMin());
 
-  it_sg = std::make_shared<Binary>(Op::StrictGreater, t_plus, D(4))->translate()->pushNegation()->toIneq()->flatten();
+  it_sg = std::make_shared<Binary>(Op::StrictGreater, t_plus, D(4))->rewrite()->pushNegation()->toIneq()->flatten();
   geq = dynamic_cast<const Geq*>(it_sg.get());
   CHECK(geq != nullptr);
   CHECK(geq->trueIffMax());
   CHECK(!geq->falseIffMin());
-  it_sg = std::make_shared<Binary>(Op::StrictGreater, t_plus, D(-1))->translate()->pushNegation()->toIneq()->flatten();
+  it_sg = std::make_shared<Binary>(Op::StrictGreater, t_plus, D(-1))->rewrite()->pushNegation()->toIneq()->flatten();
   geq = dynamic_cast<const Geq*>(it_sg.get());
   CHECK(geq != nullptr);
   CHECK(!geq->trueIffMax());
@@ -475,7 +475,7 @@ TEST_CASE("Translate") {
   Term t_eq2 = std::make_shared<Binary>(Op::Equals, t_C, t_1);
   Term t_iff = std::make_shared<Binary>(Op::Iff, t_P, t_eq2);
 
-  t_iff = t_iff->translate();
+  t_iff = t_iff->rewrite();
   CHECK(t_iff->getRepr() == "and(or(P(3),not and(3>=C,C>=3)),or(and(3>=C,C>=3),not P(3)))");
   t_iff = t_iff->pushNegation();
   CHECK(t_iff->getRepr() == "and(or(P(3),or(3>C,C>3)),or(and(3>=C,C>=3),not P(3)))");
@@ -511,7 +511,7 @@ TEST_CASE("Plus") {
   Term t_geq = std::make_shared<Binary>(Op::Greater, t_C, t_sum);
   theo.constraints.push_back(t_geq);
 
-  t_geq = t_geq->translate();
+  t_geq = t_geq->rewrite();
   CHECK(t_geq->getRepr() == "C>=+(2,f(\"a\"),f(\"b\"),f(\"c\"))");
   t_geq = t_geq->pushNegation();
   CHECK(t_geq->getRepr() == "C>=+(2,f(\"a\"),f(\"b\"),f(\"c\"))");

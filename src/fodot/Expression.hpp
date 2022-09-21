@@ -89,7 +89,6 @@ enum class Op {
   Or,
   Implies,
   Iff,
-  Ite,
   Minus,
   Plus,
   Times,
@@ -149,12 +148,13 @@ class RawExpr : public Expression, public std::enable_shared_from_this<const Raw
   virtual const std::vector<Term> getChildren() const = 0;       // TODO: not used, remove?
   virtual const std::unordered_set<DomEl> getRange() const = 0;  // will be used for unnesting
   virtual IneqTerm toIneq() const = 0;
-  virtual Term translate() const = 0;  // removes implies/iff
+  virtual Term rewrite() const = 0;  // rewrites implies/iff
   virtual Term pushNegation(bool neg = false) const = 0;
   virtual Term instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const = 0;
   Term instantiateVars(InstVarState ivs = InstVarState::ALL) const;
-  virtual std::pair<Term, DomEl> reduceJustifieds() const = 0;
+  virtual std::pair<Term, DomEl> reduceJustifieds() const = 0;  // DomEl==_unknown_ iff Term not instance of Val
   virtual void stripTopAnds(std::vector<Term>& out) const;
+  virtual Term mergeIte() const = 0;  // TODO: pushing minus may improve merging of if-else
 
   Term reduceFull() const;
   IneqTerm translateFull() const;
@@ -164,6 +164,7 @@ class Val;
 class FirstOrder;
 class Application;
 class Operator;
+class Ite;
 
 // TODO: use variadic arguments
 std::shared_ptr<Val> D(const DomEl& de);
@@ -189,6 +190,8 @@ std::shared_ptr<FirstOrder> sum(const std::initializer_list<Scope>& scs, const T
 std::shared_ptr<FirstOrder> sum(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg);
 std::shared_ptr<FirstOrder> count(const std::initializer_list<Scope>& scs, const Term& arg);
 std::shared_ptr<FirstOrder> count(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg);
+std::shared_ptr<Ite> IE(const std::initializer_list<std::pair<Term, Term>>& condvals);
+std::shared_ptr<Ite> IE(const Term& whentrue, const Term& cond, const Term& whenfalse);
 
 class Val : public RawExpr {
  public:
@@ -202,10 +205,11 @@ class Val : public RawExpr {
   const std::vector<Term> getChildren() const;
   const std::unordered_set<DomEl> getRange() const;
   IneqTerm toIneq() const;
-  Term translate() const;
+  Term rewrite() const;
   Term pushNegation(bool neg = false) const;
   Term instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const;
   std::pair<Term, DomEl> reduceJustifieds() const;
+  Term mergeIte() const;
 };
 
 class Operator : public RawExpr {
@@ -227,10 +231,11 @@ class Unary : public Operator {
   const std::vector<Term> getChildren() const;
   const std::unordered_set<DomEl> getRange() const;
   IneqTerm toIneq() const;
-  Term translate() const;
+  Term rewrite() const;
   Term pushNegation(bool neg = false) const;
   Term instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const;
   std::pair<Term, DomEl> reduceJustifieds() const;
+  Term mergeIte() const;
 };
 
 class Binary : public Operator {
@@ -246,10 +251,11 @@ class Binary : public Operator {
   const std::vector<Term> getChildren() const;
   const std::unordered_set<DomEl> getRange() const;
   IneqTerm toIneq() const;
-  Term translate() const;
+  Term rewrite() const;
   Term pushNegation(bool neg = false) const;
   Term instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const;
   std::pair<Term, DomEl> reduceJustifieds() const;
+  Term mergeIte() const;
 };
 
 class Nary : public Operator {
@@ -264,11 +270,34 @@ class Nary : public Operator {
   const std::vector<Term> getChildren() const;
   const std::unordered_set<DomEl> getRange() const;
   IneqTerm toIneq() const;
-  Term translate() const;
+  Term rewrite() const;
   Term pushNegation(bool neg = false) const;
   Term instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const;
   std::pair<Term, DomEl> reduceJustifieds() const;
   void stripTopAnds(std::vector<Term>& out) const;
+  Term mergeIte() const;
+};
+
+class Ite : public RawExpr {
+  const std::vector<std::pair<Term, Term>> condvals;  // condition-value pairs
+
+ public:
+  Ite(const Term& cond, const Term& wtrue, const Term& wfalse);
+  // With below constructor, user has to ensure that conditions are consistent and complete.
+  // Otherwise, use above constructor
+  Ite(const std::vector<std::pair<Term, Term>>& cvs);
+  Term deepCopy() const;
+  void checkType() const;
+  void collectDomains() const;
+  const std::string getRepr() const;
+  const std::vector<Term> getChildren() const;
+  const std::unordered_set<DomEl> getRange() const;
+  IneqTerm toIneq() const;
+  Term rewrite() const;
+  Term pushNegation(bool neg = false) const;
+  Term instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const;
+  std::pair<Term, DomEl> reduceJustifieds() const;
+  Term mergeIte() const;
 };
 
 class Application : public RawExpr {
@@ -285,10 +314,11 @@ class Application : public RawExpr {
   const std::vector<Term> getChildren() const;
   const std::unordered_set<DomEl> getRange() const;
   IneqTerm toIneq() const;
-  Term translate() const;
+  Term rewrite() const;
   Term pushNegation(bool neg = false) const;
   Term instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const;
   std::pair<Term, DomEl> reduceJustifieds() const;
+  Term mergeIte() const;
 };
 
 class Var : public RawExpr {
@@ -302,10 +332,11 @@ class Var : public RawExpr {
   const std::vector<Term> getChildren() const;
   const std::unordered_set<DomEl> getRange() const;
   IneqTerm toIneq() const;
-  Term translate() const;
+  Term rewrite() const;
   Term pushNegation(bool neg = false) const;
   Term instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const;
   std::pair<Term, DomEl> reduceJustifieds() const;
+  Term mergeIte() const;
 
   bool operator==(const Var& other) const;
 };
@@ -323,10 +354,11 @@ class FirstOrder : public Operator {
   const std::vector<Term> getChildren() const;
   const std::unordered_set<DomEl> getRange() const;
   IneqTerm toIneq() const;
-  Term translate() const;
+  Term rewrite() const;
   Term pushNegation(bool neg = false) const;
   Term instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const;
   std::pair<Term, DomEl> reduceJustifieds() const;
+  Term mergeIte() const;
 };
 
 // TODO

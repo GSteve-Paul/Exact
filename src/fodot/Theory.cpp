@@ -575,9 +575,9 @@ TEST_CASE("Add vocabulary to ILP") {
   Term t_iff = std::make_shared<Binary>(Op::Iff, t_P, t_eq2);
 
   xct::ILP ilp(true);
-  IneqTerm ti_eq = t_eq->translate()->pushNegation()->toIneq()->flatten();
+  IneqTerm ti_eq = t_eq->rewrite()->pushNegation()->toIneq()->flatten();
   ti_eq->collectDomains();
-  t_iff = t_iff->translate();
+  t_iff = t_iff->rewrite();
   t_iff = t_iff->pushNegation();
   IneqTerm ti_iff = t_iff->toIneq();
   ti_iff->collectDomains();

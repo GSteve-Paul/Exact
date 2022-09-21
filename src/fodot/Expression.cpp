@@ -132,7 +132,9 @@ Expression::Expression(Type t) : type(t) {}
 std::ostream& operator<<(std::ostream& os, const std::shared_ptr<const Expression>& t) { return os << t->getRepr(); }
 std::ostream& operator<<(std::ostream& os, const std::shared_ptr<const RawExpr>& t) { return os << t->getRepr(); }
 
-Term RawExpr::reduceFull() const { return instantiateVars()->translate()->pushNegation()->reduceJustifieds().first; }
+Term RawExpr::reduceFull() const {
+  return instantiateVars()->rewrite()->reduceJustifieds().first->pushNegation()->mergeIte();
+}
 IneqTerm RawExpr::translateFull() const {
   assert(type == Type::BOOL);
   // NOTE: outer "and" ensures we get a constraint (a Geq)
@@ -220,6 +222,12 @@ std::shared_ptr<FirstOrder> count(const std::initializer_list<Scope>& scs, const
 std::shared_ptr<FirstOrder> count(const std::initializer_list<std::string>& vs, const Functor& f, const Term& arg) {
   return count({{vs, f}}, arg);
 }
+std::shared_ptr<Ite> IE(const std::initializer_list<std::pair<Term, Term>>& condvals) {
+  return std::make_shared<Ite>(condvals);
+}
+std::shared_ptr<Ite> IE(const Term& whentrue, const Term& cond, const Term& whenfalse) {
+  return std::make_shared<Ite>(cond, whentrue, whenfalse);
+}
 
 Val::Val(const DomEl& d) : RawExpr(getType(d)), de(d) { checkType(); }
 void Val::checkType() const {}
@@ -234,7 +242,7 @@ IneqTerm Val::toIneq() const {
   std::vector<IneqTerm> vs = {};
   return std::make_shared<WeightedSum>(cfs, vs, v);
 }
-Term Val::translate() const { return shared_from_this(); }
+Term Val::rewrite() const { return shared_from_this(); }
 Term Val::pushNegation(bool neg) const {
   if (neg) {
     assert(type == Type::BOOL);
@@ -246,6 +254,7 @@ Term Val::instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de,
   return shared_from_this();
 }
 std::pair<Term, DomEl> Val::reduceJustifieds() const { return {shared_from_this(), de}; }
+Term Val::mergeIte() const { return shared_from_this(); }
 
 Operator::Operator(Op o) : RawExpr(getOutType(o)), symbol(o) {}
 
@@ -282,7 +291,7 @@ IneqTerm Unary::toIneq() const {
   std::vector<IneqTerm> vars = {it};
   return std::make_shared<WeightedSum>(coefs, vars, symbol == Op::Not ? 1 : 0);
 }
-Term Unary::translate() const { return shared_from_this(); }
+Term Unary::rewrite() const { return std::make_shared<Unary>(symbol, argument->rewrite()); }
 Term Unary::pushNegation(bool neg) const {
   if (symbol == Op::Not) {
     return argument->pushNegation(!neg);
@@ -310,6 +319,7 @@ std::pair<Term, DomEl> Unary::reduceJustifieds() const {
   }
   return {std::make_shared<Val>(res), res};
 }
+Term Unary::mergeIte() const { return std::make_shared<Unary>(symbol, argument->mergeIte()); }
 
 Binary::Binary(Op o, const Term& a1, const Term& a2) : Operator(o), arg1(a1), arg2(a2) { checkType(); }
 Term Binary::deepCopy() const { return std::make_shared<Binary>(symbol, arg1->deepCopy(), arg2->deepCopy()); }
@@ -373,9 +383,9 @@ IneqTerm Binary::toIneq() const {
   assert(false);
   return nullptr;
 }
-Term Binary::translate() const {
-  Term simp1 = arg1->translate();
-  Term simp2 = arg2->translate();
+Term Binary::rewrite() const {
+  Term simp1 = arg1->rewrite();
+  Term simp2 = arg2->rewrite();
   if (symbol == Op::Implies) {
     std::vector<Term> args = {std::make_shared<Unary>(Op::Not, simp1), simp2};
     return std::make_shared<Nary>(Op::Or, args);
@@ -391,7 +401,7 @@ Term Binary::translate() const {
                               std::make_shared<Binary>(Op::Greater, simp2, simp1)};
     return std::make_shared<Nary>(Op::And, args);
   }
-  return shared_from_this();
+  return std::make_shared<Binary>(symbol, simp1, simp2);
 }
 Term Binary::pushNegation(bool neg) const {
   assert(symbol != Op::Implies);  // already translated
@@ -408,7 +418,7 @@ Term Binary::pushNegation(bool neg) const {
       return std::make_shared<Binary>((symbol == Op::Greater ? Op::StrictGreater : Op::Greater), a1, a2);
     }
   }
-  return shared_from_this();
+  return std::make_shared<Binary>(symbol, a1, a2);
 }
 Term Binary::instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const {
   if (ivs == InstVarState::ATTOP) ivs = InstVarState::NOTATTOP;
@@ -456,6 +466,7 @@ std::pair<Term, DomEl> Binary::reduceJustifieds() const {
   }
   return {std::make_shared<Val>(res), res};
 }
+Term Binary::mergeIte() const { return std::make_shared<Binary>(symbol, arg1->mergeIte(), arg2->mergeIte()); }
 
 Nary::Nary(Op o, const std::vector<Term>& args) : Operator(o), arguments(args) { checkType(); }
 Term Nary::deepCopy() const {
@@ -530,9 +541,8 @@ IneqTerm Nary::toIneq() const {
   assert(symbol == Op::Or || symbol == Op::And);
   return std::make_shared<Geq>(std::make_shared<WeightedSum>(coefs, vars, symbol == Op::Or ? -1 : -arguments.size()));
 }
-Term Nary::translate() const {
-  return std::make_shared<Nary>(symbol,
-                                xct::aux::comprehension(arguments, [](const Term& t) { return t->translate(); }));
+Term Nary::rewrite() const {
+  return std::make_shared<Nary>(symbol, xct::aux::comprehension(arguments, [](const Term& t) { return t->rewrite(); }));
 }
 Term Nary::pushNegation(bool neg) const {
   Op s = symbol;
@@ -603,6 +613,148 @@ void Nary::stripTopAnds(std::vector<Term>& out) const {
     out.push_back(shared_from_this());
   }
 }
+Term Nary::mergeIte() const {
+  return std::make_shared<Nary>(symbol,
+                                xct::aux::comprehension(arguments, [](const Term& t) { return t->mergeIte(); }));
+}
+
+Ite::Ite(const std::vector<std::pair<Term, Term>>& cvs) : RawExpr(cvs[0].second->type), condvals(cvs) { checkType(); }
+Ite::Ite(const Term& c, const Term& t, const Term& f) : Ite({{c, t}, {std::make_shared<Unary>(Op::Not, c), f}}) {}
+Term Ite::deepCopy() const {
+  return std::make_shared<Ite>(xct::aux::comprehension(condvals, [](const std::pair<Term, Term>& tt) {
+    return std::make_pair<Term, Term>(tt.first->deepCopy(), tt.second->deepCopy());
+  }));
+}
+void Ite::checkType() const {
+  for (const auto& tt : condvals) {
+    if (tt.first->type != Type::BOOL) {
+      throw TypeClash((std::stringstream() << tt.first << " does not have Boolean type.").str());
+    }
+    if (tt.second->type != type) {
+      throw TypeClash(
+          (std::stringstream() << condvals[0].first << " and " << tt.second << " have different type.").str());
+    }
+  }
+}
+const std::string Ite::getRepr() const {
+  assert(!condvals.empty());
+  std::string res = "(";
+  for (const auto& tt : condvals) {
+    res += tt.second->getRepr() + " if " + tt.first->getRepr() + ", ";
+  }
+  res.pop_back();
+  res.pop_back();
+  res.push_back(')');
+  return res;
+}
+const std::vector<Term> Ite::getChildren() const {
+  std::vector<Term> res;
+  res.reserve(condvals.size() * 2);
+  for (const auto& tt : condvals) {
+    res.push_back(tt.first);
+    res.push_back(tt.second);
+  }
+  return res;
+}
+const std::unordered_set<DomEl> Ite::getRange() const {
+  if (type == Type::INT) {
+    auto [min, max] = getExtrema(condvals[0].second->getRange());
+    for (const auto& tt : condvals) {
+      auto [min2, max2] = getExtrema(tt.second->getRange());
+      min = std::min(min, min2);
+      max = std::max(max, max2);
+    }
+    std::unordered_set<DomEl> res;
+    res.reserve(max - min + 1);
+    for (fo_int i = min; i <= max; ++i) {
+      res.insert(i);
+    }
+    return res;
+  } else {
+    std::unordered_set<DomEl> res;
+    for (const auto& tt : condvals) {
+      for (const DomEl& de : tt.second->getRange()) {
+        res.insert(de);
+      }
+    }
+    return res;
+  }
+}
+IneqTerm Ite::toIneq() const {
+  assert(type == Type::INT);
+  std::vector<fo_int> coefs;
+  coefs.reserve(condvals.size());
+  std::vector<IneqTerm> vars;
+  vars.reserve(condvals.size());
+  for (const auto& tt : condvals) {
+    const Val* v = dynamic_cast<const Val*>(tt.second.get());
+    assert(v);
+    coefs.push_back(std::get<fo_int>(v->de));
+    vars.push_back(tt.first->toIneq());
+  }
+  return std::make_shared<WeightedSum>(coefs, vars, 0);
+}
+Term Ite::rewrite() const {
+  return std::make_shared<Ite>(xct::aux::comprehension(condvals, [](const std::pair<Term, Term>& tt) {
+    return std::make_pair<Term, Term>(tt.first->rewrite(), tt.second->rewrite());
+  }));
+}
+Term Ite::pushNegation(bool neg) const {
+  assert(neg == false || type == Type::BOOL);
+  return std::make_shared<Ite>(xct::aux::comprehension(condvals, [neg](const std::pair<Term, Term>& tt) {
+    return std::make_pair<Term, Term>(tt.first->pushNegation(neg), tt.second->pushNegation());
+  }));
+}
+Term Ite::instantiateVars(const std::unordered_map<Var, DomEl, varhash>& var2de, InstVarState ivs) const {
+  if (ivs == InstVarState::ATTOP) ivs = InstVarState::NOTATTOP;
+  return std::make_shared<Ite>(xct::aux::comprehension(condvals, [var2de, ivs](const std::pair<Term, Term>& tt) {
+    return std::make_pair<Term, Term>(tt.first->instantiateVars(var2de, ivs), tt.second->instantiateVars(var2de, ivs));
+  }));
+}
+std::pair<Term, DomEl> Ite::reduceJustifieds() const {
+  assert(!condvals.empty());
+  std::vector<std::pair<Term, Term>> reduceds;
+  reduceds.reserve(condvals.size());
+  for (const auto& tt : condvals) {
+    const auto [t, de] = tt.first->reduceJustifieds();
+    if (de == DomEl(false)) continue;
+    const std::pair<Term, DomEl> td = tt.second->reduceJustifieds();
+    if (de == DomEl(true)) return td;
+    reduceds.push_back({t, td.first});
+  }
+  bool allsame = true;
+  for (const auto& tt : reduceds) {
+    if (reduceds[0].second->getRepr() != tt.second->getRepr()) {
+      allsame = false;
+      break;
+    }
+  }
+  if (allsame) {
+    Term res = reduceds[0].second;
+    const Val* v = dynamic_cast<const Val*>(res.get());
+    return {res, v ? v->de : _unknown_};
+  }
+  return {std::make_shared<Ite>(reduceds), _unknown_};
+}
+Term Ite::mergeIte() const {
+  std::vector<std::pair<Term, Term>> mergeds;
+  mergeds.reserve(condvals.size());
+  for (const auto& tt : condvals) {
+    Term cond = tt.first->mergeIte();
+    Term val = tt.second->mergeIte();
+    const Ite* v = dynamic_cast<const Ite*>(val.get());
+    if (v) {
+      for (const auto& tt2 : v->condvals) {
+        std::vector<Term> mergedConds = {cond, tt2.first};
+        mergeds.push_back({std::make_shared<Nary>(Op::And, mergedConds)->reduceJustifieds().first, tt2.second});
+      }
+    } else {
+      mergeds.push_back({cond, val});
+    }
+    // TODO: what happens when condition is Ite ?
+  }
+  return std::make_shared<Ite>(mergeds);
+}
 
 Application::Application(Functor& f, const std::vector<Term>& args)
     : RawExpr(f.getReturnType()), functor(f), arguments(args) {
@@ -644,9 +796,9 @@ IneqTerm Application::toIneq() const {
   }
   return std::make_shared<Terminal>(functor, tup);
 }
-Term Application::translate() const {
-  return std::make_shared<Application>(
-      functor, xct::aux::comprehension(arguments, [](const Term& t) { return t->translate(); }));
+Term Application::rewrite() const {
+  return std::make_shared<Application>(functor,
+                                       xct::aux::comprehension(arguments, [](const Term& t) { return t->rewrite(); }));
 }
 Term Application::pushNegation(bool neg) const {
   return neg ? std::make_shared<Unary>(Op::Not, shared_from_this()) : shared_from_this();
@@ -675,6 +827,10 @@ std::pair<Term, DomEl> Application::reduceJustifieds() const {
   }
   return {std::make_shared<Application>(functor, newArgs), _unknown_};
 }
+Term Application::mergeIte() const {
+  return std::make_shared<Application>(functor,
+                                       xct::aux::comprehension(arguments, [](const Term& t) { return t->mergeIte(); }));
+}
 
 Var::Var(const std::string n) : RawExpr(Type::UNKN), name(n) { checkType(); }
 size_t varhash::operator()(const Var& v) const { return std::hash<std::string>{}(v.name); }
@@ -692,7 +848,7 @@ IneqTerm Var::toIneq() const {
   assert(false);
   return nullptr;  // should be eliminated
 }
-Term Var::translate() const { return shared_from_this(); }
+Term Var::rewrite() const { return shared_from_this(); }
 Term Var::pushNegation(bool neg) const {
   if (neg) {
     assert(type == Type::BOOL);
@@ -713,6 +869,7 @@ std::pair<Term, DomEl> Var::reduceJustifieds() const {
   assert(false);
   return {shared_from_this(), _unknown_};
 }
+Term Var::mergeIte() const { return shared_from_this(); }
 
 void Scope::checkInvariants() const {
   if (!range.empty() && vars.size() != range[0].size()) throw ArityMismatch(range[0].size(), vars.size());
@@ -780,7 +937,7 @@ IneqTerm FirstOrder::toIneq() const {
   assert(false);
   return nullptr;
 }
-Term FirstOrder::translate() const {
+Term FirstOrder::rewrite() const {
   assert(false);
   return nullptr;
 }
@@ -841,7 +998,11 @@ Term FirstOrder::instantiateVars(const std::unordered_map<Var, DomEl, varhash>& 
 }
 std::pair<Term, DomEl> FirstOrder::reduceJustifieds() const {
   assert(false);
-  return {shared_from_this(), _unknown_};
+  return {nullptr, _unknown_};
+}
+Term FirstOrder::mergeIte() const {
+  assert(false);
+  return nullptr;
 }
 
 }  // namespace fodot
@@ -912,7 +1073,7 @@ TEST_CASE("Test associativity") {
   CHECK(t_or2->getRepr() != t_or3->getRepr());
 }
 
-TEST_CASE("Translate") {
+TEST_CASE("Rewrite") {
   Functor f_P("P", {Type::BOOL}, {true, false});
   Functor f_Q("Q", {Type::BOOL}, {true, false});
   Term t_P = std::make_shared<Application>(f_P, std::vector<Term>());
@@ -920,8 +1081,8 @@ TEST_CASE("Translate") {
   std::vector<Term> args = {t_P, t_Q};
   Term t_eq = std::make_shared<Binary>(Op::Equals, t_P, t_Q);
   Term t_iff = std::make_shared<Binary>(Op::Iff, t_P, t_Q);
-  Term t_eq_trans = t_eq->translate();
-  Term t_iff_trans = t_iff->translate();
+  Term t_eq_trans = t_eq->rewrite();
+  Term t_iff_trans = t_iff->rewrite();
   CHECK(t_eq_trans->getRepr() == "and(or(P,not Q),or(Q,not P))");
   CHECK(t_eq_trans->getRepr() == t_iff_trans->getRepr());
 }
@@ -998,7 +1159,7 @@ TEST_CASE("reduce justifieds") {
   auto [simp, de] = t_or->reduceJustifieds();
   CHECK(de == _unknown_);
   CHECK(simp->getRepr() == "or(P,and(+(c,d)>=c,not Q(f(c,d))))");
-  auto [simp5, de5] = t_or->translate()->reduceJustifieds();
+  auto [simp5, de5] = t_or->rewrite()->reduceJustifieds();
   CHECK(simp->getRepr() == simp5->getRepr());
   d.setInter({}, 1);
   auto [simp2, de2] = t_or->reduceJustifieds();
@@ -1010,7 +1171,7 @@ TEST_CASE("reduce justifieds") {
   auto [simp3, de3] = t_or->reduceJustifieds();
   CHECK(simp3->getRepr() == "true");
   CHECK(de3 == DomEl(true));
-  auto [simp4, de4] = t_or->translate()->reduceJustifieds();
+  auto [simp4, de4] = t_or->rewrite()->reduceJustifieds();
   CHECK(simp4->getRepr() == "true");
   CHECK(de4 == DomEl(true));
 }
@@ -1037,7 +1198,7 @@ TEST_CASE("Cardinality") {
   CHECK(t_or_alt->translateFull()->getRepr() == "or(phi(\"d\"),phi(\"e\"))");
 }
 
-TEST_CASE("Unique") {
+TEST_CASE("Distinct") {
   Theory theo;
   std::vector<DomEl> pigeons = {DomEl("p1"), DomEl("p2"), DomEl("p3"), DomEl("p4")};
   std::vector<DomEl> holes = {DomEl("h1"), DomEl("h2"), DomEl("h3")};
@@ -1084,6 +1245,27 @@ TEST_CASE("Unique") {
   ilp.global.options.verbosity.parse("0");
   [[maybe_unused]] SolveState state = ilp.runFullCatchUnsat();
   REQUIRE(state == SolveState::INCONSISTENT);
+}
+
+TEST_CASE("If-else") {
+  Vocabulary voc;
+  Functor p = *voc.createBoolean("p", {});
+  Functor q = *voc.createBoolean("q", {});
+  Functor r = *voc.createBoolean("r", {});
+  Functor c = *voc.createInterpreted("C", {{1}}, 0);
+  Functor d = *voc.createInterpreted("D", {{2}}, 0);
+  Functor e = *voc.createInterpreted("E", {{3}}, 0);
+  Functor f = *voc.createInterpreted("F", {{4}}, 0);
+  Functor g = *voc.createFunctor("G", {Type::INT}, {0, 1, 2, 3});
+  Term t = O(">=", IE(IE(A(c, {}), A(p, {}), A(d, {})), A(q, {}), IE(A(e, {}), A(r, {}), A(f, {}))), D(2));
+  REQUIRE(t->reduceFull()->getRepr() ==
+          "(1 if and(p,q), 2 if and(not p,q), 3 if and(not q,r), 4 if and(not q,not r))>=2");
+  REQUIRE(t->translateFull()->getRepr() == "(2and(-p,q)+3and(-q,r)+4and(-q,-r)+and(p,q)>=2)");
+  p.setInter({}, false);
+  Term t2 = O(">=", IE(A(g, {}), A(q, {}), IE(A(c, {}), A(p, {}), A(g, {}))), D(2));
+  REQUIRE(t2->reduceFull()->getRepr() == "G>=2");
+  Term t3 = O(">=", IE(A(g, {}), O("not", A(p, {})), IE(A(c, {}), A(q, {}), A(g, {}))), D(2));
+  REQUIRE(t3->reduceFull()->getRepr() == "G>=2");
 }
 
 TEST_CASE("strip top ands") {
