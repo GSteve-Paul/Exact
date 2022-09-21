@@ -130,8 +130,7 @@ class ILP {
 
   void init(bool boundObjective, bool addNonImplieds);
   SolveState run();
-  SolveState runFull();
-  SolveState runFullCatchUnsat();
+  SolveState runFull(bool optimize = false);
 
   void addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                      const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,

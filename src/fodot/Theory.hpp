@@ -66,7 +66,6 @@ class Theory {
  public:
   Vocabulary voc;
   std::vector<Term> constraints;
-  Functor* objF = nullptr;
   Term objective;
 
   void addTo(xct::ILP& ilp);

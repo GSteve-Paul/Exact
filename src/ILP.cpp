@@ -338,17 +338,9 @@ SolveState ILP::run() {  // NOTE: also throws AsynchronousInterrupt and UnsatEnc
   return optim->optimize(assumptions);
 }
 
-SolveState ILP::runFull() {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
+SolveState ILP::runFull(bool optimize) {
   SolveState result = SolveState::INPROCESSED;
-  while (result == SolveState::INPROCESSED) {
-    result = optim->optimize(assumptions);
-  }
-  return result;
-}
-
-SolveState ILP::runFullCatchUnsat() {
-  SolveState result = SolveState::INPROCESSED;
-  while (result == SolveState::INPROCESSED) {
+  while (result == SolveState::INPROCESSED || (optimize && result == SolveState::SAT)) {
     try {
       result = optim->optimize(assumptions);
     } catch (const UnsatEncounter& ue) {

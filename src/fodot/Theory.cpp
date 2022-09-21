@@ -235,6 +235,12 @@ std::ostream& operator<<(std::ostream& o, const Vocabulary& v) {
 }
 
 void Theory::addTo(xct::ILP& ilp) {
+  IneqTerm translatedObj;
+  if (objective) {
+    assert(objective->type == Type::INT);
+    translatedObj = objective->translateFull(false);
+    translatedObj->collectDomains();
+  }
   std::vector<std::pair<Term, IneqTerm>> tseitin2constr;
   for (const Term& tt : constraints) {
     std::cout << "TRANSLATING " << tt << std::endl;
@@ -254,14 +260,6 @@ void Theory::addTo(xct::ILP& ilp) {
       tseitin2constr.push_back({t_tseitin, it});
     }
   }
-  IneqTerm translatedObj;
-  if (objective) {
-    assert(objective->type == Type::INT);
-    std::string name = objective->getRepr();
-    objF = voc.createBuiltin(name, xct::aux::comprehension(objective->getRange(), [](const DomEl& d) { return d; }));
-    translatedObj = O("=", A(*objF, {}), objective)->translateFull();
-    translatedObj->collectDomains();
-  }
   voc.addTo(ilp);
   std::vector<xct::IntVar*> assumptions;
   assumptions.reserve(tseitin2constr.size());
@@ -274,9 +272,7 @@ void Theory::addTo(xct::ILP& ilp) {
   }
   ilp.setAssumptions(std::vector<bigint>(assumptions.size(), 1), assumptions);
   if (translatedObj) {
-    assert(objF);
     translatedObj->addToAsTop(ilp);
-    ilp.setObjective({1}, {ilp.getVarFor(A(*objF, {})->getRepr())}, {false});
   }
 }
 
@@ -534,7 +530,7 @@ void Theory::addMijnCollega() {
   constraints.push_back(t7);
   // totale voorkeur:
   // sum{p in Professional, d in Dienst : voorkeur(p,d) if toegewezen(d)=p else 0}
-  objective = sum({{{"p"}, Professional}, {{"d"}, Dienst}}, A(voorkeur, p, d));
+  objective = sum({{{"p"}, Professional}, {{"d"}, Dienst}}, IE(A(voorkeur, p, d), O("=", p, A(toegewezen, d)), D(0)));
 }
 
 std::ostream& operator<<(std::ostream& o, const Theory& theo) {
@@ -740,7 +736,7 @@ TEST_CASE("Empty conjunction and empty disjunction") {
 
   theo.constraints.push_back(t);
   theo.addTo(ilp);
-  CHECK(ilp.runFullCatchUnsat() == SolveState::SAT);
+  CHECK(ilp.runFull() == SolveState::SAT);
 
   t = O("or", {});
   CHECK(t->reduceFull()->getRepr() == "false");
@@ -749,7 +745,7 @@ TEST_CASE("Empty conjunction and empty disjunction") {
 
   theo.constraints.push_back(t);
   theo.addTo(ilp);
-  CHECK(ilp.runFullCatchUnsat() == SolveState::INCONSISTENT);
+  CHECK(ilp.runFull() == SolveState::INCONSISTENT);
 }
 
 TEST_CASE("Finding error in graph coloring") {
@@ -777,7 +773,7 @@ TEST_CASE("Finding error in graph coloring") {
 
   theo.constraints.push_back(t);
   theo.addTo(ilp);
-  CHECK(ilp.runFullCatchUnsat() == SolveState::INCONSISTENT);
+  CHECK(ilp.runFull() == SolveState::INCONSISTENT);
 
   std::vector<std::string> core =
       xct::aux::comprehension(ilp.getLastCore(), [](xct::IntVar* iv) { return iv->getName(); });

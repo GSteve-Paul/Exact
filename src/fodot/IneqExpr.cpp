@@ -55,7 +55,17 @@ void WeightedSum::addTo(xct::ILP& ilp) const {
   assert(false);  // ILP addition should be managed by parent
 }
 void WeightedSum::addToAsTop(xct::ILP& ilp) const {
-  assert(false);  // ILP addition should be managed by parent
+  // NOTE: only used to construct objective for now
+  std::vector<bigint> coefs;
+  coefs.reserve(terms.size());
+  std::vector<xct::IntVar*> vars;
+  vars.reserve(terms.size());
+  for (const auto& kv : terms) {
+    kv.first->addTo(ilp);
+    vars.push_back(ilp.getVarFor(kv.first->getRepr()));
+    coefs.push_back(kv.second);
+  }
+  ilp.setObjective(coefs, vars, {});
 }
 
 const std::string WeightedSum::getRepr() const {
@@ -135,13 +145,21 @@ std::shared_ptr<WeightedSum> WeightedSum::flatten_() const {
 IneqTerm WeightedSum::flatten() const { return flatten_(); }
 
 std::pair<IneqTerm, bool> WeightedSum::mergeMin() const {
-  assert(false);  // should not happen for now
-  return {shared_from_this(), false};
+  // NOTE: should only happen at call to top weightedSum (e.g. for objective). Other calls are passed to Geq.
+  std::vector<fo_int> coefs =
+      xct::aux::comprehension(terms, [](const std::pair<IneqTerm, fo_int>& ti) { return ti.second; });
+  std::vector<IneqTerm> vars =
+      xct::aux::comprehension(terms, [](const std::pair<IneqTerm, fo_int>& ti) { return ti.first->mergeMin().first; });
+  return {std::make_shared<WeightedSum>(coefs, vars, offset), false};
 }
 
 std::pair<IneqTerm, bool> WeightedSum::mergeMax() const {
-  assert(false);  // should not happen for now
-  return {shared_from_this(), false};
+  // NOTE: should only happen at call to top weightedSum (e.g. for objective). Other calls are passed to Geq.
+  std::vector<fo_int> coefs =
+      xct::aux::comprehension(terms, [](const std::pair<IneqTerm, fo_int>& ti) { return ti.second; });
+  std::vector<IneqTerm> vars =
+      xct::aux::comprehension(terms, [](const std::pair<IneqTerm, fo_int>& ti) { return ti.first->mergeMax().first; });
+  return {std::make_shared<WeightedSum>(coefs, vars, offset), false};
 }
 
 std::shared_ptr<WeightedSum> WeightedSum::pushMinus_(bool minus, bool addOne) const {
@@ -170,8 +188,12 @@ std::pair<IneqTerm, PushMinusState> WeightedSum::pushMinus(bool minus) const {
 }
 
 IneqTerm WeightedSum::bigM() const {
-  assert(false);
-  return nullptr;
+  // NOTE: should only happen at call to top weightedSum (e.g. for objective). Other calls are passed to Geq.
+  std::vector<fo_int> coefs =
+      xct::aux::comprehension(terms, [](const std::pair<IneqTerm, fo_int>& ti) { return ti.second; });
+  std::vector<IneqTerm> vars =
+      xct::aux::comprehension(terms, [](const std::pair<IneqTerm, fo_int>& ti) { return ti.first->bigM(); });
+  return std::make_shared<WeightedSum>(coefs, vars, offset);
 }
 
 Geq::Geq(const std::shared_ptr<const WeightedSum>& arg) : IneqExpr(), argument(arg) {}
@@ -409,10 +431,7 @@ std::pair<IneqTerm, PushMinusState> Terminal::pushMinus(bool minus) const {
   return {shared_from_this(), minus ? PushMinusState::STILLMINUS : PushMinusState::OK};
 }
 
-IneqTerm Terminal::bigM() const {
-  assert(false);
-  return shared_from_this();
-}
+IneqTerm Terminal::bigM() const { return shared_from_this(); }
 
 }  // namespace fodot
 

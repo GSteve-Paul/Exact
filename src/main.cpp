@@ -90,15 +90,10 @@ int main(int argc, char** argv) {
 
   ilp.init(true, false);
 
-  SolveState res = ilp.runFullCatchUnsat();
+  SolveState res = ilp.runFull(theo.objective != nullptr);
 
   std::cout << "RESULT: " << res << std::endl;
-  if (res == SolveState::INCONSISTENT) {
-    for (const IntVar* iv : ilp.getLastCore()) {
-      std::cout << iv->getName() << std::endl;
-    }
-  } else if (res == SolveState::UNSAT) {
-    assert(ilp.hasSolution());
+  if (ilp.hasSolution()) {
     std::cout << "Objective: " << ilp.getLowerBound() << " =< " << ilp.getUpperBound() << std::endl;
     theo.voc.readModel(ilp);
     fodot::Functor& toegewezen = *theo.voc.getFunctor("toegewezen");
@@ -130,7 +125,10 @@ int main(int argc, char** argv) {
       }
     }
     csv_file.close();
+  } else {
+    assert(res == SolveState::INCONSISTENT);
+    for (const IntVar* iv : ilp.getLastCore()) {
+      std::cout << iv->getName() << std::endl;
+    }
   }
-
-  assert(res != SolveState::SAT);
 }

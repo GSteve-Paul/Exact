@@ -135,11 +135,15 @@ std::ostream& operator<<(std::ostream& os, const std::shared_ptr<const RawExpr>&
 Term RawExpr::reduceFull() const {
   return instantiateVars()->rewrite()->reduceJustifieds().first->pushNegation()->mergeIte();
 }
-IneqTerm RawExpr::translateFull() const {
-  assert(type == Type::BOOL);
-  // NOTE: outer "and" ensures we get a constraint (a Geq)
-  std::vector<Term> args = {reduceFull()};
-  return std::make_shared<Nary>(Op::And, args)->toIneq()->reduceFull();
+IneqTerm RawExpr::translateFull(bool addAnd) const {
+  if (addAnd) {
+    assert(type == Type::BOOL);
+    // NOTE: outer "and" ensures we get a constraint (a Geq)
+    std::vector<Term> args = {reduceFull()};
+    return std::make_shared<Nary>(Op::And, args)->toIneq()->reduceFull();
+  } else {
+    return reduceFull()->toIneq()->reduceFull();
+  }
 }
 Term RawExpr::instantiateVars(InstVarState ivs) const {
   return instantiateVars(std::unordered_map<Var, DomEl, varhash>(), ivs);
@@ -1243,7 +1247,7 @@ TEST_CASE("Distinct") {
       "1 >= 1 hole(\"p4\")=\"h1\" 1 hole(\"p4\")=\"h2\" 1 hole(\"p4\")=\"h3\" >= 1\n");
   ilp.init(false, false);
   ilp.global.options.verbosity.parse("0");
-  [[maybe_unused]] SolveState state = ilp.runFullCatchUnsat();
+  [[maybe_unused]] SolveState state = ilp.runFull();
   REQUIRE(state == SolveState::INCONSISTENT);
 }
 

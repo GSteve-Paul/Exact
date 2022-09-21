@@ -157,7 +157,7 @@ class RawExpr : public Expression, public std::enable_shared_from_this<const Raw
   virtual Term mergeIte() const = 0;  // TODO: pushing minus may improve merging of if-else
 
   Term reduceFull() const;
-  IneqTerm translateFull() const;
+  IneqTerm translateFull(bool addAnd = true) const;
 };
 
 class Val;
