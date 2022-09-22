@@ -375,7 +375,7 @@ extern uint32_t seed; /* The seed must be initialized to non-zero */
 uint32_t xorshift32();
 }  // namespace rng
 
-uint32_t getRand(uint32_t min, uint32_t max);
+int32_t getRand(int32_t min, int32_t max);
 uint64_t hash(uint64_t x);
 
 template <typename T>
