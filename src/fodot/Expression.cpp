@@ -919,18 +919,19 @@ const std::unordered_set<DomEl> FirstOrder::getRange() const {
   }
   if (symbol == Op::Count) {
     std::unordered_set<DomEl> res;
-    fo_int max = 0;
-    for (const Scope& sc : scopes) max += sc.range.size();
-    res.reserve(max + 1);
-    for (fo_int i = 0; i <= max; ++i) res.insert(i);
+    fo_int n = 1;
+    for (const Scope& sc : scopes) n *= sc.range.size();
+    res.reserve(n + 1);
+    for (fo_int i = 0; i <= n; ++i) res.insert(i);
     return res;
   }
   if (symbol == Op::Sum) {
     std::unordered_set<DomEl> res = argument->getRange();
     auto [min, max] = getExtrema(res);
-    fo_int n = 0;
-    for (const Scope& sc : scopes) n += sc.range.size();
+    fo_int n = 1;
+    for (const Scope& sc : scopes) n *= sc.range.size();
     res.clear();
+    res.reserve(max * n - min * n + 1);
     for (fo_int i = min * n; i <= max * n; ++i) res.insert(i);
     return res;
   }
