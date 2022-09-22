@@ -1452,7 +1452,7 @@ void ConstrExp<SMALL, LARGE>::toStreamAsOPBlhs(std::ostream& o, bool withConstan
     if (l == 0) continue;
     o << std::pair<SMALL, Lit>{getCoef(l), l} << " ";
   }
-  if (degree != 0) {
+  if (withConstant && degree != 0) {
     o << "-" << degree << " 1 ";
   }
 }
