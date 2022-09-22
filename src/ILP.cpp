@@ -361,7 +361,7 @@ std::ostream& ILP::printFormula(std::ostream& out) {
   out << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
   if (optim) {
     out << "min: ";
-    optim->getReformObj()->toStreamAsOPBlhs(out);
+    optim->getReformObj()->toStreamAsOPBlhs(out, true);
     out << ";\n";
   }
   for (Lit l : solver.getUnits()) {

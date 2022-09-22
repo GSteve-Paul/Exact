@@ -157,13 +157,15 @@ void opb_read(std::istream& in, ILP& ilp) {
   std::vector<bool> negated;
   for (std::string line; getline(in, line);) {
     if (line.empty() || line[0] == '*') continue;
-    for (char& c : line)
+    for (char& c : line) {
       if (c == ';') c = ' ';
+    }
     bool opt_line = line.substr(0, 4) == "min:";
-    bigint lb;
+    bigint lb = 0;
     bool isInequality = false;
     if (opt_line) {
-      line = line.substr(4), assert(first_constraint);
+      assert(first_constraint);
+      line = line.substr(4);
       if (std::all_of(line.begin(), line.end(), isspace)) {
         std::cout << "c WARNING objective function is empty" << std::endl;
         // TODO: global warning routine that also checks for verbosity
@@ -173,7 +175,7 @@ void opb_read(std::istream& in, ILP& ilp) {
       if (eqpos == std::string::npos || eqpos == 0) {
         throw std::invalid_argument("Incorrect constraint\n" + line);
       }
-      lb = read_bigint(line, eqpos + 1);
+      lb += read_bigint(line, eqpos + 1);
       isInequality = line[eqpos - 1] == '>';
       line = line.substr(0, eqpos - isInequality);
     }
@@ -197,12 +199,15 @@ void opb_read(std::istream& in, ILP& ilp) {
     negated.clear();
     for (int i = 0; i < (long long)tokens.size(); i += 2) {
       const std::string& var = tokens[i + 1];
-      if (var.empty() || (var[0] != '~' && var[0] != 'x') || (var[0] == '~' && var[1] != 'x')) {
+      if (var.empty()) {
         throw std::invalid_argument("Invalid literal token: " + var);
+      } else if (var[0] != '~' && var[0] != 'x') {
+        lb -= read_bigint(tokens[i], 0) * read_bigint(var, 0);
+      } else {
+        coefs.emplace_back(read_bigint(tokens[i], 0));
+        negated.emplace_back(var[0] == '~');
+        vars.emplace_back(indexedBoolVar(ilp, var.substr(negated.back() + 1)));
       }
-      coefs.emplace_back(read_bigint(tokens[i], 0));
-      negated.emplace_back(var[0] == '~');
-      vars.emplace_back(indexedBoolVar(ilp, var.substr(negated.back() + 1)));
     }
 
     if (opt_line) {

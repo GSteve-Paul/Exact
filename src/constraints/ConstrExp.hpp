@@ -181,7 +181,7 @@ struct ConstrExpSuper {
   virtual void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) = 0;
   virtual void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) = 0;
 
-  virtual void toStreamAsOPBlhs(std::ostream& o) const = 0;
+  virtual void toStreamAsOPBlhs(std::ostream& o, bool withConstant) const = 0;
   virtual void toStreamAsOPB(std::ostream& o) const = 0;
   virtual void toStreamWithAssignment(std::ostream& o, const IntMap<int>& level, const std::vector<int>& pos) const = 0;
   virtual void toStreamPure(std::ostream& o) const = 0;
@@ -382,7 +382,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);
   void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
 
-  void toStreamAsOPBlhs(std::ostream& o) const;
+  void toStreamAsOPBlhs(std::ostream& o, bool withConstant) const;
   void toStreamAsOPB(std::ostream& o) const;
   void toStreamWithAssignment(std::ostream& o, const IntMap<int>& level, const std::vector<int>& pos) const;
   void toStreamPure(std::ostream& o) const;

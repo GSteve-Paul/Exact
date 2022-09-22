@@ -65,7 +65,7 @@ void WeightedSum::addToAsTop(xct::ILP& ilp) const {
     vars.push_back(ilp.getVarFor(kv.first->getRepr()));
     coefs.push_back(kv.second);
   }
-  ilp.setObjective(coefs, vars, {});
+  ilp.setObjective(coefs, vars, {}, 1, offset);
 }
 
 const std::string WeightedSum::getRepr() const {
