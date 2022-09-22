@@ -28,30 +28,21 @@ or run with the flag --license=AGPLv3. If not, see
 using namespace xct;
 
 void runOnce(int argc, char** argv, ILP& ilp) {
-  //  ilp.global.stats.startTime = std::chrono::steady_clock::now();
-  //  ilp.global.options.parseCommandLine(argc, argv);
-  //  ilp.global.logger.activate(ilp.global.options.proofLog.get());
-  //
-  //  if (ilp.global.options.verbosity.get() > 0) {
-  //    std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
-  //  }
-  //
-  //  aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.global.stats.PARSETIME);
-  //
-  //  if (ilp.global.options.noSolve) throw AsynchronousInterrupt();
-  //  if (ilp.global.options.printCsvData) ilp.global.stats.printCsvHeader();
-  //  if (ilp.global.options.verbosity.get() > 0) {
-  //    std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
-  //              << std::endl;
-  //  }
+  ilp.global.stats.startTime = std::chrono::steady_clock::now();
+  ilp.global.options.parseCommandLine(argc, argv);
+  ilp.global.logger.activate(ilp.global.options.proofLog.get());
 
-  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
+  if (ilp.global.options.verbosity.get() > 0) {
+    std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
+  }
 
-  ilp.init(true, true);
-  SolveState res = SolveState::INPROCESSED;
+  aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.global.stats.PARSETIME);
 
-  while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
-    res = ilp.run();
+  if (ilp.global.options.noSolve) throw AsynchronousInterrupt();
+  if (ilp.global.options.printCsvData) ilp.global.stats.printCsvHeader();
+  if (ilp.global.options.verbosity.get() > 0) {
+    std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
+              << std::endl;
   }
 }
 
@@ -88,7 +79,7 @@ int main(int argc, char** argv) {
   theo.addTo(ilp, false);
   // std::cout << theo << std::endl;
 
-  ilp.init(true, false);
+  ilp.init(true, true);
 
   std::ofstream output("/tmp/mijncollega.opb");
   if (output.is_open()) {
