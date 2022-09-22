@@ -68,7 +68,7 @@ class Theory {
   std::vector<Term> constraints;
   Term objective;
 
-  void addTo(xct::ILP& ilp);
+  void addTo(xct::ILP& ilp, bool useAssumptions = true);
 
   void addMijnCollega();  // TODO: tmp
 };

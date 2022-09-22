@@ -234,7 +234,7 @@ std::ostream& operator<<(std::ostream& o, const Vocabulary& v) {
   return o;
 }
 
-void Theory::addTo(xct::ILP& ilp) {
+void Theory::addTo(xct::ILP& ilp, bool useAssumptions) {
   IneqTerm translatedObj;
   if (objective) {
     assert(objective->type == Type::INT);
@@ -270,7 +270,14 @@ void Theory::addTo(xct::ILP& ilp) {
       tc.second->addToAsTop(ilp);
     }  // else tc.second is tautology // TODO: add assert!
   }
-  ilp.setAssumptions(std::vector<bigint>(assumptions.size(), 1), assumptions);
+  if (useAssumptions) {
+    ilp.setAssumptions(std::vector<bigint>(assumptions.size(), 1), assumptions);
+  } else {
+    for (xct::IntVar* iv : assumptions) {
+      ilp.fix(iv, 1);
+    }
+  }
+
   if (translatedObj) {
     translatedObj->addToAsTop(ilp);
   }

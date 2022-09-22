@@ -85,10 +85,18 @@ int main(int argc, char** argv) {
 
   ilp.global.stats.startTime = std::chrono::steady_clock::now();
 
-  theo.addTo(ilp);
+  theo.addTo(ilp, false);
   // std::cout << theo << std::endl;
 
   ilp.init(true, false);
+
+  std::ofstream output("/tmp/mijncollega.opb");
+  if (output.is_open()) {
+    ilp.printFormula(output);
+    output.close();
+  } else {
+    std::cerr << "Unable to open file" << std::endl;
+  }
 
   SolveState res = ilp.runFull(theo.objective != nullptr);
 
