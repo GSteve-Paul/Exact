@@ -70,7 +70,8 @@ class Theory {
 
   void addTo(xct::ILP& ilp, bool useAssumptions = true);
 
-  void addMijnCollega();  // TODO: tmp
+  void addMijnCollega();     // TODO: tmp
+  void repairMijnCollega();  // TODO: tmp
 };
 std::ostream& operator<<(std::ostream& o, const Theory& theo);
 

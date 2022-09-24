@@ -166,24 +166,20 @@ std::shared_ptr<Application> A(Functor& f, const Term& arg1, const Term& arg2, c
 std::shared_ptr<Operator> O(const std::string& op, const std::initializer_list<Term>& args) {
   std::vector<Term> arguments(std::begin(args), std::end(args));
   Op o;
-  if (op == "<") {
-    o = Op::StrictGreater;
-    assert(arguments.size() == 2);
+  if (op == "<" || op == "=<") {
+    checkArity(2, arguments.size(), " when parsing " + op);
     std::swap(arguments[0], arguments[1]);
-  } else if (op == "=<") {
-    o = Op::Greater;
-    assert(arguments.size() == 2);
-    std::swap(arguments[0], arguments[1]);
+    o = (op == "<" ? Op::StrictGreater : Op::Greater);
   } else {
     o = getOp(op);
   }
   if (o == Op::Not || o == Op::Minus) {
-    assert(arguments.size() == 1);
+    checkArity(1, arguments.size(), " when parsing " + op);
     return std::make_shared<Unary>(o, arguments[0]);
   } else if (o == Op::And || o == Op::Or || o == Op::Plus) {
     return std::make_shared<Nary>(o, arguments);
   } else {
-    assert(arguments.size() == 2);
+    checkArity(2, arguments.size(), " when parsing " + op);
     return std::make_shared<Binary>(o, arguments[0], arguments[1]);
   }
 }
@@ -769,6 +765,7 @@ Term Application::deepCopy() const {
                                        xct::aux::comprehension(arguments, [](const Term& t) { return t->deepCopy(); }));
 }
 void Application::checkType() const {
+  checkArity(functor.getArity(), arguments.size(), " when parsing " + getRepr());
   if ((int)arguments.size() != functor.getArity()) throw ArityMismatch(functor.getArity(), arguments.size());
   for (int i = 0; i < (int)arguments.size(); ++i) {
     if (arguments[i]->type != functor.types[i])
@@ -876,7 +873,7 @@ std::pair<Term, DomEl> Var::reduceJustifieds() const {
 Term Var::mergeIte() const { return shared_from_this(); }
 
 void Scope::checkInvariants() const {
-  if (!range.empty() && vars.size() != range[0].size()) throw ArityMismatch(range[0].size(), vars.size());
+  if (!range.empty()) checkArity(range[0].size(), vars.size(), " when parsing scope");
   for (int i = 0; i < (int)vars.size(); ++i) {
     for (int j = i + 1; j < (int)vars.size(); ++j) {
       if (vars[i] == vars[j]) throw std::invalid_argument("Identical variables " + vars[i] + " in scope.");

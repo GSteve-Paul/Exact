@@ -122,12 +122,15 @@ NotInRange::NotInRange(const Functor& f, const DomEl& de) : msg() {
 const char* NotInRange::what() const noexcept { return msg.c_str(); }
 TypeClash::TypeClash(const std::string& m) : msg(m) {}
 const char* TypeClash::what() const noexcept { return msg.c_str(); }
-ArityMismatch::ArityMismatch(int expected, int provided) : msg() {
+ArityMismatch::ArityMismatch(int expected, int provided, const std::string& message) : msg() {
   std::stringstream ss;
-  ss << "Expected arity " << expected << " but got " << provided << ".";
+  ss << "Expected arity " << expected << " but got " << provided << message;
   msg = ss.str();
 }
 const char* ArityMismatch::what() const noexcept { return msg.c_str(); }
+void checkArity(int expected, int provided, const std::string& message) {
+  if (expected != provided) throw ArityMismatch(expected, provided, message);
+}
 NoSet::NoSet(const Functor& f) : msg() {
   std::stringstream ss;
   ss << f.name << " is not unary or not Boolean or has no finite interpretation, so it cannot be used as set.";
@@ -192,7 +195,7 @@ void Functor::setInter(const Tup& t, const DomEl& de) {
   if (de == _unknown_)
     throw std::invalid_argument(
         (std::stringstream() << "Attempting to set interpretation of " << t << " as unknown.").str());
-  if ((int)t.size() != getArity()) throw ArityMismatch(getArity(), t.size());
+  checkArity(getArity(), t.size(), " in interpretation of " + name);
   for (int i = 0; i < (int)t.size(); ++i) {
     if (!hasType(t[i], types[i]))
       throw TypeClash(

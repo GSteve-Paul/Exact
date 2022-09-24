@@ -134,9 +134,10 @@ class ArityMismatch : public std::exception {
   std::string msg;
 
  public:
-  ArityMismatch(int expected, int provided);
+  ArityMismatch(int expected, int provided, const std::string& message = "");
   [[nodiscard]] const char* what() const noexcept override;
 };
+void checkArity(int expected, int provided, const std::string& message);
 class NoSet : public std::exception {
   std::string msg;
 

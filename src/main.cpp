@@ -89,11 +89,11 @@ int main(int argc, char** argv) {
     std::cerr << "Unable to open file" << std::endl;
   }
 
-  SolveState res = ilp.runFull(theo.objective != nullptr);
+  SolveState res = ilp.runFull(theo.objective != nullptr, 20);
 
   std::cout << "RESULT: " << res << std::endl;
   if (ilp.hasSolution()) {
-    std::cout << "Objective: " << ilp.getLowerBound() << " =< " << ilp.getUpperBound() << std::endl;
+    std::cout << "Objective: " << -ilp.getUpperBound() << " =< " << -ilp.getLowerBound() << std::endl;
     theo.voc.readModel(ilp);
     fodot::Functor& toegewezen = *theo.voc.getFunctor("toegewezen");
     fodot::Functor& dag = *theo.voc.getFunctor("dag");
@@ -101,8 +101,8 @@ int main(int argc, char** argv) {
     fodot::Functor& shift = *theo.voc.getFunctor("shift");
     fodot::Functor& weekdag = *theo.voc.getFunctor("weekdag");
     std::cout << toegewezen << std::endl;
-    std::map<fodot::fo_int, std::map<std::string, std::map<std::string, std::string>>>
-        csv;  // dag -> shift -> loc -> dokter
+    std::map<fodot::fo_int, std::map<std::string, std::map<std::string, std::string>>> csv;
+    // dag->shift->loc->dokter
     for (const auto& kv : toegewezen.getExtension()) {
       assert(kv.first.size() == 1);
       fodot::fo_int d = std::get<fodot::fo_int>(dag.getInter(kv.first));
@@ -124,10 +124,11 @@ int main(int argc, char** argv) {
       }
     }
     csv_file.close();
-  } else {
-    assert(res == SolveState::INCONSISTENT);
+  } else if (ilp.hasCore()) {
     for (const IntVar* iv : ilp.getLastCore()) {
       std::cout << iv->getName() << std::endl;
     }
+  } else {
+    std::cout << "NO INFO" << std::endl;
   }
 }

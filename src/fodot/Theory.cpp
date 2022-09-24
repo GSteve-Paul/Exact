@@ -281,6 +281,12 @@ void Theory::addTo(xct::ILP& ilp, bool useAssumptions) {
   }
 }
 
+std::string getDienst(int dagcounter, const DomEl& locatie, const std::string& weekdag,
+                      const std::tuple<std::string, int, int>& shift) {
+  return "d" + std::to_string(dagcounter) + " " + std::get<std::string>(locatie) + " " + weekdag + " " +
+         std::get<0>(shift);
+}
+
 void Theory::addMijnCollega() {
   Functor& Locatie = *voc.createType("Locatie", {"adam", "bdam", "cdam"});
   Functor& afstand = *voc.createInterpreted("afstand",
@@ -307,12 +313,12 @@ void Theory::addMijnCollega() {
        {"Dirk", 10},    {"Carlo", 20},   {"Ine", 20},   {"Els", 15},    {"Patricia", 15}, {"Fatima", 20}, {"Gino", 10},
        {"Hillary", 15}, {"Jos", 10},     {"Klaas", 15}, {"Selene", 15}, {"Ahmed", 10},    {"Louis", 20}},
       0);
-  Functor& maxPerWeek = *voc.createInterpreted(
-      "maxPerWeek",
-      {{"Truus", 5},   {"Quentin", 7}, {"Nette", 8}, {"Miro", 7},   {"Rune", 8},     {"Olaf", 9},   {"Bert", 6},
-       {"Dirk", 8},    {"Carlo", 7},   {"Ine", 8},   {"Els", 9},    {"Patricia", 6}, {"Fatima", 5}, {"Gino", 6},
-       {"Hillary", 7}, {"Jos", 9},     {"Klaas", 5}, {"Selene", 9}, {"Ahmed", 5},    {"Louis", 6}},
-      _unknown_);
+  //  Functor& maxPerWeek = *voc.createInterpreted(
+  //      "maxPerWeek",
+  //      {{"Truus", 5},   {"Quentin", 7}, {"Nette", 8}, {"Miro", 7},   {"Rune", 8},     {"Olaf", 9},   {"Bert", 6},
+  //       {"Dirk", 8},    {"Carlo", 7},   {"Ine", 8},   {"Els", 9},    {"Patricia", 6}, {"Fatima", 5}, {"Gino", 6},
+  //       {"Hillary", 7}, {"Jos", 9},     {"Klaas", 5}, {"Selene", 9}, {"Ahmed", 5},    {"Louis", 6}},
+  //      _unknown_);
   Functor& opeenvolgend = *voc.createInterpreted(
       "opeenvolgend",
       xct::aux::comprehension(Professional.getInterAsSet(),
@@ -321,11 +327,9 @@ void Theory::addMijnCollega() {
                               }),
       _unknown_);
 
-  Functor& Shift = *voc.createType("Shift", {"avond consult", "avond visite", "nacht", "vroeg visite", "vroeg consult",
-                                             "laat visite", "laat consult"});
   int maxDagen = 14;
   Functor& Dag = *voc.createType("Dag", getIntRange({0, maxDagen - 1}));
-  Functor& Uur = *voc.createType("Uur", getIntRange({0, 23}));
+  // Functor& Uur = *voc.createType("Uur", getIntRange({0, 23}));
   Functor& Moment = *voc.createType("Moment", getIntRange({0, (maxDagen + 1) * 24}));
 
   Functor& Week = *voc.createType("Week", getIntRange({0, maxDagen / 7 - 1}));
@@ -336,7 +340,6 @@ void Theory::addMijnCollega() {
   Functor& loc = *voc.createFunctor("loc", {Type::STRING, Type::STRING}, Locatie);
   Functor& start = *voc.createFunctor("start", {Type::STRING, Type::INT}, Moment);
   Functor& eind = *voc.createFunctor("eind", {Type::STRING, Type::INT}, Moment);
-  Functor& shift = *voc.createFunctor("shift", {Type::STRING, Type::STRING}, Shift);
   Functor& weekdag =
       *voc.createFunctor("weekdag", {Type::STRING, Type::STRING},
                          {"maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"});
@@ -345,17 +348,24 @@ void Theory::addMijnCollega() {
   std::vector<std::string> weekdagen = {"maandag", "dinsdag", "woensdag", "donderdag", "vrijdag"};
   std::vector<std::string> weekenddagen = {"zaterdag", "zondag"};
   std::vector<std::tuple<std::string, int, int>> weekshifts = {
-      {"avond consult", 18, 23}, {"avond visite", 17, 23}, {"nacht", 23, 8}};
-  std::vector<std::tuple<std::string, int, int>> weekendshifts = {
-      {"vroeg consult", 8, 23}, {"vroeg visite", 8, 23}, {"laat consult", 23, 8}, {"laat visite", 23, 8}};
+      {"avond consult", 18, 23}, {"avond visite", 17, 23}, {"nacht", 23, 8}, {"achterwacht 17-8", 17, 8}};
+  std::vector<std::tuple<std::string, int, int>> weekendshifts = {{"vroeg consult", 8, 23},
+                                                                  {"vroeg visite", 8, 23},
+                                                                  {"laat consult", 23, 8},
+                                                                  {"laat visite", 23, 8},
+                                                                  {"achterwacht 8-8", 8, 8}};
+  std::vector<DomEl> _shift;
+  for (const auto& t : weekshifts) _shift.push_back(std::get<0>(t));
+  for (const auto& t : weekendshifts) _shift.push_back(std::get<0>(t));
+  Functor& Shift = *voc.createType("Shift", _shift);
+  Functor& shift = *voc.createFunctor("shift", {Type::STRING, Type::STRING}, Shift);
 
   for (const auto& l : Locatie.getInterAsSet()) {
     fo_int dagcounter = 0;
     for (const auto& w : Week.getInterAsSet()) {
       for (const auto& wd : weekdagen) {
         for (const auto& ws : weekshifts) {
-          std::string s =
-              "d" + std::to_string(dagcounter) + " " + std::get<std::string>(l) + " " + wd + " " + std::get<0>(ws);
+          std::string s = getDienst(dagcounter, l, wd, ws);
           Dienst.setInter({s}, true);
           dag.setInter({s}, dagcounter);
           week.setInter({s}, w);
@@ -371,8 +381,7 @@ void Theory::addMijnCollega() {
       }
       for (const auto& wkd : weekenddagen) {
         for (const auto& wks : weekendshifts) {
-          std::string s =
-              "d" + std::to_string(dagcounter) + " " + std::get<std::string>(l) + " " + wkd + " " + std::get<0>(wks);
+          std::string s = getDienst(dagcounter, l, wkd, wks);
           Dienst.setInter({s}, true);
           dag.setInter({s}, dagcounter);
           week.setInter({s}, w);
@@ -391,20 +400,14 @@ void Theory::addMijnCollega() {
   fo_int dagcounter = 0;
   std::vector<std::string> laatsteDiensten;
   std::vector<std::string> volgendeDiensten;
-  for (const auto& w : Week.getInterAsSet()) {
-    std::string avondconsult = "";
-    std::string avondvisite = "";
-    std::string nacht = "";
+  for ([[maybe_unused]] const auto& w : Week.getInterAsSet()) {
     for (const auto& wd : weekdagen) {
       laatsteDiensten.clear();
       volgendeDiensten.clear();
       for (const auto& l : Locatie.getInterAsSet()) {
-        laatsteDiensten.push_back("d" + std::to_string(dagcounter) + " " + std::get<std::string>(l) + " " + wd + " " +
-                                  std::get<0>(weekshifts[0]));
-        laatsteDiensten.push_back("d" + std::to_string(dagcounter) + " " + std::get<std::string>(l) + " " + wd + " " +
-                                  std::get<0>(weekshifts[1]));
-        volgendeDiensten.push_back("d" + std::to_string(dagcounter) + " " + std::get<std::string>(l) + " " + wd + " " +
-                                   std::get<0>(weekshifts[2]));
+        laatsteDiensten.push_back(getDienst(dagcounter, l, wd, weekshifts[0]));
+        laatsteDiensten.push_back(getDienst(dagcounter, l, wd, weekshifts[1]));
+        volgendeDiensten.push_back(getDienst(dagcounter, l, wd, weekshifts[2]));
       }
       for (const std::string& laatste : laatsteDiensten) {
         for (const std::string& volgende : volgendeDiensten) {
@@ -417,23 +420,21 @@ void Theory::addMijnCollega() {
       laatsteDiensten = std::move(volgendeDiensten);
       volgendeDiensten.clear();
       for (const auto& l : Locatie.getInterAsSet()) {
-        volgendeDiensten.push_back("d" + std::to_string(dagcounter) + " " + std::get<std::string>(l) + " " + wkd + " " +
-                                   std::get<0>(weekendshifts[0]));
-        volgendeDiensten.push_back("d" + std::to_string(dagcounter) + " " + std::get<std::string>(l) + " " + wkd + " " +
-                                   std::get<0>(weekendshifts[1]));
+        volgendeDiensten.push_back(getDienst(dagcounter, l, wkd, weekendshifts[0]));
+        volgendeDiensten.push_back(getDienst(dagcounter, l, wkd, weekendshifts[1]));
+        volgendeDiensten.push_back(getDienst(dagcounter, l, wkd, weekendshifts[4]));
       }
       for (const std::string& laatste : laatsteDiensten) {
         for (const std::string& volgende : volgendeDiensten) {
           aansluitend.setInter({laatste, volgende}, true);
         }
       }
+      volgendeDiensten.pop_back();  // achterwacht volgt niet op ochtendshifts
       laatsteDiensten = std::move(volgendeDiensten);
       volgendeDiensten.clear();
       for (const auto& l : Locatie.getInterAsSet()) {
-        volgendeDiensten.push_back("d" + std::to_string(dagcounter) + " " + std::get<std::string>(l) + " " + wkd + " " +
-                                   std::get<0>(weekendshifts[2]));
-        volgendeDiensten.push_back("d" + std::to_string(dagcounter) + " " + std::get<std::string>(l) + " " + wkd + " " +
-                                   std::get<0>(weekendshifts[3]));
+        volgendeDiensten.push_back(getDienst(dagcounter, l, wkd, weekendshifts[2]));
+        volgendeDiensten.push_back(getDienst(dagcounter, l, wkd, weekendshifts[3]));
       }
       for (const std::string& laatste : laatsteDiensten) {
         for (const std::string& volgende : volgendeDiensten) {
@@ -459,22 +460,6 @@ void Theory::addMijnCollega() {
     maxDiensten.setInter({p}, 15);
   }
 
-  int maxOnbeschikbaar = 4;
-  Functor& onbeschikbaar = *voc.createBoolean("onbeschikbaar", {Type::STRING, Type::INT});
-  for (const auto& p : Professional.getInterAsSet()) {
-    for (int i = 0; i < maxOnbeschikbaar; ++i) {
-      for (int j = 0; j < maxOnbeschikbaar; ++j) {
-        fo_int rdag = xct::aux::getRand(0, maxDagen);
-        fo_int ruur = xct::aux::getRand(0, 24);
-        const Tup tup = {p, rdag * 24 + ruur};
-        if (onbeschikbaar.getInter(tup) == _unknown_) {
-          onbeschikbaar.setInter(tup, true);
-        }
-      }
-    }
-  }
-  onbeschikbaar.setDefault(false);
-
   Functor& toegewezen = *voc.createFunctor("toegewezen", {Type::STRING, Type::STRING}, Professional);
 
   std::shared_ptr<Var> d = V("d");
@@ -499,10 +484,9 @@ void Theory::addMijnCollega() {
           O("implies", O("=", A(toegewezen, p), d), O("=<", A(afstand, A(locatie, p), A(loc, d)), A(maxAfstand, p))));
   constraints.push_back(t2);
   // Een professional werkt niet op een dienst waarvoor die onbeschikbaar is
-  // !p in Professional, d in Dienst, m in Moment: toegewezen(p)=d & onbeschikbaar(p,m) => m<start(d) | eind(d)<=m.
-  Term t3 = all({{{"p"}, Professional}, {{"d"}, Dienst}, {{"m"}, Moment}},
-                O("implies", O("and", O("=", A(toegewezen, d), p), A(onbeschikbaar, p, m)),
-                  O("or", O(">", A(start, d), m), O(">=", m, A(eind, d)))));
+  // !p in Professional, d in Dienst: toegewezen(p)=d => voorkeur(p,d) > -5.
+  Term t3 = all({{{"p"}, Professional}, {{"d"}, Dienst}},
+                O("implies", O("=", A(toegewezen, d), p), O(">", A(voorkeur, p, d), D(-5))));
   constraints.push_back(t3);
   // Een professional werkt op hoogstens één dienst tegelijk.
   // !p in Professional, d1 in Dienst, d2 in Dienst: toegewezen(d1) = p & toegewezen(d2)=p => start(d1)>=eind(d2) |
@@ -513,17 +497,14 @@ void Theory::addMijnCollega() {
             O("or", O(">=", A(start, d1), A(eind, d2)), O(">=", A(start, d2), A(eind, d1)))));
   constraints.push_back(t4);
   // Beperking aansluitende diensten
-  Term t5 =
-      all({{{"p"}, Professional}, {{"d1"}, Dienst}, {{"d2"}, Dienst}},
-          O("implies", O("and", A(aansluitend, d1, d2), O("=", A(toegewezen, d1), p), O("=", A(toegewezen, d2), p)),
-            A(opeenvolgend, p)));
+  Term t5 = all({{{"p"}, Professional}, {{"d1", "d2"}, aansluitend}},
+                O("implies", O("and", O("=", A(toegewezen, d1), p), O("=", A(toegewezen, d2), p)), A(opeenvolgend, p)));
   constraints.push_back(t5);
   // Indien twee aansluitende diensten, dan op zelfde locatie
-  Term t6 = all({{{"p"}, Professional}, {{"d1"}, Dienst}, {{"d2"}, Dienst}, {{"l"}, Locatie}},
-                O("implies",
-                  O("and", O("=", A(loc, d2), l), O("=", A(toegewezen, d1), p), O("=", A(toegewezen, d2), p),
-                    A(aansluitend, d1, d2)),
-                  O("=", A(loc, d1), l)));
+  Term t6 =
+      all({{{"p"}, Professional}, {{"d1", "d2"}, aansluitend}, {{"l"}, Locatie}},
+          O("implies", O("and", O("=", A(loc, d2), l), O("=", A(toegewezen, d1), p), O("=", A(toegewezen, d2), p)),
+            O("=", A(loc, d1), l)));
   // TODO: allow nesting in equalities
   constraints.push_back(t6);
   // Niet meer dan twee shifts per twee dagen
@@ -535,7 +516,8 @@ void Theory::addMijnCollega() {
   constraints.push_back(t7);
   // totale voorkeur:
   // sum{p in Professional, d in Dienst : voorkeur(p,d) if toegewezen(d)=p else 0}
-  objective = sum({{{"p"}, Professional}, {{"d"}, Dienst}}, IE(A(voorkeur, p, d), O("=", p, A(toegewezen, d)), D(0)));
+  objective =
+      sum({{{"p"}, Professional}, {{"d"}, Dienst}}, IE(O("-", A(voorkeur, p, d)), O("=", p, A(toegewezen, d)), D(0)));
 }
 
 std::ostream& operator<<(std::ostream& o, const Theory& theo) {
