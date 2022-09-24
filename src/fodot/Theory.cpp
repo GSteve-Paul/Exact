@@ -266,17 +266,15 @@ void Theory::addTo(xct::ILP& ilp, bool useAssumptions) {
   for (const auto& tc : tseitin2constr) {
     xct::IntVar* iv = ilp.getVarFor(tc.first->getRepr());
     if (iv) {
-      assumptions.push_back(iv);
+      if (useAssumptions) {
+        assumptions.push_back(iv);
+      } else {
+        ilp.fix(iv, 1);
+      }
       tc.second->addToAsTop(ilp);
     }  // else tc.second is tautology // TODO: add assert!
   }
-  if (useAssumptions) {
-    ilp.setAssumptions(std::vector<bigint>(assumptions.size(), 1), assumptions);
-  } else {
-    for (xct::IntVar* iv : assumptions) {
-      ilp.fix(iv, 1);
-    }
-  }
+  ilp.setAssumptions(std::vector<bigint>(assumptions.size(), 1), assumptions);
 
   if (translatedObj) {
     translatedObj->addToAsTop(ilp);
