@@ -51,8 +51,8 @@ class Vocabulary {  // TODO: merge with theory?
   Functor* createInterpreted(const std::string& name, const std::vector<Tup>& inter, const DomEl& otherwise);
   std::vector<Functor*> createConstructed(const std::string& type, const std::string& func,
                                           const std::vector<std::pair<std::string, Functor*>>& attributes);
-  Functor* createBuiltin(const std::string& repr, const std::vector<DomEl>& range);
-  Functor* createTseitin(const std::string& repr);
+  Functor* createBuiltin(const std::string& repr, const std::vector<DomEl>& range, const std::string& postfix);
+  Functor* createTseitin(const std::string& repr, const std::string& postfix);
 
   bool hasFunctor(const std::string& name);
   Functor* getFunctor(const std::string& name);
@@ -68,10 +68,11 @@ class Theory {
   std::vector<Term> constraints;
   Term objective;
 
-  void addTo(xct::ILP& ilp, bool useAssumptions = true);
+  void addTo(xct::ILP& ilp, bool useAssumptions = true, const std::string& postfix = "");
 
   void addMijnCollega();                                        // TODO: tmp
   std::vector<DomEl> fixToegewezen(const std::string& except);  // TODO: tmp
+  void getModelMC(xct::ILP& ilp, const std::string& csvname);   // TODO: tmp
 };
 std::ostream& operator<<(std::ostream& o, const Theory& theo);
 

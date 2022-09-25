@@ -143,13 +143,16 @@ std::vector<Functor*> Vocabulary::createConstructed(const std::string& type, con
   }
   return res;
 }
-Functor* Vocabulary::createBuiltin(const std::string& repr, const std::vector<DomEl>& range) {
+Functor* Vocabulary::createBuiltin(const std::string& repr, const std::vector<DomEl>& range,
+                                   const std::string& postfix) {
   assert(!range.empty());
-  std::string name = toBuiltin(repr);
+  std::string name = toBuiltin(repr) + postfix;
   if (hasFunctor(name)) return nullptr;
   return createFunctor(name, {getType(range[0])}, range);
 }
-Functor* Vocabulary::createTseitin(const std::string& repr) { return createBuiltin(repr, {true, false}); }
+Functor* Vocabulary::createTseitin(const std::string& repr, const std::string& postfix) {
+  return createBuiltin(repr, {true, false}, postfix);
+}
 
 bool Vocabulary::hasFunctor(const std::string& name) { return name2functor.find(name) != name2functor.cend(); }
 
@@ -234,7 +237,7 @@ std::ostream& operator<<(std::ostream& o, const Vocabulary& v) {
   return o;
 }
 
-void Theory::addTo(xct::ILP& ilp, bool useAssumptions) {
+void Theory::addTo(xct::ILP& ilp, bool useAssumptions, const std::string& postfix) {
   IneqTerm translatedObj;
   if (objective) {
     assert(objective->type == Type::INT);
@@ -249,7 +252,7 @@ void Theory::addTo(xct::ILP& ilp, bool useAssumptions) {
     for (const Term& t : stripped) {
       assert(t->type == Type::BOOL);
       std::string name = t->getRepr();
-      Functor* tseitin = voc.createTseitin(name);
+      Functor* tseitin = voc.createTseitin(name, postfix);
       if (!tseitin) continue;  // apparently already exists
       std::vector<Term> args;
       Term t_tseitin = std::make_shared<Application>(*tseitin, args);
@@ -457,7 +460,7 @@ void Theory::addMijnCollega() {
 
   Functor& maxDiensten = *voc.createFunctor("maxDiensten", {Type::STRING, Type::INT}, getIntRange({0, 500}));
   for (const auto& p : Professional.getInterAsSet()) {
-    maxDiensten.setInter({p}, 15);
+    maxDiensten.setInter({p}, 12);
   }
 
   Functor& toegewezen = *voc.createFunctor("toegewezen", {Type::STRING, Type::STRING}, Professional);
@@ -532,6 +535,40 @@ std::vector<DomEl> Theory::fixToegewezen(const std::string& except) {
     }
   }
   return res;
+}
+
+void Theory::getModelMC(xct::ILP& ilp, const std::string& csvname) {
+  std::cout << "Objective: " << -ilp.getUpperBound() << " =< " << -ilp.getLowerBound() << std::endl;
+  voc.readModel(ilp);
+  Functor& toegewezen = *voc.getFunctor("toegewezen");
+  Functor& dag = *voc.getFunctor("dag");
+  Functor& loc = *voc.getFunctor("loc");
+  Functor& shift = *voc.getFunctor("shift");
+  Functor& weekdag = *voc.getFunctor("weekdag");
+  std::cout << toegewezen << std::endl;
+  std::map<fo_int, std::map<std::string, std::map<std::string, std::string>>> csv;
+  // dag->shift->loc->dokter
+  for (const auto& kv : toegewezen.getExtension()) {
+    assert(kv.first.size() == 1);
+    fo_int d = std::get<fo_int>(dag.getInter(kv.first));
+    std::string s =
+        std::get<std::string>(weekdag.getInter(kv.first)) + "," + std::get<std::string>(shift.getInter(kv.first));
+    std::string l = std::get<std::string>(loc.getInter(kv.first));
+    csv[d][s][l] = std::get<std::string>(kv.second);
+  }
+
+  std::ofstream csv_file(csvname);
+  csv_file << ",,,adam,bdam,cdam,\n";
+  for (const auto& kv1 : csv) {
+    for (const auto& kv2 : kv1.second) {
+      csv_file << kv1.first << "," << kv2.first << ",";
+      for (const auto& kv3 : kv2.second) {
+        csv_file << kv3.second << ",";
+      }
+      csv_file << std::endl;
+    }
+  }
+  csv_file.close();
 }
 
 std::ostream& operator<<(std::ostream& o, const Theory& theo) {

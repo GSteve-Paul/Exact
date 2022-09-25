@@ -89,7 +89,7 @@ bool hasInType(Op o, Type t) {
     case Op::Sum:
       return t == Type::INT;
     case Op::Plus:
-      return t == Type::INT || t == Type::BOOL;
+      return t == Type::INT;
     case Op::Alldiff:
       return t == Type::INT || t == Type::STRING;
     case Op::Equals:
@@ -620,6 +620,8 @@ Term Nary::mergeIte() const {
 
 Ite::Ite(const std::vector<std::pair<Term, Term>>& cvs) : RawExpr(cvs[0].second->type), condvals(cvs) { checkType(); }
 Ite::Ite(const Term& c, const Term& t, const Term& f) : Ite({{c, t}, {std::make_shared<Unary>(Op::Not, c), f}}) {}
+Ite::Ite(const Term& c)
+    : Ite({{c, std::make_shared<Val>(1)}, {std::make_shared<Unary>(Op::Not, c), std::make_shared<Val>(0)}}) {}
 Term Ite::deepCopy() const {
   return std::make_shared<Ite>(xct::aux::comprehension(condvals, [](const std::pair<Term, Term>& tt) {
     return std::make_pair<Term, Term>(tt.first->deepCopy(), tt.second->deepCopy());
@@ -689,6 +691,7 @@ IneqTerm Ite::toIneq() const {
   for (const auto& tt : condvals) {
     const Val* v = dynamic_cast<const Val*>(tt.second.get());
     assert(v);
+    if (v->de == DomEl(0)) continue;
     coefs.push_back(std::get<fo_int>(v->de));
     vars.push_back(tt.first->toIneq());
   }
@@ -977,6 +980,11 @@ Term FirstOrder::instantiateVars(const std::unordered_map<Var, DomEl, varhash>& 
     }
     instantiations.push_back(argument->instantiateVars(newvar2de, ivs));
   }
+  if (symbol == Op::Count) {
+    for (int i = 0; i < (int)instantiations.size(); ++i) {
+      instantiations[i] = std::make_shared<Ite>(instantiations[i]);
+    }
+  }
   Op symb = symbol == Op::Forall ? Op::And : (symbol == Op::Exists ? Op::Or : Op::Plus);
   if (symbol == Op::Alldiff) {
     // !y in range(f): 1 >= #{x:f(x)=y}.
@@ -989,7 +997,7 @@ Term FirstOrder::instantiateVars(const std::unordered_map<Var, DomEl, varhash>& 
       equalities.clear();
       Term val = D(de);
       for (const Term& t : instantiations) {
-        equalities.push_back(std::make_shared<Binary>(Op::Equals, t, val));
+        equalities.push_back(std::make_shared<Ite>(std::make_shared<Binary>(Op::Equals, t, val)));
       }
       amos.push_back(std::make_shared<Binary>(Op::Greater, D(1), std::make_shared<Nary>(Op::Plus, equalities)));
     }
@@ -1195,7 +1203,8 @@ TEST_CASE("Cardinality") {
   Term t_f = A(f, {t_x});
   Term t_count = count({"x"}, q, t_f);
   CHECK(t_count->getRepr() == "count(phi(x) for x in Q)");
-  CHECK(t_count->instantiateVars()->getRepr() == "+(phi(\"d\"),phi(\"e\"))");
+  CHECK(t_count->instantiateVars()->getRepr() ==
+        "+((1 if phi(\"d\"), 0 if not phi(\"d\")),(1 if phi(\"e\"), 0 if not phi(\"e\")))");
   Term t_or_alt = O(">", {t_count, D(0)});
   CHECK(t_or_alt->translateFull()->getRepr() == "or(phi(\"d\"),phi(\"e\"))");
 }
@@ -1216,10 +1225,15 @@ TEST_CASE("Distinct") {
   Term t_unique = distinct({"p"}, *r, t_in);
 
   CHECK(t_unique->getRepr() == "distinct(hole(p) for p in pigeon)");
-  CHECK(t_unique->instantiateVars()->getRepr() ==
-        "and(1>=+(\"h1\"=hole(\"p1\"),\"h1\"=hole(\"p2\"),\"h1\"=hole(\"p3\"),\"h1\"=hole(\"p4\")),1>=+(\"h2\"=hole("
-        "\"p1\"),\"h2\"=hole(\"p2\"),\"h2\"=hole(\"p3\"),\"h2\"=hole(\"p4\")),1>=+(\"h3\"=hole(\"p1\"),\"h3\"=hole("
-        "\"p2\"),\"h3\"=hole(\"p3\"),\"h3\"=hole(\"p4\")))");
+  CHECK(
+      t_unique->instantiateVars()->getRepr() ==
+      "and(1>=+((1 if \"h1\"=hole(\"p1\"), 0 if not \"h1\"=hole(\"p1\")),(1 if \"h1\"=hole(\"p2\"), 0 if not "
+      "\"h1\"=hole(\"p2\")),(1 if \"h1\"=hole(\"p3\"), 0 if not \"h1\"=hole(\"p3\")),(1 if \"h1\"=hole(\"p4\"), 0 if "
+      "not \"h1\"=hole(\"p4\"))),1>=+((1 if \"h2\"=hole(\"p1\"), 0 if not \"h2\"=hole(\"p1\")),(1 if "
+      "\"h2\"=hole(\"p2\"), 0 if not \"h2\"=hole(\"p2\")),(1 if \"h2\"=hole(\"p3\"), 0 if not \"h2\"=hole(\"p3\")),(1 "
+      "if \"h2\"=hole(\"p4\"), 0 if not \"h2\"=hole(\"p4\"))),1>=+((1 if \"h3\"=hole(\"p1\"), 0 if not "
+      "\"h3\"=hole(\"p1\")),(1 if \"h3\"=hole(\"p2\"), 0 if not \"h3\"=hole(\"p2\")),(1 if \"h3\"=hole(\"p3\"), 0 if "
+      "not \"h3\"=hole(\"p3\")),(1 if \"h3\"=hole(\"p4\"), 0 if not \"h3\"=hole(\"p4\"))))");
 
   theo.constraints.push_back(t_unique);
 

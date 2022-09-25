@@ -283,6 +283,7 @@ class Ite : public RawExpr {
 
  public:
   Ite(const Term& cond, const Term& wtrue, const Term& wfalse);
+  Ite(const Term& cond);
   // With below constructor, user has to ensure that conditions are consistent and complete.
   // Otherwise, use above constructor
   Ite(const std::vector<std::pair<Term, Term>>& cvs);

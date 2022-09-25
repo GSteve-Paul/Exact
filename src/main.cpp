@@ -22,6 +22,7 @@ or run with the flag --license=AGPLv3. If not, see
 #include "ILP.hpp"
 #include "fodot/Expression.hpp"
 #include "fodot/Fodot.hpp"
+#include "fodot/IneqExpr.hpp"
 #include "fodot/Theory.hpp"
 #include "quit.hpp"
 
@@ -73,7 +74,7 @@ int main(int argc, char** argv) {
 
   ILP ilp(true);
 
-  theo.addTo(ilp, false);
+  theo.addTo(ilp, false, "1");
   // std::cout << theo << std::endl;
 
   ilp.init(true, true);
@@ -86,41 +87,11 @@ int main(int argc, char** argv) {
     std::cerr << "Unable to open file" << std::endl;
   }
 
-  SolveState res = ilp.runFull(theo.objective != nullptr, 20);
+  SolveState res = ilp.runFull(theo.objective != nullptr, 10);
 
   std::cout << "RESULT: " << res << std::endl;
   if (ilp.hasSolution()) {
-    std::cout << "Objective: " << -ilp.getUpperBound() << " =< " << -ilp.getLowerBound() << std::endl;
-    theo.voc.readModel(ilp);
-    fodot::Functor& toegewezen = *theo.voc.getFunctor("toegewezen");
-    fodot::Functor& dag = *theo.voc.getFunctor("dag");
-    fodot::Functor& loc = *theo.voc.getFunctor("loc");
-    fodot::Functor& shift = *theo.voc.getFunctor("shift");
-    fodot::Functor& weekdag = *theo.voc.getFunctor("weekdag");
-    std::cout << toegewezen << std::endl;
-    std::map<fodot::fo_int, std::map<std::string, std::map<std::string, std::string>>> csv;
-    // dag->shift->loc->dokter
-    for (const auto& kv : toegewezen.getExtension()) {
-      assert(kv.first.size() == 1);
-      fodot::fo_int d = std::get<fodot::fo_int>(dag.getInter(kv.first));
-      std::string s =
-          std::get<std::string>(weekdag.getInter(kv.first)) + "," + std::get<std::string>(shift.getInter(kv.first));
-      std::string l = std::get<std::string>(loc.getInter(kv.first));
-      csv[d][s][l] = std::get<std::string>(kv.second);
-    }
-
-    std::ofstream csv_file("/tmp/mijncollega.csv");
-    csv_file << ",,,adam,bdam,cdam,\n";
-    for (const auto& kv1 : csv) {
-      for (const auto& kv2 : kv1.second) {
-        csv_file << kv1.first << "," << kv2.first << ",";
-        for (const auto& kv3 : kv2.second) {
-          csv_file << kv3.second << ",";
-        }
-        csv_file << std::endl;
-      }
-    }
-    csv_file.close();
+    theo.getModelMC(ilp, "/tmp/mijncollega.csv");
   } else if (ilp.hasCore()) {
     for (const IntVar* iv : ilp.getLastCore()) {
       std::cout << iv->getName() << std::endl;
@@ -132,8 +103,39 @@ int main(int argc, char** argv) {
   ILP ilp2(true);
   std::vector<fodot::DomEl> unknowns = theo.fixToegewezen("Gino");
   std::cout << "UNKNOWNS: " << unknowns << std::endl;
-  theo.addTo(ilp2, false);
-  ilp2.init(true, true);
-  SolveState res2 = ilp.runFull(false, 20);
-  std::cout << "RESULT: " << res2 << std::endl;
+  theo.addTo(ilp2, false, "2");
+  ilp2.init(false, true);
+  std::vector<IntVar*> toRepair;
+  std::vector<fodot::Tup> args;
+  fodot::DomEl gino("Gino");
+  for (const fodot::DomEl& dienst : unknowns) {
+    fodot::Functor& toegewezen = *theo.voc.getFunctor("toegewezen");
+    for (const fodot::DomEl& dokter : toegewezen.range) {
+      IntVar* atom = ilp2.getVarFor(fodot::Terminal(toegewezen, {dienst, dokter}).getRepr());
+      assert(atom);
+      if (dokter == gino) {
+        ilp2.fix(atom, 0);
+      } else {
+        args.push_back({dokter, dienst});
+        toRepair.push_back(atom);
+      }
+    }
+  }
+  auto bounds = ilp2.propagate(toRepair);
+  fodot::Functor& voorkeur = *theo.voc.getFunctor("voorkeur");
+  for (int i = 0; i < (int)toRepair.size(); ++i) {
+    if (bounds[i].second == 1) {
+      std::cout << args[i][0] << " kan " << args[i][1] << " opnemen met voorkeur " << voorkeur.getInter(args[i])
+                << std::endl;
+    }
+  }
+
+  //  SolveState res2 = ilp2.runFull(false, 10);
+  //  std::cout << "RESULT: " << res2 << std::endl;
+  //  std::cout << "TEST " << ilp2.hasSolution() << std::endl;
+  //  if (ilp2.hasSolution()) {
+  //    theo.getModelMC(ilp2, "/tmp/mijncollega_repaired.csv");
+  //  } else {
+  //    std::cout << "No second solution, timeout too low?" << std::endl;
+  //  }
 }
