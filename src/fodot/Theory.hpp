@@ -70,8 +70,8 @@ class Theory {
 
   void addTo(xct::ILP& ilp, bool useAssumptions = true);
 
-  void addMijnCollega();     // TODO: tmp
-  void repairMijnCollega();  // TODO: tmp
+  void addMijnCollega();                                        // TODO: tmp
+  std::vector<DomEl> fixToegewezen(const std::string& except);  // TODO: tmp
 };
 std::ostream& operator<<(std::ostream& o, const Theory& theo);
 

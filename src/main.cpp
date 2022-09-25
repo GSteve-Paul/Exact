@@ -28,7 +28,6 @@ or run with the flag --license=AGPLv3. If not, see
 using namespace xct;
 
 void runOnce(int argc, char** argv, ILP& ilp) {
-  ilp.global.stats.startTime = std::chrono::steady_clock::now();
   ilp.global.options.parseCommandLine(argc, argv);
   ilp.global.logger.activate(ilp.global.options.proofLog.get());
 
@@ -73,8 +72,6 @@ int main(int argc, char** argv) {
   theo.addMijnCollega();
 
   ILP ilp(true);
-
-  ilp.global.stats.startTime = std::chrono::steady_clock::now();
 
   theo.addTo(ilp, false);
   // std::cout << theo << std::endl;
@@ -131,4 +128,12 @@ int main(int argc, char** argv) {
   } else {
     std::cout << "NO INFO" << std::endl;
   }
+
+  ILP ilp2(true);
+  std::vector<fodot::DomEl> unknowns = theo.fixToegewezen("Gino");
+  std::cout << "UNKNOWNS: " << unknowns << std::endl;
+  theo.addTo(ilp2, false);
+  ilp2.init(true, true);
+  SolveState res2 = ilp.runFull(false, 20);
+  std::cout << "RESULT: " << res2 << std::endl;
 }

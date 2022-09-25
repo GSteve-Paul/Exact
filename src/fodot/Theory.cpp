@@ -520,6 +520,20 @@ void Theory::addMijnCollega() {
       sum({{{"p"}, Professional}, {{"d"}, Dienst}}, IE(O("-", A(voorkeur, p, d)), O("=", p, A(toegewezen, d)), D(0)));
 }
 
+std::vector<DomEl> Theory::fixToegewezen(const std::string& except) {
+  Functor& toegewezen = *voc.getFunctor("toegewezen");
+  std::vector<DomEl> res;
+  for (const auto& tupde : toegewezen.getExtension()) {
+    if (tupde.second != DomEl(except)) {
+      toegewezen.setInter(tupde.first, tupde.second);
+    } else {
+      assert(tupde.first.size() == 1);
+      res.push_back(tupde.first[0]);
+    }
+  }
+  return res;
+}
+
 std::ostream& operator<<(std::ostream& o, const Theory& theo) {
   o << "definitions:\n";
   o << theo.voc << std::endl;
@@ -598,8 +612,6 @@ TEST_CASE("Add full theory to ILP") {
   CHECK(stripped.size() == 1);
   CHECK(stripped[0]->getRepr() == t_or->getRepr());
 
-  ilp.global.stats.startTime = std::chrono::steady_clock::now();
-
   theo.addTo(ilp);
   ilp.init(true, false);
 
@@ -628,7 +640,6 @@ TEST_CASE("Small satisfiable problem") {
 
   xct::ILP ilp(true);
 
-  ilp.global.stats.startTime = std::chrono::steady_clock::now();
   theo.addTo(ilp);
   ilp.init(false, false);
   ilp.global.options.verbosity.parse("0");
