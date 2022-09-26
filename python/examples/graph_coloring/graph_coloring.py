@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
 import sys
+import networkx as nx
 
 # usage: python3 graph_colorying.py <adjacency matrix file> <number of colors> <symmetry file> <print instead of solve>
-# example usage: python3 graph_coloring.py graph_77v-7chrom_adj_matrix.txt 5 graph_77v-7chrom_sym.txt 0
+# example usage: python3 graph_coloring.py graph_77v-7chrom_adj_matrix.txt 5 graph_77v-7chrom_symmetries.txt 0
 
 nodes = 0
 edges = []
@@ -57,12 +58,23 @@ for n in range(0,nodes):
 for n in range(0,nodes):
     solver.addConstraint([1]*colors,[toVar(n,c) for c in range(0,colors)],True,1,True,1)
 
-# If there is an edge between two nodes, at most one of them has a given color c
+# Instead of adding a clause for each two edges, we add an at-most-one constraint for each maximal clique
+G = nx.Graph()
 for n1 in range(0,nodes):
     for n2 in range(n1+1,nodes):
         if edges[n1][n2]:
-            for c in range(0,colors):
-                solver.addConstraint([1,1],[toVar(n1,c),toVar(n2,c)],False,0,True,1)
+            G.add_edge(n1,n2)
+
+for clique in nx.find_cliques(G):
+    for c in range(0,colors):
+        solver.addConstraint([1]*len(clique),[toVar(n,c) for n in clique],False,0,True,1)
+
+# If there is an edge between two nodes, at most one of them has a given color c
+# for n1 in range(0,nodes):
+#     for n2 in range(n1+1,nodes):
+#         if edges[n1][n2]:
+#             for c in range(0,colors):
+#                 solver.addConstraint([1,1],[toVar(n1,c),toVar(n2,c)],False,0,True,1)
 
 # Add graph symmetry breakers
 for sym in symmetries:
