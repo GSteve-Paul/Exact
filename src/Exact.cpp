@@ -64,7 +64,6 @@ Exact::Exact() : ilp(), unsatState(false) {
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 
-  ilp.global.stats.startTime = std::chrono::steady_clock::now();
   ilp.global.logger.activate(ilp.global.options.proofLog.get());
 }
 
