@@ -2,7 +2,7 @@
 
 logfolder="/tmp/Exact/$2"
 binary=$3
-options="--timeout=$1 --test=1 $4"
+options="--timeout=$1 $4"
 
 
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
