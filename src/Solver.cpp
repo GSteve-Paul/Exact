@@ -108,15 +108,10 @@ void Solver::setNbVars(int nvars, bool orig) {
   equalities.setNbVars(nvars);
   implications.setNbVars(nvars);
   isorig.resize(nvars + 1, orig);
-  ranks.resize(nvars + 1, 0);
-  tabuSol.resize(nvars + 1, 0);
   lit2cons.resize(nvars, {});
   lit2consOldSize.resize(nvars, std::numeric_limits<int>::max());
   assumptions.resize(nvars + 1);  // ensure assumptions.getIndex() can be used as level
   if (orig) {
-    for (Var v = n + 1; v <= nvars; ++v) {
-      tabuSol[v] = -v;
-    }
     global.stats.NORIGVARS.z += nvars - n;
   } else {
     global.stats.NAUXVARS.z += nvars - n;
@@ -152,10 +147,6 @@ void Solver::enqueueUnit(Lit l, Var v, CRef r) {
     tmp->simplifyToUnit(level, position, v);
     global.logger.logUnit(tmp);
     assert(global.logger.getNbUnitIDs() == (int)trail.size() + 1);
-  }
-  if (global.options.tabuLim.get() != 0 && isOrig(v) && tabuSol[v] != l) {
-    cutoff = ranks[v];
-    flipTabu(l);
   }
 }
 
@@ -544,17 +535,6 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   Constr& c = ca[cr];
   c.initializeWatches(cr, *this);
   constraints.push_back(cr);
-  if (usedInTabu(c.getOrigin())) {
-    for (unsigned int i = 0; i < c.size; ++i) {
-      Lit l = c.lit(i);
-      assert(isOrig(toVar(l)));
-      lit2cons[l].insert({cr, i});
-    }
-    c.initializeTabu(tabuSol);
-    if (!c.isSatisfiedByTabu(tabuSol)) {
-      addToTabu(cr);
-    }
-  }
   if (c.isAtMostOne() && c.size > 2) {
     uint64_t hash = c.size;
     for (unsigned int i = 0; i < c.size; ++i) {
@@ -757,15 +737,6 @@ void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
   assert(!external.count(c.id));
   c.header.markedfordel = 1;
   ca.wasted += c.getMemSize();
-  if (usedInTabu(c.getOrigin())) {
-    for (unsigned int i = 0; i < c.size; ++i) {
-      Lit l = c.lit(i);
-      assert(isOrig(toVar(l)));
-      assert(lit2cons[l].count(cr));
-      lit2cons[l].erase(cr);
-    }
-    eraseFromTabu(cr);
-  }
 }
 
 void Solver::dropExternal(ID id, bool erasable, bool forceDelete) {
@@ -834,7 +805,7 @@ void Solver::rebuildLit2Cons() {
   }
   for (const CRef& cr : constraints) {
     Constr& c = ca[cr];
-    if (c.isMarkedForDelete() || !usedInTabu(c.getOrigin())) continue;
+    if (c.isMarkedForDelete()) continue;
     for (unsigned int i = 0; i < c.size; ++i) {
       assert(isOrig(toVar(c.lit(i))));
       lit2cons[c.lit(i)].insert({cr, c.isClauseOrCard() ? INF : i});
@@ -870,7 +841,6 @@ void Solver::garbage_collect() {
     updatePtr(crefmap, ext.second);
   }
   rebuildLit2Cons();
-  rebuildTabu();
 }
 
 // We assume in the garbage collection method that reduceDB() is the
@@ -886,7 +856,6 @@ void Solver::reduceDB() {
     if (c.isMarkedForDelete() || c.isLocked() || external.count(c.id)) {
       continue;
     }
-    assert(!usedInTabu(c.getOrigin()));
     if (c.isSatisfiedAtRoot(getLevel())) {
       ++global.stats.NSATISFIEDSREMOVED;
       removeConstraint(cr);
@@ -1438,176 +1407,6 @@ void Solver::runAtMostOneDetection() {
     global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
   }
   global.stats.NATMOSTONEUNITS += trail.size() - currentUnits;
-}
-
-void Solver::addToTabu(const CRef& cr) {
-  assert(usedInTabu(ca[cr].getOrigin()));
-  assert(isValid(cr));
-  assert(!violatedPtrs.count(cr));
-  assert(!ca[cr].isSatisfiedByTabu(tabuSol));
-  assert(!ca[cr].isMarkedForDelete());
-  violatedQueue.push_front(cr);
-  violatedPtrs.insert({cr, violatedQueue.cbegin()});
-  assert(*violatedPtrs[cr] == cr);
-}
-
-void Solver::eraseFromTabu(const CRef& cr) {
-  assert(usedInTabu(ca[cr].getOrigin()));
-  std::unordered_map<CRef, std::list<CRef>::const_iterator>::iterator node = violatedPtrs.find(cr);
-  if (node == violatedPtrs.end()) return;
-  assert(*node->second == cr);
-  violatedQueue.erase(node->second);
-  violatedPtrs.erase(node);
-  assert(!violatedPtrs.count(cr));
-}
-
-void Solver::rebuildTabu() {
-  violatedQueue.clear();
-  violatedPtrs.clear();
-  for (const CRef& cr : constraints) {
-    Constr& c = ca[cr];
-    if (!usedInTabu(c.getOrigin()) || c.isMarkedForDelete() || c.isSatisfiedByTabu(tabuSol)) continue;
-    addToTabu(cr);
-  }
-}
-
-bool Solver::runTabuOnce() {
-  assert(global.stats.NCLEANUP >= 0);
-  std::vector<Lit> changeds;
-  DetTime currentDetTime = global.stats.getDetTime();
-  DetTime oldDetTime = currentDetTime;
-  while (!violatedPtrs.empty() &&
-         (global.options.tabuLim.get() == 1 ||
-          global.stats.TABUDETTIME <
-              global.options.tabuLim.get() * std::max(global.options.basetime.get(), currentDetTime))) {
-    assert(violatedPtrs.empty() == violatedQueue.empty());
-    quit::checkInterrupt(global);
-    changeds.clear();
-    CRef cr = violatedQueue.back();
-    assert(violatedPtrs.count(cr));
-    Constr& c = ca[cr];
-    assert(!c.isSatisfiedByTabu(tabuSol));
-    Lit* tabuLits = c.tabuLits();
-    int high = c.nTabuLits();
-    int low = 0;
-    while (low < high && !c.isSatisfiedByTabu(tabuSol)) {
-      int idx = aux::getRand(low, high);
-      Lit l = tabuLits[idx];
-      Var v = toVar(l);
-      if (isUnit(getLevel(), l) || isUnit(getLevel(), -l)) {
-        --c.nTabuLits();
-        --high;
-        std::swap(tabuLits[idx], tabuLits[high]);
-        std::swap(tabuLits[high], tabuLits[c.nTabuLits()]);
-      } else if (tabuSol[v] == l) {
-        std::swap(tabuLits[idx], tabuLits[low]);
-        ++low;
-      } else if (ranks[v] > cutoff) {
-        --high;
-        std::swap(tabuLits[idx], tabuLits[high]);
-      } else {
-        flipTabu(l);
-        std::swap(tabuLits[low], tabuLits[idx]);
-        ++low;
-        changeds.push_back(l);
-      }
-    }
-    assert(c.isSatisfiedByTabu(tabuSol) || high == low);
-    high = c.nTabuLits();
-    while (!c.isSatisfiedByTabu(tabuSol)) {
-      int idx = aux::getRand(low, high);
-      Lit l = tabuLits[idx];
-      assert(!isUnit(getLevel(), l));
-      assert(!isUnit(getLevel(), -l));
-      assert(tabuSol[toVar(l)] != l);
-      cutoff = std::max(cutoff, ranks[toVar(l)]);
-      flipTabu(l);
-      std::swap(tabuLits[low], tabuLits[idx]);
-      ++low;
-      changeds.push_back(l);
-    }
-    assert(c.isSatisfiedByTabu(tabuSol));
-    assert(!violatedPtrs.count(cr));
-
-    oldDetTime = currentDetTime;
-    currentDetTime = global.stats.getDetTime();
-    global.stats.TABUDETTIME += currentDetTime - oldDetTime;
-  }
-  if (violatedPtrs.empty()) {
-    lastSol.resize(getNbVars() + 1);
-    lastSol[0] = 0;
-    for (Var v = 1; v <= getNbVars(); ++v) lastSol[v] = isOrig(v) ? tabuSol[v] : 0;
-    return true;
-  }
-  return false;
-}
-
-void Solver::flipTabu(Lit l) {
-  ++global.stats.TABUFLIPS;
-  Var v = toVar(l);
-  assert(tabuSol[v] == -l);
-  assert(!isUnit(getLevel(), -l));  // no flipping back unit lits
-  assert(ranks[v] <= cutoff);
-  tabuSol[v] = l;
-  ranks[v] = next;
-  ++next;
-  for (const std::pair<const CRef, int>& cri : lit2cons[l]) {
-    CRef cr = cri.first;
-    Constr& c = ca[cr];
-    c.increaseTabuSlack(cri.second);
-    if (!c.isSatisfiedByTabu(tabuSol)) {
-      assert(violatedPtrs.count(cr));
-      continue;
-    }
-    eraseFromTabu(cr);
-  }
-  for (const std::pair<const CRef, int>& cri : lit2cons[-l]) {
-    CRef cr = cri.first;
-    Constr& c = ca[cr];
-    c.decreaseTabuSlack(cri.second);
-    if (c.isSatisfiedByTabu(tabuSol)) {
-      assert(!violatedPtrs.count(cr));
-      continue;
-    }
-    if (!violatedPtrs.count(cr)) {
-      addToTabu(cr);
-    }
-  }
-  assert(tabuSol[v] == l);
-}
-
-void Solver::phaseToTabu() {
-  for (Var v = 1; v <= getNbVars(); ++v) {
-    if (!isOrig(v)) continue;
-    Lit l = tabuSol[v];
-    assert(l != 0);
-    assert(!isUnit(getLevel(), -l));
-    if (!isUnit(getLevel(), l) && freeHeur.getPhase(v) != l) {
-      cutoff = ranks[toVar(l)];
-      flipTabu(-l);
-    }
-  }
-}
-
-void Solver::lastSolToPhase() {
-  for (Var v = 1; v <= getNbVars(); ++v) {
-    if (!isOrig(v)) continue;
-    freeHeur.setPhase(v, lastSol[v]);
-  }
-}
-
-void Solver::ranksToAct() {
-  // TODO: refactor to VMTF activity structure
-  //  ActValV nbConstrs = constraints.size();
-  //  for (Var v = 1; v <= getNbVars(); ++v) {
-  //    if (!isOrig(v)) continue;
-  //    freeHeur.activity[v] = std::max(cutoff, ranks[v]) + (adj[v].size() + adj[-v].size()) / nbConstrs;
-  //    cgHeur.activity[v] = freeHeur.activity[v];
-  //  }
-  //  freeHeur.heap.recalculate();
-  //  freeHeur.v_vsids_inc = next;
-  //  cgHeur.heap.recalculate();
-  //  cgHeur.v_vsids_inc = next;
 }
 
 }  // namespace xct

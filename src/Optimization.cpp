@@ -610,29 +610,6 @@ void Optimization<SMALL, LARGE>::harden() {
 }
 
 template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::runTabu() {
-  if (global.options.verbosity.get() > 1) std::cout << "RUNNING TABU" << std::endl;
-  int currentUnits = solver.getNbUnits();
-  solver.phaseToTabu();
-  bool success = false;
-  while (solver.runTabuOnce()) {
-    assert(solver.getTabuViolatedSize() == 0);
-    success = true;
-    ++global.stats.TABUSOLS;
-    ++solutionsFound;
-    if (global.options.boundUpper) {
-      handleNewSolution(solver.getLastSolution());
-    }
-    // NOTE: may flip tabuSol due to unit propagations
-    // TODO: return SAT state to python interface...
-  }
-  if (success) solver.lastSolToPhase();
-  // if (firstRun && global.options.varInitAct) solver.ranksToAct(); // TODO: check refactor of firstRun
-  global.stats.NTABUUNITS += solver.getNbUnits() - currentUnits;
-  if (global.options.verbosity.get() > 0) std::cout << "c END LOCAL SEARCH" << std::endl;
-}
-
-template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumptions) {
   if (firstRun) {
     firstRun = false;
@@ -645,9 +622,6 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
     if (reply == SolveState::INPROCESSED) {
       if (global.options.printCsvData)
         global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
-      if (global.options.tabuLim.get() != 0) {
-        aux::timeCallVoid([&] { return runTabu(); }, global.stats.TABUTIME);
-      }
     }
     if (lower_bound >= upper_bound && global.options.boundUpper) {
       logProof();

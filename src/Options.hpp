@@ -332,8 +332,6 @@ struct Options {
       "inp-dombreaklim",
       "Maximum limit of queried constraints for dominance breaking (0 means no dominance breaking, -1 is unlimited)",
       -1, "-1 =< int", [](const int& x) -> bool { return x >= -1; }};
-  ValOption<double> tabuLim{"inp-localsearch", "Ratio of time spent on local search (0 means none, 1 means unlimited)",
-                            0.00, "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   BoolOption inpProbing{"inp-probing", "Perform probing", true};
   ValOption<double> inpAMO{"inp-atmostone",
                            "Ratio of time spent detecting at-most-ones (0 means none, 1 means unlimited)", 0.1,
@@ -398,7 +396,6 @@ struct Options {
       &ilpDefaultBound,
       &pureLits,
       &domBreakLim,
-      &tabuLim,
       &inpProbing,
       &inpAMO,
       &basetime,

@@ -167,7 +167,6 @@ class Optimization final : public OptimizationSuper {
 
   void logProof();
   void harden();
-  void runTabu();
 
   [[nodiscard]] SolveState optimize(const std::vector<Lit>& assumptions);
 };

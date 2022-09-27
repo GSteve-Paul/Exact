@@ -224,8 +224,6 @@ struct Stats {
   Stat CATIME{0, "conflict analysis time"};
   Stat MINTIME{0, "learned minimize time"};
   Stat PROPTIME{0, "propagation time"};
-  Stat TABUTIME{0, "local search time"};
-  Stat TABUDETTIME{0, "local search time det"};
 
   Stat NCLAUSESEXTERN{0, "input clauses"};
   Stat NCARDINALITIESEXTERN{0, "input cardinalities"};
@@ -314,10 +312,6 @@ struct Stats {
   Stat LEARNEDSTRENGTHAVG{0, "learned strength average"};
   Stat LEARNEDLBDAVG{0, "learned LBD average"};
 
-  Stat TABUSOLS{0, "solutions found by local search"};
-  Stat TABUFLIPS{0, "number of local search literal flips"};
-  Stat NTABUUNITS{0, "units derived during local search"};
-
   Stat LASTLB{std::numeric_limits<StatNum>::quiet_NaN(), "best lower bound"};
   Stat LASTUB{std::numeric_limits<StatNum>::quiet_NaN(), "best upper bound"};
   Stat DEPLTIME{-1, "depletion time"};
@@ -364,8 +358,6 @@ struct Stats {
       &GCTIME,
       &LEARNTIME,
       &HEURTIME,
-      &TABUTIME,
-      &TABUDETTIME,
       &ATMOSTONETIME,
       &ATMOSTONEDETTIME,
 #if WITHSOPLEX
@@ -445,9 +437,6 @@ struct Stats {
       &NCGUNITCORES,
       &NCGNONCLAUSALCORES,
       &NCGCOREREUSES,
-      &TABUSOLS,
-      &TABUFLIPS,
-      &NTABUUNITS,
       &LASTUB,
       &LASTLB,
       &DEPLTIME,

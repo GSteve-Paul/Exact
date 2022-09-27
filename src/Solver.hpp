@@ -271,32 +271,6 @@ class Solver {
   void detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
   std::unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
   void runAtMostOneDetection();
-
-  // ---------------------------------------------------------------------
-  // Tabu search
-
-  TabuRank next = 1;            // rank of the next literal to flip
-  TabuRank cutoff = 0;          // all less than or equal to the cutoff can be flipped
-  std::vector<TabuRank> ranks;  // Var to rank
-  std::vector<Lit> tabuSol;
-
-  std::list<CRef> violatedQueue;
-  std::unordered_map<CRef, std::list<CRef>::const_iterator> violatedPtrs;
-
-  void addToTabu(const CRef& cr);
-  void eraseFromTabu(const CRef& cr);
-  void rebuildTabu();
-  void flipTabu(Lit l);
-
- public:
-  bool runTabuOnce();
-  int getTabuViolatedSize() {
-    assert(violatedQueue.size() == violatedPtrs.size());
-    return violatedPtrs.size();
-  }
-  void phaseToTabu();
-  void lastSolToPhase();
-  void ranksToAct();
 };
 
 }  // namespace xct

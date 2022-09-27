@@ -230,7 +230,6 @@ inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::L
 inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED; }
 inline bool isInput(Origin o) { return o != Origin::UNKNOWN && o < Origin::LEARNED; }
 inline bool isLearned(Origin o) { return o >= Origin::LEARNED; }
-inline bool usedInTabu(Origin o) { return isNonImplied(o) || o == Origin::UPPERBOUND; }
 
 template <typename SMALL, typename LARGE>
 struct ConstrExp;
@@ -327,7 +326,5 @@ class UnsatEncounter : public std::exception {
     return "UNSAT state reached, this exception should have been caught.";
   }
 };
-
-using TabuRank = long long;
 
 }  // namespace xct
