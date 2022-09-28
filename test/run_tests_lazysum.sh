@@ -91,10 +91,19 @@ for idx in "${!arr_lazy[@]}"; do
         fi
         obj="$(cut -d'*' -f2 <<<$j)"
         echo "running $binary $formula $options --cg-encoding=$lazy --proof-log=$logfile --seed=4"
-        output=`$binary $formula $options --cg-encoding=$lazy --proof-log=$logfile 2>&1 | awk '/^o|Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
-        if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
+        output=`$binary $formula $options --cg-encoding=$lazy --proof-log=$logfile --seed=4 2>&1`
+        error=`echo "$output" | awk '/Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
+        if [ "$error" != "" ] ; then
             errors=`expr 1000 + $errors`
-            echo "wrong output: $output vs $obj"
+            echo "parsed error: $error"
+        fi
+        objective=`echo "$output" | awk '/^o/ {print $2}'`
+        result=`echo "$output" | awk '/^s/ {print $2}'`
+        if [ "$objective" != "" ]; then
+            if (( "$objective" > "$obj" )) && [ "$result" == "OPTIMUM" ] || (( "$objective" < "$obj" )) ; then
+                errors=`expr 100 + $errors`
+                echo "wrong objective: $objective vs $obj"
+            fi
         fi
         echo "verifying veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat"
         wc -l $logfile.proof
