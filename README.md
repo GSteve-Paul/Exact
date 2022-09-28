@@ -88,7 +88,7 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 ## SoPlex
 
 Exact supports an integration with the LP solver [SoPlex](https://soplex.zib.de) to improve its search routine.
-For this, first [download](https://soplex.zib.de/download.php?fname=soplex-6.0.0.tgz) SoPlex 6.0.0 and place the downloaded file in the root directory of Exact.
+For this, first [download](https://soplex.zib.de/download.php?fname=soplex-6.0.1.tgz) SoPlex 6.0.1 and place the downloaded file in the root directory of Exact.
 Next, follow the above build process, but configure with the cmake option `-Dsoplex=ON`:
 
     cd build
