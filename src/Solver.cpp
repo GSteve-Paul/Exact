@@ -535,6 +535,13 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   Constr& c = ca[cr];
   c.initializeWatches(cr, *this);
   constraints.push_back(cr);
+  if (isNonImplied(c.getOrigin())) {
+    for (unsigned int i = 0; i < c.size; ++i) {
+      Lit l = c.lit(i);
+      assert(isOrig(toVar(l)));
+      lit2cons[l].insert({cr, i});
+    }
+  }
   if (c.isAtMostOne() && c.size > 2) {
     uint64_t hash = c.size;
     for (unsigned int i = 0; i < c.size; ++i) {
@@ -737,6 +744,14 @@ void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
   assert(!external.count(c.id));
   c.header.markedfordel = 1;
   ca.wasted += c.getMemSize();
+  if (isNonImplied(c.getOrigin())) {
+    for (unsigned int i = 0; i < c.size; ++i) {
+      Lit l = c.lit(i);
+      assert(isOrig(toVar(l)));
+      assert(lit2cons[l].count(cr));
+      lit2cons[l].erase(cr);
+    }
+  }
 }
 
 void Solver::dropExternal(ID id, bool erasable, bool forceDelete) {
@@ -805,7 +820,7 @@ void Solver::rebuildLit2Cons() {
   }
   for (const CRef& cr : constraints) {
     Constr& c = ca[cr];
-    if (c.isMarkedForDelete()) continue;
+    if (c.isMarkedForDelete() || !isNonImplied(c.getOrigin())) continue;
     for (unsigned int i = 0; i < c.size; ++i) {
       assert(isOrig(toVar(c.lit(i))));
       lit2cons[c.lit(i)].insert({cr, c.isClauseOrCard() ? INF : i});
@@ -856,6 +871,7 @@ void Solver::reduceDB() {
     if (c.isMarkedForDelete() || c.isLocked() || external.count(c.id)) {
       continue;
     }
+    assert(!isNonImplied(c.getOrigin()));
     if (c.isSatisfiedAtRoot(getLevel())) {
       ++global.stats.NSATISFIEDSREMOVED;
       removeConstraint(cr);
