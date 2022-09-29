@@ -224,6 +224,7 @@ struct Options {
   VoidOption noSolve{"onlyparse", "Quit after parsing file"};
   EnumOption fileFormat{
       "format", "File format (overridden by corresponding file extension)", "opb", {"opb", "cnf", "wcnf", "mps", "lp"}};
+  BoolOption uniformOut{"out-uniform", "Use the default opb output style even for other file formats", false};
   VoidOption printOpb{"print-opb", "Print OPB of the parsed problem"};
   VoidOption printSol{"print-sol", "Print the solution if found"};
   VoidOption printUnits{"print-units", "Print unit literals"};
@@ -349,6 +350,7 @@ struct Options {
       &randomSeed,
       &noSolve,
       &fileFormat,
+      &uniformOut,
       &printOpb,
       &printSol,
       &printUnits,
