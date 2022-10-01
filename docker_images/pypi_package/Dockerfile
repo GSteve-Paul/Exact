@@ -4,8 +4,7 @@ RUN apt update && apt -y install make autoconf cmake libboost-dev apt-utils clan
 
 # avoid infinite wheel installation time:
 RUN pip3 install --upgrade pip setuptools wheel
-RUN pip3 install build twine networkx
+RUN pip3 install twine build
 
 WORKDIR /usr/src/app
 
-# cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=ON

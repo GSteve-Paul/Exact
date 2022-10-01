@@ -1,0 +1,3 @@
+docker build docker_images/ci/ -t holkann/exact_ci
+docker login -u holkann
+docker push holkann/exact_ci
