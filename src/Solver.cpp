@@ -809,7 +809,10 @@ std::vector<Lit> Solver::getUnits() const {
   return units;
 }
 
-const std::vector<Lit>& Solver::getLastSolution() const { return lastSol; }
+const std::vector<Lit>& Solver::getLastSolution() const {
+  assert(foundSolution());
+  return lastSol;
+}
 
 // ---------------------------------------------------------------------
 // Garbage collection

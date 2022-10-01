@@ -167,35 +167,31 @@ void Exact::invalidateLastSol(const std::vector<std::string>& vars) {
 
 void Exact::printFormula() { ilp.printFormula(); }
 
-void Exact::init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool boundObjective,
-                 bool addNonImplieds) {
+void Exact::init(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
   if (unsatState) return;
 
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {});
-
-  ilp.init(boundObjective, addNonImplieds);
+  ilp.init();
 }
-void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool boundObjective,
-                 bool addNonImplieds) {
+void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
   if (unsatState) return;
 
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {});
-
-  ilp.init(boundObjective, addNonImplieds);
+  ilp.init();
 }
 
-SolveState Exact::run() {
-  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
+SolveState Exact::runOnce() {
   if (unsatState) return SolveState::UNSAT;
-  try {
-    return ilp.run();
-  } catch (const UnsatEncounter& ue) {
-    return SolveState::UNSAT;
-  }
+  return ilp.runOnce();
+}
+
+SolveState Exact::runFull() {
+  if (unsatState) return SolveState::UNSAT;
+  return ilp.runFull();
 }
 
 std::pair<long long, long long> Exact::getObjectiveBounds() const {

@@ -44,11 +44,11 @@ void runOnce(int argc, char** argv, ILP& ilp) {
 
   ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
 
-  ilp.init(true, true);
+  ilp.init();
   SolveState res = SolveState::INPROCESSED;
 
   while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
-    res = ilp.run();
+    res = ilp.runOnce();
   }
 }
 

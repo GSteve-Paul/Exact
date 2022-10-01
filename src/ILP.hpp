@@ -128,9 +128,10 @@ class ILP {
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
   void setAssumptions(const std::vector<bigint>& vals, const std::vector<IntVar*>& vars);
 
-  void init(bool boundObjective, bool addNonImplieds);
-  SolveState run();
-  SolveState runFull(bool optimize = false, double timeout = 0);
+  bool initialized() const;
+  void init();
+  SolveState runOnce();
+  SolveState runFull(double timeout = 0);
 
   void addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                      const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,

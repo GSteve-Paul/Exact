@@ -3,17 +3,25 @@
 import sys
 import networkx as nx
 
-# usage: python3 graph_colorying.py <adjacency matrix file> <number of colors> <symmetry file> <print instead of solve>
-# example usage: python3 graph_coloring.py graph_77v-7chrom_adj_matrix.txt 5 graph_77v-7chrom_symmetries.txt 0
+if len(sys.argv)==5 or len(sys.argv)==4:
+    adjacencyfile = sys.argv[1]
+    colors = int(sys.argv[2])
+    symfile = sys.argv[3]
+    printNoSolve = bool(int(sys.argv[4])) if len(sys.argv)==5 else False
+else:
+    print("Usage: python3 graph_colorying.py <adjacency matrix file> <number of colors> <symmetry file> <print instead of solve>")
+    print("Using default arguments: python3 python/examples/graph_coloring/graph_coloring.py python/examples/graph_coloring/graph_77v-7chrom_adj_matrix.txt 4 python/examples/graph_coloring/graph_77v-7chrom_symmetries.txt 0")
+    adjacencyfile = "python/examples/graph_coloring/graph_77v-7chrom_adj_matrix.txt"
+    colors = 4
+    symfile = "python/examples/graph_coloring/graph_77v-7chrom_symmetries.txt"
+    printNoSolve = False
 
 nodes = 0
 edges = []
-colors = int(sys.argv[2])
 symmetries = []
-printNoSolve = bool(int(sys.argv[4]))
 
 # read graph
-with open(sys.argv[1]) as f:
+with open(adjacencyfile) as f:
     lines = f.readlines() # list containing lines of file
     nodes = len(lines)
     for l in lines:
@@ -21,7 +29,7 @@ with open(sys.argv[1]) as f:
         assert(len(edges[-1])==nodes)
 
 # read symmetries
-with open(sys.argv[3]) as f:
+with open(symfile) as f:
     lines = f.readlines()
     for l in lines:
         # continue
@@ -105,22 +113,15 @@ for c in range(0,colors-1):
 
 
 # initialize the solver without an objective function
-solver.init([], [], False, True)
+solver.init([], [])
 
 if printNoSolve:
     solver.printFormula()
 else:
     # Run the solver
     print("run Exact:")
-    result = 3
-    while result==3:
-        # As long as the result is not UNSAT (== 0), the solver is kept running.
-        result = solver.run()
-    # Once the loop exits, the last found solution is the optimal one.
-
-    if result == 1:
+    solver.runFull()
+    if solver.hasSolution():
         print("SAT")
-    elif result == 0:
-        print("UNSAT")
     else:
-        print("UNEXPECTED RESULT")
+        print("UNSAT")

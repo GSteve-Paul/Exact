@@ -105,6 +105,7 @@ class BoolOption : public Option {
   BoolOption(const std::string& n, const std::string& d, bool v) : Option{n, d}, val(v) {}
 
   explicit operator bool() const { return val; }
+  void set(bool v) { val = v; }
 
   void printUsage(int colwidth) const override {
     std::stringstream output;
@@ -140,6 +141,7 @@ class ValOption : public Option {
       : Option{n, d}, val(v), checkDescription(cd), check(c) {}
 
   const T& get() const { return val; }
+  void set(const T& v) { val = v; }
 
   void printUsage(int colwidth) const override {
     std::stringstream output;
@@ -151,7 +153,7 @@ class ValOption : public Option {
 
   void parse(const std::string& v) override {
     try {
-      val = aux::sto<T>(v);
+      set(aux::sto<T>(v));
     } catch (const std::invalid_argument& ia) {
       throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
@@ -237,7 +239,8 @@ struct Options {
                             [](double x) -> bool { return 0 <= x; }};
   ValOption<long long> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
                                   [](long long x) -> bool { return 0 <= x; }};
-  BoolOption boundUpper{"boundupper", "Add objective upper bound constraints when a feasible solution is found.", true};
+  BoolOption boundUpper{"opt-boundupper", "Add objective upper bound constraints when a feasible solution is found.",
+                        true};
   ValOption<double> lubyBase{"luby-base", "Base of the Luby restart sequence", 2, "1 =< float",
                              [](double x) -> bool { return 1 <= x; }};
   ValOption<int> lubyMult{"luby-mult", "Multiplier of the Luby restart sequence", 100, "1 =< int",

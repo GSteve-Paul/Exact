@@ -135,19 +135,11 @@ class Exact {
    *
    * @param coefs: coefficients of the objective function
    * @param vars: variables of the objective function
-   * @param boundObjective: automatically add an upper bound constraint to the objective function for each solution
-   * found during search. This guarantees each solution will improve on the best-so-far, but will also yield UNSAT
-   * when the last solution is proven to be optimal.
-   * @param addNonImplieds: allow the solver to derive non-implied constraints that are consistent with at least
-   * one optimal solution. A simple example is fixing pure literals, which occur only positively or negatively in the
-   * constraints. These non-implied constraints speed up search by reducing the set of solutions.
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool boundObjective,
-            bool addNonImplieds);
-  void init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool boundObjective,
-            bool addNonImplieds);
+  void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
+  void init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars);
 
   /**
    * Start / continue the search.
@@ -165,7 +157,21 @@ class Exact {
    * - SolveState::INPROCESSED (3): the search process just finished an inprocessing phase. The search process should
    * simply be continued, but control is passed to the caller to, e.g., change assumptions or add constraints.
    */
-  SolveState run();
+  SolveState runOnce();
+
+  /**
+   * Start / continue the search until an optimal solution or inconsistency is found.
+   *
+   * @return: one of two values:
+   *
+   * - SolveState::UNSAT (0): an inconsistency implied by the constraints has been detected. No (better) solutions
+   * exist, and the search process is finished. No future calls should be made to this solver. An optimal solution can
+   * be retrieved if one exists via hasSolution() and getLastSolutionFor().
+   * - SolveState::INCONSISTENT (2): no solutions consistent with the assumptions exist and a core has been constructed.
+   * The search process can be continued, but to avoid finding the same core over and over again, change the set of
+   * assumptions. A core can be retrieved via hasCore() and getLastCore().
+   */
+  SolveState runFull();
 
   /**
    * Check whether a solution has been found.

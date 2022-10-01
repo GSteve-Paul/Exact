@@ -33,15 +33,11 @@ solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
 # The first True parameter will make sure an objective upper bound constraint is constructed that enforces the next
 # solution to improve on the last one, and the second True parameter allows the generation of auxiliary constraints that
 # may reduce the set of optimal solutions.
-solver.init(coefs_o, vars, True, True)
+solver.init(coefs_o, vars)
 
 # Run the solver
 print("run Exact:")
-result = 1
-while result != 0:
-    # As long as the result is not UNSAT (== 0), the solver is kept running.
-    result = solver.run()
-# Once the loop exits, the last found solution is the optimal one.
+result = solver.runFull()
 
 # Check that the solution exists.
 assert solver.hasSolution()

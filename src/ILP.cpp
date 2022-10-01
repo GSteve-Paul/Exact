@@ -210,7 +210,7 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   if (coefs.size() != vars.size() || (!negated.empty() && negated.size() != vars.size()))
     throw std::invalid_argument("Coefficient, variable, or negated lists differ in size.");
   if (mult == 0) throw std::invalid_argument("Objective multiplier should not be zero.");
-  if (optim) throw std::invalid_argument("Objective already set.");
+  if (initialized()) throw std::invalid_argument("Objective already set.");
   obj = IntConstraint(coefs, vars, negated, -offset);
   objmult = mult;
 }
@@ -317,17 +317,10 @@ void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs) {
   solver.invalidateLastSol(vars);
 }
 
-void ILP::init(bool boundObjective, bool addNonImplieds) {
-  if (optim) throw std::invalid_argument("ILP already initialized.");
+bool ILP::initialized() const { return optim != nullptr; }
 
-  // TODO: below should be set at option parsing time?
-  if (!boundObjective) {
-    global.options.boundUpper.parse("0");
-  }
-  if (!addNonImplieds) {
-    global.options.pureLits.parse("0");
-    global.options.domBreakLim.parse("0");
-  }
+void ILP::init() {
+  if (initialized()) throw std::invalid_argument("Solver already initialized.");
   aux::rng::seed = global.options.randomSeed.get();
 
   CeArb o = global.cePools.takeArb();
@@ -336,16 +329,19 @@ void ILP::init(bool boundObjective, bool addNonImplieds) {
   optim = OptimizationSuper::make(o, solver, global);
 }
 
-SolveState ILP::run() {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
+SolveState ILP::runOnce() {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
+  if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   return optim->optimize(assumptions);
 }
 
-SolveState ILP::runFull(bool optimize, double timeout) {
+SolveState ILP::runFull(double timeout) {
+  if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
+  global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
   while ((timeout == 0 || global.stats.getSolveTime() < timeout) &&
-         (result == SolveState::INPROCESSED || (optimize && result == SolveState::SAT))) {
+         (result == SolveState::INPROCESSED || result == SolveState::SAT)) {
     try {
-      result = optim->optimize(assumptions);
+      result = runOnce();
     } catch (const UnsatEncounter& ue) {
       return SolveState::UNSAT;
     }
@@ -362,7 +358,7 @@ std::ostream& ILP::printFormula(std::ostream& out) {
     nbConstraints += isNonImplied(c.getOrigin());
   }
   out << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
-  if (optim) {
+  if (optim && optim->getReformObj()->nVars() > 0) {
     out << "min: ";
     optim->getReformObj()->toStreamAsOPBlhs(out, true);
     out << ";\n";
@@ -407,19 +403,24 @@ std::ostream& ILP::printInput(std::ostream& out) {
 }
 
 ratio ILP::getLowerBound() const {
-  return optim ? static_cast<ratio>(optim->getLowerBound()) / objmult : static_cast<ratio>(0);
+  if (!initialized()) throw std::invalid_argument("Objective not yet initialized.");
+  return static_cast<ratio>(optim->getLowerBound());
 }
 ratio ILP::getUpperBound() const {
-  return optim ? static_cast<ratio>(optim->getUpperBound()) / objmult : static_cast<ratio>(0);
+  if (!initialized()) throw std::invalid_argument("Objective not yet initialized.");
+  return static_cast<ratio>(optim->getUpperBound());
 }
 
 bool ILP::hasSolution() const {
-  bool result = optim && optim->solutionsFound > 0;
-  assert(result == solver.foundSolution());
-  return result;
+  if (!initialized()) return false;
+  assert((optim->solutionsFound > 0) == solver.foundSolution());
+  return optim->solutionsFound > 0;
 }
 
-bigint ILP::getLastSolutionFor(IntVar* iv) const { return iv->getValue(solver.getLastSolution()); }
+bigint ILP::getLastSolutionFor(IntVar* iv) const {
+  if (!hasSolution()) throw std::invalid_argument("No solution to return.");
+  return iv->getValue(solver.getLastSolution());
+}
 
 std::vector<bigint> ILP::getLastSolutionFor(const std::vector<IntVar*>& vars) const {
   if (!hasSolution()) throw std::invalid_argument("No solution to return.");
@@ -451,6 +452,7 @@ std::unordered_set<IntVar*> ILP::getLastCore() {
 }
 
 void ILP::printOrigSol() const {
+  if (!hasSolution()) throw std::invalid_argument("No solution to return.");
   for (const std::unique_ptr<IntVar>& iv : vars) {
     bigint val = iv->getValue(solver.getLastSolution());
     if (val != 0) {
@@ -461,8 +463,16 @@ void ILP::printOrigSol() const {
 
 // NOTE: also throws AsynchronousInterrupt
 std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs) {
-  SolveState result = runFull();
-  if (result == SolveState::INCONSISTENT) return {};
+  global.options.boundUpper.set(false);
+  global.options.pureLits.set(false);
+  global.options.domBreakLim.set(0);
+  SolveState result = SolveState::INPROCESSED;
+  while (result == SolveState::INPROCESSED) {
+    result = runOnce();
+  }
+  if (result == SolveState::INCONSISTENT) {
+    throw std::invalid_argument("Propagation cannot be done with inconsistent assumptions.");
+  }
   assert(result == SolveState::SAT);
 
   Ce32 invalidator = global.cePools.take32();
@@ -484,7 +494,10 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
 
   while (true) {
     solver.addConstraint(invalidator, Origin::INVALIDATOR);
-    result = runFull();
+    result = SolveState::INPROCESSED;
+    while (result == SolveState::INPROCESSED) {
+      result = runOnce();
+    }
     if (result != SolveState::SAT) break;
     for (Var v : invalidator->getVars()) {
       Lit invallit = invalidator->getLit(v);

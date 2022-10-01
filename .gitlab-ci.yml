@@ -24,6 +24,8 @@ job_test_pypi:
     - python3 python/examples/knapsack_classic.py
     - python3 python/examples/knapsack_implied.py
     - python3 python/examples/knapsack_propagate.py
+    - python3 python/examples/ramsey.py
+    - python3 python/examples/graph_coloring/graph_coloring.py
   only:
     - web
 

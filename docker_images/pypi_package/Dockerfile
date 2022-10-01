@@ -7,6 +7,7 @@ RUN export PATH=$PATH:$HOME/.poetry/bin
 
 # avoid infinite wheel installation time:
 RUN pip3 install --upgrade pip setuptools wheel
+RUN pip3 install networkx
 
 
 WORKDIR /usr/src/app

@@ -26,12 +26,18 @@ import exact
 # Fixing Ramsey number instance
 if len(sys.argv) != 6:
     print("Usage: python3 ramsey.py #nodes cliquesize1 cliquesize2 symcutoff count-breakers")
-    exit(1)
-nodes = int(sys.argv[1])  # size of the graph
-cliques = [int(sys.argv[2]), int(sys.argv[3])]  # size of cliques
-cutoff = int(sys.argv[4])  # should be less than 64 so that resulting coefficients still fit in long long
-uselex = int(sys.argv[5]) < 2
-usecounting = int(sys.argv[5]) > 0
+    print("Using default arguments: python3 ramsey.py 9 3 4 29 0")
+    nodes = 17  # size of the graph
+    cliques = [4,4]  # size of cliques
+    cutoff = 29  # should be less than 64 so that resulting coefficients still fit in long long
+    uselex = True
+    usecounting = False
+else:
+    nodes = int(sys.argv[1])  # size of the graph
+    cliques = [int(sys.argv[2]), int(sys.argv[3])]  # size of cliques
+    cutoff = int(sys.argv[4])  # should be less than 64 so that resulting coefficients still fit in long long
+    uselex = int(sys.argv[5]) < 2
+    usecounting = int(sys.argv[5]) > 0
 print("Searching for complete bicolored graph with", nodes, "nodes and no blue cliques of size", cliques[0],
       "and no red cliques of size", cliques[1])
 if uselex:
@@ -39,15 +45,12 @@ if uselex:
 if usecounting:
     print("Using counting symmetry breaking")
 
-
 def normalize(v):
     return v if v[0] <= v[1] else (v[1], v[0])
-
 
 def to_var(v):
     vv = normalize(v)
     return str(vv[0]) + "_" + str(vv[1])
-
 
 variables = [to_var((i, j)) for i in range(0, nodes) for j in range(i + 1, nodes)]
 constraints = []
@@ -73,18 +76,14 @@ for n in cliques:
         for i in range(1, n):
             if clique[i] <= clique[i - 1]:
                 clique[i] = clique[i - 1] + 1
-
     flag = False
 
 
 # Lex-leader symmetry breaking
 def swapif(v, swap):
     return swap[1] if v == swap[0] else swap[0] if v == swap[1] else v
-
-
 def image(v, swap):
     return normalize((swapif(v[0], swap), swapif(v[1], swap)))
-
 
 order = [(i, j) for i in range(0, nodes) for j in range(i + 1, nodes)]
 orderdict = {order[i]: i for i in range(0, len(order))}
@@ -131,34 +130,28 @@ if cliques[0] == cliques[1]:
 # Create an Exact solver instance
 solver = exact.Exact()
 
-solver.setOption("var-weight", "0")
-
 # Add the variables
 for e in variables:
     solver.addVariable(e, 0, 1)
 # Add the constraints
 for (coefs, vs, uselow, low, useup, up) in constraints:
-    solver.addConstraint(coefs, vs, uselow, low+i, useup, up-i)
+    solver.addConstraint(coefs, vs, uselow, low, useup, up)
 
 # Initialize Exact
-solver.init([], [], False, True)
+solver.init([], [])
 
 # solver.printFormula()
 
 # Run Exact
 print("run Exact:")
-result = 3
-while result > 1:
-    # As long as the result is not UNSAT (== 0), the solver is kept running.
-    result = solver.run()
+solver.runFull()
 
 solver.printStats()
 
-if result == 0:
-    assert not solver.hasSolution()
-    print("UNSAT")
-else:
-    assert solver.hasSolution()
+if solver.hasSolution():
     print("SAT")
     sol = solver.getLastSolutionFor(variables)
     print(sol)
+else:
+    print("UNSAT")
+
