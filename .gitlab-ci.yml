@@ -64,21 +64,15 @@ job_tests_noproof:
     - ./test/run_tests_noproof.sh 2 "testruns" ./Exact
   only:
     - web
-job_tests_reified:
-  stage: test
-  script:
-    - ./test/run_tests_reified.sh 2 "testruns" ./Exact
-  only:
-    - web
 job_tests_simple:
   stage: test
   script:
     - ./test/run_tests_simple.sh 2 "testruns" ./Exact
   only:
     - web
-job_tests_sum:
+job_tests_smallsum:
   stage: test
   script:
-    - ./test/run_tests_sum.sh 2 "testruns" ./Exact
+    - ./test/run_tests_smallsum.sh 2 "testruns" ./Exact
   only:
     - web
