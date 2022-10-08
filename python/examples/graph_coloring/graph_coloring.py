@@ -19,6 +19,7 @@ else:
 nodes = 0
 edges = []
 symmetries = []
+neighbors = []
 
 # read graph
 with open(adjacencyfile) as f:
@@ -27,6 +28,7 @@ with open(adjacencyfile) as f:
     for l in lines:
         edges += [[x=='1' for x in l[:-1]]]
         assert(len(edges[-1])==nodes)
+        neighbors += [{i for i in range(0,len(l)) if l[i]=='1'}]
 
 # read symmetries
 with open(symfile) as f:
@@ -66,13 +68,39 @@ for n in range(0,nodes):
 for n in range(0,nodes):
     solver.addConstraint([1]*colors,[toVar(n,c) for c in range(0,colors)],True,1,True,1)
 
-# Instead of adding a clause for each two edges, we add an at-most-one constraint for each maximal clique
 G = nx.Graph()
 for n1 in range(0,nodes):
     for n2 in range(n1+1,nodes):
         if edges[n1][n2]:
             G.add_edge(n1,n2)
 
+# calculate k-cycles recursively
+def get_cycles(k,path,cycles):
+    if k==len(path):
+        if path[0] in neighbors[path[-1]]:
+            # for i in range(1,len(path)):
+            #     assert(edges[path[i-1]][path[i]])
+            cycles.add(tuple(sorted(path)))
+        return
+    for n in neighbors[path[-1]]:
+        if n>path[0] and not n in path:
+            get_cycles(k,path+[n],cycles)
+
+# add a cycle constraint
+cycles = set() # set of frozensets
+for k in [5]:
+    for start in range(0,nodes):
+        get_cycles(k,[start],cycles)
+
+print(cycles)
+print(len(cycles))
+
+for cycle in cycles:
+    for c in range(0,colors):
+        #solver.addConstraint([1]*len(cycle),[toVar(n,c) for n in cycle],False,0,True,len(cycle)//2)
+        pass
+
+# Instead of adding a clause for each two edges, we add an at-most-one constraint for each maximal clique
 for clique in nx.find_cliques(G):
     for c in range(0,colors):
         solver.addConstraint([1]*len(clique),[toVar(n,c) for n in clique],False,0,True,1)
