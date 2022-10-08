@@ -94,6 +94,7 @@ class Heuristic {
 
   Lit pickBranchLit(const std::vector<int>& position);
   Var nextInActOrder(Var v) const;
+  Var firstInActOrder() const;
   void swapOrder(Var v1, Var v2);
 
   bool testActList(const std::vector<int>& position) const;

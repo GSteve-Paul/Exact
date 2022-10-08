@@ -174,8 +174,9 @@ Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
   return getPhase(nextDecision);
 }
 
-// NOTE: v==0 will give first in activity order
 Var Heuristic::nextInActOrder(Var v) const { return actList[v].next; }
+
+Var Heuristic::firstInActOrder() const { return nextInActOrder(0); }
 
 bool Heuristic::testActList(const std::vector<int>& position) const {
   // printActList(position);

@@ -75,7 +75,8 @@ Solver::Solver(Global& g)
       equalities(*this),
       implications(*this),
       nconfl_to_reduce(0),
-      nconfl_to_restart(0) {
+      nconfl_to_restart(0),
+      nextToSort(0) {
   ca.capacity(1024 * 1024);  // 4MB
   position.resize(1, INF);
   assert(!lastCore);
@@ -998,6 +999,19 @@ void Solver::inProcess() {
 #endif  // WITHSOPLEX
 }
 
+void Solver::sortWatchlists() {
+  Var first = getHeuristic().firstInActOrder();
+  sort(adj[first].begin(), adj[first].end(),
+       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].strength > ca[w2.cref].strength; });
+  if (getNbVars() == 0) return;
+  nextToSort = (nextToSort % getNbVars()) + 1;
+  if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
+  assert(nextToSort > 0);
+  assert(nextToSort <= getNbVars());
+  sort(adj[nextToSort].begin(), adj[nextToSort].end(),
+       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].strength > ca[w2.cref].strength; });
+}
+
 void Solver::presolve() {
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
@@ -1187,6 +1201,7 @@ SolveState Solver::solve() {
         ++global.stats.NRESTARTS;
         double rest_base = luby(global.options.lubyBase.get(), static_cast<int>(global.stats.NRESTARTS.z));
         nconfl_to_restart = (long long)rest_base * global.options.lubyMult.get();
+        if (global.options.sortWatchlists) sortWatchlists();
       }
       if (global.stats.NCONFL >= nconfl_to_reduce) {
         ++global.stats.NCLEANUP;
@@ -1413,7 +1428,7 @@ void Solver::runAtMostOneDetection() {
   DetTime oldDetTime = currentDetTime;
   std::vector<Lit> previous;
   std::unordered_set<Lit> considered;
-  Lit next = heur->nextInActOrder(0);  // first in activity order
+  Lit next = heur->firstInActOrder();
   while (next != 0 && (global.options.inpAMO.get() == 1 ||
                        global.stats.ATMOSTONEDETTIME <
                            global.options.inpAMO.get() * std::max(global.options.basetime.get(), currentDetTime))) {

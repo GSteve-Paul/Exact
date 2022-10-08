@@ -342,9 +342,7 @@ struct Options {
                            "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
                               "0=< float", [](const DetTime& x) -> bool { return x >= 0; }};
-
-  ValOption<int> test{"test", "Activate change under review", 0, "int",
-                      []([[maybe_unused]] const int& x) -> bool { return true; }};
+  BoolOption sortWatchlists{"wl-sort", "Sort the watch lists", false};
 
   const std::vector<Option*> options = {
       &help,
@@ -404,7 +402,7 @@ struct Options {
       &inpProbing,
       &inpAMO,
       &basetime,
-      // &test,
+      &sortWatchlists,
   };
   std::unordered_map<std::string, Option*> name2opt;
 

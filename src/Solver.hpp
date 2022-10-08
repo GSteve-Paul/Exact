@@ -138,6 +138,7 @@ class Solver {
 
   long long nconfl_to_reduce = 0;
   long long nconfl_to_restart = 0;
+  Var nextToSort = 0;
 
   CeSuper getAnalysisCE(const CeSuper& conflict) const;
 
@@ -260,6 +261,7 @@ class Solver {
 
  private:
   void inProcess();
+  void sortWatchlists();
   void removeSatisfiedNonImpliedsAtRoot();
   void derivePureLits();
   void dominanceBreaking();
