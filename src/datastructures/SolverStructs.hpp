@@ -76,8 +76,7 @@ struct CRef {
 inline std::ostream& operator<<(std::ostream& o, const CRef& c) { return o << c.ofs; }
 
 const CRef CRef_Undef = {std::numeric_limits<uint32_t>::max()};
-const CRef CRef_Unsat = {std::numeric_limits<uint32_t>::max() - 1};
-inline bool isValid(CRef cr) { return cr.ofs < std::numeric_limits<uint32_t>::max() - 1; };
+inline bool isValid(CRef cr) { return cr != CRef_Undef; };  // TODO: remove
 
 // TODO: make below methods part of a Solver object that's passed around
 inline bool isTrue(const IntMap<int>& level, Lit l) { return level[l] != INF; }

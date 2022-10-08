@@ -31,13 +31,14 @@ See the file LICENSE or run with the flag --license=MIT.
 #pragma once
 
 #include <string>
+#include "Global.hpp"
 #include "Solver.hpp"
 #include "typedefs.hpp"
 
 namespace xct {
 
 struct IntVar {
-  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub);
+  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, int loglim);
 
   [[nodiscard]] const std::string& getName() const { return name; }
   [[nodiscard]] const bigint& getUpperBound() const { return upperBound; }
@@ -88,15 +89,9 @@ class IntConstraint {
 };
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
-struct UnsatState : public std::exception {
-  const char* what() const throw() { return "Solver is in an UNSAT state."; }
-};
-
 class ILP {
   Solver solver;
   Optim optim;
-
-  bool unsatDetected = false;
 
   std::vector<std::unique_ptr<IntVar>> vars;
   IntConstraint obj;
@@ -108,8 +103,15 @@ class ILP {
 
   std::vector<Lit> assumptions;  // TODO: pass assumptions to run() instead of keeping track of them here?
 
+  // only for printing purposes:
+  const bool keepInput;
+  std::vector<IntConstraint> constraints;
+  std::vector<std::pair<IntVar*, IntConstraint>> reifications;
+
  public:
-  ILP();
+  Global global;
+
+  ILP(bool keepIn = false);
 
   const IntConstraint& getObjective() const { return obj; }
   Solver& getSolver() { return solver; }
@@ -117,42 +119,46 @@ class ILP {
   void setMaxSatVars() { maxSatVars = solver.getNbVars(); }
   int getMaxSatVars() const { return maxSatVars; }
 
-  IntVar* getVarFor(const std::string& name, bool nameAsId = true, const bigint& lowerbound = 0,
-                    const bigint& upperbound = 1);
-  bool hasVarFor(const std::string& name) const;
-  std::vector<std::string> getVariables() const;
-  std::pair<bigint, bigint> getBounds(const std::string& name) const;
+  IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, bool nameAsId = false);
+  IntVar* getVarFor(const std::string& name) const;  // returns nullptr if it does not exist
+  std::vector<IntVar*> getVariables() const;
+  std::pair<bigint, bigint> getBounds(IntVar* iv) const;
 
   void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
   void setAssumptions(const std::vector<bigint>& vals, const std::vector<IntVar*>& vars);
 
-  void init(bool boundObjective, bool addNonImplieds);
-  SolveState run();
-  SolveState runFull();
+  bool initialized() const;
+  void init();
+  SolveState runOnce();
+  SolveState runFull(double timeout = 0);
 
-  State addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                      const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
-                      const std::optional<bigint>& ub = std::nullopt);
-  State addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                       const bigint& lb);
-  State boundObjByLastSol();
-  State invalidateLastSol();
-  State invalidateLastSol(const std::vector<std::string>& names);
+  void addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                     const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
+                     const std::optional<bigint>& ub = std::nullopt);
+  void addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                      const std::vector<bool>& negated, const bigint& lb);
+  void fix(IntVar* iv, const bigint& val);
+  void boundObjByLastSol();
+  void invalidateLastSol();
+  void invalidateLastSol(const std::vector<IntVar*>& ivs);
 
   ratio getLowerBound() const;
   ratio getUpperBound() const;
 
   bool hasSolution() const;
-  std::vector<bigint> getLastSolutionFor(const std::vector<std::string>& vars) const;
+  bigint getLastSolutionFor(IntVar* iv) const;
+  std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;
 
   bool hasCore() const;
-  std::vector<std::string> getLastCore() const;
+  std::unordered_set<IntVar*> getLastCore();
 
   void printOrigSol() const;
   void printFormula();
+  std::ostream& printFormula(std::ostream& out);
+  std::ostream& printInput(std::ostream& out);
 
-  std::vector<std::pair<bigint, bigint>> propagate(const std::vector<std::string>& varnames);
+  std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 

@@ -95,8 +95,9 @@ using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
 
-enum class State { UNSAT, SUCCESS, FAIL };
+enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, INPROCESSED };
+std::ostream& operator<<(std::ostream& o, enum SolveState state);
 
 namespace xct {
 
@@ -105,9 +106,14 @@ std::ostream& operator<<(std::ostream& o, const std::pair<T, U>& p) {
   o << p.first << "," << p.second;
   return o;
 }
-template <typename T, typename U>
-std::ostream& operator<<(std::ostream& o, const std::unordered_map<T, U>& m) {
+template <typename T, typename U, typename HASH>
+std::ostream& operator<<(std::ostream& o, const std::unordered_map<T, U, HASH>& m) {
   for (const auto& e : m) o << e << ";";
+  return o;
+}
+template <typename T, typename HASH>
+std::ostream& operator<<(std::ostream& o, const std::unordered_set<T, HASH>& m) {
+  for (const auto& e : m) o << e << " ";
   return o;
 }
 template <typename T>
@@ -193,13 +199,13 @@ double average(const std::vector<T>& v) {
   return std::accumulate(v.cbegin(), v.cend(), 0.0) / (double)v.size();
 }
 
-template <typename T>
-T min(const std::vector<T>& v) {
+template <typename CONTAINER>
+auto min(CONTAINER&& v) {
   return *std::min_element(v.cbegin(), v.cend());
 }
 
-template <typename T>
-T max(const std::vector<T>& v) {
+template <typename CONTAINER>
+auto max(CONTAINER&& v) {
   return *std::max_element(v.cbegin(), v.cend());
 }
 
@@ -339,12 +345,6 @@ void timeCallVoid(const std::function<void(void)>& f, U& to) {
   to += std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count();
 }
 
-inline void flushexit(int status) {
-  std::cout.flush();
-  std::cerr.flush();
-  exit(status);
-}
-
 inline std::ostream& prettyPrint(std::ostream& o, const long double& z) {
   long long iz = static_cast<long long>(z);
   if (iz == z) {
@@ -369,23 +369,43 @@ std::optional<T> option(bool make, const T& val) {
   return std::nullopt;
 }
 
-template <typename T, typename U>
-std::vector<T> cast_vec(const std::vector<U>& in) {
-  std::vector<T> result;
-  result.resize(in.size());
-  std::transform(in.begin(), in.end(), result.begin(), [](const U& val) { return static_cast<T>(val); });
-  return result;
-}
-
 namespace rng {
 
 extern uint32_t seed; /* The seed must be initialized to non-zero */
 uint32_t xorshift32();
 }  // namespace rng
 
-uint32_t getRand(uint32_t min, uint32_t max);
+int32_t getRand(int32_t min, int32_t max);
 uint64_t hash(uint64_t x);
-uint64_t hashForSet(const std::vector<int>& ints);
+
+template <typename T>
+uint64_t hashForSet(const std::vector<T>& els) {
+  uint64_t result = els.size();
+  for (const T& el : els) {
+    result ^= hash(std::hash<T>()(el));
+  }
+  return result;
+}
+
+template <typename T>
+uint64_t hashForList(const std::vector<T>& els) {
+  uint64_t result = els.size();
+  for (const T& el : els) {
+    result ^= hash(std::hash<T>()(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
+  }
+  return result;
+}
+
+template <typename... Args>
+using predicate = std::function<bool(Args...)>;
+
+template <typename CONTAINER, typename LAMBDA>
+auto comprehension(CONTAINER&& container, LAMBDA&& lambda) {
+  std::vector<decltype(lambda(*container.begin()))> w;
+  w.reserve(container.size());
+  std::transform(container.begin(), container.end(), std::back_inserter(w), lambda);
+  return w;
+}
 
 }  // namespace aux
 

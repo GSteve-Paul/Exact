@@ -24,7 +24,7 @@ cp ../LICENSE LICENSE
 cp ../src/used_licenses/COPYING exact/used_licenses/COPYING
 
 cd ../build_lib
-cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=ON -Dsoplex=OFF
 make -j 8
 # ninja -j 8
 
@@ -32,5 +32,6 @@ cd ../python
 cp ../build_lib/libExact.so exact/libExact.so
 strip --strip-unneeded exact/libExact.so
 
-poetry build
-# poetry publish
+python3 -m build
+twine upload dist/*
+

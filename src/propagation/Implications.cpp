@@ -30,7 +30,6 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #include "Implications.hpp"
 #include "../Solver.hpp"
-#include "../globals.hpp"
 
 namespace xct {
 
@@ -59,9 +58,9 @@ State Implications::propagate() {
     bool added = false;
     for (Lit b : implieds[a]) {
       if (!isTrue(solver.getLevel(), b)) {
-        ++stats.NPROBINGIMPLS;
-        ID id = logger ? logger->logRUP(-a, b) : ID_Undef;
-        if (solver.learnClause({-a, b}, Origin::IMPLICATION, id) == ID_Unsat) return State::UNSAT;
+        ++solver.getStats().NPROBINGIMPLS;
+        ID id = solver.getLogger().logRUP(-a, b);
+        solver.learnClause({-a, b}, Origin::IMPLICATION, id);
         added = true;
       }
     }

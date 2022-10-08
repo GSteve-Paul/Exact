@@ -77,7 +77,7 @@ std::ostream& operator<<(std::ostream& o, const Constr& c) {
   return o << ">= " << c.degree();
 }
 
-void Constr::fixEncountered() const {
+void Constr::fixEncountered(Stats& stats) const {  // TODO: better as method of Stats?
   const Origin o = getOrigin();
   stats.NENCFORMULA += o == Origin::FORMULA;
   stats.NENCDOMBREAKER += o == Origin::DOMBREAKER;
@@ -92,17 +92,6 @@ void Constr::fixEncountered() const {
   stats.NENCEQ += o == Origin::EQUALITY;
   stats.NENCIMPL += o == Origin::IMPLICATION;
   ++stats.NRESOLVESTEPS;
-}
-
-void Clause::initializeTabu(const std::vector<Lit>& tabuSol) {
-  assert(usedInTabu(getOrigin()));
-  tabuData = new TabuData<int>(size, 1);
-  for (unsigned int i = 0; i < size; ++i) {
-    Lit l = data[i];
-    tabuData->slack += tabuSol[toVar(l)] == l;
-    tabuData->lits[i] = l;
-  }
-  assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
 }
 
 void Clause::initializeWatches(CRef cr, Solver& solver) {
@@ -146,7 +135,7 @@ void Clause::initializeWatches(CRef cr, Solver& solver) {
   for (unsigned int i = 0; i < 2; ++i) adj[data[i]].emplace_back(cr, data[1 - i] - INF);  // add blocked literal
 }
 
-WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver) {
+WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats) {
   auto& level = solver.level;
   auto& adj = solver.adj;
 
@@ -212,7 +201,7 @@ CeSuper Clause::toExpanded(ConstrExpPools& cePools) const {
     result->addLhs(1, data[i]);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -230,28 +219,6 @@ bool Clause::canBeSimplified(const IntMap<int>& level, Equalities& equalities) c
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
   return false;
-}
-
-void Clause::decreaseTabuSlack([[maybe_unused]] int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack -= 1;
-}
-void Clause::increaseTabuSlack([[maybe_unused]] int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack += 1;
-}
-
-void Cardinality::initializeTabu(const std::vector<Lit>& tabuSol) {
-  assert(usedInTabu(getOrigin()));
-  tabuData = new TabuData<int>(size, degr);
-  for (unsigned int i = 0; i < size; ++i) {
-    Lit l = data[i];
-    tabuData->slack += tabuSol[toVar(l)] == l;
-    tabuData->lits[i] = l;
-  }
-  assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
 }
 
 void Cardinality::initializeWatches(CRef cr, Solver& solver) {
@@ -299,7 +266,7 @@ void Cardinality::initializeWatches(CRef cr, Solver& solver) {
   for (unsigned int i = 0; i <= degr; ++i) adj[data[i]].emplace_back(cr, i);  // add watch index
 }
 
-WatchStatus Cardinality::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus Cardinality::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats) {
   auto& level = solver.level;
   auto& adj = solver.adj;
 
@@ -363,7 +330,7 @@ CeSuper Cardinality::toExpanded(ConstrExpPools& cePools) const {
     result->addLhs(1, data[i]);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -382,31 +349,6 @@ bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equaliti
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
   return false;
-}
-
-void Cardinality::decreaseTabuSlack([[maybe_unused]] int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack -= 1;
-}
-void Cardinality::increaseTabuSlack([[maybe_unused]] int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack += 1;
-}
-
-template <typename CF, typename DG>
-void Counting<CF, DG>::initializeTabu(const std::vector<Lit>& tabuSol) {
-  assert(usedInTabu(getOrigin()));
-  tabuData = new TabuData<DG>(size, degr);
-  for (unsigned int i = 0; i < size; ++i) {
-    Lit l = data[i].l;
-    tabuData->lits[i] = l;
-    if (tabuSol[toVar(l)] == l) {
-      tabuData->slack += data[i].c;
-    }
-  }
-  assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
 }
 
 template <typename CF, typename DG>
@@ -436,7 +378,8 @@ void Counting<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 }
 
 template <typename CF, typename DG>
-WatchStatus Counting<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus Counting<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
+                                                  Stats& stats) {
   auto& position = solver.position;
 
   assert(idx >= INF);
@@ -479,7 +422,6 @@ template <typename CF, typename DG>
 void Counting<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
   slack += data[i - INF].c;
-  ++stats.NWATCHLOOKUPSBJ;
 }
 
 template <typename CF, typename DG>
@@ -492,14 +434,14 @@ int Counting<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& 
 }
 
 template <typename CF, typename DG>
-CePtr<ConstrExp<CF, DG>> Counting<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<ConstrExp<CF, DG>> result = cePools.take<CF, DG>();
+CePtr<CF, DG> Counting<CF, DG>::expandTo(ConstrExpPools& cePools) const {
+  CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(data[i].c, data[i].l);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -525,33 +467,6 @@ bool Counting<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equ
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
   return false;
-}
-
-template <typename CF, typename DG>
-void Counting<CF, DG>::decreaseTabuSlack(int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack -= data[idx].c;
-}
-template <typename CF, typename DG>
-void Counting<CF, DG>::increaseTabuSlack(int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack += data[idx].c;
-}
-
-template <typename CF, typename DG>
-void Watched<CF, DG>::initializeTabu(const std::vector<Lit>& tabuSol) {
-  assert(usedInTabu(getOrigin()));
-  tabuData = new TabuData<DG>(size, degr);
-  for (unsigned int i = 0; i < size; ++i) {
-    Lit l = data[i].l;
-    tabuData->lits[i] = l;
-    if (tabuSol[toVar(l)] == l) {
-      tabuData->slack += aux::abs(data[i].c);
-    }
-  }
-  assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
 }
 
 template <typename CF, typename DG>
@@ -602,7 +517,8 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 }
 
 template <typename CF, typename DG>
-WatchStatus Watched<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus Watched<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
+                                                 Stats& stats) {
   auto& level = solver.level;
   auto& position = solver.position;
   auto& adj = solver.adj;
@@ -672,7 +588,6 @@ void Watched<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
   assert(data[i - INF].c < 0);
   watchslack -= data[i - INF].c;
-  ++stats.NWATCHLOOKUPSBJ;
 }
 
 template <typename CF, typename DG>
@@ -685,14 +600,14 @@ int Watched<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& s
 }
 
 template <typename CF, typename DG>
-CePtr<ConstrExp<CF, DG>> Watched<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<ConstrExp<CF, DG>> result = cePools.take<CF, DG>();
+CePtr<CF, DG> Watched<CF, DG>::expandTo(ConstrExpPools& cePools) const {
+  CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(aux::abs(data[i].c), data[i].l);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -718,33 +633,6 @@ bool Watched<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equa
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
   return false;
-}
-
-template <typename CF, typename DG>
-void Watched<CF, DG>::decreaseTabuSlack(int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack -= aux::abs(data[idx].c);
-}
-template <typename CF, typename DG>
-void Watched<CF, DG>::increaseTabuSlack(int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack += aux::abs(data[idx].c);
-}
-
-template <typename CF, typename DG>
-void CountingSafe<CF, DG>::initializeTabu(const std::vector<Lit>& tabuSol) {
-  assert(usedInTabu(getOrigin()));
-  tabuData = new TabuData<DG>(size, *degr);
-  for (unsigned int i = 0; i < size; ++i) {
-    Lit l = terms[i].l;
-    tabuData->lits[i] = l;
-    if (tabuSol[toVar(l)] == l) {
-      tabuData->slack += terms[i].c;
-    }
-  }
-  assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
 }
 
 template <typename CF, typename DG>
@@ -777,7 +665,8 @@ void CountingSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 }
 
 template <typename CF, typename DG>
-WatchStatus CountingSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus CountingSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
+                                                      Stats& stats) {
   auto& position = solver.position;
 
   assert(idx >= INF);
@@ -821,7 +710,6 @@ template <typename CF, typename DG>
 void CountingSafe<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
   *slack += terms[i - INF].c;
-  ++stats.NWATCHLOOKUPSBJ;
 }
 
 template <typename CF, typename DG>
@@ -834,14 +722,14 @@ int CountingSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntS
 }
 
 template <typename CF, typename DG>
-CePtr<ConstrExp<CF, DG>> CountingSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<ConstrExp<CF, DG>> result = cePools.take<CF, DG>();
+CePtr<CF, DG> CountingSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
+  CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(*degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(terms[i].c, terms[i].l);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -867,33 +755,6 @@ bool CountingSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities&
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
   return false;
-}
-
-template <typename CF, typename DG>
-void CountingSafe<CF, DG>::decreaseTabuSlack(int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack -= terms[idx].c;
-}
-template <typename CF, typename DG>
-void CountingSafe<CF, DG>::increaseTabuSlack(int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack += terms[idx].c;
-}
-
-template <typename CF, typename DG>
-void WatchedSafe<CF, DG>::initializeTabu(const std::vector<Lit>& tabuSol) {
-  assert(usedInTabu(getOrigin()));
-  tabuData = new TabuData<DG>(size, *degr);
-  for (unsigned int i = 0; i < size; ++i) {
-    Lit l = terms[i].l;
-    tabuData->lits[i] = l;
-    if (tabuSol[toVar(l)] == l) {
-      tabuData->slack += aux::abs(terms[i].c);
-    }
-  }
-  assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
 }
 
 template <typename CF, typename DG>
@@ -945,7 +806,8 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 }
 
 template <typename CF, typename DG>
-WatchStatus WatchedSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver) {
+WatchStatus WatchedSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
+                                                     Stats& stats) {
   auto& level = solver.level;
   auto& position = solver.position;
   auto& adj = solver.adj;
@@ -1016,7 +878,6 @@ void WatchedSafe<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
   assert(terms[i - INF].c < 0);
   *watchslack -= terms[i - INF].c;
-  ++stats.NWATCHLOOKUPSBJ;
 }
 
 template <typename CF, typename DG>
@@ -1029,14 +890,14 @@ int WatchedSafe<CF, DG>::subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSe
 }
 
 template <typename CF, typename DG>
-CePtr<ConstrExp<CF, DG>> WatchedSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<ConstrExp<CF, DG>> result = cePools.take<CF, DG>();
+CePtr<CF, DG> WatchedSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
+  CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(*degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(aux::abs(terms[i].c), terms[i].l);
   }
   result->orig = getOrigin();
-  if (result->plogger) result->resetBuffer(id);
+  result->resetBuffer(id);
   return result;
 }
 
@@ -1064,19 +925,6 @@ bool WatchedSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& 
   return false;
 }
 
-template <typename CF, typename DG>
-void WatchedSafe<CF, DG>::decreaseTabuSlack(int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack -= aux::abs(terms[idx].c);
-}
-template <typename CF, typename DG>
-void WatchedSafe<CF, DG>::increaseTabuSlack(int idx) {
-  assert(usedInTabu(getOrigin()));
-  assert(tabuData != nullptr);
-  tabuData->slack += aux::abs(terms[idx].c);
-}
-
 // TODO: keep below test methods?
 
 bool Constr::isCorrectlyConflicting(const Solver& solver) const {
@@ -1096,27 +944,6 @@ bool Constr::isCorrectlyPropagating(const Solver& solver, int idx) const {
     slack += isFalse(solver.getLevel(), lit(i)) ? 0 : coef(i);
   }
   return slack < coef(idx);
-}
-
-bool Constr::hasCorrectTabuSlack(const bigint& tslack, const std::vector<Lit>& tabuSol) const {
-  bigint slk = -degree();
-  for (unsigned int i = 0; i < size; ++i) {
-    Lit l = lit(i);
-    if (tabuSol[toVar(l)] == l) {
-      slk += coef(i);
-    } else {
-      assert(tabuSol[toVar(l)] == -l);
-    }
-  }
-  if (slk != tslack) {
-    for (unsigned int i = 0; i < size; ++i) {
-      Lit l = lit(i);
-      std::cerr << coef(i) << "x" << l << " " << (tabuSol[toVar(l)] == l) << " ";
-    }
-    std::cerr << ">= " << degree() << std::endl;
-    std::cerr << "ERROR " << slk << " vs " << tslack << std::endl;
-  }
-  return slk == tslack;
 }
 
 void Constr::print(const Solver& solver) const {

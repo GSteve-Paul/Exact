@@ -224,8 +224,6 @@ struct Stats {
   Stat CATIME{0, "conflict analysis time"};
   Stat MINTIME{0, "learned minimize time"};
   Stat PROPTIME{0, "propagation time"};
-  Stat TABUTIME{0, "local search time"};
-  Stat TABUDETTIME{0, "local search time det"};
 
   Stat NCLAUSESEXTERN{0, "input clauses"};
   Stat NCARDINALITIESEXTERN{0, "input cardinalities"};
@@ -289,6 +287,7 @@ struct Stats {
   Stat NLPENCGOMORY{0, "LP encountered Gomory constraints"};
   Stat NLPENCFARKAS{0, "LP encountered Farkas constraints"};
   Stat NLPENCDUAL{0, "LP encountered dual constraints"};
+  Stat LPOBJ{std::numeric_limits<StatNum>::quiet_NaN(), "LP relaxation objective"};
 
   Stat NCGUNITCORES{0, "CG unit cores"};
   Stat NCGNONCLAUSALCORES{0, "CG non-clausal cores"};
@@ -313,14 +312,14 @@ struct Stats {
   Stat LEARNEDSTRENGTHAVG{0, "learned strength average"};
   Stat LEARNEDLBDAVG{0, "learned LBD average"};
 
-  Stat TABUSOLS{0, "solutions found by local search"};
-  Stat TABUFLIPS{0, "number of local search literal flips"};
-  Stat NTABUUNITS{0, "units derived during local search"};
+  Stat LASTLB{std::numeric_limits<StatNum>::quiet_NaN(), "best lower bound"};
+  Stat LASTUB{std::numeric_limits<StatNum>::quiet_NaN(), "best upper bound"};
+  Stat DEPLTIME{-1, "depletion time"};
 
   std::chrono::steady_clock::time_point startTime;
   std::chrono::steady_clock::time_point runStartTime;
 
-  void setDerivedStats() {
+  void setDerivedStats(const StatNum& lowerbound, const StatNum& upperbound) {
     DETTIME.z = getDetTime();
     CPUTIME.z = getTime();
     SOLVETIME.z = getRunTime();
@@ -336,6 +335,9 @@ struct Stats {
     LEARNEDDEGREEAVG.z = (learneds == 0 ? 0 : LEARNEDDEGREESUM / learneds);
     LEARNEDSTRENGTHAVG.z = (learneds == 0 ? 0 : LEARNEDSTRENGTHSUM / learneds);
     LEARNEDLBDAVG.z = (learneds == 0 ? 0 : LEARNEDLBDSUM / learneds);
+
+    LASTLB.z = lowerbound;
+    LASTUB.z = upperbound;
   }
 
   const std::vector<Stat*> statsToDisplay = {
@@ -356,13 +358,13 @@ struct Stats {
       &GCTIME,
       &LEARNTIME,
       &HEURTIME,
-      &TABUTIME,
-      &TABUDETTIME,
       &ATMOSTONETIME,
       &ATMOSTONEDETTIME,
+#if WITHSOPLEX
       &LPSOLVETIME,
       &LPTOTALTIME,
       &LPDETTIME,
+#endif  // WITHSOPLEX
       &NCORES,
       &NSOLS,
       &NPROP,
@@ -432,6 +434,14 @@ struct Stats {
       &NENCDETECTEDAMO,
       &NENCEQ,
       &NENCIMPL,
+      &NCGUNITCORES,
+      &NCGNONCLAUSALCORES,
+      &NCGCOREREUSES,
+      &LASTUB,
+      &LASTLB,
+      &DEPLTIME,
+#if WITHSOPLEX
+      &LPOBJ,
       &NLPADDEDROWS,
       &NLPDELETEDROWS,
       &NLPPIVOTS,
@@ -456,12 +466,7 @@ struct Stats {
       &NLPENCGOMORY,
       &NLPENCFARKAS,
       &NLPENCDUAL,
-      &NCGUNITCORES,
-      &NCGNONCLAUSALCORES,
-      &NCGCOREREUSES,
-      &TABUSOLS,
-      &TABUFLIPS,
-      &NTABUUNITS,
+#endif  // WITHSOPLEX
   };
 
   [[nodiscard]] inline StatNum getTime() const {
@@ -476,25 +481,25 @@ struct Stats {
   // NOTE: below linear relations were determined by regression tests on experimental data,
   // so that the deterministic time correlates as closely as possible with the cpu time in seconds
   [[nodiscard]] inline StatNum getLpDetTime() const {
-    return (1 + 5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9;
+    return (5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9;
   }
   [[nodiscard]] inline StatNum getNonLpDetTime() const {
-    return (1 + 49.00 * NWATCHLOOKUPS + 9.09 * NWATCHCHECKS + 3.55 * NPROPCHECKS + 60.69 * NSATURATESTEPS +
+    return (49.00 * NWATCHLOOKUPS + 9.09 * NWATCHCHECKS + 3.55 * NPROPCHECKS + 60.69 * NSATURATESTEPS +
             61.86 * (NADDEDLITERALS - NLPADDEDLITERALS) + 1484.40 * NWEAKENEDNONIMPLIED + 268.51 * NTRAILPOPS) /
            1e9;
   }
 
   [[nodiscard]] inline StatNum getDetTime() const { return getLpDetTime() + getNonLpDetTime(); }
 
-  void print() {
-    setDerivedStats();
+  void print(const StatNum& lowerbound, const StatNum& upperbound) {
+    setDerivedStats(lowerbound, upperbound);
     for (Stat* s : statsToDisplay) {
       std::cout << "c " << *s << std::endl;
     }
   }
 
-  void printCsvLine() {
-    setDerivedStats();
+  void printCsvLine(const StatNum& lowerbound, const StatNum& upperbound) {
+    setDerivedStats(lowerbound, upperbound);
     std::cout << "c csvline";
     for (Stat* s : statsToDisplay) {
       aux::prettyPrint(std::cout << ",", s->z);
@@ -503,7 +508,7 @@ struct Stats {
   }
 
   void printCsvHeader() {
-    setDerivedStats();
+    setDerivedStats(std::numeric_limits<StatNum>::quiet_NaN(), std::numeric_limits<StatNum>::quiet_NaN());
     std::cout << "c csvheader";
     for (Stat* s : statsToDisplay) {
       std::cout << "," << s->name;

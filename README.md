@@ -8,7 +8,7 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 
 ## Stay updated
 
-Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter.
+Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [reddit community](https://reddit.com/r/exact).
 
 ## Features
 
@@ -25,12 +25,14 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter.
 
 Either compile a shared library locally or use the published [PyPI package](https://pypi.org/project/exact) (Linux only for now) via the `pip` or `poetry` package managers.
 
-The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/master/src/Exact.hpp) contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
+The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/main/src/Exact.hpp) contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
-Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/master/python/examples) contains instructive, fully commented examples.
-- [`python/examples/knapsack_classic.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_classic.py) showcases how to solve an integer classic knapsack problem with Exact's Python interface.
-- [`python/examples/knapsack_implied.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_implied.py) elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
-- [`python/examples/knapsack_propagate.py`](https://gitlab.com/JoD/exact/-/blob/master/python/examples/knapsack_propagate.py) elaborates on the second and showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
+Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/main/python/examples) contains instructive, fully commented examples.
+- [`python/examples/knapsack_classic.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_classic.py) showcases how to solve an integer classic knapsack problem with Exact's Python interface.
+- [`python/examples/knapsack_implied.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_implied.py) elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
+- [`python/examples/knapsack_propagate.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_propagate.py) elaborates on the second and showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
+- [`python/examples/ramsey.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_propagate.py) tries to compute the infamous [Ramsey numbers](https://en.wikipedia.org/wiki/Ramsey%27s_theorem).
+- [`python/examples/graph_coloring/graph_coloring.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/graph_coloring/graph_coloring.py) tries to find the chromatic number of a graph. If you can get Exact to prove the provided graph cannot be colored with 6 colors, contact @JoD ;)
 
 ## File-based usage
 
@@ -45,12 +47,16 @@ or pass the file as a parameter
 
 Use the flag `--help` to display a list of runtime parameters.
 
-Exact supports five input formats (described in more detail in [`InputFormats.md`](https://gitlab.com/JoD/exact/-/blob/master/InputFormats.md)):
+Exact supports five input formats (described in more detail in [`InputFormats.md`](https://gitlab.com/JoD/exact/-/blob/main/InputFormats.md)):
 - `.opb` pseudo-Boolean PBO (only linear objective and constraints)
 - `.cnf` DIMACS Conjunctive Normal Form (CNF)
 - `.wcnf` Weighted Conjunctive Normal Form (WCNF)
 - `.mps` Mathematical Programming System (MPS) via the optional CoinUtils library
 - `.lp` Linear Program (LP) via the optional CoinUtils library
+
+Note that `.mps` and `.lp` allow rational variables, which are not supported by Exact.
+Additionally, these formats permit floating point values, which may lead to [tricky](https://gitlab.com/JoD/exact/-/issues/11) [issues](https://gitlab.com/JoD/exact/-/issues/12).
+Rewrite constraints with fractional values to integral ones by multiplying with the lowest common multiple of the denominators. 
 
 By default, Exact decides on the format based on the filename extension, but this can be overridden with the `--format` option.
 
@@ -84,7 +90,7 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 ## SoPlex
 
 Exact supports an integration with the LP solver [SoPlex](https://soplex.zib.de) to improve its search routine.
-For this, first [download](https://soplex.zib.de/download.php?fname=soplex-6.0.0.tgz) SoPlex 6.0.0 and place the downloaded file in the root directory of Exact.
+For this, first [download](https://soplex.zib.de/download.php?fname=soplex-6.0.1.tgz) SoPlex 6.0.1 and place the downloaded file in the root directory of Exact.
 Next, follow the above build process, but configure with the cmake option `-Dsoplex=ON`:
 
     cd build
@@ -96,6 +102,10 @@ The location of the SoPlex package can be configured with the cmake option `-Dso
 ## License
 
 Exact is licensed under the [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html). If this would hinder your intended usage, please get in touch via jodevriendt.com/contact.
+
+## Benchmarks
+
+The current set of benchmarks which is used to assess performance is available [here](https://gitlab.com/JoD/exact-benchmarks).
 
 ## Citations
 

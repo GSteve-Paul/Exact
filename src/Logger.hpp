@@ -63,6 +63,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <fstream>
 #include "Stats.hpp"
+#include "datastructures/IntMap.hpp"
 #include "typedefs.hpp"
 
 namespace xct {
@@ -71,13 +72,18 @@ class Logger {
   std::ofstream formula_out;
   std::ofstream proof_out;
   std::vector<ID> unitIDs;
+  [[maybe_unused]] const Stats& stats;
+  bool active;
 
  public:
-  static ID last_formID;
-  static ID last_proofID;
+  ID last_formID;
+  ID last_proofID;
 
-  explicit Logger(const std::string& proof_log_name);
+  explicit Logger(const Stats& stats);
 
+  void activate(const std::string& proof_log_name);
+  void deactivate();
+  bool isActive();
   void flush();
   void logComment([[maybe_unused]] const std::string& comment);
 
@@ -85,13 +91,13 @@ class Logger {
   ID logAssumption(const CeSuper& ce);
   ID logProofLine(const CeSuper& ce);
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
-  void logInconsistency(const CeSuper& ce);
+  void logInconsistency(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position);
   void logUnit(const CeSuper& ce);
   ID logRUP(Lit l, Lit ll);
   ID logImpliedUnit(Lit implying, Lit implied);
   ID logPure(const CeSuper& ce);
   ID logDomBreaker(const CeSuper& ce);  // second lit is the witness
-  ID logAtMostOne(const ConstrSimple32& c);
+  ID logAtMostOne(const ConstrSimple32& c, const CeSuper& ce);
   ID logResolvent(ID id1, ID id2);
   std::pair<ID, ID> logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB, Lit reprA,
                                 Lit reprB);

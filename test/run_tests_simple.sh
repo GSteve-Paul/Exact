@@ -2,7 +2,7 @@
 
 logfolder="/tmp/Exact/$2"
 binary=$3
-options="--timeout=$1 --test=1 $4"
+options="--timeout=$1 $4"
 
 
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -73,10 +73,16 @@ for j in "${arr_dec[@]}"; do
     fi
     obj="$(cut -d'*' -f2 <<<$j)"
     echo "running $binary $formula $options --proof-log=$logfile"
-    output=`$binary $formula $options --proof-log=$logfile 2>&1 | awk '/UNSATISFIABLE|OPTIMUM|Error:|.*Assertion.*/ {print $2}'`
-    if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
+    output=`$binary $formula $options --proof-log=$logfile 2>&1`
+    error=`echo "$output" | awk '/Error:|.*Assertion.*/ {print $2}'`
+    if [ "$error" != "" ] ; then
         errors=`expr 1000 + $errors`
-        echo "wrong output: $output vs $obj"
+        echo "parsed error: $error"
+    fi
+    result=`echo "$output" | awk '/UNSATISFIABLE|OPTIMUM/ {print $2}'`
+    if [ "$result" != "" ] && [ "$result" != "$obj" ] ; then
+        errors=`expr 100 + $errors`
+        echo "wrong output: $result vs $obj"
     fi
     echo "verifying veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat"
     wc -l $logfile.proof

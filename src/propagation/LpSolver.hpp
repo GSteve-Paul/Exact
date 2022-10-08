@@ -64,7 +64,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../auxiliary.hpp"
 #include "../constraints/ConstrExp.hpp"
 #include "../constraints/ConstrSimple.hpp"
-#include "../globals.hpp"
 #include "../typedefs.hpp"
 
 #if WITHSOPLEX
@@ -83,7 +82,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-enum class LpStatus { INFEASIBLE, OPTIMAL, PIVOTLIMIT, UNDETERMINED, UNSAT };
+enum class LpStatus { INFEASIBLE, OPTIMAL, PIVOTLIMIT, UNDETERMINED };
 
 struct RowData {
   ID id;
@@ -122,12 +121,13 @@ struct CandidateCut {
 std::ostream& operator<<(std::ostream& o, const CandidateCut& cc);
 
 class Solver;
+
 class LpSolver {
   friend class Solver;
   friend struct CandidateCut;
 
   soplex::SoPlex lp;
-  ILP& ilp;
+  Global& global;  // TODO: needed? We already have solver?
   Solver& solver;
 
   double lpPivotMult = 1;
@@ -140,7 +140,7 @@ class LpSolver {
   // 74-x bits for the max dual multiplier
   // +++ 127 bits total, 1 to preempt off-by-one errors
   bool madeInternalCall = false;
-  bool canInProcess() const { return madeInternalCall && (options.lpGomoryCuts || options.lpLearnedCuts); }
+  bool canInProcess() const;
 
   soplex::DVectorReal lpSol;
   std::vector<double> lpSolution;
@@ -158,12 +158,12 @@ class LpSolver {
   std::vector<CandidateCut> candidateCuts;
 
  public:
-  explicit LpSolver(ILP& ilp);
+  explicit LpSolver(Solver& s, const CeArb& o, Global& g);
   void setNbVariables(int n);
 
   [[nodiscard]] std::pair<LpStatus, CeSuper> checkFeasibility(
       bool inProcessing);  // TODO: don't use objective function here?
-  [[nodiscard]] std::pair<State, CeSuper> inProcess();
+  [[nodiscard]] CeSuper inProcess();
 
   void addConstraint(const CeSuper& c, bool removable, bool upperbound = false, bool lowerbound = false);
   void addConstraint(CRef cr, bool removable, bool upperbound = false, bool lowerbound = false);
@@ -182,7 +182,7 @@ class LpSolver {
   Ce64 rowToConstraint(int row);
   void constructGomoryCandidates();
   void constructLearnedCandidates();
-  [[nodiscard]] State addFilteredCuts();
+  void addFilteredCuts();
   void pruneCuts();
 
   inline static double nonIntegrality(double a) { return aux::abs(std::round(a) - a); }
@@ -192,18 +192,19 @@ class LpSolver {
 
 #else
 
+class Solver;
+struct Global;
+
 class LpSolver {
  public:
-  // TODO: use LpSolver([[maybe_unused]] ILP& ilp)
-  // See https://stackoverflow.com/questions/52263141/maybe-unused-and-constructors
-  LpSolver(ILP& ilp) { (void)(ilp); };
+  LpSolver([[maybe_unused]] Solver& s, [[maybe_unused]] const CeArb& o, [[maybe_unused]] Global& g){};
   void setNbVariables([[maybe_unused]] int n){};
 
   std::pair<LpStatus, CeSuper> checkFeasibility([[maybe_unused]] bool inProcessing) {
     assert(false);
     return {LpStatus::UNDETERMINED, CeNull()};
   }
-  std::pair<State, ID> inProcess() { return {State::FAIL, ID_Undef}; }
+  CeSuper inProcess() { return CeNull(); }
   bool canInProcess() { return false; }
 
   void addConstraint([[maybe_unused]] const CeSuper& c, [[maybe_unused]] bool removable,

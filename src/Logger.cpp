@@ -64,32 +64,42 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-ID Logger::last_proofID = ID_Trivial;
-ID Logger::last_formID = ID_Trivial;
+Logger::Logger(const Stats& s) : stats(s), active(false), last_formID(ID_Trivial), last_proofID(ID_Trivial) {}
 
-Logger::Logger(const std::string& proof_log_name) {
+void Logger::activate(const std::string& proof_log_name) {
+  if (proof_log_name == "") return;
+  flush();
   formula_out = std::ofstream(proof_log_name + ".formula");
   formula_out << "* #variable= 0 #constraint= 0\n";
   formula_out << " >= 0 ;\n";
-  assert(last_formID == ID_Trivial);
   proof_out = std::ofstream(proof_log_name + ".proof");
   proof_out << "pseudo-Boolean proof version 1.1\n";
   proof_out << "l 1\n";
-  assert(last_proofID == ID_Trivial);
+  active = true;
 }
 
+void Logger::deactivate() {
+  flush();
+  active = false;
+}
+
+bool Logger::isActive() { return active; }
+
 void Logger::flush() {
+  if (!active) return;
   formula_out.flush();
   proof_out.flush();
 }
 
 void Logger::logComment([[maybe_unused]] const std::string& comment) {
+  if (!active) return;
 #if !NDEBUG
   proof_out << "* " << comment << " " << stats.getDetTime() << "\n";
 #endif
 }
 
 ID Logger::logInput(const CeSuper& ce) {
+  if (!active) return ++last_proofID;
   formula_out << *ce << "\n";
   proof_out << "l " << ++last_formID << "\n";
   ++last_proofID;
@@ -98,6 +108,7 @@ ID Logger::logInput(const CeSuper& ce) {
 }
 
 ID Logger::logAssumption(const CeSuper& ce) {
+  if (!active) return ++last_proofID;
   proof_out << "a " << *ce << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
@@ -105,6 +116,7 @@ ID Logger::logAssumption(const CeSuper& ce) {
 }
 
 ID Logger::logProofLine(const CeSuper& ce) {
+  if (!active) return ++last_proofID;
   std::string buffer = ce->proofBuffer.str();
   assert(buffer.back() == ' ');
   long long spacecount = 0;
@@ -127,29 +139,35 @@ ID Logger::logProofLine(const CeSuper& ce) {
 }
 
 ID Logger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info) {
+  if (!active) return ++last_proofID;
 #if !NDEBUG
   logComment(info);
 #endif
   return logProofLine(ce);
 }
 
-void Logger::logInconsistency(const CeSuper& ce) {
+void Logger::logInconsistency(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position) {
+  if (!active) return;
+  ce->removeUnitsAndZeroes(level, position);
   assert(ce->isInconsistency());
   ID id = logProofLineWithInfo(ce, "Inconsistency");
   proof_out << "c " << id << "" << std::endl;
 }
 
 void Logger::logUnit(const CeSuper& ce) {
+  if (!active) return;
   assert(ce->isUnitConstraint());
   unitIDs.push_back(logProofLineWithInfo(ce, "Unit"));
 }
 
 ID Logger::logRUP(Lit l, Lit ll) {
+  if (!active) return ++last_proofID;
   proof_out << "u " << std::pair<int, Lit>{1, l} << " " << std::pair<int, Lit>{1, ll} << " >= 1 ;\n";
   return ++last_proofID;
 }
 
 ID Logger::logImpliedUnit(Lit implying, Lit implied) {
+  if (!active) return ++last_proofID;
 #if !NDEBUG
   logComment("Implied unit");
 #endif
@@ -161,6 +179,7 @@ ID Logger::logImpliedUnit(Lit implying, Lit implied) {
 }
 
 ID Logger::logPure(const CeSuper& ce) {
+  if (!active) return ++last_proofID;
   assert(ce->vars.size() == 1);
 #if !NDEBUG
   logComment("Pure");
@@ -173,6 +192,7 @@ ID Logger::logPure(const CeSuper& ce) {
 }
 
 ID Logger::logDomBreaker(const CeSuper& ce) {
+  if (!active) return ++last_proofID;
   assert(ce->vars.size() == 2);
 #if !NDEBUG
   logComment("Dominance breaking");
@@ -186,7 +206,8 @@ ID Logger::logDomBreaker(const CeSuper& ce) {
   return last_proofID;
 }
 
-ID Logger::logAtMostOne(const ConstrSimple32& c) {
+ID Logger::logAtMostOne(const ConstrSimple32& c, const CeSuper& ce) {
+  if (!active) return ++last_proofID;
   assert(c.size() > 1);
 #if !NDEBUG
   logComment("Implied at-most-one");
@@ -208,10 +229,12 @@ ID Logger::logAtMostOne(const ConstrSimple32& c) {
   c.toStreamAsOPB(proof_out);
   proof_out << "\n";
 #endif
+  ce->resetBuffer(last_proofID);
   return last_proofID;
 }
 
 ID Logger::logResolvent(ID id1, ID id2) {  // should be clauses
+  if (!active) return ++last_proofID;
   assert(isValid(id1));
   assert(isValid(id2));
 #if !NDEBUG
@@ -225,6 +248,10 @@ ID Logger::logResolvent(ID id1, ID id2) {  // should be clauses
 
 std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB,
                                       [[maybe_unused]] Lit reprA, [[maybe_unused]] Lit reprB) {
+  if (!active) {
+    last_proofID += 2;
+    return {last_proofID - 1, last_proofID};
+  }
 #if !NDEBUG
   logComment("Equality");
 #endif

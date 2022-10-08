@@ -63,11 +63,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include "ILP.hpp"
 #include "Optimization.hpp"
-#include "Solver.hpp"
 #include "auxiliary.hpp"
-#include "globals.hpp"
 
 namespace xct {
+
+std::atomic<bool> asynch_interrupt(false);
 
 void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) {
   std::cout << pre;
@@ -80,96 +80,109 @@ void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) 
 
 void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
   std::cout << "v ";
-  if (options.outputMode.is("maxsatnew")) {
-    for (Var v = 1; v <= ilp.getMaxSatVars(); ++v) {
-      std::cout << (lits[v] > 0);
-    }
-  } else {
-    assert(options.outputMode.is("maxsat"));
-    for (Var v = 1; v <= ilp.getMaxSatVars(); ++v) {
-      std::cout << lits[v] << " ";
-    }
+  for (Var v = 1; v <= ilp.getMaxSatVars(); ++v) {
+    std::cout << (lits[v] > 0);
   }
   std::cout << std::endl;
 }
 
 void quit::printFinalStats(ILP& ilp) {
-  if (options.verbosity.get() > 0) stats.print();
-  if (options.printCsvData) stats.printCsvLine();
-  if (options.printOpb) ilp.printFormula();
+  if (ilp.global.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
+  StatNum lb = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getLowerBound())
+                                     : std::numeric_limits<StatNum>::quiet_NaN();
+  StatNum ub = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getUpperBound())
+                                     : std::numeric_limits<StatNum>::quiet_NaN();
+  if (ilp.global.options.verbosity.get() > 0) ilp.global.stats.print(lb, ub);
+  if (ilp.global.options.printCsvData) ilp.global.stats.printCsvLine(lb, ub);
+  if (ilp.global.options.printOpb) ilp.printFormula();
 }
 
-void quit::exit_SUCCESS(ILP& ilp) {
-  if (logger) logger->flush();
-  if (options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
+int quit::exit_SUCCESS(ILP& ilp) {
+  ilp.global.logger.flush();
+  printFinalStats(ilp);
   if (ilp.hasSolution()) {
-    if (options.outputMode.is("miplib")) {
-      std::cout << "=obj= " << ilp.getUpperBound() << "\n";
-      ilp.printOrigSol();
-    }
-    if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew")) {
-      printFinalStats(ilp);
+    if (ilp.global.options.uniformOut || ilp.global.options.fileFormat.is("opb")) {
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
-      printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
+      if (ilp.global.options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
+    } else if (ilp.global.options.fileFormat.is("wcnf")) {
+      std::cout << "o " << ilp.getUpperBound() << "\n";
+      std::cout << "s OPTIMUM FOUND" << std::endl;
+      if (ilp.global.options.printSol) printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
     } else {
-      if (options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
-      printFinalStats(ilp);
-      std::cout << "o " << ilp.getUpperBound() << "\n";
-      std::cout << "s OPTIMUM FOUND" << std::endl;
+      assert(ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp"));
+      std::cout << "=obj= " << ilp.getUpperBound() << std::endl;
+      if (ilp.global.options.printSol) ilp.printOrigSol();
     }
-    xct::aux::flushexit(30);
+    std::cout.flush();
+    std::cerr.flush();
+    return 30;
   } else {
-    if (options.outputMode.is("miplib")) {
-      std::cout << "=infeas=\n";
+    if (!ilp.global.options.uniformOut &&
+        (ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp"))) {
+      std::cout << "=infeas=" << std::endl;
+    } else {
+      std::cout << "s UNSATISFIABLE" << std::endl;
     }
-    printFinalStats(ilp);
-    std::cout << "s UNSATISFIABLE" << std::endl;
-    xct::aux::flushexit(20);
+    std::cout.flush();
+    std::cerr.flush();
+    return 20;
   }
 }
 
-void quit::exit_INDETERMINATE(ILP& ilp) {
-  if (logger) logger->flush();
-  if (options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
+int quit::exit_INDETERMINATE(ILP& ilp) {
+  ilp.global.logger.flush();
+  printFinalStats(ilp);
   if (ilp.hasSolution()) {
-    if (options.outputMode.is("miplib")) {
-      std::cout << "=obj= " << ilp.getUpperBound() << "\n";
-      ilp.printOrigSol();
-    }
-    if (options.outputMode.is("maxsat") || options.outputMode.is("maxsatnew")) {
-      printFinalStats(ilp);
-      std::cout << "o " << ilp.getUpperBound() << "\n";
-      std::cout << "s UNKNOWN" << std::endl;
-      printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
-    } else {
-      if (options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
-      printFinalStats(ilp);
+    if (ilp.global.options.uniformOut || ilp.global.options.fileFormat.is("opb")) {
       std::cout << "c best so far " << ilp.getUpperBound() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;
+      if (ilp.global.options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
+    } else if (ilp.global.options.fileFormat.is("wcnf")) {
+      std::cout << "o " << ilp.getUpperBound() << "\n";
+      std::cout << "s UNKNOWN" << std::endl;
+      if (ilp.global.options.printSol) printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
+    } else {
+      assert(ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp"));
+      std::cout << "=obj= " << ilp.getUpperBound() << std::endl;
+      if (ilp.global.options.printSol) ilp.printOrigSol();
     }
-    xct::aux::flushexit(10);
+    std::cout.flush();
+    std::cerr.flush();
+    return 10;
   } else {
-    if (options.outputMode.is("miplib")) {
-      std::cout << "=unkn=\n";
+    if (!ilp.global.options.noSolve) {
+      if (!ilp.global.options.uniformOut &&
+          (ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp"))) {
+        std::cout << "=unkn=" << std::endl;
+      } else {
+        std::cout << "s UNKNOWN" << std::endl;
+      }
     }
-    printFinalStats(ilp);
-    if (!options.noSolve) std::cout << "s UNKNOWN" << std::endl;
-    xct::aux::flushexit(0);
+    std::cout.flush();
+    std::cerr.flush();
+    return 0;
   }
 }
 
-void quit::exit_ERROR(const std::initializer_list<std::string>& messages) {
-  std::cout << "Error: ";
-  for (const std::string& m : messages) std::cout << m;
-  std::cout << std::endl;
-  xct::aux::flushexit(1);
+int quit::exit_ERROR(const std::string& message) {
+  std::cout << "Error: " << message << std::endl;
+  std::cout.flush();
+  std::cerr.flush();
+  return 1;
 }
 
-void quit::checkInterrupt() {
-  if (asynch_interrupt || (options.timeout.get() > 0 && stats.getTime() > options.timeout.get()) ||
-      (options.timeoutDet.get() > 0 && stats.getDetTime() > options.timeoutDet.get())) {
-    throw asynchInterrupt;
+int quit::exit_EARLY() {
+  std::cout.flush();
+  std::cerr.flush();
+  return 0;
+}
+
+void quit::checkInterrupt(const Global& global) {
+  if (asynch_interrupt.load() ||
+      (global.options.timeout.get() > 0 && global.stats.getTime() > global.options.timeout.get()) ||
+      (global.options.timeoutDet.get() > 0 && global.stats.getDetTime() > global.options.timeoutDet.get())) {
+    throw AsynchronousInterrupt();
   }
 }
 

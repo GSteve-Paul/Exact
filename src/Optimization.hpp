@@ -61,11 +61,15 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "ILP.hpp"
+#include "constraints/ConstrSimple.hpp"
 #include "typedefs.hpp"
 
 namespace xct {
 
+struct Global;
+class Solver;
+
+template <typename SMALL, typename LARGE>
 struct LazyVar {
   Solver& solver;
   int coveredVars;
@@ -76,29 +80,31 @@ struct LazyVar {
   ConstrSimple32 atLeast;  // X >= k + y1 + ... + yi
   ConstrSimple32 atMost;   // k + y1 + ... + yi-1 + (1+n-k-i)yi >= X
 
-  LazyVar(Solver& slvr, const Ce32& cardCore, int cardUpperBound, Var startVar);
+  SMALL mult;
+  LARGE exceedSum;
+
+  LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& esum, const LARGE& normUpBnd);
   ~LazyVar();
 
-  void addVar(Var v, bool reified);
-  void addAtLeastConstraint(bool reified);
-  void addAtMostConstraint(bool reified);
+  void addVar(Var v);
+  void addAtLeastConstraint();
+  void addAtMostConstraint();
   void addSymBreakingConstraint(Var prevvar) const;
-  void addFinalAtMost(bool reified);
+  void addFinalAtMost();
   [[nodiscard]] int remainingVars() const;
-  void setUpperBound(int cardUpperBound);
+  void setUpperBound(const LARGE& normalizedUpperBound);
 };
 
-std::ostream& operator<<(std::ostream& o, const std::shared_ptr<LazyVar>& lv);
-
-template <typename SMALL>
-struct LvM {
-  std::unique_ptr<LazyVar> lv;
-  SMALL m;
-};
+template <typename SMALL, typename LARGE>
+std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
+  o << lv.atLeast << "\n" << lv.atMost;
+  return o;
+}
 
 class OptimizationSuper {
  protected:
   Solver& solver;
+  Global& global;
 
  public:
   int solutionsFound = 0;
@@ -106,19 +112,19 @@ class OptimizationSuper {
   virtual bigint getLowerBound() const = 0;
   virtual CeSuper getReformObj() const = 0;
 
-  static Optim make(const CeArb& obj, Solver& solver);
+  static Optim make(const CeArb& obj, Solver& solver, Global& g);
 
   [[nodiscard]] virtual SolveState optimize(const std::vector<Lit>& assumptions) = 0;
-  [[nodiscard]] virtual State handleNewSolution(const std::vector<Lit>& sol) = 0;
+  virtual void handleNewSolution(const std::vector<Lit>& sol) = 0;
 
-  OptimizationSuper(Solver& s);
+  OptimizationSuper(Solver& s, Global& g);
   virtual ~OptimizationSuper() = default;
 };
 
 template <typename SMALL, typename LARGE>
 class Optimization final : public OptimizationSuper {
-  const CePtr<ConstrExp<SMALL, LARGE>> origObj;
-  CePtr<ConstrExp<SMALL, LARGE>> reformObj;
+  const CePtr<SMALL, LARGE> origObj;
+  CePtr<SMALL, LARGE> reformObj;
 
   LARGE lower_bound;
   LARGE upper_bound;
@@ -127,7 +133,7 @@ class Optimization final : public OptimizationSuper {
   ID lastLowerBound = ID_Undef;
   ID lastLowerBoundUnprocessed = ID_Undef;
 
-  std::vector<LvM<SMALL>> lazyVars;
+  std::vector<std::unique_ptr<LazyVar<SMALL, LARGE>>> lazyVars;
 
   // State variables during solve loop:
   SolveState reply;
@@ -138,7 +144,7 @@ class Optimization final : public OptimizationSuper {
   bool firstRun;
 
  public:
-  explicit Optimization(const CePtr<ConstrExp<SMALL, LARGE>>& obj, Solver& s);
+  explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, Global& g);
 
   LARGE normalizedLowerBound() const { return lower_bound + origObj->getDegree(); }
   LARGE normalizedUpperBound() const { return upper_bound + origObj->getDegree(); }
@@ -148,16 +154,19 @@ class Optimization final : public OptimizationSuper {
 
   void printObjBounds();
   void checkLazyVariables();
-  [[nodiscard]] State addLowerBound();
+  void addLowerBound();
 
-  Ce32 reduceToCardinality(const CeSuper& core);                 // does not modify core
-  [[nodiscard]] State reformObjective(const CeSuper& core);      // modifies core
-  [[nodiscard]] State handleInconsistency(const CeSuper& core);  // modifies core
-  [[nodiscard]] State handleNewSolution(const std::vector<Lit>& sol);
+  Ce32 reduceToCardinality(const CeSuper& core);                // does not modify core
+  [[nodiscard]] State reformObjective(const CeSuper& core);     // modifies core
+  [[nodiscard]] State reformObjectiveLog(const CeSuper& core);  // modifies core
+  [[nodiscard]] bool reformObjectiveLogTest(const CePtr<SMALL, LARGE>& core) const;
+  [[nodiscard]] State reformObjectiveSmallSum(const CeSuper& core);         // modifies core
+  [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
+  void handleInconsistency(const CeSuper& core);                            // modifies core
+  void handleNewSolution(const std::vector<Lit>& sol);
 
   void logProof();
-  [[nodiscard]] State harden();
-  [[nodiscard]] State runTabu();
+  void harden();
 
   [[nodiscard]] SolveState optimize(const std::vector<Lit>& assumptions);
 };

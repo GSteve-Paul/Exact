@@ -69,7 +69,7 @@ struct IntSet {  // TODO: template to long long, int128, ...?
  private:
   std::vector<int> keys;
   IntMap<int> index;
-  static constexpr int _unused_() { return -1; }
+  static constexpr int _unused_() { return INF; }  // INF allows index to be used as level (e.g., for weakenDivideRound)
 
   [[nodiscard]] bool check() const;
 
@@ -78,6 +78,8 @@ struct IntSet {  // TODO: template to long long, int128, ...?
   IntSet(int size, const std::vector<int>& ints);
   IntSet(const IntSet& other);
   IntSet& operator=(const IntSet& other);
+
+  const IntMap<int>& getIndex() const;
 
   void resize(int size);
   [[nodiscard]] size_t size() const;

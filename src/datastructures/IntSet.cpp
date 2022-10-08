@@ -89,6 +89,8 @@ IntSet& IntSet::operator=(const IntSet& other) {
   return *this;
 }
 
+const IntMap<int>& IntSet::getIndex() const { return index; }
+
 void IntSet::resize(int size) { index.resize(size, _unused_()); }
 [[nodiscard]] size_t IntSet::size() const { return keys.size(); }
 [[nodiscard]] bool IntSet::isEmpty() const { return size() == 0; }

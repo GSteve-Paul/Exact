@@ -5,3 +5,4 @@ WORKDIR /usr/src/app
 
 RUN git clone https://gitlab.com/MIAOresearch/VeriPB.git
 RUN pip3 install ./VeriPB
+RUN pip3 install networkx

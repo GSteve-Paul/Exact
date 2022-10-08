@@ -37,20 +37,28 @@ namespace xct {
 std::ostream& operator<<(std::ostream& o, const IntVar& x) {
   o << x.getName();
   if (!x.isBoolean()) {
-    o << "[" << x.getLowerBound() << "," << x.getUpperBound() << "]";
+    o << "[" << 0 << "," << x.getUpperBound() - x.getLowerBound() << "]";
   }
   return o;
 }
-std::ostream& operator<<(std::ostream& o, const IntTerm& x) { return o << x.c << (x.negated ? "~x" : "x") << *x.v; }
+std::ostream& operator<<(std::ostream& o, const IntTerm& x) { return o << x.c << (x.negated ? " ~" : " ") << *x.v; }
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   if (x.getUB().has_value()) o << x.getUB().value() << " >= ";
-  for (const IntTerm& t : x.getLhs()) o << t << " ";
-  if (x.getLB().has_value()) o << " >= " << x.getLB().value();
+  std::vector<std::string> terms;
+  terms.reserve(x.getLhs().size());
+  for (const IntTerm& t : x.getLhs()) {
+    std::stringstream ss;
+    ss << t;
+    terms.push_back(ss.str());
+  }
+  std::sort(terms.begin(), terms.end());
+  for (const std::string& s : terms) o << s << " ";
+  if (x.getLB().has_value()) o << ">= " << x.getLB().value();
   return o;
 }
 
-IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub)
-    : name(n), lowerBound(lb), upperBound(ub), logEncoding(getRange() > options.intEncoding.get()) {
+IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, int loglim)
+    : name(n), lowerBound(lb), upperBound(ub), logEncoding(getRange() > loglim) {
   assert(lb <= ub);
   assert(!nameAsId || isBoolean());
 
@@ -75,10 +83,11 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
           lhs.emplace_back(base, v);
           base *= 2;
         }
-        solver.addConstraintUnchecked(ConstrSimpleArb({lhs}, -range), Origin::FORMULA);
+        // TODO: last variable may have a smaller coefficient if the range is not a nice power of two - 1
+        solver.addConstraint(ConstrSimpleArb({lhs}, -range), Origin::FORMULA);
       } else {  // binary order constraints
         for (Var var = oldvars + 1; var < oldvars + newvars; ++var) {
-          solver.addConstraintUnchecked(ConstrSimple32({{1, var}, {-1, var + 1}}, 0), Origin::FORMULA);
+          solver.addConstraint(ConstrSimple32({{1, var}, {-1, var + 1}}, 0), Origin::FORMULA);
         }
       }
     }
@@ -164,12 +173,19 @@ void IntConstraint::normalize() {
   }
 }
 
-ILP::ILP() : solver(*this), obj({}, {}, {}, 0) {}
+ILP::ILP(bool keepIn) : solver(global), obj({}, {}, {}, 0), keepInput(keepIn) {
+  global.stats.startTime = std::chrono::steady_clock::now();
+}
 
-IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& lowerbound, const bigint& upperbound) {
-  if (auto it = name2var.find(name); it != name2var.end()) return it->second;
-  if (lowerbound > upperbound) throw std::invalid_argument("Lower bound of " + name + " must not exceed upper bound.");
-  vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound));
+IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, bool nameAsId) {
+  assert(!getVarFor(name));
+  if (lowerbound > upperbound) {
+    std::stringstream ss;
+    ss << "Lower bound " << lowerbound << " of " << name << " exceeds upper bound " << upperbound;
+    throw std::invalid_argument(ss.str());
+  }
+  vars.push_back(
+      std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, global.options.ilpEncoding.get()));
   IntVar* iv = vars.back().get();
   name2var.insert({name, iv});
   for (Var v : iv->encodingVars()) {
@@ -178,40 +194,37 @@ IntVar* ILP::getVarFor(const std::string& name, bool nameAsId, const bigint& low
   return iv;
 }
 
-bool ILP::hasVarFor(const std::string& name) const { return name2var.count(name); }
-
-std::vector<std::string> ILP::getVariables() const {
-  std::vector<std::string> keys(name2var.size());
-  transform(name2var.begin(), name2var.end(), keys.begin(), [](auto pair) { return pair.first; });
-  return keys;
+IntVar* ILP::getVarFor(const std::string& name) const {
+  if (auto it = name2var.find(name); it != name2var.end()) return it->second;
+  return nullptr;
 }
 
-std::pair<bigint, bigint> ILP::getBounds(const std::string& name) const {
-  if (!hasVarFor(name)) throw std::invalid_argument("No variable " + name + " found.");
-  IntVar* iv = name2var.at(name);
-  return {iv->getLowerBound(), iv->getUpperBound()};
+std::vector<IntVar*> ILP::getVariables() const {
+  return aux::comprehension(name2var, [](auto pair) { return pair.second; });
 }
+
+std::pair<bigint, bigint> ILP::getBounds(IntVar* iv) const { return {iv->getLowerBound(), iv->getUpperBound()}; }
 
 void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                        const std::vector<bool>& negated, const bigint& mult, const bigint& offset) {
   if (coefs.size() != vars.size() || (!negated.empty() && negated.size() != vars.size()))
     throw std::invalid_argument("Coefficient, variable, or negated lists differ in size.");
   if (mult == 0) throw std::invalid_argument("Objective multiplier should not be zero.");
-  if (optim) throw std::invalid_argument("Objective already set.");
+  if (initialized()) throw std::invalid_argument("Objective already set.");
   obj = IntConstraint(coefs, vars, negated, -offset);
   objmult = mult;
 }
 
 void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntVar*>& vars) {
-  if (unsatDetected) throw UnsatState();
   if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
 
   assumptions.clear();
   for (int i = 0; i < (int)vars.size(); ++i) {
     IntVar* iv = vars[i];
+    assert(iv);
     assert(vals[i] <= iv->getUpperBound());
     bigint val = vals[i] - iv->getLowerBound();
-    assert(val >= 0);
+    if (val < 0) throw std::invalid_argument("Assumed value for " + iv->getName() + " exceeds variable bounds.");
     if (iv->usesLogEncoding()) {
       for (const Var v : iv->encodingVars()) {
         assumptions.push_back(val % 2 == 0 ? -v : v);
@@ -231,76 +244,58 @@ void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntV
   }
 }
 
-State ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                         const std::vector<bool>& negated, const std::optional<bigint>& lb,
-                         const std::optional<bigint>& ub) {
-  if (unsatDetected) throw UnsatState();
+void ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                        const std::vector<bool>& negated, const std::optional<bigint>& lb,
+                        const std::optional<bigint>& ub) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
 
   IntConstraint ic(coefs, vars, negated, lb, ub);
+  if (keepInput) constraints.push_back(ic);
   if (ic.getLB().has_value()) {
-    CeArb input = cePools.takeArb();
+    CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, true);
-    if (solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) {
-      unsatDetected = true;
-      return State::UNSAT;
-    }
+    solver.addConstraint(input, Origin::FORMULA);
   }
   if (ic.getUB().has_value()) {
-    CeArb input = cePools.takeArb();
+    CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, false);
-    if (solver.addConstraint(input, Origin::FORMULA).second == ID_Unsat) {
-      unsatDetected = true;
-      return State::UNSAT;
-    }
+    solver.addConstraint(input, Origin::FORMULA);
   }
-  return State::SUCCESS;
 }
 
-State ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                          const bigint& lb) {
-  if (unsatDetected) throw UnsatState();
+void ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                         const std::vector<bool>& negated, const bigint& lb) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw std::invalid_argument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw std::invalid_argument("Head of reification is not Boolean.");
 
-  IntConstraint ic(coefs, vars, {}, lb);
-  CeArb leq = cePools.takeArb();
+  IntConstraint ic(coefs, vars, negated, lb);
+  if (keepInput) reifications.push_back({head, ic});
+  CeArb leq = global.cePools.takeArb();
   ic.toConstrExp(leq, true);
-  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true);
-  CeArb geq = cePools.takeArb();
+  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
+  CeArb geq = global.cePools.takeArb();
   leq->copyTo(geq);
   Var h = head->encodingVars()[0];
 
   leq->addLhs(leq->degree, -h);
-  if (solver.addConstraint(leq, Origin::FORMULA).second == ID_Unsat) {
-    unsatDetected = true;
-    return State::UNSAT;
-  }
+  solver.addConstraint(leq, Origin::FORMULA);
 
   geq->addRhs(-1);
   geq->invert();
   geq->addLhs(geq->degree, h);
-  if (solver.addConstraint(geq, Origin::FORMULA).second == ID_Unsat) {
-    unsatDetected = true;
-    return State::UNSAT;
-  }
-
-  return State::SUCCESS;
+  solver.addConstraint(geq, Origin::FORMULA);
 }
 
-State ILP::boundObjByLastSol() {
-  if (unsatDetected) throw UnsatState();
+void ILP::fix(IntVar* iv, const bigint& val) { addConstraint({1}, {iv}, {false}, val, val); }
+
+void ILP::boundObjByLastSol() {
   if (!hasSolution()) throw std::invalid_argument("No solution to add objective bound.");
-  State result = optim->handleNewSolution(solver.getLastSolution());
-  assert(result != State::FAIL);
-  unsatDetected = result == State::UNSAT;
-  return result;
+  optim->handleNewSolution(solver.getLastSolution());
 }
 
-State ILP::invalidateLastSol() {
-  if (unsatDetected) throw UnsatState();
+void ILP::invalidateLastSol() {
   if (!hasSolution()) throw std::invalid_argument("No solution to add objective bound.");
 
   std::vector<Var> vars;
@@ -308,120 +303,133 @@ State ILP::invalidateLastSol() {
   for (const auto& tup : name2var) {
     aux::appendTo(vars, tup.second->encodingVars());
   }
-  std::pair<ID, ID> ids = solver.invalidateLastSol(vars);
-  unsatDetected = ids.second == ID_Unsat;
-  return unsatDetected ? State::UNSAT : State::SUCCESS;
+  solver.invalidateLastSol(vars);
 }
 
-State ILP::invalidateLastSol(const std::vector<std::string>& names) {
-  if (unsatDetected) throw UnsatState();
+void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs) {
   if (!hasSolution()) throw std::invalid_argument("No solution to add objective bound.");
 
   std::vector<Var> vars;
-  vars.reserve(names.size());
-  for (const std::string& name : names) {
-    aux::appendTo(vars, name2var[name]->encodingVars());
+  vars.reserve(ivs.size());
+  for (IntVar* iv : ivs) {
+    aux::appendTo(vars, iv->encodingVars());
   }
-  std::pair<ID, ID> ids = solver.invalidateLastSol(vars);
-  assert(ids.second != ID_Undef);
-  unsatDetected = ids.second == ID_Unsat;
-  return unsatDetected ? State::UNSAT : State::SUCCESS;
+  solver.invalidateLastSol(vars);
 }
 
-void ILP::init(bool boundObjective, bool addNonImplieds) {
-  if (unsatDetected) throw UnsatState();
-  if (optim) throw std::invalid_argument("ILP already initialized.");
+bool ILP::initialized() const { return optim != nullptr; }
 
-  // TODO: below should be set at option parsing time?
-  if (!boundObjective) {
-    options.boundUpper.parse("0");
-  }
-  if (!addNonImplieds) {
-    options.pureLits.parse("0");
-    options.domBreakLim.parse("0");
-  }
-  asynch_interrupt = false;
-  aux::rng::seed = options.randomSeed.get();
+void ILP::init() {
+  if (initialized()) throw std::invalid_argument("Solver already initialized.");
+  aux::rng::seed = global.options.randomSeed.get();
 
-  CeArb o = cePools.takeArb();
+  CeArb o = global.cePools.takeArb();
   obj.toConstrExp(o, true);
   solver.init(o);
-  optim = OptimizationSuper::make(o, solver);
+  optim = OptimizationSuper::make(o, solver, global);
 }
 
-SolveState ILP::run() {  // NOTE: also throws AsynchronousInterrupt
-  if (unsatDetected) throw UnsatState();
-  SolveState result = optim->optimize(assumptions);
-  unsatDetected = result == SolveState::UNSAT;
-  return result;
+SolveState ILP::runOnce() {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
+  if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
+  return optim->optimize(assumptions);
 }
 
-SolveState ILP::runFull() {  // NOTE: also throws AsynchronousInterrupt
-  if (unsatDetected) throw UnsatState();
+SolveState ILP::runFull(double timeout) {
+  if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
+  global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
-  while (result == SolveState::INPROCESSED) {
-    result = optim->optimize(assumptions);
+  while ((timeout == 0 || global.stats.getSolveTime() < timeout) &&
+         (result == SolveState::INPROCESSED || result == SolveState::SAT)) {
+    try {
+      result = runOnce();
+    } catch (const UnsatEncounter& ue) {
+      return SolveState::UNSAT;
+    }
   }
-  unsatDetected = result == SolveState::UNSAT;
   return result;
 }
 
-void ILP::printFormula() {
+void ILP::printFormula() { printFormula(std::cout); }
+
+std::ostream& ILP::printFormula(std::ostream& out) {
   int nbConstraints = 0;
   for (const CRef& cr : solver.getRawConstraints()) {
     const Constr& c = solver.getCA()[cr];
     nbConstraints += isNonImplied(c.getOrigin());
   }
-  std::cout << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
-  std::cout << "min: ";
-  optim->getReformObj()->toStreamAsOPBlhs(std::cout);
-  std::cout << "; \n";
+  out << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
+  if (optim && optim->getReformObj()->nVars() > 0) {
+    out << "min: ";
+    optim->getReformObj()->toStreamAsOPBlhs(out, true);
+    out << ";\n";
+  }
   for (Lit l : solver.getUnits()) {
-    std::cout << std::pair<int, Lit>{1, l} << " >= 1 ;\n";
+    out << std::pair<int, Lit>{1, l} << " >= 1 ;\n";
   }
   for (Var v = 1; v <= solver.getNbVars(); ++v) {
     if (solver.getEqualities().isCanonical(v)) continue;
-    std::cout << std::pair<int, Lit>{1, v} << std::pair<int, Lit>{-1, solver.getEqualities().getRepr(v).l}
-              << " = 0 ;\n";
+    out << std::pair<int, Lit>{1, v} << std::pair<int, Lit>{-1, solver.getEqualities().getRepr(v).l} << " = 0 ;\n";
   }
   for (const CRef& cr : solver.getRawConstraints()) {
     const Constr& c = solver.getCA()[cr];
     if (isNonImplied(c.getOrigin())) {
-      CeSuper ce = c.toExpanded(cePools);
-      ce->toStreamAsOPB(std::cout);
-      std::cout << "\n";
+      CeSuper ce = c.toExpanded(global.cePools);
+      ce->toStreamAsOPB(out);
+      out << "\n";
     }
   }
+  return out;
+}
+
+std::ostream& ILP::printInput(std::ostream& out) {
+  out << "OBJ " << obj << std::endl;
+  std::vector<std::string> reifics;
+  for (const auto& pr : reifications) {
+    std::stringstream ss;
+    ss << *pr.first << " <=> " << pr.second;
+    reifics.push_back(ss.str());
+  }
+  std::sort(reifics.begin(), reifics.end());
+  for (const std::string& s : reifics) out << s << std::endl;
+  std::vector<std::string> constrs;
+  for (const IntConstraint& ic : constraints) {
+    std::stringstream ss;
+    ss << ic;
+    constrs.push_back(ss.str());
+  }
+  std::sort(constrs.begin(), constrs.end());
+  for (const std::string& s : constrs) out << s << std::endl;
+  return out;
 }
 
 ratio ILP::getLowerBound() const {
-  return optim ? static_cast<ratio>(optim->getLowerBound()) / objmult : static_cast<ratio>(0);
+  if (!initialized()) throw std::invalid_argument("Objective not yet initialized.");
+  return static_cast<ratio>(optim->getLowerBound());
 }
 ratio ILP::getUpperBound() const {
-  return optim ? static_cast<ratio>(optim->getUpperBound()) / objmult : static_cast<ratio>(0);
+  if (!initialized()) throw std::invalid_argument("Objective not yet initialized.");
+  return static_cast<ratio>(optim->getUpperBound());
 }
 
 bool ILP::hasSolution() const {
-  bool result = optim && optim->solutionsFound > 0;
-  assert(result == solver.foundSolution());
-  return result;
+  if (!initialized()) return false;
+  assert((optim->solutionsFound > 0) == solver.foundSolution());
+  return optim->solutionsFound > 0;
 }
 
-std::vector<bigint> ILP::getLastSolutionFor(const std::vector<std::string>& vars) const {
+bigint ILP::getLastSolutionFor(IntVar* iv) const {
   if (!hasSolution()) throw std::invalid_argument("No solution to return.");
+  return iv->getValue(solver.getLastSolution());
+}
 
-  std::vector<bigint> result;
-  result.reserve(vars.size());
-  for (const std::string& var : vars) {
-    if (!name2var.count(var)) throw std::invalid_argument("No known variable " + var + ".");
-    result.push_back(name2var.at(var)->getValue(solver.getLastSolution()));
-  }
-  return result;
+std::vector<bigint> ILP::getLastSolutionFor(const std::vector<IntVar*>& vars) const {
+  if (!hasSolution()) throw std::invalid_argument("No solution to return.");
+  return aux::comprehension(vars, [&](IntVar* iv) { return getLastSolutionFor(iv); });
 }
 
 bool ILP::hasCore() const { return solver.assumptionsClashWithUnits() || solver.lastCore; }
 
-std::vector<std::string> ILP::getLastCore() const {
+std::unordered_set<IntVar*> ILP::getLastCore() {
   if (!hasCore()) throw std::invalid_argument("No unsat core to return.");
 
   std::unordered_set<IntVar*> core;
@@ -430,22 +438,21 @@ std::vector<std::string> ILP::getLastCore() const {
       if (isUnit(solver.getLevel(), -l)) core.insert(var2var.at(toVar(l)));
     }
   } else {
-    CeSuper clone = solver.lastCore->clone(cePools);
+    std::unordered_set<Lit> assumps(assumptions.begin(), assumptions.end());
+    CeSuper clone = solver.lastCore->clone(global.cePools);
+    clone->weaken([assumps](Lit l) { return !assumps.count(-l); });
+    clone->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     clone->simplifyToClause();
     for (Var v : clone->vars) {
       core.insert(var2var.at(v));
     }
   }
   assert(!core.empty());
-  std::vector<std::string> result;
-  result.reserve(core.size());
-  for (IntVar* iv : core) {
-    result.push_back(iv->getName());
-  }
-  return result;
+  return core;
 }
 
 void ILP::printOrigSol() const {
+  if (!hasSolution()) throw std::invalid_argument("No solution to return.");
   for (const std::unique_ptr<IntVar>& iv : vars) {
     bigint val = iv->getValue(solver.getLastSolution());
     if (val != 0) {
@@ -455,16 +462,23 @@ void ILP::printOrigSol() const {
 }
 
 // NOTE: also throws AsynchronousInterrupt
-std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::string>& varnames) {
-  SolveState result = runFull();
-  if (unsatDetected) throw UnsatState();
-  if (result == SolveState::INCONSISTENT) return {};
+std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs) {
+  global.options.boundUpper.set(false);
+  global.options.pureLits.set(false);
+  global.options.domBreakLim.set(0);
+  SolveState result = SolveState::INPROCESSED;
+  while (result == SolveState::INPROCESSED) {
+    result = runOnce();
+  }
+  if (result == SolveState::INCONSISTENT) {
+    throw std::invalid_argument("Propagation cannot be done with inconsistent assumptions.");
+  }
   assert(result == SolveState::SAT);
 
-  Ce32 invalidator = cePools.take32();
+  Ce32 invalidator = global.cePools.take32();
   invalidator->addRhs(1);
-  for (const std::string& vn : varnames) {
-    for (Var v : name2var[vn]->encodingVars()) {
+  for (IntVar* iv : ivs) {
+    for (Var v : iv->encodingVars()) {
       invalidator->addLhs(1, -solver.getLastSolution()[v]);
     }
   }
@@ -479,8 +493,11 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
   assert(invalidator->isClause());
 
   while (true) {
-    solver.addConstraintUnchecked(invalidator, Origin::INVALIDATOR);
-    result = runFull();
+    solver.addConstraint(invalidator, Origin::INVALIDATOR);
+    result = SolveState::INPROCESSED;
+    while (result == SolveState::INPROCESSED) {
+      result = runOnce();
+    }
     if (result != SolveState::SAT) break;
     for (Var v : invalidator->getVars()) {
       Lit invallit = invalidator->getLit(v);
@@ -493,17 +510,15 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
   }
   assert(result == SolveState::INCONSISTENT);
   assumptions.pop_back();
-  [[maybe_unused]] ID id = solver.addUnitConstraint(marker, Origin::INVALIDATOR);
-  assert(id != ID_Unsat);
+  solver.addUnitConstraint(marker, Origin::INVALIDATOR);
   assert(invalidator->isClause());
   invalidator->weaken(marker);
   invalidator->removeZeroes();
   assert(invalidator->getDegree() == 0);
 
   std::vector<std::pair<bigint, bigint>> consequences;
-  consequences.reserve(varnames.size());
-  for (const std::string& vn : varnames) {
-    IntVar* iv = name2var[vn];
+  consequences.reserve(ivs.size());
+  for (IntVar* iv : ivs) {
     bigint lb = iv->getLowerBound();
     bigint ub = iv->getUpperBound();
     if (iv->usesLogEncoding()) {
@@ -534,7 +549,7 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<std::str
     invalidator->addLhs(invsize, -l);
   }
   // TODO: make below a learned constraint instead of input
-  solver.addConstraintUnchecked(invalidator, Origin::INVALIDATOR);
+  solver.addConstraint(invalidator, Origin::INVALIDATOR);
 
   return consequences;
 }

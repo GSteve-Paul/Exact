@@ -2,7 +2,7 @@
 
 logfolder="/tmp/Exact/$2"
 binary=$3
-options="--timeout=$1 --test=1 $4"
+options="--timeout=$1 $4"
 
 
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -21,9 +21,9 @@ echo "options: $options"
 echo ""
 
 declare -a arr_lazy=(
-# sum
+# binary
 lazysum
-# reified
+# smallsum
 )
 
 declare -a arr_opt=(
@@ -71,6 +71,7 @@ declare -a arr_opt=(
 "opb/opt/lseu.opb*1120"
 "opb/opt/cracpb1.opb*22199"
 "opb/opt/rs_iss_3.opb*2"
+"opb/opt/knapPI_16_1000_1000_1_-27147.opb*-27147"
 )
 
 for idx in "${!arr_lazy[@]}"; do
@@ -89,11 +90,20 @@ for idx in "${!arr_lazy[@]}"; do
             exit 1
         fi
         obj="$(cut -d'*' -f2 <<<$j)"
-        echo "running $binary $formula $options --cg-encoding=$lazy --proof-log=$logfile"
-        output=`$binary $formula $options --cg-encoding=$lazy --proof-log=$logfile 2>&1 | awk '/^o|Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
-        if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
+        echo "running $binary $formula $options --cg-encoding=$lazy --proof-log=$logfile --seed=4"
+        output=`$binary $formula $options --cg-encoding=$lazy --proof-log=$logfile --seed=4 2>&1`
+        error=`echo "$output" | awk '/Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
+        if [ "$error" != "" ] ; then
             errors=`expr 1000 + $errors`
-            echo "wrong output: $output vs $obj"
+            echo "parsed error: $error"
+        fi
+        objective=`echo "$output" | awk '/^o/ {print $2}'`
+        result=`echo "$output" | awk '/^s/ {print $2}'`
+        if [ "$objective" != "" ]; then
+            if (( "$objective" > "$obj" )) && [ "$result" == "OPTIMUM" ] || (( "$objective" < "$obj" )) ; then
+                errors=`expr 100 + $errors`
+                echo "wrong objective: $objective vs $obj"
+            fi
         fi
         echo "verifying veripb $logfile.formula $logfile.proof --arbitraryPrecision --no-requireUnsat"
         wc -l $logfile.proof

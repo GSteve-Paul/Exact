@@ -61,21 +61,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "../globals.hpp"
 #include "../typedefs.hpp"
 #include "ConstrExp.hpp"
 
 namespace xct {
-
-template <typename DG>
-struct TabuData {
-  TabuData(int size, const DG& dg) : nLits(size), lits(new Lit[size]), slack(-dg) {}
-  ~TabuData() { delete[] lits; }
-
-  int nLits;
-  Lit* lits;
-  DG slack = INF;
-};
 
 enum class WatchStatus { DROPWATCH, KEEPWATCH, CONFLICTING };
 const unsigned int LBDBITS = 24;
@@ -85,6 +74,7 @@ const unsigned int MAXLBD = SAFELBD - 1;
 
 class Solver;
 class Equalities;
+struct Stats;
 
 struct Constr {  // internal solver constraint optimized for fast propagation
   virtual size_t getMemSize() const = 0;
@@ -104,7 +94,6 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth);
   virtual ~Constr() {}
   virtual void freeUp() = 0;  // poor man's destructor
-  virtual void initializeTabu(const std::vector<Lit>& tabuSol) = 0;
 
   void setLocked(bool lkd) { header.locked = lkd; }
   bool isLocked() const { return header.locked; }
@@ -115,7 +104,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   bool isMarkedForDelete() const { return header.markedfordel; }
   bool isSeen() const { return header.seen; }
   void setSeen(bool s) { header.seen = s; }
-  void fixEncountered() const;
+  void fixEncountered(Stats& stats) const;
 
   // TODO: remove direct uses of these bigint methods, convert to ConstrExp instead
   // NOTE: useful for debugging though!
@@ -128,7 +117,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   virtual bool isAtMostOne() const = 0;
 
   virtual void initializeWatches(CRef cr, Solver& solver) = 0;
-  virtual WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& slvr) = 0;
+  virtual WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& slvr, Stats& stats) = 0;
   virtual void undoFalsified(int i) = 0;
   virtual int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const = 0;
   virtual int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const = 0;
@@ -137,22 +126,14 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   virtual bool isSatisfiedAtRoot(const IntMap<int>& level) const = 0;
   virtual bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const = 0;
 
-  virtual void decreaseTabuSlack(int idx) = 0;
-  virtual void increaseTabuSlack(int idx) = 0;
-  virtual bool isSatisfiedByTabu([[maybe_unused]] const std::vector<Lit>& tabuSol) const = 0;
-  virtual Lit* tabuLits() = 0;
-  virtual int& nTabuLits() = 0;
-
   void print(const Solver& solver) const;
 
   bool isCorrectlyConflicting(const Solver& solver) const;
   bool isCorrectlyPropagating(const Solver& solver, int idx) const;
-  bool hasCorrectTabuSlack(const bigint& tslack, const std::vector<Lit>& tabuSol) const;
 };
 std::ostream& operator<<(std::ostream& o, const Constr& c);
 
 struct Clause final : public Constr {
-  TabuData<int>* tabuData;
   Lit data[];
 
   static size_t getMemSize(unsigned int length) { return (sizeof(Clause) + sizeof(Lit) * length) / sizeof(uint32_t); }
@@ -179,16 +160,10 @@ struct Clause final : public Constr {
     }
   }
 
-  void freeUp() {
-    if (usedInTabu(getOrigin())) {
-      assert(tabuData != nullptr);
-      delete tabuData;
-    }
-  }
+  void freeUp() {}
 
-  void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified([[maybe_unused]] int i) { assert(false); }
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
@@ -196,23 +171,12 @@ struct Clause final : public Constr {
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
-
-  void decreaseTabuSlack([[maybe_unused]] int idx);
-  void increaseTabuSlack([[maybe_unused]] int idx);
-  bool isSatisfiedByTabu([[maybe_unused]] const std::vector<Lit>& tabuSol) const {
-    assert(tabuData != nullptr);
-    // assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
-    return tabuData->slack >= 0;
-  }
-  Lit* tabuLits() { return tabuData->lits; }
-  int& nTabuLits() { return tabuData->nLits; }
 };
 
 struct Cardinality final : public Constr {
   unsigned int watchIdx;
   unsigned int degr;
   long long ntrailpops;
-  TabuData<int>* tabuData;
   Lit data[];
 
   static size_t getMemSize(unsigned int length) {
@@ -247,16 +211,10 @@ struct Cardinality final : public Constr {
     }
   }
 
-  void freeUp() {
-    if (usedInTabu(getOrigin())) {
-      assert(tabuData != nullptr);
-      delete tabuData;
-    }
-  }
+  void freeUp() {}
 
-  void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified([[maybe_unused]] int i) { assert(false); }
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
@@ -264,16 +222,6 @@ struct Cardinality final : public Constr {
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
-
-  void decreaseTabuSlack([[maybe_unused]] int idx);
-  void increaseTabuSlack([[maybe_unused]] int idx);
-  bool isSatisfiedByTabu([[maybe_unused]] const std::vector<Lit>& tabuSol) const {
-    assert(tabuData != nullptr);
-    // assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
-    return tabuData->slack >= 0;
-  }
-  Lit* tabuLits() { return tabuData->lits; }
-  int& nTabuLits() { return tabuData->nLits; }
 };
 
 template <typename CF, typename DG>
@@ -283,7 +231,6 @@ struct Counting final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG slack;
-  TabuData<DG>* tabuData;
   Term<CF> data[];
 
   static size_t getMemSize(unsigned int length) {
@@ -315,7 +262,6 @@ struct Counting final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
-    ++stats.NCOUNTING;
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -326,34 +272,18 @@ struct Counting final : public Constr {
     }
   }
 
-  void freeUp() {
-    if (usedInTabu(getOrigin())) {
-      assert(tabuData != nullptr);
-      delete tabuData;
-    }
-  }
+  void freeUp() {}
 
-  void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
-  CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
+  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
-
-  void decreaseTabuSlack(int idx);
-  void increaseTabuSlack(int idx);
-  bool isSatisfiedByTabu([[maybe_unused]] const std::vector<Lit>& tabuSol) const {
-    assert(tabuData != nullptr);
-    // assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
-    return tabuData->slack >= 0;
-  }
-  Lit* tabuLits() { return tabuData->lits; }
-  int& nTabuLits() { return tabuData->nLits; }
 
   bool hasCorrectSlack(const Solver& solver);
 };
@@ -365,7 +295,6 @@ struct Watched final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG watchslack;
-  TabuData<DG>* tabuData;
   Term<CF> data[];
 
   static size_t getMemSize(unsigned int length) {
@@ -397,7 +326,6 @@ struct Watched final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
-    ++stats.NWATCHED;
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -408,34 +336,18 @@ struct Watched final : public Constr {
     }
   }
 
-  void freeUp() {
-    if (usedInTabu(getOrigin())) {
-      assert(tabuData != nullptr);
-      delete tabuData;
-    }
-  }
+  void freeUp() {}
 
-  void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
-  CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
+  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
-
-  void decreaseTabuSlack(int idx);
-  void increaseTabuSlack(int idx);
-  bool isSatisfiedByTabu([[maybe_unused]] const std::vector<Lit>& tabuSol) const {
-    assert(tabuData != nullptr);
-    // assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
-    return tabuData->slack >= 0;
-  }
-  Lit* tabuLits() { return tabuData->lits; }
-  int& nTabuLits() { return tabuData->nLits; }
 
   bool hasCorrectSlack(const Solver& solver);
   bool hasCorrectWatches(const Solver& solver);
@@ -448,7 +360,6 @@ struct CountingSafe final : public Constr {
   long long ntrailpops;
   DG* degr;
   DG* slack;
-  TabuData<DG>* tabuData;
   Term<CF>* terms;  // array
 
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
@@ -481,7 +392,6 @@ struct CountingSafe final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
-    ++stats.NCOUNTING;
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -493,36 +403,21 @@ struct CountingSafe final : public Constr {
   }
 
   void freeUp() {
-    if (usedInTabu(getOrigin())) {
-      assert(tabuData != nullptr);
-      delete tabuData;
-    }
     delete degr;
     delete slack;
     delete[] terms;
   }
 
-  void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
-  CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
+  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
-
-  void decreaseTabuSlack(int idx);
-  void increaseTabuSlack(int idx);
-  bool isSatisfiedByTabu([[maybe_unused]] const std::vector<Lit>& tabuSol) const {
-    assert(tabuData != nullptr);
-    // assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
-    return tabuData->slack >= 0;
-  }
-  Lit* tabuLits() { return tabuData->lits; }
-  int& nTabuLits() { return tabuData->nLits; }
 
   bool hasCorrectSlack(const Solver& solver);
 };
@@ -534,7 +429,6 @@ struct WatchedSafe final : public Constr {
   long long ntrailpops;
   DG* degr;
   DG* watchslack;
-  TabuData<DG>* tabuData;
   Term<CF>* terms;  // array
 
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
@@ -567,7 +461,6 @@ struct WatchedSafe final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
-    ++stats.NWATCHED;
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -579,36 +472,21 @@ struct WatchedSafe final : public Constr {
   }
 
   void freeUp() {
-    if (usedInTabu(getOrigin())) {
-      assert(tabuData != nullptr);
-      delete tabuData;
-    }
     delete degr;
     delete watchslack;
     delete[] terms;
   }
 
-  void initializeTabu(const std::vector<Lit>& tabuSol);
   void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver);
+  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
   int resolveWith(CeSuper confl, Lit l, Solver& solver, IntSet& actSet) const;
   int subsumeWith(CeSuper confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
-  CePtr<ConstrExp<CF, DG>> expandTo(ConstrExpPools& cePools) const;
+  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
-
-  void decreaseTabuSlack(int idx);
-  void increaseTabuSlack(int idx);
-  bool isSatisfiedByTabu([[maybe_unused]] const std::vector<Lit>& tabuSol) const {
-    assert(tabuData != nullptr);
-    // assert(hasCorrectTabuSlack(tabuData->slack, tabuSol));
-    return tabuData->slack >= 0;
-  }
-  Lit* tabuLits() { return tabuData->lits; }
-  int& nTabuLits() { return tabuData->nLits; }
 
   bool hasCorrectSlack(const Solver& solver);
   bool hasCorrectWatches(const Solver& solver);

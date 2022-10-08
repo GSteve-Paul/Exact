@@ -105,6 +105,7 @@ class BoolOption : public Option {
   BoolOption(const std::string& n, const std::string& d, bool v) : Option{n, d}, val(v) {}
 
   explicit operator bool() const { return val; }
+  void set(bool v) { val = v; }
 
   void printUsage(int colwidth) const override {
     std::stringstream output;
@@ -120,10 +121,10 @@ class BoolOption : public Option {
       if (x == 0 || x == 1) {
         val = x;
       } else {
-        quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+        throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
       }
     } catch (const std::invalid_argument& ia) {
-      quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
   }
 };
@@ -140,6 +141,7 @@ class ValOption : public Option {
       : Option{n, d}, val(v), checkDescription(cd), check(c) {}
 
   const T& get() const { return val; }
+  void set(const T& v) { val = v; }
 
   void printUsage(int colwidth) const override {
     std::stringstream output;
@@ -151,11 +153,13 @@ class ValOption : public Option {
 
   void parse(const std::string& v) override {
     try {
-      val = aux::sto<T>(v);
+      set(aux::sto<T>(v));
     } catch (const std::invalid_argument& ia) {
-      quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
-    if (!check(val)) quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+    if (!check(val)) {
+      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
+    }
   }
 };
 
@@ -185,7 +189,9 @@ class EnumOption : public Option {
   }
 
   void parse(const std::string& v) override {
-    if (!valid(v)) quit::exit_ERROR({"Invalid value for ", name, ": ", v, ".\nCheck usage with --help option."});
+    if (!valid(v)) {
+      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
+    }
     val = v;
   }
 
@@ -220,14 +226,11 @@ struct Options {
   VoidOption noSolve{"onlyparse", "Quit after parsing file"};
   EnumOption fileFormat{
       "format", "File format (overridden by corresponding file extension)", "opb", {"opb", "cnf", "wcnf", "mps", "lp"}};
+  BoolOption uniformOut{"out-uniform", "Use the default opb output style even for other file formats", false};
   VoidOption printOpb{"print-opb", "Print OPB of the parsed problem"};
   VoidOption printSol{"print-sol", "Print the solution if found"};
   VoidOption printUnits{"print-units", "Print unit literals"};
   VoidOption printCsvData{"print-csv", "Print statistics in a comma-separated value format"};
-  EnumOption outputMode{"output",
-                        "Output format to be adhered to (for competitions)",
-                        "default",
-                        {"default", "maxsat", "maxsatnew", "miplib"}};
   ValOption<int> verbosity{"verbosity", "Verbosity of the output", 1, "0 =< int",
                            [](const int& x) -> bool { return x >= 0; }};
   ValOption<std::string> proofLog{"proof-log", "Filename for the proof logs, left unspecified disables proof logging",
@@ -236,13 +239,14 @@ struct Options {
                             [](double x) -> bool { return 0 <= x; }};
   ValOption<long long> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
                                   [](long long x) -> bool { return 0 <= x; }};
-  BoolOption boundUpper{"boundupper", "Add objective upper bound constraints when a feasible solution is found.", true};
+  BoolOption boundUpper{"opt-boundupper", "Add objective upper bound constraints when a feasible solution is found.",
+                        true};
   ValOption<double> lubyBase{"luby-base", "Base of the Luby restart sequence", 2, "1 =< float",
                              [](double x) -> bool { return 1 <= x; }};
   ValOption<int> lubyMult{"luby-mult", "Multiplier of the Luby restart sequence", 100, "1 =< int",
                           [](const int& x) -> bool { return x >= 1; }};
   ValOption<double> varWeight{
-      "var-weight", "Activity weight for latest conflict variables - 0 = fixed activity, 0.5 = ASID, 1 = VMTF.", 0.99,
+      "var-weight", "Activity weight for latest conflict variables - 0 = fixed activity, 0.5 = ACIDS, 1 = VMTF.", 0.99,
       "0 =< float =< 1", [](const double& x) -> bool { return 0 <= x && x <= 1; }};
   BoolOption varSeparate{"var-separate", "Use separate phase and activity for linear and core-guided phases", true};
   BoolOption varInitAct{"var-init", "Initialize activity based on watches and initial local search call", false};
@@ -252,6 +256,8 @@ struct Options {
                           "Exponent of the growth of the learned clause database and the inprocessing intervals, "
                           "with log(#conflicts) as base",
                           3.5, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
+  ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 1,
+                            "0 < float", [](const double& x) -> bool { return 0 < x; }};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
   ValOption<double> propCounting{"prop-counting", "Counting propagation instead of watched propagation", 0.6,
@@ -290,36 +296,46 @@ struct Options {
   ValOption<int> bitsOverflow{"bits-overflow",
                               "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
                               "unlimited or greater than 62 may use slower arbitrary precision implementations)",
-                              conflLimit96, "0 =< int", [](const int& x) -> bool { return x >= 0; }};
+                              limitBitConfl<int128, int128>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
   ValOption<int> bitsReduced{"bits-reduced",
                              "Bit width of maximum coefficient after reduction when exceeding bits-overflow (0 is "
                              "unlimited, 1 reduces to cardinalities)",
-                             limit32bit, "0 =< int", [](const int& x) -> bool { return x >= 0; }};
+                             limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
   ValOption<int> bitsLearned{
       "bits-learned",
       "Bit width of maximum coefficient for learned constraints (0 is unlimited, 1 reduces to cardinalities)",
-      limit32bit, "0 =< int", [](const int& x) -> bool { return x >= 0; }};
+      limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
   ValOption<float> cgHybrid{"cg",
                             "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
   EnumOption cgEncoding{
-      "cg-encoding", "Encoding of the extension constraints", "lazysum", {"sum", "lazysum", "reified"}};
+      "cg-encoding", "Encoding of the extension constraints", "lazysum", {"lazysum", "binary", "smallsum"}};
+  ValOption<int> cgMaxCoef{"cg-maxcoef", "Max coefficient when reducing cores", 100, "1 =< int =< 1e9",
+                           [](const int& x) -> bool { return x >= 1 && x <= limitAbs<int, long long>(); }};
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
-  ValOption<int> intEncoding{
-      "int-orderenc",
-      "Upper bound on the range size of order-encoded integer variables, any larger will be encoded binary-wise", 12,
-      "2 =< int", [](const int& x) -> bool { return x >= 2; }};
-  ValOption<double> intDefaultBound{"int-infinity", "Bound used for unbounded integer variables", limit32, "0 < double",
+  EnumOption cgReform{"cg-reform", "When the objective is reformulated", "always", {"always", "depletion", "never"}};
+  ValOption<int> ilpEncoding{"ilp-orderenc",
+                             "Upper bound on the range size of order-encoded integer variables. Integer variables with "
+                             "a larger range will use the binary encoding.",
+                             12, "2 =< int", [](const int& x) -> bool { return x >= 2; }};
+  BoolOption ilpContinuous{"ilp-continuous",
+                           "Accept continuous variables by treating them as integer variables. This restricts the "
+                           "problem and may yield UNSAT when no integer solution exists.",
+                           false};
+  BoolOption ilpUnbounded{"ilp-unbounded",
+                          "Accept unbounded integer variables by imposing default bounds. This restricts the problem "
+                          "and may yield UNSAT when no solution within the bounds exists.",
+                          true};
+  ValOption<double> ilpDefaultBound{"ilp-defbound", "Default bound used for unbounded integer variables",
+                                    limitAbs<int, long long>(), "0 < double",
                                     [](const double& x) -> bool { return x > 0; }};
   BoolOption pureLits{"inp-purelits", "Propagate pure literals", true};
   ValOption<long long> domBreakLim{
       "inp-dombreaklim",
       "Maximum limit of queried constraints for dominance breaking (0 means no dominance breaking, -1 is unlimited)",
       -1, "-1 =< int", [](const int& x) -> bool { return x >= -1; }};
-  ValOption<double> tabuLim{"inp-localsearch", "Ratio of time spent on local search (0 means none, 1 means unlimited)",
-                            0.00, "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   BoolOption inpProbing{"inp-probing", "Perform probing", true};
   ValOption<double> inpAMO{"inp-atmostone",
                            "Ratio of time spent detecting at-most-ones (0 means none, 1 means unlimited)", 0.1,
@@ -331,15 +347,64 @@ struct Options {
                       []([[maybe_unused]] const int& x) -> bool { return true; }};
 
   const std::vector<Option*> options = {
-      &help,          &copyright,        &licenseInfo,   &randomSeed,      &noSolve,      &fileFormat,
-      &printOpb,      &printSol,         &printUnits,    &printCsvData,    &outputMode,   &verbosity,
-      &timeout,       &timeoutDet,       &proofLog,      &boundUpper,      &lubyBase,     &lubyMult,
-      &varWeight,     &varSeparate,      &varInitAct,    &dbDecayLBD,      &dbExp,        &dbSafeLBD,
-      &propCounting,  &lpTimeRatio,      &lpPivotBudget, &lpIntolerance,   &lpLearnDuals, &lpGomoryCuts,
-      &lpLearnedCuts, &lpGomoryCutLimit, &lpMaxCutCos,   &multBeforeDiv,   &division,     &weakenNonImplying,
-      &learnedMin,    &bitsOverflow,     &bitsReduced,   &bitsLearned,     &cgHybrid,     &cgEncoding,
-      &cgResolveProp, &cgStrat,          &intEncoding,   &intDefaultBound, &pureLits,     &domBreakLim,
-      &tabuLim,       &inpProbing,       &inpAMO,        &basetime,        &test,
+      &help,
+      &copyright,
+      &licenseInfo,
+      &randomSeed,
+      &noSolve,
+      &fileFormat,
+      &uniformOut,
+      &printOpb,
+      &printSol,
+      &printUnits,
+      &printCsvData,
+      &verbosity,
+      &timeout,
+      &timeoutDet,
+      &proofLog,
+      &boundUpper,
+      &lubyBase,
+      &lubyMult,
+      &varWeight,
+      &varSeparate,
+      &varInitAct,
+      &dbDecayLBD,
+      &dbExp,
+      &dbSafeLBD,
+      &propCounting,
+#if WITHSOPLEX
+      &lpTimeRatio,
+      &lpPivotBudget,
+      &lpIntolerance,
+      &lpLearnDuals,
+      &lpGomoryCuts,
+      &lpLearnedCuts,
+      &lpGomoryCutLimit,
+      &lpMaxCutCos,
+#endif  // WITHSOPLEX
+      &multBeforeDiv,
+      &division,
+      &weakenNonImplying,
+      &learnedMin,
+      &bitsOverflow,
+      &bitsReduced,
+      &bitsLearned,
+      &cgHybrid,
+      &cgEncoding,
+      &cgMaxCoef,
+      &cgResolveProp,
+      &cgStrat,
+      &cgReform,
+      &ilpEncoding,
+      &ilpContinuous,
+      &ilpUnbounded,
+      &ilpDefaultBound,
+      &pureLits,
+      &domBreakLim,
+      &inpProbing,
+      &inpAMO,
+      &basetime,
+      // &test,
   };
   std::unordered_map<std::string, Option*> name2opt;
 
@@ -349,7 +414,16 @@ struct Options {
 
   std::string formulaName;
 
+  void parseOption(const std::string& option, const std::string& value) {
+    if (name2opt.count(option) == 0) {
+      throw std::invalid_argument("Unknown option: " + option + ".\nCheck usage with --help");
+    } else {
+      name2opt[option]->parse(value);
+    }
+  }
+
   void parseCommandLine(int argc, char** argv) {
+    if (argc == 0) return;
     std::unordered_map<std::string, std::string> opt_val;
     for (int i = 1; i < argc; i++) {
       std::string arg = argv[i];
@@ -357,24 +431,19 @@ struct Options {
         formulaName = arg;
       } else {
         size_t eqindex = std::min(arg.size(), arg.find('='));
-        std::string inputopt = arg.substr(2, eqindex - 2);
-        if (name2opt.count(inputopt) == 0) {
-          quit::exit_ERROR({"Unknown option: ", inputopt, ".\nCheck usage with ", argv[0], " --help"});
-        } else {
-          name2opt[inputopt]->parse(arg.substr(std::min(arg.size(), eqindex + 1)));
-        }
+        parseOption(arg.substr(2, eqindex - 2), arg.substr(std::min(arg.size(), eqindex + 1)));
       }
     }
 
     if (help) {
       usage(argv[0]);
-      xct::aux::flushexit(0);
+      throw EarlyTermination();
     } else if (copyright) {
       licenses::printUsed();
-      xct::aux::flushexit(0);
+      throw EarlyTermination();
     } else if (licenseInfo.get() != "") {
       licenses::printLicense(licenseInfo.get());
-      xct::aux::flushexit(0);
+      throw EarlyTermination();
     }
   }
 

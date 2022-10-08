@@ -37,8 +37,10 @@ See the file LICENSE or run with the flag --license=MIT.
 
 class Exact {
   xct::ILP ilp;
+  bool unsatState;
 
-  xct::IntVar* getVariable(const std::string& name);
+  xct::IntVar* getVariable(const std::string& name) const;
+  std::vector<xct::IntVar*> getVariables(const std::vector<std::string>& names) const;
 
  public:
   /**
@@ -52,8 +54,11 @@ class Exact {
    * @param name: name of the variable
    * @param lb: lower bound
    * @param ub: upper bound
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
   void addVariable(const std::string& name, long long lb, long long ub);
+  void addVariable(const std::string& name, const std::string& lb, const std::string& ub);
 
   /**
    * Returns a list of variables added to the solver.
@@ -61,13 +66,6 @@ class Exact {
    * @return the list of variables
    */
   std::vector<std::string> getVariables() const;
-
-  /**
-   * The given bounds of a previously added variable.
-   * @param var: the variable under consideration.
-   * @return: the pair of bounds (lower, upper) to the variable.
-   */
-  std::pair<long long, long long> getBounds(const std::string& var) const;
 
   /**
    * Add a linear constraint.
@@ -78,10 +76,13 @@ class Exact {
    * @param lb: the lower bound
    * @param useUB: whether or not the constraint is upper bounded
    * @param ub: the upper bound
-   * @return: State::SUCCESS (1) or State::UNSAT (0) to denote whether the constraint yielded unsatisfiability.
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
-  State addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
-                      long long lb, bool useUB, long long ub);
+  void addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
+                     long long lb, bool useUB, long long ub);
+  void addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
+                     const std::string& lb, bool useUB, const std::string& ub);
 
   /**
    * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.
@@ -90,10 +91,26 @@ class Exact {
    * @param coefs: coefficients of the constraint
    * @param vars: variables of the constraint
    * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
-   * @return: State::UNSAT (0) or State::SUCCESS (1) to denote whether the added constraint yielded unsatisfiability.
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
-  State addReification(const std::string& head, const std::vector<long long>& coefs,
-                       const std::vector<std::string>& vars, long long lb);
+  void addReification(const std::string& head, const std::vector<long long>& coefs,
+                      const std::vector<std::string>& vars, long long lb);
+  void addReification(const std::string& head, const std::vector<std::string>& coefs,
+                      const std::vector<std::string>& vars, const std::string& lb);
+
+  /**
+   * Fix the value of a variable.
+   *
+   * Fixing the variable to different values will lead to unsatisfiability.
+   *
+   * @param iv: the variable to be fixed.
+   * @param val: the value the variable is fixed to
+   *
+   * Pass arbitrarily large values using the string-based function variant.
+   */
+  void fix(const std::string& var, long long val);
+  void fix(const std::string& var, const std::string& val);
 
   /**
    * Set a list of assumptions under which a(n optimal) solution is found.
@@ -104,8 +121,11 @@ class Exact {
    *
    * @param vars: the variables to assume
    * @param vals: the values assumed for the variables
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
   void setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals);
+  void setAssumptions(const std::vector<std::string>& vars, const std::vector<std::string>& vals);
 
   /**
    * Initialize the solver with an objective function to be minimized.
@@ -115,15 +135,11 @@ class Exact {
    *
    * @param coefs: coefficients of the objective function
    * @param vars: variables of the objective function
-   * @param boundObjective: automatically add an upper bound constraint to the objective function for each solution
-   * found during search. This guarantees each solution will improve on the best-so-far, but will also yield UNSAT
-   * when the last solution is proven to be optimal.
-   * @param addNonImplieds: allow the solver to derive non-implied constraints that are consistent with at least
-   * one optimal solution. A simple example is fixing pure literals, which occur only positively or negatively in the
-   * constraints. These non-implied constraints speed up search by reducing the set of solutions.
+   *
+   * Pass arbitrarily large values using the string-based function variant.
    */
-  void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool boundObjective,
-            bool addNonImplieds);
+  void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
+  void init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars);
 
   /**
    * Start / continue the search.
@@ -141,7 +157,21 @@ class Exact {
    * - SolveState::INPROCESSED (3): the search process just finished an inprocessing phase. The search process should
    * simply be continued, but control is passed to the caller to, e.g., change assumptions or add constraints.
    */
-  SolveState run();
+  SolveState runOnce();
+
+  /**
+   * Start / continue the search until an optimal solution or inconsistency is found.
+   *
+   * @return: one of two values:
+   *
+   * - SolveState::UNSAT (0): an inconsistency implied by the constraints has been detected. No (better) solutions
+   * exist, and the search process is finished. No future calls should be made to this solver. An optimal solution can
+   * be retrieved if one exists via hasSolution() and getLastSolutionFor().
+   * - SolveState::INCONSISTENT (2): no solutions consistent with the assumptions exist and a core has been constructed.
+   * The search process can be continued, but to avoid finding the same core over and over again, change the set of
+   * assumptions. A core can be retrieved via hasCore() and getLastCore().
+   */
+  SolveState runFull();
 
   /**
    * Check whether a solution has been found.
@@ -155,8 +185,11 @@ class Exact {
    *
    * @param vars: the added variables for which the solution values should be returned.
    * @return: the solution values to the variables.
+   *
+   * Return arbitrarily large values using the string-based function variant '_arb'.
    */
   std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
+  std::vector<std::string> getLastSolutionFor_arb(const std::vector<std::string>& vars) const;
 
   /**
    * Check whether a core -- a subset of the assumptions which cannot be extended to a solution -- has been found.
@@ -170,21 +203,17 @@ class Exact {
    *
    * @return: the variables in the core.
    */
-  std::vector<std::string> getLastCore() const;
+  std::vector<std::string> getLastCore();
 
   /**
    * Add an upper bound to the objective function based on the objective value of the last found solution.
-   *
-   * @return: State::UNSAT (0) or State::SUCCESS (1) to denote whether the added constraint yielded unsatisfiability.
    */
-  State boundObjByLastSol();
+  void boundObjByLastSol();
 
   /**
    * Add a constraint enforcing the exclusion of the last solution.
-   *
-   * @return: State::UNSAT (0) or State::SUCCESS (1) to denote whether the added constraint yielded unsatisfiability.
    */
-  State invalidateLastSol();
+  void invalidateLastSol();
 
   /**
    * Add a constraint enforcing the exclusion of the subset of the assignments in the last solution over a set of
@@ -193,16 +222,18 @@ class Exact {
    * This can be useful in case a small number of variables determines the rest of the variables in each solution.
    *
    * @param vars: the variables for the sub-solution.
-   * @return: State::UNSAT (0) or State::SUCCESS (1) to denote whether the added constraint yielded unsatisfiability.
    */
-  State invalidateLastSol(const std::vector<std::string>& vars);
+  void invalidateLastSol(const std::vector<std::string>& vars);
 
   /**
    * Get the current lower and upper bound on the objective function.
    *
    * @return: the pair of bounds (lower, upper) to the objective.
+   *
+   * Return arbitrarily large values using the string-based function variant '_arb'.
    */
   std::pair<long long, long long> getObjectiveBounds() const;
+  std::pair<std::string, std::string> getObjectiveBounds_arb() const;
 
   /**
    * Set the verbosity level of Exact's output.
@@ -223,10 +254,23 @@ class Exact {
 
   /**
    * Under the assumptions set by setAssumptions, return implied lower and upper bound for the non-assumed variables in
-   * varnames. If no solution exists under the assumptions, return empty vector.
+   * vars. If no solution exists under the assumptions, return empty vector.
    *
-   * @param varnames: variables for which to calculate the implied bounds
-   * @return: a pair of bounds for each variable in varnames
+   * @param vars: variables for which to calculate the implied bounds
+   * @return: a pair of bounds for each variable in vars
+   * @throw: UnsatEncounter exception in the case the instance is unsatisfiable. Propagation is undefined in this case.
+   *
+   * Return arbitrarily large values using the string-based function variant '_arb'.
    */
-  std::vector<std::pair<long long, long long> > propagate(const std::vector<std::string>& varnames);
+  std::vector<std::pair<long long, long long> > propagate(const std::vector<std::string>& vars);
+  std::vector<std::pair<std::string, std::string> > propagate_arb(const std::vector<std::string>& vars);
+
+  /**
+   * Set solver options. Run with --help or look at Options.hpp to find the possible options.
+   *
+   * @param option: name of the option
+   * @param value: value for the option encoded as a string. Boolean options, when passed, are set to true regardless of
+   * this value.
+   */
+  void setOption(const std::string& option, const std::string& value);
 };

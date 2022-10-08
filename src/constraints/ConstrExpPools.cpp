@@ -60,9 +60,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "ConstrExpPools.hpp"
+#include "../Global.hpp"
 #include "ConstrExp.hpp"
 
 namespace xct {
+
+ConstrExpPools::ConstrExpPools(Global& g) : ce32s(g), ce64s(g), ce96s(g), ce128s(g), ceArbs(g) {}
 
 void ConstrExpPools::resize(size_t newn) {
   ce32s.resize(newn);
@@ -70,14 +73,6 @@ void ConstrExpPools::resize(size_t newn) {
   ce96s.resize(newn);
   ce128s.resize(newn);
   ceArbs.resize(newn);
-}
-
-void ConstrExpPools::initializeLogging(std::shared_ptr<Logger> lgr) {
-  ce32s.initializeLogging(lgr);
-  ce64s.initializeLogging(lgr);
-  ce96s.initializeLogging(lgr);
-  ce128s.initializeLogging(lgr);
-  ceArbs.initializeLogging(lgr);
 }
 
 template <>
@@ -108,45 +103,31 @@ Ce128 ConstrExpPools::take128() { return take<int128, int256>(); }
 CeArb ConstrExpPools::takeArb() { return take<bigint, bigint>(); }
 
 template <typename SMALL, typename LARGE>
-ConstrExpPool<SMALL, LARGE>::~ConstrExpPool() {
-  for (ConstrExp<SMALL, LARGE>* ce : ces) delete ce;
-}
+ConstrExpPool<SMALL, LARGE>::ConstrExpPool(Global& g) : n(0), global(g) {}
 
 template <typename SMALL, typename LARGE>
 void ConstrExpPool<SMALL, LARGE>::resize(size_t newn) {
   assert(n <= INF);
   n = newn;
-  for (ConstrExp<SMALL, LARGE>* ce : ces) ce->resize(n);
+  for (CePtr<SMALL, LARGE>& ce : ces) ce->resize(n);
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExpPool<SMALL, LARGE>::initializeLogging(std::shared_ptr<Logger>& lgr) {
-  plogger = lgr;
-  for (ConstrExp<SMALL, LARGE>* ce : ces) ce->initializeLogging(lgr);
-}
-
-template <typename SMALL, typename LARGE>
-CePtr<ConstrExp<SMALL, LARGE>> ConstrExpPool<SMALL, LARGE>::take() {
-  assert(ces.size() < 100);  // Sanity check that no large amounts of ConstrExps are created
-  if (availables.size() == 0) {
-    ces.emplace_back(new ConstrExp<SMALL, LARGE>(*this));
-    ces.back()->resize(n);
-    ces.back()->initializeLogging(plogger);
-    availables.push_back(ces.back());
+CePtr<SMALL, LARGE> ConstrExpPool<SMALL, LARGE>::take() {
+  assert(ces.size() < 30);  // Sanity check that no large amounts of ConstrExps are created
+  for (int i = ces.size() - 1; i >= 0; --i) {
+    if (ces[i].unique()) {
+      ces[i]->reset(false);
+      if (i == (int)ces.size() - 1) return ces[i];
+      std::swap(ces[i], ces[i + 1]);  // slowly move free CePtr to the back
+      return ces[i + 1];
+    }
   }
-  ConstrExp<SMALL, LARGE>* result = availables.back();
-  availables.pop_back();
-  assert(result->isReset());
-  assert(result->coefs.size() == n);
-  return CePtr<ConstrExp<SMALL, LARGE>>(result);
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExpPool<SMALL, LARGE>::release(ConstrExp<SMALL, LARGE>* ce) {
-  assert(std::any_of(ces.cbegin(), ces.cend(), [&](ConstrExp<SMALL, LARGE>* i) { return i == ce; }));
-  assert(std::none_of(availables.cbegin(), availables.cend(), [&](ConstrExp<SMALL, LARGE>* i) { return i == ce; }));
-  ce->reset(false);
-  availables.push_back(ce);
+  CePtr<SMALL, LARGE> fresh = std::make_shared<ConstrExp<SMALL, LARGE>>(global);
+  fresh->resize(n);
+  assert(fresh->isReset());
+  ces.push_back(fresh);
+  return fresh;
 }
 
 template class ConstrExpPool<int, long long>;

@@ -60,7 +60,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Heuristic.hpp"
-#include "../globals.hpp"
 
 namespace xct {
 
@@ -82,6 +81,7 @@ bool Heuristic::before(Var v1, Var v2) const {
 void Heuristic::resize(int nvars) {
   assert(nvars == 1 || nvars > (int)phase.size());
   int old_n = nVars();  // at least one after initialization
+  assert(old_n >= 1);
   phase.resize(nvars);
   actList.resize(nvars);
   for (Var v = old_n; v < nvars; ++v) {
@@ -115,22 +115,22 @@ ActValV Heuristic::getActivity(Var v) const {
 
 void Heuristic::randomize(const std::vector<int>& position) {
   std::vector<Lit> vars;
-  vars.reserve(actList.size() - 1);
+  vars.reserve((int)actList.size() - 1);
   for (Var v = 1; v < (int)actList.size(); ++v) {
     vars.push_back(v);
     actList[v].activity += aux::getRand(0, INF) / static_cast<ActValV>(INF);
   }
   nextDecision = 0;
-  vBumpActivity(vars, position);
+  vBumpActivity(vars, position, 1, 0);
 }
 
-void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position) {
-  double weightNew = options.varWeight.get();
+void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position, double weightNew,
+                              long long nConfl) {
   double weightOld = 1 - weightNew;
-  ActValV nConfl = stats.NCONFL.z + 1;
+  ActValV toAdd = weightNew * (nConfl + 1);
   for (Var v : vars) {
     assert(v > 0);  // not a literal, not 0
-    actList[v].activity = weightOld * actList[v].activity + weightNew * nConfl;
+    actList[v].activity = weightOld * actList[v].activity + toAdd;
   }
   std::sort(vars.begin(), vars.end(), [&](const Var& v1, const Var& v2) { return before(v1, v2); });
   for (Var v : vars) {

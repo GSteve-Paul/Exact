@@ -2,7 +2,7 @@
 
 logfolder="/tmp/Exact/$2"
 binary=$3
-options="--timeout=$1 --test=1 $4"
+options="--timeout=$1 $4"
 
 
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -65,6 +65,7 @@ declare -a arr_opt=(
 "opb/opt/lseu.opb*1120"
 "opb/opt/cracpb1.opb*22199"
 "opb/opt/rs_iss_3.opb*2"
+"opb/opt/knapPI_16_1000_1000_1_-27147.opb*-27147"
 )
 
 echo "########## no proofs ##########"
@@ -81,11 +82,20 @@ for j in "${arr_opt[@]}"; do
         exit 1
     fi
     obj="$(cut -d'*' -f2 <<<$j)"
-    echo "running $binary $formula $options"
-    output=`$binary $formula $options 2>&1 | awk '/^o|Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
-    if [ "$output" != "" ] && [ "$output" != "$obj" ]; then
+    echo "running $binary $formula $options --seed=3"
+    output=`$binary $formula $options --seed=3 2>&1`
+    error=`echo "$output" | awk '/Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
+    if [ "$error" != "" ] ; then
         errors=`expr 1000 + $errors`
-        echo "wrong output: $output vs $obj"
+        echo "parsed error: $error"
+    fi
+    objective=`echo "$output" | awk '/^o/ {print $2}'`
+    result=`echo "$output" | awk '/^s/ {print $2}'`
+    if [ "$objective" != "" ]; then
+        if (( "$objective" > "$obj" )) && [ "$result" == "OPTIMUM" ] || (( "$objective" < "$obj" )) ; then
+            errors=`expr 100 + $errors`
+            echo "wrong objective: $objective vs $obj"
+        fi
     fi
     echo $errors
     tested=`expr 1 + $tested`

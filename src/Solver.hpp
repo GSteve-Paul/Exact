@@ -97,12 +97,14 @@ class Solver {
 
  public:
   std::vector<Lit> lastSol = {0};
-  bool foundSolution() const { return stats.NORIGVARS.z == 0 || lastSol.size() > 1; }
+  bool foundSolution() const;
   CeSuper lastCore;
+  CeSuper lastGlobalDual;
   IntSet objectiveLits;
+  CeArb objective;
 
  private:
-  ILP& ilp;
+  Global& global;
   int n;
   std::vector<bool> isorig;
 
@@ -134,11 +136,13 @@ class Solver {
   Equalities equalities;
   Implications implications;
 
-  long long nconfl_to_reduce;
-  long long nconfl_to_restart;
+  long long nconfl_to_reduce = 0;
+  long long nconfl_to_restart = 0;
+
+  CeSuper getAnalysisCE(const CeSuper& conflict) const;
 
  public:
-  Solver(ILP& i);
+  Solver(Global& g);
   ~Solver();
   void init(const CeArb& obj);
 
@@ -149,25 +153,23 @@ class Solver {
     return isorig[v];
   }
 
+  Options& getOptions();
+  Stats& getStats();
+  Logger& getLogger();
   const IntMap<int>& getLevel() const { return level; }
   const std::vector<int>& getPos() const { return position; }
   Equalities& getEqualities() { return equalities; }
   Implications& getImplications() { return implications; }
   const Heuristic& getHeuristic() const { return *heur; }
+
   int decisionLevel() const { return trail_lim.size(); }
   int assumptionLevel() const { return assumptions_lim.size() - 1; }
 
-  // result: formula line id, processed id
-  [[nodiscard]] std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
-  [[nodiscard]] std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
-  [[nodiscard]] ID addUnitConstraint(Lit l, Origin orig);
-  template <typename T>
-  void addConstraintUnchecked(const T& c, Origin orig) {
-    // NOTE: logging of the inconsistency happened in addInputConstraint
-    [[maybe_unused]] auto [_, id] = addConstraint(c, orig);
-    assert(id != ID_Unsat);
-  }
-  [[nodiscard]] std::pair<ID, ID> invalidateLastSol(const std::vector<Var>& vars);
+  // @return: formula line id, processed id, needed for optimization proof logging
+  std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
+  std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
+  void addUnitConstraint(Lit l, Origin orig);
+  void invalidateLastSol(const std::vector<Var>& vars);
 
   void dropExternal(ID id, bool erasable, bool forceDelete);
   int getNbConstraints() const { return constraints.size(); }
@@ -218,9 +220,9 @@ class Solver {
    * @return: true if inconsistency is detected, false otherwise. The inconsistency is stored in confl
    */
   // TODO: don't return actual conflict, but analyze it internally? Won't work because core extraction is necessary
-  [[nodiscard]] std::pair<CeSuper, State> runDatabasePropagation();
-  [[nodiscard]] std::pair<CeSuper, State> runPropagation();
-  [[nodiscard]] std::pair<CeSuper, State> runPropagationWithLP();
+  [[nodiscard]] CeSuper runDatabasePropagation();
+  [[nodiscard]] CeSuper runPropagation();
+  [[nodiscard]] CeSuper runPropagationWithLP();
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p);
 
   // ---------------------------------------------------------------------
@@ -228,24 +230,23 @@ class Solver {
 
   [[nodiscard]] CeSuper analyze(const CeSuper& confl);
   void minimize(const CeSuper& conflict);
-  [[nodiscard]] State extractCore(const CeSuper& confl, Lit l_assump = 0);
+  void extractCore(const CeSuper& confl, Lit l_assump = 0);
 
   // ---------------------------------------------------------------------
   // Constraint management
 
-  [[nodiscard]] CRef attachConstraint(const CeSuper& constraint,
-                                      bool locked);  // returns CRef_Unsat in case of inconsistency
-  [[nodiscard]] ID learnConstraint(const CeSuper& c, Origin orig);
-  [[nodiscard]] ID learnUnitConstraint(Lit l, Origin orig, ID id);
-  [[nodiscard]] ID learnClause(const std::vector<Lit>& lits, Origin orig, ID id);
-  std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
+  [[nodiscard]] CRef attachConstraint(const CeSuper& constraint, bool locked);
   void removeConstraint(const CRef& cr, bool override = false);
+  void learnConstraint(const CeSuper& c, Origin orig);
+  void learnUnitConstraint(Lit l, Origin orig, ID id);
+  void learnClause(const std::vector<Lit>& lits, Origin orig, ID id);
+  std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
 
   // ---------------------------------------------------------------------
   // Garbage collection
 
   void garbage_collect();
-  State reduceDB();
+  void reduceDB();
 
   // ---------------------------------------------------------------------
   // Restarts
@@ -255,47 +256,21 @@ class Solver {
   // ---------------------------------------------------------------------
   // Inprocessing
  public:
-  [[nodiscard]] std::pair<State, CeSuper> presolve();
+  void presolve();
 
  private:
-  [[nodiscard]] std::pair<State, CeSuper> inProcess();
+  void inProcess();
   void removeSatisfiedNonImpliedsAtRoot();
   void derivePureLits();
   void dominanceBreaking();
   void rebuildLit2Cons();
 
   Var lastRestartNext = 0;
-  [[nodiscard]] State probeRestart(Lit next);
+  void probeRestart(Lit next);
 
-  [[nodiscard]] State detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
+  void detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
   std::unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
-  [[nodiscard]] State runAtMostOneDetection();
-
-  // ---------------------------------------------------------------------
-  // Tabu search
-
-  TabuRank next = 1;            // rank of the next literal to flip
-  TabuRank cutoff = 0;          // all less than or equal to the cutoff can be flipped
-  std::vector<TabuRank> ranks;  // Var to rank
-  std::vector<Lit> tabuSol;
-
-  std::list<CRef> violatedQueue;
-  std::unordered_map<CRef, std::list<CRef>::const_iterator> violatedPtrs;
-
-  void addToTabu(const CRef& cr);
-  void eraseFromTabu(const CRef& cr);
-  void rebuildTabu();
-  void flipTabu(Lit l);
-
- public:
-  bool runTabuOnce();
-  int getTabuViolatedSize() {
-    assert(violatedQueue.size() == violatedPtrs.size());
-    return violatedPtrs.size();
-  }
-  void phaseToTabu();
-  void lastSolToPhase();
-  void ranksToAct();
+  void runAtMostOneDetection();
 };
 
 }  // namespace xct

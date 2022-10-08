@@ -1,0 +1,15 @@
+# docker commands:
+sudo docker build docker_images/pypi_package/ -t holkann/pypi_docker
+sudo docker run --rm -it holkann/pypi_docker bash
+
+# in docker bash:
+git clone https://gitlab.com/JoD/exact-dev.git
+
+# use clang:
+update-alternatives --config c++
+
+# compile and publish package:
+mkdir exact-dev/build_lib; cd exact-dev/build_lib; git checkout release;
+cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=ON
+cd ../python
+./make_package.sh 0.5.3 1.0.0

@@ -61,6 +61,26 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "auxiliary.hpp"
 
+std::ostream& operator<<(std::ostream& o, enum SolveState state) {
+  switch (state) {
+    case (SolveState::UNSAT):
+      o << "UNSAT";
+      break;
+    case (SolveState::INCONSISTENT):
+      o << "INCONSISTENT";
+      break;
+    case (SolveState::INPROCESSED):
+      o << "INPROCESSED";
+      break;
+    case (SolveState::SAT):
+      o << "SAT";
+      break;
+    default:
+      assert(false);
+  }
+  return o;
+}
+
 namespace xct::aux {
 
 bigint commonDenominator(const std::vector<ratio>& ratios) {
@@ -85,9 +105,9 @@ uint32_t xorshift32() {
 
 }  // namespace rng
 
-uint32_t getRand(uint32_t min, uint32_t max) {
+int32_t getRand(int32_t min, int32_t max) {
   assert(min < max);
-  return min + (rng::xorshift32() % (max - min));
+  return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) + min;
 }
 
 uint64_t hash(uint64_t x) {
@@ -95,14 +115,6 @@ uint64_t hash(uint64_t x) {
   x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
   x = x ^ (x >> 31);
   return x;
-}
-
-uint64_t hashForSet(const std::vector<int>& ints) {
-  uint64_t result = ints.size();
-  for (int i : ints) {
-    result ^= hash(i);
-  }
-  return result;
 }
 
 }  // namespace xct::aux

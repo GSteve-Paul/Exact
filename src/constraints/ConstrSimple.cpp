@@ -67,16 +67,13 @@ namespace xct {
 template <typename CF, typename DG>
 CeSuper ConstrSimple<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
   // TODO: make this the minimal bitwidth expanded constraint?
-  CePtr<ConstrExp<CF, DG>> ce = cePools.take<CF, DG>();
+  CePtr<CF, DG> ce = cePools.take<CF, DG>();
   ce->addRhs(rhs);
   for (const Term<CF>& t : terms) {
     ce->addLhs(t.c, t.l);
   }
   ce->orig = orig;
-  if (ce->plogger) {
-    ce->proofBuffer.str(std::string());
-    ce->proofBuffer << proofLine;
-  }
+  ce->resetBuffer(proofLine);
   return ce;
 }
 
