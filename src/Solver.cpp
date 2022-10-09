@@ -1201,7 +1201,7 @@ SolveState Solver::solve() {
         ++global.stats.NRESTARTS;
         double rest_base = luby(global.options.lubyBase.get(), static_cast<int>(global.stats.NRESTARTS.z));
         nconfl_to_restart = (long long)rest_base * global.options.lubyMult.get();
-        if (global.options.sortWatchlists) sortWatchlists();
+        sortWatchlists();
       }
       if (global.stats.NCONFL >= nconfl_to_reduce) {
         ++global.stats.NCLEANUP;
