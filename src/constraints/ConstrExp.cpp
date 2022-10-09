@@ -546,7 +546,7 @@ void ConstrExpSuper::weakenLast() {
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weaken(const aux::predicate<Lit>& toWeaken) {
   for (Var v : vars) {
-    if (toWeaken(getLit(v))) {
+    if (coefs[v] != 0 && toWeaken(getLit(v))) {
       weaken(v);
     }
   }
@@ -789,8 +789,7 @@ void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverf
     assert(getCutoffVal() == maxVal);
     LARGE div = aux::ceildiv<LARGE>(maxVal, aux::pow<LARGE>(2, bitReduce) - 1);
     assert(aux::ceildiv<LARGE>(maxVal, div) <= aux::pow<LARGE>(2, bitReduce) - 1);
-    weakenDivideRound(
-        div, [&](Lit l) { return isFalse(level, l); }, asserting);
+    weakenDivideRound(div, [&](Lit l) { return !isFalse(level, l) && l != -asserting && l != asserting; });
   } else {
     // check that largestCoef indeed is big enough
     assert(getCutoffVal() <= 0 || (int)aux::msb(getCutoffVal()) < bitOverflow);
@@ -885,10 +884,10 @@ void ConstrExp<SMALL, LARGE>::divideRoundDown(const LARGE& d) {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& falsified, Lit asserting) {
+void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& toWeaken) {
   assert(div > 0);
   if (div == 1) return;
-  weakenNonDivisibleNonFalsifieds(falsified, div, asserting);
+  weakenNonDivisible(toWeaken, div);
   if (isTautology()) {
     saturate(false, false);
     removeZeroes();
@@ -902,11 +901,11 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
 
 // NOTE: preserves ordered-ness
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& falsified) {
+void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken) {
   assert(isSortedInDecreasingCoefOrder());
   assert(div > 0);
   if (div == 1) return;
-  weakenNonDivisibleNonFalsifieds(falsified, div, 0);
+  weakenNonDivisible(toWeaken, div);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -927,20 +926,19 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const a
 }
 
 // NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
-// NOTE: after call to weakenNonDivisibleNonFalsifieds, order can be re repaired by call to repairOrder
+// NOTE: after call to weakenNonDivisible, order can be re repaired by call to repairOrder
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenNonDivisibleNonFalsifieds(const aux::predicate<Lit>& falsified, const LARGE& div,
-                                                              Lit asserting) {
+void ConstrExp<SMALL, LARGE>::weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div) {
   assert(div > 0);
   if (div == 1) return;
   for (Var v : vars) {
-    if (coefs[v] % div != 0 && !falsified(getLit(v)) && v != toVar(asserting)) {
+    if (coefs[v] % div != 0 && toWeaken(getLit(v))) {
       weaken(-static_cast<SMALL>(coefs[v] % div), v);
     }
   }
 }
 
-// NOTE: should only be used in conjunction with weakenNonDivisibleNonFalsifieds
+// NOTE: should only be used in conjunction with weakenNonDivisible
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::repairOrder() {
   int i = 1;
@@ -1028,14 +1026,14 @@ bool ConstrExp<SMALL, LARGE>::divideByGCD() {
 }
 
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& falsified) {
+bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& toWeaken) {
   LARGE maxVal = getCutoffVal();
   if (maxVal <= static_cast<LARGE>(limit)) {
     return false;
   }
   LARGE div = aux::ceildiv(maxVal, static_cast<LARGE>(limit));  // maxVal / div =< limit
   assert(div > 1);
-  weakenDivideRound(div, falsified, 0);  // TODO: weakenDivideRoundOrdered?
+  weakenDivideRound(div, toWeaken);  // TODO: weakenDivideRoundOrdered?
   return true;
 }
 

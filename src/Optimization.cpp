@@ -311,7 +311,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
     return State::FAIL;
   }
   // the following operations do not turn core/reduced into a tautology
-  core->divideTo(limitAbs<int, long long>(), [&](Lit l) { return reformObj->hasLit(l); });
+  core->divideTo(limitAbs<int, long long>(), [&](Lit l) { return !reformObj->hasLit(l); });
   assert(!core->isTautology());
   CePtr<SMALL, LARGE> reduced = global.cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
@@ -325,7 +325,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
   assert(mult > 0);
   reduced->multiply(mult);
   reduced->weakenDivideRound(
-      div, [&](Lit l) { return reformObj->hasLit(l) && reformObj->getCoef(l) * div >= reduced->getCoef(l); }, 0);
+      div, [&](Lit l) { return !reformObj->hasLit(l) || reformObj->getCoef(l) * div < reduced->getCoef(l); });
   // weaken all literals with a lower objective to reduced coefficient ratio than the ith literal in reduced
   // TODO: sorted?
 
@@ -409,7 +409,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
   assert(maxCoef >= 1);
   if (maxCoef == 1) return reformObjective(core);
 
-  core->divideTo(maxCoef, [&](Lit l) { return reformObj->hasLit(l); });
+  core->divideTo(maxCoef, [&](Lit l) { return !reformObj->hasLit(l); });
   assert(!core->isTautology());
   CePtr<SMALL, LARGE> reduced = global.cePools.take<SMALL, LARGE>();
   core->copyTo(reduced);
@@ -426,7 +426,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
     // weaken all literals with a lower objective to reduced coefficient ratio than the ith literal in reduced
     // TODO: sorted?
     reduced->weakenDivideRound(
-        div, [&](Lit l) { return reformObj->hasLit(l) && reformObj->getCoef(l) * div >= reduced->getCoef(l); }, 0);
+        div, [&](Lit l) { return !reformObj->hasLit(l) || reformObj->getCoef(l) * div < reduced->getCoef(l); });
     mult = 1;
   } else {
     mult /= static_cast<SMALL>(div);

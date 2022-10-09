@@ -161,7 +161,7 @@ struct ConstrExpSuper {
   virtual bool largestCoefFitsIn(int bits) const = 0;
 
   virtual bool divideByGCD() = 0;
-  virtual bool divideTo(double limit, const aux::predicate<Lit>& falsified) = 0;
+  virtual bool divideTo(double limit, const aux::predicate<Lit>& toWeaken) = 0;
   virtual AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const = 0;
   virtual std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos) const = 0;
   virtual void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos) = 0;
@@ -333,15 +333,15 @@ struct ConstrExp final : public ConstrExpSuper {
   void multiply(const SMALL& m);
   void divideRoundUp(const LARGE& d);
   void divideRoundDown(const LARGE& d);
-  void weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& falsified, Lit asserting);
-  void weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& falsified);
-  void weakenNonDivisibleNonFalsifieds(const aux::predicate<Lit>& falsified, const LARGE& div, Lit asserting);
+  void weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& toWeaken);
+  void weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken);
+  void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
   void repairOrder();
   void weakenSuperfluous(const LARGE& div, bool sorted);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
-  bool divideTo(double limit, const aux::predicate<Lit>& falsified);
+  bool divideTo(double limit, const aux::predicate<Lit>& toWeaken);
   AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level
@@ -493,12 +493,12 @@ struct ConstrExp final : public ConstrExpSuper {
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
       if (global.options.division.is("rto")) {
-        reason->weakenDivideRoundOrdered(reasonCoef, [&](Lit l) { return isFalse(level, l); });
+        reason->weakenDivideRoundOrdered(reasonCoef, [&](Lit l) { return !isFalse(level, l); });
         reason->multiply(conflCoef);
       } else {
         const LARGE reasonSlack = reason->getSlack(level);
         if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
-          reason->weakenDivideRoundOrdered(reasonSlack + 1, [&](Lit l) { return isFalse(level, l); });
+          reason->weakenDivideRoundOrdered(reasonSlack + 1, [&](Lit l) { return !isFalse(level, l); });
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
         } else {
           assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
@@ -532,8 +532,9 @@ struct ConstrExp final : public ConstrExpSuper {
           assert(bestDiv > reasonSlack);
           assert(reasonCoef % bestDiv == 0);
           assert(conflCoef % (reasonCoef / bestDiv) == 0);
-          reason->weakenDivideRoundOrdered(bestDiv, [&](Lit l) { return isFalse(level, l); });
-          reason->multiply(conflCoef / (reasonCoef / bestDiv));
+          const SMALL mult = conflCoef / (reasonCoef / bestDiv);
+          reason->weakenDivideRoundOrdered(bestDiv, [&](Lit l) { return !isFalse(level, l); });
+          reason->multiply(mult);
         }
       }
     }
