@@ -892,7 +892,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
     saturate(false, false);
     removeZeroes();
   } else {
-    weakenSuperfluous(div, false);
+    weakenSuperfluous(div, false, [](Var v) { return true; });
     removeZeroes();
     divideRoundUp(div);
     saturate(true, false);
@@ -901,11 +901,13 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
 
 // NOTE: preserves ordered-ness
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken) {
+void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken,
+                                                       const aux::predicate<Var>& toWeakenSuperfluous) {
   assert(isSortedInDecreasingCoefOrder());
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(toWeaken, div);
+  weakenSuperfluous(div, true, toWeakenSuperfluous);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -916,10 +918,6 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const a
   } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
     simplifyToCardinality(false, getCardinalityDegree());
   } else {
-    weakenSuperfluous(div, true);
-    while (!vars.empty() && coefs[vars.back()] == 0) {
-      popLast();
-    }
     divideRoundUp(div);
     saturate(true, true);
   }
@@ -960,7 +958,7 @@ void ConstrExp<SMALL, LARGE>::repairOrder() {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted) {
+void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken) {
   assert(div > 1);
   assert(!isTautology());
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
@@ -968,7 +966,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted) {
   if (!sorted) {                                             // extra iteration to weaken literals fully
     for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
       Var v = vars[i];
-      if (coefs[v] == 0) continue;
+      if (!toWeaken(v) || coefs[v] == 0) continue;
       SMALL r = aux::abs(coefs[v]);
       if (r <= rem) {
         rem -= r;
@@ -978,7 +976,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted) {
   }
   for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
     Var v = vars[i];
-    if (coefs[v] == 0 || saturatedVar(v)) continue;
+    if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
     SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
     if (r <= rem) {
       rem -= r;

@@ -334,10 +334,11 @@ struct ConstrExp final : public ConstrExpSuper {
   void divideRoundUp(const LARGE& d);
   void divideRoundDown(const LARGE& d);
   void weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& toWeaken);
-  void weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken);
+  void weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken,
+                                const aux::predicate<Var>& toWeakenSuperfluous);
   void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
   void repairOrder();
-  void weakenSuperfluous(const LARGE& div, bool sorted);
+  void weakenSuperfluous(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
@@ -486,6 +487,7 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(conflCoef > 0);
     if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0
       reason->multiply(conflCoef);
+      assert(reason->getSlack(level) <= 0);
     } else {
       if (global.options.multBeforeDiv) {
         reason->multiply(conflCoef);
@@ -493,13 +495,17 @@ struct ConstrExp final : public ConstrExpSuper {
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
       if (global.options.division.is("rto")) {
-        reason->weakenDivideRoundOrdered(reasonCoef, [&](Lit l) { return !isFalse(level, l); });
+        reason->weakenDivideRoundOrdered(
+            reasonCoef, [&](Lit l) { return !isFalse(level, l); }, [](Var v) { return true; });
         reason->multiply(conflCoef);
+        assert(reason->getSlack(level) <= 0);
       } else {
         const LARGE reasonSlack = reason->getSlack(level);
         if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
-          reason->weakenDivideRoundOrdered(reasonSlack + 1, [&](Lit l) { return !isFalse(level, l); });
+          reason->weakenDivideRoundOrdered(
+              reasonSlack + 1, [&](Lit l) { return !isFalse(level, l); }, [](Var v) { return true; });
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
+          assert(reason->getSlack(level) <= 0);
         } else {
           assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
                  reasonCoef / (reasonSlack + 1) >= conflCoef);
@@ -533,15 +539,28 @@ struct ConstrExp final : public ConstrExpSuper {
           assert(reasonCoef % bestDiv == 0);
           assert(conflCoef % (reasonCoef / bestDiv) == 0);
           const SMALL mult = conflCoef / (reasonCoef / bestDiv);
-          reason->weakenDivideRoundOrdered(bestDiv, [&](Lit l) { return !isFalse(level, l); });
-          reason->multiply(mult);
+          if (global.options.cgCancelingUnkns) {
+            for (Var v : reason->vars) {
+              Lit l = reason->getLit(v);
+              global.stats.NUNKNOWNROUNDEDUP += isUnknown(pos, v) && getCoef(-l) >= mult;
+            }
+            reason->weakenDivideRoundOrdered(
+                bestDiv, [&](Lit l) { return !isFalse(level, l) && (isTrue(level, l) || getCoef(-l) < mult); },
+                [&](Var v) { return pos[v] != INF; });
+            reason->multiply(mult);
+            // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
+          } else {
+            reason->weakenDivideRoundOrdered(
+                bestDiv, [&](Lit l) { return !isFalse(level, l); }, [](Var v) { return true; });
+            reason->multiply(mult);
+            assert(reason->getSlack(level) <= 0);
+          }
         }
       }
     }
 
     assert(reason->getCoef(asserting) >= conflCoef);
     assert(reason->getCoef(asserting) < 2 * conflCoef);
-    assert(reason->getSlack(level) <= 0);
     assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
     for (Var v : reason->vars) {

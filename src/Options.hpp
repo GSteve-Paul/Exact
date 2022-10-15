@@ -342,6 +342,7 @@ struct Options {
                            "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
                               "0=< float", [](const DetTime& x) -> bool { return x >= 0; }};
+  BoolOption cgCancelingUnkns{"cg-cancelingunknowns", "Exploit canceling unknowns", true};
 
   const std::vector<Option*> options = {
       &help,
@@ -401,6 +402,7 @@ struct Options {
       &inpProbing,
       &inpAMO,
       &basetime,
+      &cgCancelingUnkns,
   };
   std::unordered_map<std::string, Option*> name2opt;
 

@@ -178,6 +178,7 @@ struct Stats {
   Stat NPROPCHECKS{0, "propagation checks"};
   Stat NADDEDLITERALS{0, "literal additions"};
   Stat NSATURATESTEPS{0, "saturation steps"};
+  Stat NUNKNOWNROUNDEDUP{0, "unknown literals rounded up"};
 
   Stat NCONFL{0, "conflicts"};
   Stat NDECIDE{0, "decisions"};
@@ -418,6 +419,7 @@ struct Stats {
       &NPROPCHECKS,
       &NADDEDLITERALS,
       &NSATURATESTEPS,
+      &NUNKNOWNROUNDEDUP,
       &NTRAILPOPS,
       &NCONSFORMULA,
       &NCONSDOMBREAKER,
