@@ -273,4 +273,6 @@ class Exact {
    * this value.
    */
   void setOption(const std::string& option, const std::string& value);
+
+  // TODO: void getStat()
 };
