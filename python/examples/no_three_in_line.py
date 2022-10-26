@@ -25,7 +25,7 @@ import math
 import exact
 
 # Fixing Ramsey number instance
-if len(sys.argv) != 3:
+if len(sys.argv) not in [3,4]:
     print("Usage: python3 no_three_in_line.py size points")
     print("Using default arguments: python3 no_three_in_line.py 5 10")
     size = 5  # size of the grid
@@ -34,7 +34,9 @@ else:
     size = int(sys.argv[1])  # size of the grid
     points = int(sys.argv[2])  # number of dots to put on the grid
 
-print("Trying to put",points,"points on a",size,"by",size,"grid such that no three points are in the same line.")
+printFormula = len(sys.argv)==4
+
+print("* Trying to put",points,"points on a",size,"by",size,"grid such that no three points are in the same line.", flush=True)
 
 pairs = [[[[False for i in range(0,size)] for i in range(0,size)] for i in range(0,size)] for i in range(0,size)]
 vars = [(i,j) for i in range(0,size) for j in range(0,size)]
@@ -94,7 +96,9 @@ solver.addConstraint([1]*len(variables),variables,True,points,True,points)
 # Initialize Exact
 solver.init([], [])
 
-# solver.printFormula()
+if printFormula:
+    solver.printFormula()
+    exit(0)
 
 # Run Exact
 print("run Exact:")
@@ -105,8 +109,6 @@ solver.printStats()
 if solver.hasSolution():
     print("SAT")
     sol = solver.getLastSolutionFor(variables)
-    print(variables)
-    print(sol)
     for i in range(0,size):
         for j in range(0,size):
             index = i*size+j
