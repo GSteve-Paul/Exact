@@ -25,23 +25,25 @@ import math
 import exact
 
 # Fixing Ramsey number instance
-if len(sys.argv) not in [3,4]:
+if len(sys.argv) not in [4,5]:
     print("Usage: python3 no_three_in_line.py size points")
-    print("Using default arguments: python3 no_three_in_line.py 5 10")
+    print("Using default arguments: python3 no_three_in_line.py 5 10 29")
     size = 5  # size of the grid
     points = 10  # number of dots to put on the grid
+    breakersize = 29  # size of symmetry breaking constraint
 else:
     size = int(sys.argv[1])  # size of the grid
     points = int(sys.argv[2])  # number of dots to put on the grid
+    breakersize = int(sys.argv[3])  # size of symmetry breaking constraint
 
-printFormula = len(sys.argv)==4
+printFormula = len(sys.argv)==5
 
 print("* Trying to put",points,"points on a",size,"by",size,"grid such that no three points are in the same line.", flush=True)
 
 pairs = [[[[False for i in range(0,size)] for i in range(0,size)] for i in range(0,size)] for i in range(0,size)]
 vars = [(i,j) for i in range(0,size) for j in range(0,size)]
 
-diagonals = []
+# Calculate the diagonals
 
 def getDiagonal(v1,v2):
     xdiff = v1[0]-v2[0]
@@ -62,8 +64,8 @@ def getDiagonal(v1,v2):
         v3 = (v3[0]-xdiff,v3[1]-ydiff)
     return res
 
+diagonals = []
 
-# Calculate the diagonals
 for i in range(0,size*size):
     v1 = vars[i]
     for j in range(i+1,size*size):
@@ -76,6 +78,33 @@ for i in range(0,size*size):
                 pairs[v3[0]][v3[1]][v4[0]][v4[1]]=True
         if len(diag)>2:
             diagonals += [diag]
+
+# Calculate the symmetries
+
+s1 = size-1
+sym_x = [((i,j),(i,s1-j)) for i in range(0,size) for j in range(0,size)]
+sym_y = [((i,j),(s1-i,j)) for i in range(0,size) for j in range(0,size)]
+sym_d1 = [((i,j),(j,i)) for i in range(0,size) for j in range(0,size)]
+sym_d2 = [((i,j),(s1-j,s1-i)) for i in range(0,size) for j in range(0,size)]
+sym_r90 = [((i,j),(j,s1-i)) for i in range(0,size) for j in range(0,size)]
+sym_r180 = [((i,j),(s1-i,s1-j)) for i in range(0,size) for j in range(0,size)]
+sym_r270 = [((i,j),(s1-j,i)) for i in range(0,size) for j in range(0,size)]
+symmetries = [sym_x,sym_y,sym_d1,sym_d2,sym_r90,sym_r180,sym_r270]
+
+order = [(i, j) for i in range(0, size) for j in range(0, size)]
+orderdict = {order[i]: i for i in range(0, len(order))}
+
+shortenedSyms = []
+for sym in symmetries:
+    shortened = []
+    for tup in sym:
+        if len(shortened) >= breakersize:
+            break
+        if orderdict[tup[0]] >= orderdict[tup[1]]:
+            continue
+        shortened += [tup]
+    if len(shortened) > 0:
+        shortenedSyms += [shortened]
 
 # Create an Exact solver instance
 solver = exact.Exact()
@@ -91,7 +120,18 @@ for v in vars:
 # Add the constraints
 for diag in diagonals:
     solver.addConstraint([1]*len(diag), [to_var(v) for v in diag], False, 0, True, 2)
+
 solver.addConstraint([1]*len(variables),variables,True,points,True,points)
+
+for sym in shortenedSyms:
+    cfs = []
+    vs = []
+    cf = int(round(pow(2, len(sym))))
+    for (v1, v2) in sym:
+        vs += [to_var(v1), to_var(v2)]
+        cfs += [-cf, cf]
+        cf //= 2
+    solver.addConstraint(cfs,vs,True,0,False,0)
 
 # Initialize Exact
 solver.init([], [])
