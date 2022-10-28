@@ -100,6 +100,36 @@ class Exact {
                       const std::vector<std::string>& vars, const std::string& lb);
 
   /**
+   * Add a reification of a linear constraint, where the constraint holds if the head variable is true.
+   *
+   * @param head: Boolean variable
+   * @param coefs: coefficients of the constraint
+   * @param vars: variables of the constraint
+   * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
+   *
+   * Pass arbitrarily large values using the string-based function variant.
+   */
+  void addRightReification(const std::string& head, const std::vector<long long>& coefs,
+                           const std::vector<std::string>& vars, long long lb);
+  void addRightReification(const std::string& head, const std::vector<std::string>& coefs,
+                           const std::vector<std::string>& vars, const std::string& lb);
+
+  /**
+   * Add a reification of a linear constraint, where the head variable is true if the constraint holds.
+   *
+   * @param head: Boolean variable
+   * @param coefs: coefficients of the constraint
+   * @param vars: variables of the constraint
+   * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
+   *
+   * Pass arbitrarily large values using the string-based function variant.
+   */
+  void addLeftReification(const std::string& head, const std::vector<long long>& coefs,
+                          const std::vector<std::string>& vars, long long lb);
+  void addLeftReification(const std::string& head, const std::vector<std::string>& coefs,
+                          const std::vector<std::string>& vars, const std::string& lb);
+
+  /**
    * Fix the value of a variable.
    *
    * Fixing the variable to different values will lead to unsatisfiability.

@@ -138,6 +138,10 @@ class ILP {
                      const std::optional<bigint>& ub = std::nullopt);
   void addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                       const std::vector<bool>& negated, const bigint& lb);
+  void addRightReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                           const std::vector<bool>& negated, const bigint& lb);
+  void addLeftReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                          const std::vector<bool>& negated, const bigint& lb);
   void fix(IntVar* iv, const bigint& val);
   void boundObjByLastSol();
   void invalidateLastSol();

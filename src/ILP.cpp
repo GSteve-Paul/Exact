@@ -264,6 +264,7 @@ void ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntV
   }
 }
 
+// head <=> rhs -- head iff rhs
 void ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                          const std::vector<bool>& negated, const bigint& lb) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
@@ -282,6 +283,44 @@ void ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const s
   leq->addLhs(leq->degree, -h);
   solver.addConstraint(leq, Origin::FORMULA);
 
+  geq->addRhs(-1);
+  geq->invert();
+  geq->addLhs(geq->degree, h);
+  solver.addConstraint(geq, Origin::FORMULA);
+}
+
+// head => rhs -- head implies rhs
+void ILP::addRightReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                              const std::vector<bool>& negated, const bigint& lb) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw std::invalid_argument("Reification has more than 1e9 terms.");
+  if (!head->isBoolean()) throw std::invalid_argument("Head of reification is not Boolean.");
+
+  IntConstraint ic(coefs, vars, negated, lb);
+  if (keepInput) reifications.push_back({head, ic});
+  CeArb leq = global.cePools.takeArb();
+  ic.toConstrExp(leq, true);
+  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
+
+  Var h = head->encodingVars()[0];
+  leq->addLhs(leq->degree, -h);
+  solver.addConstraint(leq, Origin::FORMULA);
+}
+
+// head <= rhs -- rhs implies head
+void ILP::addLeftReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
+                             const std::vector<bool>& negated, const bigint& lb) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw std::invalid_argument("Reification has more than 1e9 terms.");
+  if (!head->isBoolean()) throw std::invalid_argument("Head of reification is not Boolean.");
+
+  IntConstraint ic(coefs, vars, negated, lb);
+  if (keepInput) reifications.push_back({head, ic});
+  CeArb geq = global.cePools.takeArb();
+  ic.toConstrExp(geq, true);
+  geq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
+
+  Var h = head->encodingVars()[0];
   geq->addRhs(-1);
   geq->invert();
   geq->addLhs(geq->degree, h);

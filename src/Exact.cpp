@@ -107,6 +107,7 @@ void Exact::addConstraint(const std::vector<std::string>& coefs, const std::vect
     unsatState = true;
   }
 }
+
 void Exact::addReification(const std::string& head, const std::vector<long long>& coefs,
                            const std::vector<std::string>& vars, long long lb) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
@@ -122,6 +123,38 @@ void Exact::addReification(const std::string& head, const std::vector<std::strin
   if (unsatState) return;
 
   ilp.addReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+}
+void Exact::addRightReification(const std::string& head, const std::vector<long long>& coefs,
+                                const std::vector<std::string>& vars, long long lb) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (unsatState) return;
+
+  ilp.addRightReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+}
+void Exact::addRightReification(const std::string& head, const std::vector<std::string>& coefs,
+                                const std::vector<std::string>& vars, const std::string& lb) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (unsatState) return;
+
+  ilp.addRightReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+}
+void Exact::addLeftReification(const std::string& head, const std::vector<long long>& coefs,
+                               const std::vector<std::string>& vars, long long lb) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (unsatState) return;
+
+  ilp.addLeftReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+}
+void Exact::addLeftReification(const std::string& head, const std::vector<std::string>& coefs,
+                               const std::vector<std::string>& vars, const std::string& lb) {
+  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (unsatState) return;
+
+  ilp.addLeftReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
 }
 
 void Exact::fix(const std::string& var, long long val) { ilp.fix(getVariable(var), getCoef(val)); }
