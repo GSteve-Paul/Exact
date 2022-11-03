@@ -161,7 +161,7 @@ class Exact {
    * Initialize the solver with an objective function to be minimized.
    *
    * This function should be called exactly once, before the search.
-   * Constraints can still be added after initialization is called.
+   * Constraints and variables can still be added after initialization is called.
    *
    * @param coefs: coefficients of the objective function
    * @param vars: variables of the objective function
