@@ -420,7 +420,7 @@ std::ostream& ILP::printFormula(std::ostream& out) {
   return out;
 }
 
-std::ostream& ILP::printInput(std::ostream& out) {
+std::ostream& ILP::printInput(std::ostream& out) const {
   out << "OBJ " << obj << std::endl;
   std::vector<std::string> reifics;
   for (const auto& pr : reifications) {
@@ -440,6 +440,18 @@ std::ostream& ILP::printInput(std::ostream& out) {
   for (const std::string& s : constrs) out << s << std::endl;
   return out;
 }
+
+std::ostream& ILP::printVars(std::ostream& out) const {
+  for (const auto& v : vars) {
+    out << *(v.get()) << "\n";
+  }
+  out << std::endl;
+  return out;
+}
+
+long long ILP::getNbVars() const { return vars.size(); }
+
+long long ILP::getNbConstraints() const { return reifications.size() + constraints.size(); }
 
 ratio ILP::getLowerBound() const {
   if (!initialized()) throw std::invalid_argument("Objective not yet initialized.");

@@ -160,7 +160,10 @@ class ILP {
   void printOrigSol() const;
   void printFormula();
   std::ostream& printFormula(std::ostream& out);
-  std::ostream& printInput(std::ostream& out);
+  std::ostream& printInput(std::ostream& out) const;
+  std::ostream& printVars(std::ostream& out) const;
+  long long getNbVars() const;
+  long long getNbConstraints() const;
 
   std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs);
 };
