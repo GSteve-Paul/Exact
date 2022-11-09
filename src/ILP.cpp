@@ -373,12 +373,12 @@ SolveState ILP::runOnce() {  // NOTE: also throws AsynchronousInterrupt and Unsa
   return optim->optimize(assumptions);
 }
 
-SolveState ILP::runFull(double timeout) {
+SolveState ILP::runFull(bool stopAtSat, double timeout) {
   if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
   while ((timeout == 0 || global.stats.getSolveTime() < timeout) &&
-         (result == SolveState::INPROCESSED || result == SolveState::SAT)) {
+         (result == SolveState::INPROCESSED || (result == SolveState::SAT && !stopAtSat))) {
     try {
       result = runOnce();
     } catch (const UnsatEncounter& ue) {

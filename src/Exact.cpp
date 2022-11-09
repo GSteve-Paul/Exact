@@ -222,9 +222,9 @@ SolveState Exact::runOnce() {
   return ilp.runOnce();
 }
 
-SolveState Exact::runFull() {
+SolveState Exact::runFull(bool stopAtSat, double timeout) {
   if (unsatState) return SolveState::UNSAT;
-  return ilp.runFull();
+  return ilp.runFull(stopAtSat, timeout);
 }
 
 std::pair<long long, long long> Exact::getObjectiveBounds() const {
