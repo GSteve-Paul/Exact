@@ -491,7 +491,7 @@ std::unordered_set<IntVar*> ILP::getLastCore() {
   } else {
     std::unordered_set<Lit> assumps(assumptions.begin(), assumptions.end());
     CeSuper clone = solver.lastCore->clone(global.cePools);
-    clone->weaken([assumps](Lit l) { return !assumps.count(-l); });
+    clone->weaken([&](Lit l) { return !assumps.count(-l); });
     clone->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     clone->simplifyToClause();
     for (Var v : clone->vars) {
