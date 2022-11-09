@@ -260,8 +260,6 @@ std::vector<std::string> Exact::getLastCore() {
 
 void Exact::printStats() { quit::printFinalStats(ilp); }
 
-void Exact::setVerbosity(int verbosity) { ilp.global.options.verbosity.parse(std::to_string(verbosity)); }
-
 std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& vars) {
   if (unsatState) throw UnsatEncounter();
   return aux::comprehension(ilp.propagate(getVariables(vars)), [](const std::pair<bigint, bigint>& x) {

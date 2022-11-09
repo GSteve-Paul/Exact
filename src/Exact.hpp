@@ -266,13 +266,6 @@ class Exact {
   std::pair<std::string, std::string> getObjectiveBounds_arb() const;
 
   /**
-   * Set the verbosity level of Exact's output.
-   *
-   * @param verbosity: the verbosity level, with 0 being silent and 1 being the default verbosity.
-   */
-  void setVerbosity(int verbosity);
-
-  /**
    * Print Exact's internal statistics
    */
   void printStats();
