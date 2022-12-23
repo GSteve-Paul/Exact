@@ -117,4 +117,12 @@ uint64_t hash(uint64_t x) {
   return x;
 }
 
+uint64_t hashForString(const std::string& els) {
+  uint64_t result = els.size();
+  for (const char el : els) {
+    result ^= hash(std::hash<char>()(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
+  }
+  return result;
+}
+
 }  // namespace xct::aux

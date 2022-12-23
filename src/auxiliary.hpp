@@ -245,6 +245,40 @@ inline bigint abs(const boost::multiprecision::detail::expression<S, R, U>& x) {
 }
 
 template <typename T>
+T min(const T& x, const T& y) {
+  return std::min(x, y);
+}
+template <>
+inline int128 min(const int128& x, const int128& y) {
+  return x <= y ? x : y;
+}
+template <>
+inline int256 min(const int256& x, const int256& y) {
+  return x <= y ? x : y;
+}
+template <>
+inline bigint min(const bigint& x, const bigint& y) {
+  return boost::multiprecision::min(x, y);
+}
+
+template <typename T>
+T max(const T& x, const T& y) {
+  return std::max(x, y);
+}
+template <>
+inline int128 max(const int128& x, const int128& y) {
+  return x >= y ? x : y;
+}
+template <>
+inline int256 max(const int256& x, const int256& y) {
+  return x >= y ? x : y;
+}
+template <>
+inline bigint max(const bigint& x, const bigint& y) {
+  return boost::multiprecision::max(x, y);
+}
+
+template <typename T>
 T gcd(const T& x, const T& y) {
   return std::gcd(x, y);
 }
@@ -395,6 +429,8 @@ uint64_t hashForList(const std::vector<T>& els) {
   }
   return result;
 }
+
+uint64_t hashForString(const std::string& els);
 
 template <typename... Args>
 using predicate = std::function<bool(Args...)>;
