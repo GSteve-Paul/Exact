@@ -29,3 +29,6 @@ cp libExact.so exact/libExact.so
 
 # create and install python module
 python3 -m pip install . -v
+
+# test on a knapsack example
+python3 examples/knapsack_classic.py
