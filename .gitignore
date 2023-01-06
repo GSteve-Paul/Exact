@@ -20,4 +20,7 @@
 /python/README.md
 /python/LICENSE
 /python/exact/used_licenses/COPYING
-
+/python/CMake*
+/python/cmake*
+/python/libExact.so
+/python/Makefile

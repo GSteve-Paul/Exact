@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(Exact)
 
 set(CMAKE_CXX_STANDARD 17)
+set(LINK_WHAT_YOU_USE TRUE)
 
 # include_directories("src" ) # NOTE: don't include non-standard directories, as cppyy complains about those
 

@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 
-# usage: ./make_package.sh 0.4.0 0.5.0
+threads=$1
+if [ $# -eq 0 ]
+  then threads=8
+fi
 
-oldversion="= \"$1\""
-newversion="= \"$2\""
+echo $threads
 
-sed -i "s/$oldversion/$newversion/" setup.py
-sed -i "s/$oldversion/$newversion/" pyproject.toml
-sed -i "s/$oldversion/$newversion/" exact/__init__.py
-
+# get the header files in the right place
 mkdir -p exact/headers/constraints
 mkdir -p exact/headers/datastructures
 mkdir -p exact/headers/propagation
@@ -23,15 +22,10 @@ cp ../README.md README.md
 cp ../LICENSE LICENSE
 cp ../src/used_licenses/COPYING exact/used_licenses/COPYING
 
-cd ../build_lib
-cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=ON -Dsoplex=OFF
-make -j 8
-# ninja -j 8
+# compile shared library
+cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=OFF -Dsoplex=OFF
+make -j $threads
+cp libExact.so exact/libExact.so
 
-cd ../python
-cp ../build_lib/libExact.so exact/libExact.so
-strip --strip-unneeded exact/libExact.so
-
-python3 -m build
-twine upload dist/*
-
+# create and install python module
+python3 -m pip install . -v
