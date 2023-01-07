@@ -23,7 +23,10 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [
 
 ## Python interface
 
-Either compile a shared library locally or use the published [PyPI package](https://pypi.org/project/exact) (Linux only for now) via the `pip` or `poetry` package managers.
+To use the Python interface, compile as a shared library and install it with your package manager (e.g., `pip`).
+On Linux, [this script](https://gitlab.com/JoD/exact/-/blob/main/python/install_package.sh) should do the trick.
+On other systems, something similar should happen.
+Make sure to have the Boost libraries (see dependencies) installed.
 
 The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/main/src/Exact.hpp) contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
