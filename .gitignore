@@ -15,11 +15,7 @@
 /python/Exact.egg*
 /python/dist*
 /python/exact/__pycache__*
-/python/exact/headers*
 /python/exact/*.so
-/python/README.md
-/python/LICENSE
-/python/exact/used_licenses/COPYING
 /python/CMake*
 /python/cmake*
 /python/libExact.so
