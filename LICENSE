@@ -1,13 +1,13 @@
-### Current copyright & license:
+### Main copyright & license:
 
 Copyright (c) 2022 Jo Devriendt
 
 GNU Affero General Public License version 3 - see used_licenses/COPYING.
 
 
-### From commit 5687af8c to 1ad9b921 the following copyright & license applies:
+### From commit 5687af8c to 1ad9b921, and from commit 5701bbdb, the following copyright & license applies:
 
-Copyright (c) 2021 Jo Devriendt, KU Leuven
+Copyright (c) 2021, 2023 Jo Devriendt, KU Leuven
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
