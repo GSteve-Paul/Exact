@@ -11,6 +11,6 @@ cp ../src/datastructures/*.hpp exact/headers/datastructures
 cp ../src/propagation/*.hpp exact/headers/propagation
 cp ../src/used_licenses/*.hpp exact/headers/used_licenses
 cp ../src/*.hpp exact/headers
-cp ../README.md README.md
+cp ../README.md exact/README.md
 cp ../LICENSE exact/used_licenses/LICENSE
 cp ../src/used_licenses/COPYING exact/used_licenses/COPYING

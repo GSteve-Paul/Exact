@@ -32,18 +32,10 @@ name = "exact"
 version = "1.0.0"
 description = "A Python interface to the Exact integer linear programming solver"
 authors = ["Jo Devriendt"]
-license = "AGPLv3"
-readme = "README.md"
+readme = "exact/README.md"
 homepage = "https://gitlab.com/JoD/exact"
 repository = "https://gitlab.com/JoD/exact"
 include = ["exact/libExact.so","exact/headers/**/*.hpp"]
-
-classifiers=[
-    'Development Status :: 1 - Planning',
-    'License :: OSI Approved :: GNU Affero General Public License v3',
-    'Operating System :: POSIX :: Linux',
-    'Programming Language :: Python :: 3',
-]
 
 [tool.poetry.dependencies]
 python = "^3.6.9"
