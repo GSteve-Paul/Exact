@@ -69,7 +69,7 @@ namespace xct {
 
 CandidateCut::CandidateCut(const CeSuper& in, const std::vector<double>& sol) {
   assert(in->isSaturated());
-  in->saturateAndFixOverflowRational(sol);
+  in->saturateAndFixOverflowRational();
   in->toSimple()->copyTo(simpcons);
   // NOTE: simpcons is already in var-normal form
   initialize(sol);
@@ -79,7 +79,7 @@ CandidateCut::CandidateCut(const Constr& in, CRef cref, const std::vector<double
     : cr(cref) {
   assert(in.degree() > 0);
   CeSuper tmp = in.toExpanded(pools);
-  tmp->saturateAndFixOverflowRational(sol);
+  tmp->saturateAndFixOverflowRational();
   if (tmp->isTautology()) {
     return;
   }
@@ -566,7 +566,7 @@ void LpSolver::convertConstraint(const ConstrSimple64& c, soplex::DSVectorReal& 
     if (t.c == 0) continue;
     assert(t.l > 0);
     assert(t.l < lp.numColsReal());
-    assert(t.c < INFLPINT);
+    assert(aux::abs(t.c) < INFLPINT);
     row.add(t.l, t.c);
   }
   rhs = aux::toDouble(c.rhs);
@@ -576,7 +576,7 @@ void LpSolver::convertConstraint(const ConstrSimple64& c, soplex::DSVectorReal& 
 void LpSolver::addConstraint(const CeSuper& c, bool removable, bool upperbound, bool lowerbound) {
   assert(!upperbound || c->orig == Origin::UPPERBOUND);
   assert(!lowerbound || c->orig == Origin::LOWERBOUND);
-  c->saturateAndFixOverflowRational(lpSolution);
+  c->saturateAndFixOverflowRational();
   // TODO: fix below kind of global.logger check
   ID id = global.logger.logProofLineWithInfo(c, "LP");
   if (upperbound || lowerbound) {

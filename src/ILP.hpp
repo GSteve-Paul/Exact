@@ -96,8 +96,8 @@ class ILP {
   std::vector<std::unique_ptr<IntVar>> vars;
   IntConstraint obj;
   bigint objmult = 1;
-  std::unordered_map<std::string, IntVar*> name2var;
-  std::unordered_map<Var, IntVar*> var2var;
+  unordered_map<std::string, IntVar*> name2var;
+  unordered_map<Var, IntVar*> var2var;
 
   int maxSatVars = -1;
 
@@ -132,6 +132,7 @@ class ILP {
   void init();
   SolveState runOnce();
   SolveState runFull(bool stopAtSat = false, double timeout = 0);
+  void runOnce(int argc, char** argv);
 
   void addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                      const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
@@ -155,7 +156,7 @@ class ILP {
   std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;
 
   bool hasCore() const;
-  std::unordered_set<IntVar*> getLastCore();
+  unordered_set<IntVar*> getLastCore();
 
   void printOrigSol() const;
   void printFormula();

@@ -63,7 +63,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-[[nodiscard]] bool IntSet::check() const {
+bool IntSet::check() const {
   for (int i = 0; i < (int)index.reserved() / 2; ++i) {
     assert(index[i] == _unused_() || i == keys[index[i]]);
     assert(index[-i] == _unused_() || -i == keys[index[-i]]);
@@ -92,8 +92,8 @@ IntSet& IntSet::operator=(const IntSet& other) {
 const IntMap<int>& IntSet::getIndex() const { return index; }
 
 void IntSet::resize(int size) { index.resize(size, _unused_()); }
-[[nodiscard]] size_t IntSet::size() const { return keys.size(); }
-[[nodiscard]] bool IntSet::isEmpty() const { return size() == 0; }
+size_t IntSet::size() const { return keys.size(); }
+bool IntSet::isEmpty() const { return size() == 0; }
 
 void IntSet::clear() {
   //    assert(check());  // test
@@ -101,10 +101,10 @@ void IntSet::clear() {
   keys.clear();
 }
 
-[[nodiscard]] const std::vector<int>& IntSet::getKeys() const { return keys; }
-[[nodiscard]] std::vector<int>& IntSet::getKeysMutable() { return keys; }
+const std::vector<int>& IntSet::getKeys() const { return keys; }
+std::vector<int>& IntSet::getKeysMutable() { return keys; }
 
-[[nodiscard]] bool IntSet::has(int key) const {
+bool IntSet::has(int key) const {
   return index.reserved() > (unsigned int)2 * std::abs(key) && index[key] != _unused_();
 }
 

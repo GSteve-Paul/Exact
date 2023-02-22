@@ -77,6 +77,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "external/ankerl/unordered_dense.h"
 
 #if UNIXLIKE
 namespace xct {
@@ -95,6 +96,14 @@ using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
 
+template <typename K, typename V, typename H = std::hash<K>>
+using unordered_map = ankerl::unordered_dense::map<K, V, H>;
+// using unordered_map = std::unordered_map<K, V, H>;
+
+template <typename K, typename H = std::hash<K>>
+using unordered_set = ankerl::unordered_dense::set<K, H>;
+// using unordered_set = std::unordered_set<K, H>;
+
 enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, INPROCESSED };
 std::ostream& operator<<(std::ostream& o, enum SolveState state);
@@ -107,12 +116,12 @@ std::ostream& operator<<(std::ostream& o, const std::pair<T, U>& p) {
   return o;
 }
 template <typename T, typename U, typename HASH>
-std::ostream& operator<<(std::ostream& o, const std::unordered_map<T, U, HASH>& m) {
+std::ostream& operator<<(std::ostream& o, const unordered_map<T, U, HASH>& m) {
   for (const auto& e : m) o << e << ";";
   return o;
 }
 template <typename T, typename HASH>
-std::ostream& operator<<(std::ostream& o, const std::unordered_set<T, HASH>& m) {
+std::ostream& operator<<(std::ostream& o, const unordered_set<T, HASH>& m) {
   for (const auto& e : m) o << e << " ";
   return o;
 }
@@ -412,34 +421,49 @@ uint32_t xorshift32();
 int32_t getRand(int32_t min, int32_t max);
 uint64_t hash(uint64_t x);
 
-template <typename T>
-uint64_t hashForSet(const std::vector<T>& els) {
+template <typename Element, typename Iterable>
+uint64_t hashForSet(const Iterable& els) {
   uint64_t result = els.size();
-  for (const T& el : els) {
-    result ^= hash(std::hash<T>()(el));
+  for (const Element& el : els) {
+    result ^= hash(std::hash<Element>()(el));
+  }
+  return result;
+}
+
+template <typename Element, typename Iterable>
+uint64_t hashForList(const Iterable& els) {
+  uint64_t result = els.size();
+  for (const Element& el : els) {
+    result ^= hash(std::hash<Element>()(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
   }
   return result;
 }
 
 template <typename T>
-uint64_t hashForList(const std::vector<T>& els) {
-  uint64_t result = els.size();
-  for (const T& el : els) {
-    result ^= hash(std::hash<T>()(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
-  }
-  return result;
+const std::string str(const T& t) {
+  std::stringstream ss;
+  ss << t;
+  return ss.str();
 }
-
-uint64_t hashForString(const std::string& els);
 
 template <typename... Args>
 using predicate = std::function<bool(Args...)>;
 
-template <typename CONTAINER, typename LAMBDA>
-auto comprehension(CONTAINER&& container, LAMBDA&& lambda) {
-  std::vector<decltype(lambda(*container.begin()))> w;
+template <typename CONTAINER, typename LAM_MAP>
+auto comprehension(CONTAINER&& container, LAM_MAP&& map) {
+  std::vector<decltype(map(*container.begin()))> w;
   w.reserve(container.size());
-  std::transform(container.begin(), container.end(), std::back_inserter(w), lambda);
+  std::transform(container.begin(), container.end(), std::back_inserter(w), map);
+  return w;
+}
+
+template <typename CONTAINER, typename LAM_MAP, typename LAM_FILTER>
+auto comprehension(CONTAINER&& container, LAM_MAP&& map, LAM_FILTER&& filter) {
+  std::vector<decltype(map(*container.begin()))> w;
+  w.reserve(container.size());
+  for (const auto& el : container) {
+    if (filter(el)) w.push_back(map(el));
+  }
   return w;
 }
 

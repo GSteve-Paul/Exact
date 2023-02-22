@@ -83,7 +83,9 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
           lhs.emplace_back(base, v);
           base *= 2;
         }
-        // TODO: last variable may have a smaller coefficient if the range is not a nice power of two - 1
+        // NOTE: last variable could have a smaller coefficient if the range is not a nice power of two - 1
+        // This would actually increase the number of solutions to the constraint. It would also not guarantee that each
+        // value for an integer variable had a unique Boolean representation. Bad idea probably.
         solver.addConstraint(ConstrSimpleArb({lhs}, -range), Origin::FORMULA);
       } else {  // binary order constraints
         for (Var var = oldvars + 1; var < oldvars + newvars; ++var) {
@@ -480,16 +482,16 @@ std::vector<bigint> ILP::getLastSolutionFor(const std::vector<IntVar*>& vars) co
 
 bool ILP::hasCore() const { return solver.assumptionsClashWithUnits() || solver.lastCore; }
 
-std::unordered_set<IntVar*> ILP::getLastCore() {
+unordered_set<IntVar*> ILP::getLastCore() {
   if (!hasCore()) throw std::invalid_argument("No unsat core to return.");
 
-  std::unordered_set<IntVar*> core;
+  unordered_set<IntVar*> core;
   if (solver.assumptionsClashWithUnits()) {
     for (Lit l : assumptions) {
       if (isUnit(solver.getLevel(), -l)) core.insert(var2var.at(toVar(l)));
     }
   } else {
-    std::unordered_set<Lit> assumps(assumptions.begin(), assumptions.end());
+    unordered_set<Lit> assumps(assumptions.begin(), assumptions.end());
     CeSuper clone = solver.lastCore->clone(global.cePools);
     clone->weaken([&](Lit l) { return !assumps.count(-l); });
     clone->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -603,6 +605,34 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
   solver.addConstraint(invalidator, Origin::INVALIDATOR);
 
   return consequences;
+}
+
+void ILP::runOnce(int argc, char** argv) {
+  global.stats.startTime = std::chrono::steady_clock::now();
+  global.options.parseCommandLine(argc, argv);
+  global.logger.activate(global.options.proofLog.get());
+
+  if (global.options.verbosity.get() > 0) {
+    std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
+  }
+
+  aux::timeCallVoid([&] { parsing::file_read(*this); }, global.stats.PARSETIME);
+
+  if (global.options.noSolve) throw AsynchronousInterrupt();
+  if (global.options.printCsvData) global.stats.printCsvHeader();
+  if (global.options.verbosity.get() > 0) {
+    std::cout << "c " << getSolver().getNbVars() << " vars " << getSolver().getNbConstraints() << " constrs"
+              << std::endl;
+  }
+
+  global.stats.runStartTime = std::chrono::steady_clock::now();
+
+  init();
+  SolveState res = SolveState::INPROCESSED;
+
+  while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
+    res = runOnce();
+  }
 }
 
 }  // namespace xct

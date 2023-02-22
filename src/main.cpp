@@ -24,34 +24,6 @@ or run with the flag --license=AGPLv3. If not, see
 
 using namespace xct;
 
-void runOnce(int argc, char** argv, ILP& ilp) {
-  ilp.global.stats.startTime = std::chrono::steady_clock::now();
-  ilp.global.options.parseCommandLine(argc, argv);
-  ilp.global.logger.activate(ilp.global.options.proofLog.get());
-
-  if (ilp.global.options.verbosity.get() > 0) {
-    std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
-  }
-
-  aux::timeCallVoid([&] { parsing::file_read(ilp); }, ilp.global.stats.PARSETIME);
-
-  if (ilp.global.options.noSolve) throw AsynchronousInterrupt();
-  if (ilp.global.options.printCsvData) ilp.global.stats.printCsvHeader();
-  if (ilp.global.options.verbosity.get() > 0) {
-    std::cout << "c " << ilp.getSolver().getNbVars() << " vars " << ilp.getSolver().getNbConstraints() << " constrs"
-              << std::endl;
-  }
-
-  ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
-
-  ilp.init();
-  SolveState res = SolveState::INPROCESSED;
-
-  while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
-    res = ilp.runOnce();
-  }
-}
-
 int main(int argc, char** argv) {
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
@@ -61,7 +33,7 @@ int main(int argc, char** argv) {
 
   ILP ilp;
   try {
-    runOnce(argc, argv, ilp);
+    ilp.runOnce(argc, argv);
   } catch (const AsynchronousInterrupt& ai) {
     std::cout << "c " << ai.what() << std::endl;
     return quit::exit_INDETERMINATE(ilp);

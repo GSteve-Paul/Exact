@@ -178,7 +178,7 @@ Var Heuristic::nextInActOrder(Var v) const { return actList[v].next; }
 
 Var Heuristic::firstInActOrder() const { return nextInActOrder(0); }
 
-bool Heuristic::testActList(const std::vector<int>& position) const {
+bool Heuristic::testActList([[maybe_unused]] const std::vector<int>& position) const {
   // printActList(position);
   Var current = actList[0].next;
   int tested = 1;

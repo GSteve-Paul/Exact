@@ -404,7 +404,7 @@ struct Options {
       &basetime,
       &cgCancelingUnkns,
   };
-  std::unordered_map<std::string, Option*> name2opt;
+  unordered_map<std::string, Option*> name2opt;
 
   Options() {
     for (Option* opt : options) name2opt[opt->name] = opt;
@@ -422,7 +422,7 @@ struct Options {
 
   void parseCommandLine(int argc, char** argv) {
     if (argc == 0) return;
-    std::unordered_map<std::string, std::string> opt_val;
+    unordered_map<std::string, std::string> opt_val;
     for (int i = 1; i < argc; i++) {
       std::string arg = argv[i];
       if (arg.substr(0, 2) != "--") {

@@ -106,23 +106,18 @@ uint32_t xorshift32() {
 }  // namespace rng
 
 int32_t getRand(int32_t min, int32_t max) {
+  // based on https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction
   assert(min < max);
   return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) + min;
 }
 
 uint64_t hash(uint64_t x) {
+  // based on
+  // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key/12996028#12996028
   x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
   x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
   x = x ^ (x >> 31);
   return x;
-}
-
-uint64_t hashForString(const std::string& els) {
-  uint64_t result = els.size();
-  for (const char el : els) {
-    result ^= hash(std::hash<char>()(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
-  }
-  return result;
 }
 
 }  // namespace xct::aux

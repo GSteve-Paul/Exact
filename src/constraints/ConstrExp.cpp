@@ -284,7 +284,7 @@ bool ConstrExp<SMALL, LARGE>::testConstraint() const {
   assert(degree == calcDegree());
   assert(rhs == calcRhs());
   assert(coefs.size() == index.size());
-  std::unordered_set<Var> usedvars;
+  unordered_set<Var> usedvars;
   usedvars.insert(vars.cbegin(), vars.cend());
   for (Var v = 1; v < (int)coefs.size(); ++v) {
     assert(used(v) || coefs[v] == 0);
@@ -816,23 +816,18 @@ void ConstrExp<SMALL, LARGE>::saturateAndFixOverflow(const IntMap<int>& level, i
  * @post: none of the coefficients, degree, or rhs exceed INFLPINT
  */
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::saturateAndFixOverflowRational(const std::vector<double>& lpSolution) {
+void ConstrExp<SMALL, LARGE>::saturateAndFixOverflowRational() {
   removeZeroes();
   LARGE maxRhs = std::max(getDegree(), aux::abs(getRhs()));
+  // TODO: why do we look at degree and not max coefficient here?
   if (maxRhs >= INFLPINT) {
     LARGE d = aux::ceildiv<LARGE>(maxRhs, INFLPINT - 1);
     assert(d > 1);
-    for (Var v : vars) {
-      Lit l = getLit(v);
-      if ((l < 0 ? 1 - lpSolution[v] : lpSolution[v]) <= 1 - global.options.lpIntolerance.get()) {
-        weaken(-static_cast<SMALL>(coefs[v] % d), v);
-      }
-    }
-    divideRoundUp(d);
+    divideRoundDown(d);
   }
   saturate(true, false);
   assert(getDegree() < INFLPINT);
-  assert(getRhs() < INFLPINT);
+  assert(aux::abs(getRhs()) < INFLPINT);
 }
 
 template <typename SMALL, typename LARGE>
@@ -892,7 +887,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
     saturate(false, false);
     removeZeroes();
   } else {
-    weakenSuperfluous(div, false, [](Var v) { return true; });
+    weakenSuperfluous(div, false, []([[maybe_unused]] Var v) { return true; });
     removeZeroes();
     divideRoundUp(div);
     saturate(true, false);

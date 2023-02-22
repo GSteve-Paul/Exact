@@ -138,7 +138,7 @@ Logger& Solver::getLogger() { return global.logger; }
 // ---------------------------------------------------------------------
 // Assignment manipulation
 
-void Solver::enqueueUnit(Lit l, Var v, CRef r) {
+void Solver::enqueueUnit([[maybe_unused]] Lit l, Var v, CRef r) {
   assert(toVar(l) == v);
   assert(global.stats.NUNITS == trail.size());
   ++global.stats.NUNITS;
@@ -819,7 +819,7 @@ const std::vector<Lit>& Solver::getLastSolution() const {
 // Garbage collection
 
 void Solver::rebuildLit2Cons() {
-  for (std::unordered_map<CRef, int>& col : lit2cons) {
+  for (unordered_map<CRef, int>& col : lit2cons) {
     col.clear();
   }
   for (const CRef& cr : constraints) {
@@ -832,7 +832,7 @@ void Solver::rebuildLit2Cons() {
   }
 }
 
-void updatePtr(const std::unordered_map<uint32_t, CRef>& crefmap, CRef& cr) { cr = crefmap.at(cr.ofs); }
+void updatePtr(const unordered_map<uint32_t, CRef>& crefmap, CRef& cr) { cr = crefmap.at(cr.ofs); }
 
 // We assume in the garbage collection method that reduceDB() is the
 // only place where constraints are deleted.
@@ -842,7 +842,7 @@ void Solver::garbage_collect() {
 
   ca.wasted = 0;
   ca.at = 0;
-  std::unordered_map<uint32_t, CRef> crefmap;
+  unordered_map<uint32_t, CRef> crefmap;
   for (int i = 1; i < (int)constraints.size(); ++i) assert(constraints[i - 1].ofs < constraints[i].ofs);
   for (CRef& cr : constraints) {
     uint32_t offset = cr.ofs;
@@ -1031,7 +1031,7 @@ void Solver::removeSatisfiedNonImpliedsAtRoot() {
   for (int i = lastRemoveSatisfiedsTrail; i < (int)trail.size(); ++i) {
     Lit l = trail[i];
     if (!isOrig(toVar(l))) continue;  // no column view for auxiliary variables for now
-    for (const std::pair<const CRef, int>& pr : lit2cons[l]) {
+    for (const std::pair<CRef, int>& pr : lit2cons[l]) {
       Constr& c = ca[pr.first];
       assert(!c.isMarkedForDelete());  // should be erased from lit2cons when marked for delete
       if (c.isSeen()) continue;
@@ -1065,14 +1065,14 @@ void Solver::derivePureLits() {
 
 void Solver::dominanceBreaking() {
   removeSatisfiedNonImpliedsAtRoot();
-  std::unordered_set<Lit> inUnsaturatableConstraint;
+  unordered_set<Lit> inUnsaturatableConstraint;
   IntSet& saturating = global.isPool.take();
   IntSet& intersection = global.isPool.take();
   for (Lit l = -getNbVars(); l <= getNbVars(); ++l) {
     if (l == 0 || !isOrig(toVar(l)) || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l))
       continue;
     assert(saturating.isEmpty());
-    std::unordered_map<CRef, int>& col = lit2cons[-l];
+    unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {
       addUnitConstraint(l, Origin::PURE);
       removeSatisfiedNonImpliedsAtRoot();
@@ -1086,7 +1086,7 @@ void Solver::dominanceBreaking() {
     lit2consOldSize[-l] = col.size();
     Constr* first = &ca[col.cbegin()->first];
     unsigned int firstUnsatIdx = first->getUnsaturatedIdx();
-    for (const std::pair<const CRef, int>& pr : col) {
+    for (const std::pair<CRef, int>& pr : col) {
       Constr& c = ca[pr.first];
       unsigned int unsatIdx = c.getUnsaturatedIdx();
       if (unsatIdx < firstUnsatIdx) {  // smaller number of starting lits
@@ -1113,7 +1113,7 @@ void Solver::dominanceBreaking() {
     for (auto it = range.first; it != range.second; ++it) {
       saturating.remove(-it->second);  // not interested in anything that already implies l TODO: is this needed?
     }
-    for (const std::pair<const CRef, int>& pr : col) {
+    for (const std::pair<CRef, int>& pr : col) {
       if (saturating.isEmpty()) break;
       Constr& c = ca[pr.first];
       unsigned int unsatIdx = c.getUnsaturatedIdx();
@@ -1320,7 +1320,7 @@ void Solver::probeRestart(Lit next) {
   }
 }
 
-void Solver::detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe) {
+void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vector<Lit>& previousProbe) {
   assert(decisionLevel() == 0);
   if (considered.count(seed) || isKnown(getPos(), seed) || probe(-seed, true) == State::FAIL) {
     return;  // if probe fails, found unit literals instead
@@ -1427,7 +1427,7 @@ void Solver::runAtMostOneDetection() {
   DetTime currentDetTime = global.stats.getDetTime();
   DetTime oldDetTime = currentDetTime;
   std::vector<Lit> previous;
-  std::unordered_set<Lit> considered;
+  unordered_set<Lit> considered;
   Lit next = heur->firstInActOrder();
   while (next != 0 && (global.options.inpAMO.get() == 1 ||
                        global.stats.ATMOSTONEDETTIME <

@@ -47,7 +47,7 @@ void Implications::removeImplied(Lit a) {
   el.clear();
 }
 
-const std::unordered_set<Lit>& Implications::getImplieds(Lit a) const { return implieds[a]; }
+const unordered_set<Lit>& Implications::getImplieds(Lit a) const { return implieds[a]; }
 
 long long Implications::nImpliedsInMemory() const { return implInMem; }
 
