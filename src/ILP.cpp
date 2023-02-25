@@ -57,29 +57,34 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   return o;
 }
 
-IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, int loglim)
-    : name(n), lowerBound(lb), upperBound(ub), logEncoding(getRange() > loglim) {
+Encoding opt2enc(const Options& opt) {
+  return opt.ilpEncoding.is("order") ? Encoding::ORDER : opt.ilpEncoding.is("log") ? Encoding::LOG : Encoding::ONEHOT;
+}
+IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e)
+    : name(n), lowerBound(lb), upperBound(ub), encoding(getRange() <= 1 ? Encoding::ORDER : e) {
   assert(lb <= ub);
-  assert(!nameAsId || isBoolean());
 
   if (nameAsId) {
+    assert(isBoolean());
     Var next = std::stoi(getName());
     solver.setNbVars(next, true);
-    encoding.emplace_back(next);
+    encodingVars.emplace_back(next);
   } else {
     const bigint range = getRange();
     if (range != 0) {
-      int newvars = logEncoding ? aux::msb(range) + 1 : static_cast<int>(range);
+      int newvars = encoding == Encoding::LOG
+                        ? aux::msb(range) + 1
+                        : static_cast<int>(range) + static_cast<int>(encoding == Encoding::ONEHOT);
       int oldvars = solver.getNbVars();
       solver.setNbVars(oldvars + newvars, true);
       for (Var var = oldvars + 1; var <= oldvars + newvars; ++var) {
-        encoding.emplace_back(var);
+        encodingVars.emplace_back(var);
       }
-      if (logEncoding) {  // upper bound constraint
+      if (encoding == Encoding::LOG) {  // upper bound constraint
         std::vector<Term<bigint>> lhs;
-        lhs.reserve(encoding.size());
+        lhs.reserve(encodingVars.size());
         bigint base = -1;
-        for (const Var v : encoding) {
+        for (const Var v : encodingVars) {
           lhs.emplace_back(base, v);
           base *= 2;
         }
@@ -87,10 +92,22 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
         // This would actually increase the number of solutions to the constraint. It would also not guarantee that each
         // value for an integer variable had a unique Boolean representation. Bad idea probably.
         solver.addConstraint(ConstrSimpleArb({lhs}, -range), Origin::FORMULA);
-      } else {  // binary order constraints
+      } else if (encoding == Encoding::ORDER) {
         for (Var var = oldvars + 1; var < oldvars + newvars; ++var) {
           solver.addConstraint(ConstrSimple32({{1, var}, {-1, var + 1}}, 0), Origin::FORMULA);
         }
+      } else {
+        assert(encoding == Encoding::ONEHOT);
+        std::vector<Term<int>> lhs1;
+        lhs1.reserve(newvars - oldvars);
+        std::vector<Term<int>> lhs2;
+        lhs2.reserve(newvars - oldvars);
+        for (int var = oldvars + 1; var <= oldvars + newvars; ++var) {
+          lhs1.emplace_back(1, var);
+          lhs2.emplace_back(-1, var);
+        }
+        solver.addConstraint(ConstrSimple32(lhs1, 1), Origin::FORMULA);
+        solver.addConstraint(ConstrSimple32(lhs2, -1), Origin::FORMULA);
       }
     }
   }
@@ -98,22 +115,34 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
 
 bigint IntVar::getValue(const std::vector<Lit>& sol) const {
   bigint val = getLowerBound();
-  if (usesLogEncoding()) {
+  if (encoding == Encoding::LOG) {
     bigint base = 1;
-    for (Var v : encodingVars()) {
+    for (Var v : getEncodingVars()) {
       assert(v < (int)sol.size());
       assert(toVar(sol[v]) == v);
       if (sol[v] > 0) val += base;
       base *= 2;
     }
-  } else {
+  } else if (encoding == Encoding::ORDER) {
     int sum = 0;
-    for (Var v : encodingVars()) {
+    for (Var v : getEncodingVars()) {
       assert(v < (int)sol.size());
       assert(toVar(sol[v]) == v);
       sum += sol[v] > 0;
     }
     val += sum;
+  } else {
+    assert(encoding == Encoding::ONEHOT);
+    int ith = 0;
+    for (Var v : getEncodingVars()) {
+      assert(v < (int)sol.size());
+      assert(toVar(sol[v]) == v);
+      if (sol[v] > 0) {
+        val += ith;
+        break;
+      }
+      ++ith;
+    }
   }
   return val;
 }
@@ -142,23 +171,30 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   for (const IntTerm& t : lhs) {
     assert(!t.negated);
     if (t.v->getRange() == 0) continue;
-    assert(!t.v->encodingVars().empty());
-    if (t.v->usesLogEncoding()) {
+    assert(!t.v->getEncodingVars().empty());
+    if (t.v->getEncoding() == Encoding::LOG) {
       bigint base = 1;
-      for (const Var v : t.v->encodingVars()) {
+      for (const Var v : t.v->getEncodingVars()) {
         input->addLhs(base * t.c, v);
         base *= 2;
       }
-    } else {
-      for (const Var v : t.v->encodingVars()) {
+    } else if (t.v->getEncoding() == Encoding::ORDER) {
+      for (const Var v : t.v->getEncodingVars()) {
         input->addLhs(t.c, v);
+      }
+    } else {
+      assert(t.v->getEncoding() == Encoding::ONEHOT);
+      int ith = 0;
+      for (const Var v : t.v->getEncodingVars()) {
+        input->addLhs(ith * t.c, v);
+        ++ith;
       }
     }
   }
   if (!useLowerBound) input->invert();
 }
 
-// Normalization removes remove negated terms and turns the constraint in GTE or EQ
+// Normalization removes negated terms and turns the constraint in GTE or EQ
 void IntConstraint::normalize() {
   for (IntTerm& t : lhs) {
     if (t.negated) {
@@ -187,10 +223,10 @@ IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const big
     throw std::invalid_argument(ss.str());
   }
   vars.push_back(
-      std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, global.options.ilpEncoding.get()));
+      std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, opt2enc(solver.getOptions())));
   IntVar* iv = vars.back().get();
   name2var.insert({name, iv});
-  for (Var v : iv->encodingVars()) {
+  for (Var v : iv->getEncodingVars()) {
     var2var.insert({v, iv});
   }
   return iv;
@@ -226,22 +262,28 @@ void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntV
     assert(iv);
     assert(vals[i] <= iv->getUpperBound());
     bigint val = vals[i] - iv->getLowerBound();
+    assert(val >= 0);
     if (val < 0) throw std::invalid_argument("Assumed value for " + iv->getName() + " exceeds variable bounds.");
-    if (iv->usesLogEncoding()) {
-      for (const Var v : iv->encodingVars()) {
+    if (iv->getEncoding() == Encoding::LOG) {
+      for (const Var v : iv->getEncodingVars()) {
         assumptions.push_back(val % 2 == 0 ? -v : v);
         val /= 2;
       }
       assert(val == 0);
-    } else {
-      assert(val <= iv->encodingVars().size());
+    } else if (iv->getEncoding() == Encoding::ORDER) {
+      assert(val <= iv->getEncodingVars().size());
       int val_int = static_cast<int>(val);
       if (val_int > 0) {
-        assumptions.push_back(iv->encodingVars()[val_int - 1]);
+        assumptions.push_back(iv->getEncodingVars()[val_int - 1]);
       }
-      if (val_int < (int)iv->encodingVars().size()) {
-        assumptions.push_back(-iv->encodingVars()[val_int]);
+      if (val_int < (int)iv->getEncodingVars().size()) {
+        assumptions.push_back(-iv->getEncodingVars()[val_int]);
       }
+    } else {
+      assert(iv->getEncoding() == Encoding::ONEHOT);
+      assert(val <= iv->getEncodingVars().size());
+      int val_int = static_cast<int>(val);
+      assumptions.push_back(iv->getEncodingVars()[val_int]);
     }
   }
 }
@@ -280,7 +322,7 @@ void ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const s
   leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
   CeArb geq = global.cePools.takeArb();
   leq->copyTo(geq);
-  Var h = head->encodingVars()[0];
+  Var h = head->getEncodingVars()[0];
 
   leq->addLhs(leq->degree, -h);
   solver.addConstraint(leq, Origin::FORMULA);
@@ -304,7 +346,7 @@ void ILP::addRightReification(IntVar* head, const std::vector<bigint>& coefs, co
   ic.toConstrExp(leq, true);
   leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
 
-  Var h = head->encodingVars()[0];
+  Var h = head->getEncodingVars()[0];
   leq->addLhs(leq->degree, -h);
   solver.addConstraint(leq, Origin::FORMULA);
 }
@@ -322,7 +364,7 @@ void ILP::addLeftReification(IntVar* head, const std::vector<bigint>& coefs, con
   ic.toConstrExp(geq, true);
   geq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
 
-  Var h = head->encodingVars()[0];
+  Var h = head->getEncodingVars()[0];
   geq->addRhs(-1);
   geq->invert();
   geq->addLhs(geq->degree, h);
@@ -342,7 +384,7 @@ void ILP::invalidateLastSol() {
   std::vector<Var> vars;
   vars.reserve(name2var.size());
   for (const auto& tup : name2var) {
-    aux::appendTo(vars, tup.second->encodingVars());
+    aux::appendTo(vars, tup.second->getEncodingVars());
   }
   solver.invalidateLastSol(vars);
 }
@@ -353,7 +395,7 @@ void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs) {
   std::vector<Var> vars;
   vars.reserve(ivs.size());
   for (IntVar* iv : ivs) {
-    aux::appendTo(vars, iv->encodingVars());
+    aux::appendTo(vars, iv->getEncodingVars());
   }
   solver.invalidateLastSol(vars);
 }
@@ -531,13 +573,11 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
   Ce32 invalidator = global.cePools.take32();
   invalidator->addRhs(1);
   for (IntVar* iv : ivs) {
-    for (Var v : iv->encodingVars()) {
+    for (Var v : iv->getEncodingVars()) {
       invalidator->addLhs(1, -solver.getLastSolution()[v]);
     }
   }
-  for (Lit l : assumptions) {
-    invalidator->addLhs(-1, -l);  // no need to add assumptions to invalidator
-  }
+  // TODO: check that assumptions and input do not overlap
   Var marker = solver.getNbVars() + 1;
   solver.setNbVars(marker, true);
   assumptions.push_back(-marker);
@@ -574,9 +614,9 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
   for (IntVar* iv : ivs) {
     bigint lb = iv->getLowerBound();
     bigint ub = iv->getUpperBound();
-    if (iv->usesLogEncoding()) {
+    if (iv->getEncoding() == Encoding::LOG) {
       bigint coef = 1;
-      for (Var v : iv->encodingVars()) {
+      for (Var v : iv->getEncodingVars()) {
         if (invalidator->hasLit(-v)) {
           lb += coef;
         }
@@ -585,12 +625,40 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
         }
         coef *= 2;
       }
-    } else {
-      for (Var v : iv->encodingVars()) {
+    } else if (iv->getEncoding() == Encoding::ORDER) {
+      for (Var v : iv->getEncodingVars()) {
         lb += invalidator->hasLit(-v);
         ub -= invalidator->hasLit(v);
       }
+    } else {
+      assert(iv->getEncoding() == Encoding::ONEHOT);
+      int ith = 0;
+      for (Var v : iv->getEncodingVars()) {
+        if (invalidator->hasLit(v)) {
+          lb = iv->getLowerBound() + ith;
+          ub = lb;
+          break;
+        }
+        ++ith;
+      }
+      if (ub != lb) {
+        for (Var v : iv->getEncodingVars()) {
+          if (invalidator->hasLit(-v)) {
+            ++lb;
+          } else {
+            break;
+          }
+        }
+        for (int j = iv->getEncodingVars().size() - 1; j >= 0; --j) {
+          if (invalidator->hasLit(-iv->getEncodingVars()[j])) {
+            --ub;
+          } else {
+            break;
+          }
+        }
+      }
     }
+    assert(lb <= ub);
     consequences.push_back({lb, ub});
   }
 

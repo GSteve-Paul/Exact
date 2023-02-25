@@ -37,8 +37,10 @@ See the file LICENSE or run with the flag --license=MIT.
 
 namespace xct {
 
+enum class Encoding { ORDER, LOG, ONEHOT };
+
 struct IntVar {
-  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, int loglim);
+  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e);
 
   [[nodiscard]] const std::string& getName() const { return name; }
   [[nodiscard]] const bigint& getUpperBound() const { return upperBound; }
@@ -47,17 +49,17 @@ struct IntVar {
   [[nodiscard]] bigint getRange() const { return upperBound - lowerBound; }
   [[nodiscard]] bool isBoolean() const { return lowerBound == 0 && upperBound == 1; }
 
-  bool usesLogEncoding() const { return logEncoding; }
-  const std::vector<Var>& encodingVars() const { return encoding; }
-  bigint getValue(const std::vector<Lit>& sol) const;
+  [[nodiscard]] Encoding getEncoding() const { return encoding; }
+  [[nodiscard]] const std::vector<Var>& getEncodingVars() const { return encodingVars; }
+  [[nodiscard]] bigint getValue(const std::vector<Lit>& sol) const;
 
  private:
   const std::string name;
   const bigint lowerBound;
   const bigint upperBound;
 
-  const bool logEncoding;
-  std::vector<Var> encoding;
+  const Encoding encoding;
+  std::vector<Var> encodingVars;
 };
 std::ostream& operator<<(std::ostream& o, const IntVar& x);
 

@@ -316,10 +316,7 @@ struct Options {
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
   EnumOption cgReform{"cg-reform", "When the objective is reformulated", "always", {"always", "depletion", "never"}};
-  ValOption<int> ilpEncoding{"ilp-orderenc",
-                             "Upper bound on the range size of order-encoded integer variables. Integer variables with "
-                             "a larger range will use the binary encoding.",
-                             12, "2 =< int", [](const int& x) -> bool { return x >= 2; }};
+  EnumOption ilpEncoding{"ilp-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
   BoolOption ilpContinuous{"ilp-continuous",
                            "Accept continuous variables by treating them as integer variables. This restricts the "
                            "problem and may yield UNSAT when no integer solution exists.",
