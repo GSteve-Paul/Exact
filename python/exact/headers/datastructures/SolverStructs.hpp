@@ -129,9 +129,7 @@ static inline void* xrealloc(void* ptr, size_t size) {
 
 }  // namespace xct
 
-namespace std {
 template <>
-struct hash<xct::CRef> {
+struct std::hash<xct::CRef> {
   size_t operator()(xct::CRef const& cr) const noexcept { return cr.ofs; }
 };
-}  // namespace std

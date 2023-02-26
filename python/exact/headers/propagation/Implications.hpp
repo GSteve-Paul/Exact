@@ -38,7 +38,7 @@ namespace xct {
 class Solver;
 
 class Implications : public Propagator {
-  IntMap<std::unordered_set<Lit>> implieds;
+  IntMap<unordered_set<Lit>> implieds;
   long long implInMem = 0;
 
  public:
@@ -47,7 +47,7 @@ class Implications : public Propagator {
 
   void addImplied(Lit a, Lit b);
   void removeImplied(Lit a);
-  const std::unordered_set<Lit>& getImplieds(Lit a) const;
+  const unordered_set<Lit>& getImplieds(Lit a) const;
   long long nImpliedsInMemory() const;
 
   State propagate();

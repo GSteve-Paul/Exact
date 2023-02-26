@@ -152,7 +152,7 @@ class LpSolver {
 
   std::vector<RowData> row2data;
   std::vector<int> toRemove;  // rows
-  std::unordered_map<ID, AdditionData> toAdd;
+  unordered_map<ID, AdditionData> toAdd;
   BoundData boundsToAdd[2];  // [0] is upper bound, [1] lower bound
 
   std::vector<CandidateCut> candidateCuts;
@@ -186,7 +186,7 @@ class LpSolver {
   void pruneCuts();
 
   inline static double nonIntegrality(double a) { return aux::abs(std::round(a) - a); }
-  inline static bool validVal(double a) { return std::round(a) == a && std::abs(a) < INFLPINT; }
+  inline static bool validVal(double a) { return std::round(a) == a && aux::abs(a) < INFLPINT; }
   // NOTE: double type can only store ranges of integers up to ~9e15
 };
 

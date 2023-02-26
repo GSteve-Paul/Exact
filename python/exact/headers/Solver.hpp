@@ -114,8 +114,8 @@ class Solver {
   Heuristic* heur = &freeHeur;
 
   std::vector<CRef> constraints;  // row-based view
-  std::unordered_map<ID, CRef> external;
-  IntMap<std::unordered_map<CRef, int>> lit2cons;  // column-based view, int is index of literal in CRef
+  unordered_map<ID, CRef> external;
+  IntMap<unordered_map<CRef, int>> lit2cons;  // column-based view, int is index of literal in CRef
   int lastRemoveSatisfiedsTrail = 0;
   std::unordered_multimap<Lit, Lit> binaryImplicants;  // l implies multimap[l]
   IntMap<int> lit2consOldSize;
@@ -270,8 +270,8 @@ class Solver {
   Var lastRestartNext = 0;
   void probeRestart(Lit next);
 
-  void detectAtMostOne(Lit seed, std::unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
-  std::unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
+  void detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
+  unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
   void runAtMostOneDetection();
 };
 

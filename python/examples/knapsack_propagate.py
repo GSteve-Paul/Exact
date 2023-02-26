@@ -11,13 +11,36 @@
 # The second part consists of the last 3 lines, which calculates the variable bounds that hold for all optimal solutions
 # where variable 1 takes value 1.
 
+
+import sys
+# Get the encoding for integer variables from the command line if available
+encoding = "log" if len(sys.argv)<2 else sys.argv[1]
+
+def lb(v):
+    return -(v%3)
+def ub(v):
+    return 1+v%2
+
 # Construct a non-trivial integer knapsack instance
 nvars = 50
 var_range = range(1, nvars + 1)
 vars = [str(x) for x in var_range]
-coefs_o = [5 * x + (x % 3) for x in var_range]
-coefs_c = [5 * x + (x % 4) for x in var_range]
-rhs_c = int(sum(coefs_c) * 3 / 4)
+coefs_o = [5 * x + (x % 4) for x in var_range]
+coefs_c = [5 * x + (x % 5) for x in var_range]
+rhs_c = int(sum(coefs_c) / 3)
+
+#for v in vars:
+    #print(str(lb(int(v)))+" =< c("+v+"). c("+v+") =< "+str(ub(int(v)))+".")
+
+#for c,v in zip(coefs_c,vars):
+    #print(str(c)+"*c("+v+") +",end=" ")
+#print("0 >= "+str(rhs_c)+".")
+
+#for c,v in zip(coefs_o,vars):
+    #print(str(c)+"*c("+v+") +",end=" ")
+#print("0 = o().")
+
+#exit(0)
 
 # Import the exact package, e.g., from PyPI using poetry or pip
 import exact
@@ -27,7 +50,7 @@ solver = exact.Exact()
 
 # Add the variables. All have lower bound 0, but some have an upper bound of 1, others of 2.
 for v in var_range:
-    solver.addVariable(str(v), 0, 1 + v % 2)
+    solver.addVariable(str(v), lb(v), ub(v), encoding)
 
 # Add an auxiliary variable to turn off the objective function when the optimal is found.
 solver.addVariable("aux", 0, 1)
@@ -72,10 +95,13 @@ while result != 0:
         print("optimal:", optVal)
         break
 
-# Assume variable 1 to take value 1
-solver.setAssumptions({'1'}, {1})
+# Clear aux assumption to fix objective to optimal value
+solver.setAssumptions({}, {})
+
+# Note we could propagate under assumptions by just setting those assumptions:
+# solver.setAssumptions({1},{1})
 
 # Calculate the variable bounds shared by the set of optimal solutions under the assumptions
 propagatedBounds = [tuple(b) for b in solver.propagate(vars)]
 print("Propagated:",
-     {vars[i]: propagatedBounds[i] for i in range(0, len(vars)) if propagatedBounds[i] != (0, 1 + (i + 1) % 2)})
+     {vars[i]: propagatedBounds[i] for i in range(0, len(vars)) if propagatedBounds[i] != (lb(i+1), ub(i+1))})

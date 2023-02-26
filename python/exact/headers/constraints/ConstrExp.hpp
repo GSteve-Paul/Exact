@@ -156,7 +156,7 @@ struct ConstrExpSuper {
   virtual bool isSaturated(const aux::predicate<Lit>& toWeaken) const = 0;
   virtual void getSaturatedLits(IntSet& out) const = 0;
   virtual void saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, Lit asserting) = 0;
-  virtual void saturateAndFixOverflowRational(const std::vector<double>& lpSolution) = 0;
+  virtual void saturateAndFixOverflowRational() = 0;
   virtual bool fitsInDouble() const = 0;
   virtual bool largestCoefFitsIn(int bits) const = 0;
 
@@ -310,7 +310,7 @@ struct ConstrExp final : public ConstrExpSuper {
    * @post: saturated
    * @post: none of the coefficients, degree, or rhs exceed INFLPINT
    */
-  void saturateAndFixOverflowRational(const std::vector<double>& lpSolution);
+  void saturateAndFixOverflowRational();
   bool fitsInDouble() const;
   bool largestCoefFitsIn(int bits) const;
 
@@ -496,14 +496,14 @@ struct ConstrExp final : public ConstrExpSuper {
       assert(reasonCoef > 0);
       if (global.options.division.is("rto")) {
         reason->weakenDivideRoundOrdered(
-            reasonCoef, [&](Lit l) { return !isFalse(level, l); }, [](Var v) { return true; });
+            reasonCoef, [&](Lit l) { return !isFalse(level, l); }, []([[maybe_unused]] Var v) { return true; });
         reason->multiply(conflCoef);
         assert(reason->getSlack(level) <= 0);
       } else {
         const LARGE reasonSlack = reason->getSlack(level);
         if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
           reason->weakenDivideRoundOrdered(
-              reasonSlack + 1, [&](Lit l) { return !isFalse(level, l); }, [](Var v) { return true; });
+              reasonSlack + 1, [&](Lit l) { return !isFalse(level, l); }, []([[maybe_unused]] Var v) { return true; });
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
           assert(reason->getSlack(level) <= 0);
         } else {
@@ -551,7 +551,7 @@ struct ConstrExp final : public ConstrExpSuper {
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
             reason->weakenDivideRoundOrdered(
-                bestDiv, [&](Lit l) { return !isFalse(level, l); }, [](Var v) { return true; });
+                bestDiv, [&](Lit l) { return !isFalse(level, l); }, []([[maybe_unused]] Var v) { return true; });
             reason->multiply(mult);
             assert(reason->getSlack(level) <= 0);
           }

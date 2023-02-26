@@ -37,8 +37,10 @@ See the file LICENSE or run with the flag --license=MIT.
 
 namespace xct {
 
+enum class Encoding { ORDER, LOG, ONEHOT };
+
 struct IntVar {
-  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, int loglim);
+  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e);
 
   [[nodiscard]] const std::string& getName() const { return name; }
   [[nodiscard]] const bigint& getUpperBound() const { return upperBound; }
@@ -47,17 +49,17 @@ struct IntVar {
   [[nodiscard]] bigint getRange() const { return upperBound - lowerBound; }
   [[nodiscard]] bool isBoolean() const { return lowerBound == 0 && upperBound == 1; }
 
-  bool usesLogEncoding() const { return logEncoding; }
-  const std::vector<Var>& encodingVars() const { return encoding; }
-  bigint getValue(const std::vector<Lit>& sol) const;
+  [[nodiscard]] Encoding getEncoding() const { return encoding; }
+  [[nodiscard]] const std::vector<Var>& getEncodingVars() const { return encodingVars; }
+  [[nodiscard]] bigint getValue(const std::vector<Lit>& sol) const;
 
  private:
   const std::string name;
   const bigint lowerBound;
   const bigint upperBound;
 
-  const bool logEncoding;
-  std::vector<Var> encoding;
+  const Encoding encoding;
+  std::vector<Var> encodingVars;
 };
 std::ostream& operator<<(std::ostream& o, const IntVar& x);
 
@@ -96,8 +98,8 @@ class ILP {
   std::vector<std::unique_ptr<IntVar>> vars;
   IntConstraint obj;
   bigint objmult = 1;
-  std::unordered_map<std::string, IntVar*> name2var;
-  std::unordered_map<Var, IntVar*> var2var;
+  unordered_map<std::string, IntVar*> name2var;
+  unordered_map<Var, IntVar*> var2var;
 
   int maxSatVars = -1;
 
@@ -119,7 +121,8 @@ class ILP {
   void setMaxSatVars() { maxSatVars = solver.getNbVars(); }
   int getMaxSatVars() const { return maxSatVars; }
 
-  IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, bool nameAsId = false);
+  IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound,
+                 const std::string& encoding = "", bool nameAsId = false);
   IntVar* getVarFor(const std::string& name) const;  // returns nullptr if it does not exist
   std::vector<IntVar*> getVariables() const;
   std::pair<bigint, bigint> getBounds(IntVar* iv) const;
@@ -132,6 +135,7 @@ class ILP {
   void init();
   SolveState runOnce();
   SolveState runFull(bool stopAtSat = false, double timeout = 0);
+  void runOnce(int argc, char** argv);
 
   void addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                      const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
@@ -155,7 +159,7 @@ class ILP {
   std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;
 
   bool hasCore() const;
-  std::unordered_set<IntVar*> getLastCore();
+  unordered_set<IntVar*> getLastCore();
 
   void printOrigSol() const;
   void printFormula();
