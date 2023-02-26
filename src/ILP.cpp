@@ -557,8 +557,7 @@ void ILP::printOrigSol() const {
   }
 }
 
-// NOTE: also throws AsynchronousInterrupt
-std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs) {
+Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
   global.options.boundUpper.set(false);
   global.options.pureLits.set(false);
   global.options.domBreakLim.set(0);
@@ -567,7 +566,7 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
     result = runOnce();
   }
   if (result == SolveState::INCONSISTENT) {
-    throw std::invalid_argument("Propagation cannot be done with inconsistent assumptions.");
+    return nullptr;
   }
   assert(result == SolveState::SAT);
 
@@ -609,6 +608,13 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
   invalidator->weaken(marker);
   invalidator->removeZeroes();
   assert(invalidator->getDegree() == 0);
+  return invalidator;
+}
+
+// NOTE: also throws AsynchronousInterrupt
+std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs) {
+  Ce32 invalidator = getSolIntersection(ivs);
+  if (invalidator == nullptr) std::vector<std::pair<bigint, bigint>>();
 
   std::vector<std::pair<bigint, bigint>> consequences;
   consequences.reserve(ivs.size());
@@ -669,8 +675,53 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
     assert(lb <= ub);
     consequences.push_back({lb, ub});
   }
-
   return consequences;
+}
+
+// NOTE: also throws AsynchronousInterrupt
+std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs) {
+  for (IntVar* iv : ivs) {
+    if (iv->getEncodingVars().size() > 1 && iv->getEncoding() != Encoding::ONEHOT) {
+      throw std::invalid_argument("IntVar " + iv->getName() + " is not one-hot encoded");
+    }
+  }
+
+  Ce32 invalidator = getSolIntersection(ivs);
+  std::vector<std::vector<bigint>> domainResidues;
+  domainResidues.reserve(ivs.size());
+  if (invalidator == nullptr) {  // inconsistent assumptions
+    for ([[maybe_unused]] IntVar* iv : ivs) domainResidues.emplace_back();
+    return domainResidues;
+  }
+
+  for (IntVar* iv : ivs) {
+    if (iv->getEncodingVars().empty()) {
+      assert(iv->getLowerBound() == iv->getUpperBound());
+      domainResidues.push_back({iv->getLowerBound()});
+      continue;
+    }
+    domainResidues.emplace_back();
+    if (iv->getEncodingVars().size() == 1) {
+      assert(iv->getEncoding() == Encoding::ORDER);
+      Var v = iv->getEncodingVars()[0];
+      if (!invalidator->hasLit(-v)) {
+        domainResidues.back().push_back(iv->getLowerBound());
+      }
+      if (!invalidator->hasLit(v)) {
+        domainResidues.back().push_back(iv->getUpperBound());
+      }
+      continue;
+    }
+    assert(iv->getEncoding() == Encoding::ONEHOT);
+    bigint val = iv->getLowerBound();
+    for (Var v : iv->getEncodingVars()) {
+      if (!invalidator->hasLit(v)) {
+        domainResidues.back().push_back(val);
+      }
+      ++val;
+    }
+  }
+  return domainResidues;
 }
 
 void ILP::runOnce(int argc, char** argv) {

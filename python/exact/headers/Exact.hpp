@@ -287,17 +287,31 @@ class Exact {
   void printFormula();
 
   /**
-   * Under the assumptions set by setAssumptions, return implied lower and upper bound for the non-assumed variables in
-   * vars. If no solution exists under the assumptions, return empty vector.
+   * Under the assumptions set by setAssumptions, return implied lower and upper bound for variables in vars. If no
+   * solution exists under the assumptions, return empty vector.
    *
    * @param vars: variables for which to calculate the implied bounds
    * @return: a pair of bounds for each variable in vars
    * @throw: UnsatEncounter exception in the case the instance is unsatisfiable. Propagation is undefined in this case.
    *
-   * Return arbitrarily large values using the string-based function variant '_arb'.
+   * Return arbitrarily large bounds using the string-based function variant '_arb'.
    */
   std::vector<std::pair<long long, long long> > propagate(const std::vector<std::string>& vars);
   std::vector<std::pair<std::string, std::string> > propagate_arb(const std::vector<std::string>& vars);
+
+  /**
+   * Under the assumptions set by setAssumptions, return pruned domains for variables in vars. If no solution exists
+   * under the assumptions, all domains will be empty.
+   *
+   * @param vars: variables for which to calculate the implied bounds
+   * @pre: all variables are either 0-1 or use the one-hot encoding
+   * @return: a pair of bounds for each variable in vars
+   * @throw: UnsatEncounter exception in the case the instance is unsatisfiable. Propagation is undefined in this case.
+   *
+   * Return arbitrarily large domain values using the string-based function variant '_arb'.
+   */
+  std::vector<std::vector<long long> > pruneDomains(const std::vector<std::string>& vars);
+  std::vector<std::vector<std::string> > pruneDomains_arb(const std::vector<std::string>& vars);
 
   /**
    * Set solver options. Run with --help or look at Options.hpp to find the possible options.

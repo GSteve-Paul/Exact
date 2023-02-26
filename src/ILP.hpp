@@ -110,6 +110,8 @@ class ILP {
   std::vector<IntConstraint> constraints;
   std::vector<std::pair<IntVar*, IntConstraint>> reifications;
 
+  Ce32 getSolIntersection(const std::vector<IntVar*>& ivs);
+
  public:
   Global global;
 
@@ -170,6 +172,7 @@ class ILP {
   long long getNbConstraints() const;
 
   std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs);
+  std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 

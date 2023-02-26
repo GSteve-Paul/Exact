@@ -8,12 +8,8 @@
 
 # This example showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
 # The first part is identical to knapsack_implied.py, generating a state of the solver where all solutions are optimal.
-# The second part consists of the last lines, which calculate the variable bounds that hold for all optimal solutions.
-
-
-import sys
-# Get the encoding for integer variables from the command line if available
-encoding = "log" if len(sys.argv)<2 else sys.argv[1]
+# The second part consists of the last 3 lines, which calculates the variable bounds that hold for all optimal solutions
+# where variable 1 takes value 1.
 
 def lb(v):
     return -(v%3)
@@ -36,7 +32,7 @@ solver = exact.Exact()
 
 # Add the variables. All have lower bound 0, but some have an upper bound of 1, others of 2.
 for v in var_range:
-    solver.addVariable(str(v), lb(v), ub(v), encoding)
+    solver.addVariable(str(v), lb(v), ub(v), "onehot")
 
 # Add an auxiliary variable to turn off the objective function when the optimal is found.
 solver.addVariable("aux", 0, 1)
@@ -87,7 +83,21 @@ solver.setAssumptions({}, {})
 # Note we could propagate under assumptions by just setting those assumptions:
 # solver.setAssumptions({1},{1})
 
+# add "2"!=0
+solver.addVariable("aux2",0,1)
+# aux2 => "2">=1
+# "2" -3*aux2 >= -2
+# !aux2 => "2"=<-1
+# -1 >= "2" -3*aux2
+solver.addConstraint([1,-3], ["2","aux2"], True, -2, True, -1)
+
 # Calculate the variable bounds shared by the set of optimal solutions under the assumptions
 propagatedBounds = [tuple(b) for b in solver.propagate(vars)]
-print("Propagated:",
-     {vars[i]: propagatedBounds[i] for i in range(0, len(vars)) if propagatedBounds[i] != (lb(i+1), ub(i+1))})
+print("Propagated bounds:",
+     {vars[i]: propagatedBounds[i] for i in range(0, len(vars))})
+
+# Instead of bound propagation, let's prune the domains of the variables
+# Note that this requires a one-hot encoding of the variables
+prunedDomains = solver.pruneDomains(vars)
+print("Pruned domains:",
+     {vars[i]: [j for j in prunedDomains[i]] for i in range(0, len(vars))})

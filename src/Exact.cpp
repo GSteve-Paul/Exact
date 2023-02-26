@@ -275,11 +275,20 @@ std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<
 std::vector<std::pair<std::string, std::string>> Exact::propagate_arb(const std::vector<std::string>& vars) {
   if (unsatState) throw UnsatEncounter();
   return aux::comprehension(ilp.propagate(getVariables(vars)), [](const std::pair<bigint, bigint>& x) {
-    std::stringstream lower;
-    lower << x.first;
-    std::stringstream upper;
-    upper << x.second;
-    return std::pair<std::string, std::string>(lower.str(), upper.str());
+    return std::pair<std::string, std::string>((std::stringstream() << x.first).str(),
+                                               (std::stringstream() << x.second).str());
+  });
+}
+
+std::vector<std::vector<long long>> Exact::pruneDomains(const std::vector<std::string>& vars) {
+  if (unsatState) throw UnsatEncounter();
+  return aux::comprehension(ilp.pruneDomains(getVariables(vars)), [](const std::vector<bigint>& x) {
+    return aux::comprehension(x, [](const bigint& y) { return static_cast<long long>(y); });
+  });
+}
+std::vector<std::vector<std::string>> Exact::pruneDomains_arb(const std::vector<std::string>& vars) {
+  return aux::comprehension(ilp.pruneDomains(getVariables(vars)), [](const std::vector<bigint>& x) {
+    return aux::comprehension(x, [](const bigint& y) { return (std::stringstream() << y).str(); });
   });
 }
 
