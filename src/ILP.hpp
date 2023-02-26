@@ -121,7 +121,8 @@ class ILP {
   void setMaxSatVars() { maxSatVars = solver.getNbVars(); }
   int getMaxSatVars() const { return maxSatVars; }
 
-  IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, bool nameAsId = false);
+  IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound,
+                 const std::string& encoding = "", bool nameAsId = false);
   IntVar* getVarFor(const std::string& name) const;  // returns nullptr if it does not exist
   std::vector<IntVar*> getVariables() const;
   std::pair<bigint, bigint> getBounds(IntVar* iv) const;

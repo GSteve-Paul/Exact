@@ -57,8 +57,8 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   return o;
 }
 
-Encoding opt2enc(const Options& opt) {
-  return opt.ilpEncoding.is("order") ? Encoding::ORDER : opt.ilpEncoding.is("log") ? Encoding::LOG : Encoding::ONEHOT;
+Encoding opt2enc(const std::string& opt) {
+  return opt == "order" ? Encoding::ORDER : opt == ("log") ? Encoding::LOG : Encoding::ONEHOT;
 }
 IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e)
     : name(n), lowerBound(lb), upperBound(ub), encoding(getRange() <= 1 ? Encoding::ORDER : e) {
@@ -99,9 +99,9 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
       } else {
         assert(encoding == Encoding::ONEHOT);
         std::vector<Term<int>> lhs1;
-        lhs1.reserve(newvars - oldvars);
+        lhs1.reserve(encodingVars.size());
         std::vector<Term<int>> lhs2;
-        lhs2.reserve(newvars - oldvars);
+        lhs2.reserve(encodingVars.size());
         for (int var = oldvars + 1; var <= oldvars + newvars; ++var) {
           lhs1.emplace_back(1, var);
           lhs2.emplace_back(-1, var);
@@ -215,15 +215,16 @@ ILP::ILP(bool keepIn) : solver(global), obj({}, {}, {}, 0), keepInput(keepIn) {
   global.stats.startTime = std::chrono::steady_clock::now();
 }
 
-IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, bool nameAsId) {
+IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound,
+                    const std::string& encoding, bool nameAsId) {
   assert(!getVarFor(name));
   if (lowerbound > upperbound) {
     std::stringstream ss;
     ss << "Lower bound " << lowerbound << " of " << name << " exceeds upper bound " << upperbound;
     throw std::invalid_argument(ss.str());
   }
-  vars.push_back(
-      std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, opt2enc(solver.getOptions())));
+  vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound,
+                                          opt2enc(encoding == "" ? solver.getOptions().ilpEncoding.get() : encoding)));
   IntVar* iv = vars.back().get();
   name2var.insert({name, iv});
   for (Var v : iv->getEncodingVars()) {
@@ -577,7 +578,7 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
       invalidator->addLhs(1, -solver.getLastSolution()[v]);
     }
   }
-  // TODO: check that assumptions and input do not overlap
+  // NOTE: assumptions and input can overlap, and that is ok
   Var marker = solver.getNbVars() + 1;
   solver.setNbVars(marker, true);
   assumptions.push_back(-marker);
@@ -615,26 +616,33 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
     bigint lb = iv->getLowerBound();
     bigint ub = iv->getUpperBound();
     if (iv->getEncoding() == Encoding::LOG) {
+      bigint ub2 =
+          lb;  // NOTE: upper bound is not a nice power of two difference with lower bound, so we cannot easily use it
       bigint coef = 1;
       for (Var v : iv->getEncodingVars()) {
         if (invalidator->hasLit(-v)) {
           lb += coef;
         }
-        if (invalidator->hasLit(v)) {
-          ub -= coef;
+        if (!invalidator->hasLit(v)) {
+          ub2 += coef;
         }
         coef *= 2;
       }
+      ub = aux::min(ub, ub2);
     } else if (iv->getEncoding() == Encoding::ORDER) {
+      int lbi = 0;
+      int ubi = 0;
       for (Var v : iv->getEncodingVars()) {
-        lb += invalidator->hasLit(-v);
-        ub -= invalidator->hasLit(v);
+        lbi += invalidator->hasLit(-v);
+        ubi -= invalidator->hasLit(v);
       }
+      lb += lbi;
+      ub += ubi;
     } else {
       assert(iv->getEncoding() == Encoding::ONEHOT);
       int ith = 0;
       for (Var v : iv->getEncodingVars()) {
-        if (invalidator->hasLit(v)) {
+        if (invalidator->hasLit(-v)) {
           lb = iv->getLowerBound() + ith;
           ub = lb;
           break;
@@ -643,14 +651,14 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
       }
       if (ub != lb) {
         for (Var v : iv->getEncodingVars()) {
-          if (invalidator->hasLit(-v)) {
+          if (invalidator->hasLit(v)) {
             ++lb;
           } else {
             break;
           }
         }
         for (int j = iv->getEncodingVars().size() - 1; j >= 0; --j) {
-          if (invalidator->hasLit(-iv->getEncodingVars()[j])) {
+          if (invalidator->hasLit(iv->getEncodingVars()[j])) {
             --ub;
           } else {
             break;
@@ -661,16 +669,6 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
     assert(lb <= ub);
     consequences.push_back({lb, ub});
   }
-
-  invalidator->invert();
-  int invsize = invalidator->vars.size();
-  invalidator->addRhs(invsize - invalidator->getDegree());
-  assert(invalidator->getDegree() == invsize);
-  for (Lit l : assumptions) {
-    invalidator->addLhs(invsize, -l);
-  }
-  // TODO: make below a learned constraint instead of input
-  solver.addConstraint(invalidator, Origin::INVALIDATOR);
 
   return consequences;
 }

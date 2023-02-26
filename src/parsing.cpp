@@ -147,7 +147,7 @@ void file_read(ILP& ilp) {
 
 IntVar* indexedBoolVar(ILP& ilp, const std::string& name) {
   if (IntVar* res = ilp.getVarFor(name); res) return res;
-  return ilp.addVar(name, 0, 1, true);
+  return ilp.addVar(name, 0, 1, "", true);
 }
 
 void opb_read(std::istream& in, ILP& ilp) {

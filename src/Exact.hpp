@@ -54,11 +54,13 @@ class Exact {
    * @param name: name of the variable
    * @param lb: lower bound
    * @param ub: upper bound
+   * @param encoding: "log", "order" or "onehot"
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void addVariable(const std::string& name, long long lb, long long ub);
-  void addVariable(const std::string& name, const std::string& lb, const std::string& ub);
+  void addVariable(const std::string& name, long long lb, long long ub, const std::string& encoding = "");
+  void addVariable(const std::string& name, const std::string& lb, const std::string& ub,
+                   const std::string& encoding = "");
 
   /**
    * Returns a list of variables added to the solver.

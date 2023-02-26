@@ -67,14 +67,15 @@ Exact::Exact() : ilp(), unsatState(false) {
   ilp.global.logger.activate(ilp.global.options.proofLog.get());
 }
 
-void Exact::addVariable(const std::string& name, long long lb, long long ub) {
+void Exact::addVariable(const std::string& name, long long lb, long long ub, const std::string& encoding) {
   if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
-  ilp.addVar(name, getCoef(lb), getCoef(ub));
+  ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
 }
 
-void Exact::addVariable(const std::string& name, const std::string& lb, const std::string& ub) {
+void Exact::addVariable(const std::string& name, const std::string& lb, const std::string& ub,
+                        const std::string& encoding) {
   if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
-  ilp.addVar(name, getCoef(lb), getCoef(ub));
+  ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
 }
 
 std::vector<std::string> Exact::getVariables() const {
@@ -219,7 +220,12 @@ void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::s
 
 SolveState Exact::runOnce() {
   if (unsatState) return SolveState::UNSAT;
-  return ilp.runOnce();
+  try {
+    return ilp.runOnce();
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+    return SolveState::UNSAT;
+  }
 }
 
 SolveState Exact::runFull(bool stopAtSat, double timeout) {
