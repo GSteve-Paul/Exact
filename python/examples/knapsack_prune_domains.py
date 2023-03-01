@@ -17,7 +17,7 @@ def ub(v):
     return 1+v%2
 
 # Construct a non-trivial integer knapsack instance
-nvars = 50
+nvars = 10
 var_range = range(1, nvars + 1)
 vars = [str(x) for x in var_range]
 coefs_o = [5 * x + (x % 4) for x in var_range]
@@ -96,8 +96,11 @@ propagatedBounds = [tuple(b) for b in solver.propagate(vars)]
 print("Propagated bounds:",
      {vars[i]: propagatedBounds[i] for i in range(0, len(vars))})
 
-# Instead of bound propagation, let's prune the domains of the variables
+# Instead of bound propagation, let's prune the domains of the variables, a priori excluding 0
 # Note that this requires a one-hot encoding of the variables
-prunedDomains = solver.pruneDomains(vars)
+
+from cppyy.gbl.std import vector
+givenDomains = vector([vector([val for val in range(lb(v),ub(v)+1) if val!=0]) for v in var_range])
+prunedDomains = solver.pruneDomains(vars,givenDomains)
 print("Pruned domains:",
      {vars[i]: [j for j in prunedDomains[i]] for i in range(0, len(vars))})

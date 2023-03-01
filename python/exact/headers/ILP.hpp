@@ -172,7 +172,7 @@ class ILP {
   long long getNbConstraints() const;
 
   std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs);
-  std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs);
+  void pruneDomains(const std::vector<IntVar*>& ivs, std::vector<std::vector<bigint>>& doms);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 

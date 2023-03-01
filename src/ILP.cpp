@@ -37,7 +37,7 @@ namespace xct {
 std::ostream& operator<<(std::ostream& o, const IntVar& x) {
   o << x.getName();
   if (!x.isBoolean()) {
-    o << "[" << 0 << "," << x.getUpperBound() - x.getLowerBound() << "]";
+    o << "[" << x.getLowerBound() << "," << x.getUpperBound() << "]";
   }
   return o;
 }
@@ -679,36 +679,71 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
 }
 
 // NOTE: also throws AsynchronousInterrupt
-std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs) {
+void ILP::pruneDomains(const std::vector<IntVar*>& ivs, std::vector<std::vector<bigint>>& doms) {
+  if (ivs.size() != doms.size()) {
+    throw std::invalid_argument("Length of variable list (" + std::to_string(ivs.size()) + ") and domain list (" +
+                                std::to_string(doms.size()) + ") for pruneDomains");
+  }
+  assumptions.clear();
   for (IntVar* iv : ivs) {
     if (iv->getEncodingVars().size() > 1 && iv->getEncoding() != Encoding::ONEHOT) {
       throw std::invalid_argument("IntVar " + iv->getName() + " is not one-hot encoded");
     }
   }
-
-  Ce32 invalidator = getSolIntersection(ivs);
-  std::vector<std::vector<bigint>> domainResidues;
-  domainResidues.reserve(ivs.size());
-  if (invalidator == nullptr) {  // inconsistent assumptions
-    for ([[maybe_unused]] IntVar* iv : ivs) domainResidues.emplace_back();
-    return domainResidues;
+  for (auto& dom : doms) {
+    if (dom.empty()) {
+      for (auto& dom2 : doms) dom2.clear();
+      return;
+    }
   }
-
-  for (IntVar* iv : ivs) {
-    if (iv->getEncodingVars().empty()) {
-      assert(iv->getLowerBound() == iv->getUpperBound());
-      domainResidues.push_back({iv->getLowerBound()});
+  for (int i = 0; i < (int)doms.size(); ++i) {
+    IntVar* iv = ivs[i];
+    std::vector<bigint>& dom = doms[i];
+    assert(!dom.empty());
+    if (iv->getEncodingVars().size() == 1) {
+      assert(iv->getEncoding() == Encoding::ORDER);
+      if (dom.size() == 2) continue;
+      assert(dom.size() == 1);
+      Var encvar = iv->getEncodingVars()[0];
+      assumptions.push_back(dom[0] == iv->getLowerBound() ? -encvar : encvar);
       continue;
     }
-    domainResidues.emplace_back();
+    if (!std::is_sorted(dom.begin(), dom.end())) std::sort(dom.begin(), dom.end());
+    assert(iv->getEncoding() == Encoding::ONEHOT);
+    bigint val = iv->getLowerBound();
+    int j = 0;
+    dom.push_back(iv->getUpperBound() + 1);
+    for (const bigint& dval : dom) {
+      assert(dval >= val);
+      while (dval > val) {
+        assumptions.push_back(-iv->getEncodingVars()[j]);
+        ++j;
+        ++val;
+      }
+      ++j;
+      ++val;
+    }
+  }
+
+  for (auto& dom : doms) dom.clear();
+  Ce32 invalidator = getSolIntersection(ivs);
+  if (invalidator == nullptr) return;  // inconsistent assumptions
+
+  for (int i = 0; i < (int)ivs.size(); ++i) {
+    IntVar* iv = ivs[i];
+    if (iv->getEncodingVars().empty()) {
+      assert(iv->getLowerBound() == iv->getUpperBound());
+      doms[i].push_back(iv->getLowerBound());
+      continue;
+    }
     if (iv->getEncodingVars().size() == 1) {
       assert(iv->getEncoding() == Encoding::ORDER);
       Var v = iv->getEncodingVars()[0];
       if (!invalidator->hasLit(-v)) {
-        domainResidues.back().push_back(iv->getLowerBound());
+        doms[i].push_back(iv->getLowerBound());
       }
       if (!invalidator->hasLit(v)) {
-        domainResidues.back().push_back(iv->getUpperBound());
+        doms[i].push_back(iv->getUpperBound());
       }
       continue;
     }
@@ -716,12 +751,11 @@ std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& i
     bigint val = iv->getLowerBound();
     for (Var v : iv->getEncodingVars()) {
       if (!invalidator->hasLit(v)) {
-        domainResidues.back().push_back(val);
+        doms[i].push_back(val);
       }
       ++val;
     }
   }
-  return domainResidues;
 }
 
 void ILP::runOnce(int argc, char** argv) {
