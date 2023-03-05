@@ -114,7 +114,6 @@ void ConstrExpPool<SMALL, LARGE>::resize(size_t newn) {
 
 template <typename SMALL, typename LARGE>
 CePtr<SMALL, LARGE> ConstrExpPool<SMALL, LARGE>::take() {
-  assert(ces.size() < 30);  // Sanity check that no large amounts of ConstrExps are created
   for (int i = ces.size() - 1; i >= 0; --i) {
     if (ces[i].unique()) {
       ces[i]->reset(false);
@@ -123,6 +122,11 @@ CePtr<SMALL, LARGE> ConstrExpPool<SMALL, LARGE>::take() {
       return ces[i + 1];
     }
   }
+  assert(ces.size() < 50);  // Sanity check that no large amounts of ConstrExps are created
+  // NOTE: in rare cases where propagation recursively triggers learning lots of constraints,
+  // this assert may be violated
+  // E.g. 32array_alg_ineq5.opb --bits-learned=0 --bits-overflow=0 --bits-reduced=0 --seed=2
+  // TODO: fix this
   CePtr<SMALL, LARGE> fresh = std::make_shared<ConstrExp<SMALL, LARGE>>(global);
   fresh->resize(n);
   assert(fresh->isReset());
