@@ -102,8 +102,9 @@ void Equalities::setNbVars(int nvars) {
 }
 
 State Equalities::propagate() {
-  for (; nextTrailPos < (int)solver.trail.size(); ++nextTrailPos) {
+  while (nextTrailPos < (int)solver.trail.size()) {
     Lit l = solver.trail[nextTrailPos];
+    ++nextTrailPos;
     assert(isTrue(solver.getLevel(), l));
     const Repr& repr = getRepr(l);
     bool added = false;

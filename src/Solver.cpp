@@ -609,8 +609,9 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   assert(isLearned(orig));
   CeSuper learned = ce->clone(global.cePools);
   learned->orig = orig;
-  if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities(), true);
-  learned->selfSubsumeImplications(implications);
+  // NOTE: below two lines can cause loops when the equalities or implications are not yet propagated
+  //  if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities(), true);
+  //  learned->selfSubsumeImplications(implications);
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   if (learned->isTautology()) return;
   learned->saturateAndFixOverflow(getLevel(), global.options.bitsLearned.get(), global.options.bitsLearned.get(), 0);
@@ -622,6 +623,7 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
     global.logger.logInconsistency(learned, getLevel(), getPos());
     throw UnsatEncounter();
   }
+  assert(learned->hasNegativeSlack(level) == ce->hasNegativeSlack(level));
   backjumpTo(assertionLevel);
   assert(!learned->hasNegativeSlack(level));
   if (isAsserting) learned->heuristicWeakening(level, position);
