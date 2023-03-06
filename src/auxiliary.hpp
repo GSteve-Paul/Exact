@@ -354,20 +354,24 @@ inline unsigned msb(const bigint& x) {
 }
 
 template <typename T>
-T pow(const T& x, unsigned y) {
-  return std::pow(x, y);
+T powtwo(unsigned y) {
+  return uint32_t(1) << y;
 }
 template <>
-inline int128 pow(const int128& x, unsigned y) {
-  return static_cast<int128>(boost::multiprecision::pow(boost::multiprecision::int128_t(x), y));
+inline long long powtwo(unsigned y) {
+  return uint64_t(1) << y;
 }
 template <>
-inline int256 pow(const int256& x, unsigned y) {
-  return boost::multiprecision::pow(x, y);
+inline int128 powtwo(unsigned y) {
+  return static_cast<int128>(boost::multiprecision::pow(boost::multiprecision::int128_t(2), y));
 }
 template <>
-inline bigint pow(const bigint& x, unsigned y) {
-  return boost::multiprecision::pow(x, y);
+inline int256 powtwo(unsigned y) {
+  return boost::multiprecision::pow(int256(2), y);
+}
+template <>
+inline bigint powtwo(unsigned y) {
+  return boost::multiprecision::pow(bigint(2), y);
 }
 
 inline double log(double base, double arg) { return std::log(arg) / std::log(base); }

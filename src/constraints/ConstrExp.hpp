@@ -430,7 +430,7 @@ struct ConstrExp final : public ConstrExpSuper {
       DG maxVal =
           std::max<DG>(aux::abs(terms[0].c), std::max<DG>(degr, aux::abs(_rhs)) / INF);  // largest coef in front
       if (maxVal > 0 && (int)aux::msb(maxVal) >= bitOverflow) {
-        div = aux::ceildiv<DG>(maxVal, aux::pow<DG>(2, bitReduce) - 1);
+        div = aux::ceildiv<DG>(maxVal, aux::powtwo<DG>(bitReduce) - 1);
       }
     }
     if (div == 1) {
