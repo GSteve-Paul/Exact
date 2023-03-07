@@ -222,6 +222,67 @@ enum class Origin {
   EQUALITY,       // equality enforcing constraint
   IMPLICATION,    // binary implication clause
 };
+inline std::ostream& operator<<(std::ostream& o, enum Origin orig) {
+  switch (orig) {
+    case (Origin::UNKNOWN):
+      o << "UNKNOWN";
+      break;
+    case (Origin::FORMULA):
+      o << "FORMULA";
+      break;
+    case (Origin::DOMBREAKER):
+      o << "DOMBREAKER";
+      break;
+    case (Origin::INVALIDATOR):
+      o << "INVALIDATOR";
+      break;
+    case (Origin::PURE):
+      o << "PURE";
+      break;
+    case (Origin::COREGUIDED):
+      o << "COREGUIDED";
+      break;
+    case (Origin::HARDENEDBOUND):
+      o << "HARDENEDBOUND";
+      break;
+    case (Origin::UPPERBOUND):
+      o << "UPPERBOUND";
+      break;
+    case (Origin::LOWERBOUND):
+      o << "LOWERBOUND";
+      break;
+    case (Origin::LEARNED):
+      o << "LEARNED";
+      break;
+    case (Origin::FARKAS):
+      o << "FARKAS";
+      break;
+    case (Origin::DUAL):
+      o << "DUAL";
+      break;
+    case (Origin::GOMORY):
+      o << "GOMORY";
+      break;
+    case (Origin::PROBING):
+      o << "PROBING";
+      break;
+    case (Origin::DETECTEDAMO):
+      o << "DETECTEDAMO";
+      break;
+    case (Origin::REDUCED):
+      o << "REDUCED";
+      break;
+    case (Origin::EQUALITY):
+      o << "EQUALITY";
+      break;
+    case (Origin::IMPLICATION):
+      o << "IMPLICATION";
+      break;
+    default:
+      assert(false);
+  }
+  return o;
+}
 
 inline bool isNonImplied(Origin o) {
   return o == Origin::FORMULA || o == Origin::DOMBREAKER || o == Origin::INVALIDATOR;

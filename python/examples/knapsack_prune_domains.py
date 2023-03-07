@@ -91,6 +91,9 @@ solver.addVariable("aux2",0,1)
 # -1 >= "2" -3*aux2
 solver.addConstraint([1,-3], ["2","aux2"], True, -2, True, -1)
 
+for v in var_range:
+    solver.setSingleAssumption(str(v),[val for val in range(lb(v),ub(v)+1) if val!=0])
+
 # Calculate the variable bounds shared by the set of optimal solutions under the assumptions
 propagatedBounds = [tuple(b) for b in solver.propagate(vars)]
 print("Propagated bounds:",
@@ -98,9 +101,6 @@ print("Propagated bounds:",
 
 # Instead of bound propagation, let's prune the domains of the variables, a priori excluding 0
 # Note that this requires a one-hot encoding of the variables
-
-from cppyy.gbl.std import vector
-givenDomains = vector([vector([val for val in range(lb(v),ub(v)+1) if val!=0]) for v in var_range])
-prunedDomains = solver.pruneDomains(vars,givenDomains)
+prunedDomains = solver.pruneDomains(vars)
 print("Pruned domains:",
      {vars[i]: [j for j in prunedDomains[i]] for i in range(0, len(vars))})

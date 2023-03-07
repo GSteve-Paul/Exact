@@ -62,7 +62,7 @@ Encoding opt2enc(const std::string& opt) {
 }
 IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e)
     : name(n), lowerBound(lb), upperBound(ub), encoding(getRange() <= 1 ? Encoding::ORDER : e) {
-  assert(lb <= ub);
+  assert(lb < ub);
 
   if (nameAsId) {
     assert(isBoolean());
@@ -218,10 +218,10 @@ ILP::ILP(bool keepIn) : solver(global), obj({}, {}, {}, 0), keepInput(keepIn) {
 IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound,
                     const std::string& encoding, bool nameAsId) {
   assert(!getVarFor(name));
-  if (lowerbound > upperbound) {
-    std::stringstream ss;
-    ss << "Lower bound " << lowerbound << " of " << name << " exceeds upper bound " << upperbound;
-    throw std::invalid_argument(ss.str());
+  if (lowerbound >= upperbound) {
+    throw std::invalid_argument((std::stringstream() << "Upper bound " << upperbound << " of " << name
+                                                     << " is not larger than lower bound " << lowerbound)
+                                    .str());
   }
   vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound,
                                           opt2enc(encoding == "" ? solver.getOptions().ilpEncoding.get() : encoding)));
@@ -260,14 +260,14 @@ void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntV
   assumptions.clear();
   for (int i = 0; i < (int)vars.size(); ++i) {
     IntVar* iv = vars[i];
-    assert(iv);
-    assert(vals[i] <= iv->getUpperBound());
+    if (!iv) throw std::invalid_argument("Unknown variable when setting assumptions.");
+    if (vals[i] < iv->getLowerBound() || vals[i] > iv->getUpperBound())
+      throw std::invalid_argument("Assumption value " + aux::str(vals[i]) + " for " + iv->getName() +
+                                  " exceeds variable bounds.");
     bigint val = vals[i] - iv->getLowerBound();
-    assert(val >= 0);
-    if (val < 0) throw std::invalid_argument("Assumed value for " + iv->getName() + " exceeds variable bounds.");
     if (iv->getEncoding() == Encoding::LOG) {
       for (const Var v : iv->getEncodingVars()) {
-        assumptions.push_back(val % 2 == 0 ? -v : v);
+        assumptions.add(val % 2 == 0 ? -v : v);
         val /= 2;
       }
       assert(val == 0);
@@ -275,17 +275,55 @@ void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntV
       assert(val <= iv->getEncodingVars().size());
       int val_int = static_cast<int>(val);
       if (val_int > 0) {
-        assumptions.push_back(iv->getEncodingVars()[val_int - 1]);
+        assumptions.add(iv->getEncodingVars()[val_int - 1]);
       }
       if (val_int < (int)iv->getEncodingVars().size()) {
-        assumptions.push_back(-iv->getEncodingVars()[val_int]);
+        assumptions.add(-iv->getEncodingVars()[val_int]);
       }
     } else {
       assert(iv->getEncoding() == Encoding::ONEHOT);
       assert(val <= iv->getEncodingVars().size());
       int val_int = static_cast<int>(val);
-      assumptions.push_back(iv->getEncodingVars()[val_int]);
+      assumptions.add(iv->getEncodingVars()[val_int]);
     }
+  }
+}
+void ILP::setSingleAssumption(const IntVar* iv, std::vector<bigint>& dom) {
+  if (!iv) throw std::invalid_argument("Unknown variable when setting assumptions.");
+  for (const bigint& vals_i : dom) {
+    if (vals_i < iv->getLowerBound() || vals_i > iv->getUpperBound())
+      throw std::invalid_argument("Assumption value " + aux::str(vals_i) + " for " + iv->getName() +
+                                  " exceeds variable bounds.");
+  }
+  for (Var v : iv->getEncodingVars()) {
+    assumptions.remove(v);
+    assumptions.remove(-v);
+  }
+  if (iv->getEncodingVars().size() == 1) {
+    assert(iv->getEncoding() == Encoding::ORDER);
+    Var encvar = iv->getEncodingVars()[0];
+    if (dom.size() == 0) {  // TODO: test inconsistency for empty assumption domains!
+      assumptions.add(encvar);
+      assumptions.add(-encvar);
+    } else if (dom.size() == 1) {
+      assumptions.add(dom[0] == iv->getLowerBound() ? -encvar : encvar);
+    }
+    return;
+  }
+  if (!std::is_sorted(dom.begin(), dom.end())) std::sort(dom.begin(), dom.end());
+  assert(iv->getEncoding() == Encoding::ONEHOT);
+  bigint val = iv->getLowerBound();
+  int j = 0;
+  dom.push_back(iv->getUpperBound() + 1);
+  for (const bigint& dval : dom) {
+    assert(dval >= val);
+    while (dval > val) {
+      assumptions.add(-iv->getEncodingVars()[j]);
+      ++j;
+      ++val;
+    }
+    ++j;
+    ++val;
   }
 }
 
@@ -415,7 +453,7 @@ void ILP::init() {
 
 SolveState ILP::runOnce() {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
   if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
-  return optim->optimize(assumptions);
+  return optim->optimize(assumptions.getKeys());
 }
 
 SolveState ILP::runFull(bool stopAtSat, double timeout) {
@@ -477,9 +515,7 @@ std::ostream& ILP::printInput(std::ostream& out) const {
   for (const std::string& s : reifics) out << s << std::endl;
   std::vector<std::string> constrs;
   for (const IntConstraint& ic : constraints) {
-    std::stringstream ss;
-    ss << ic;
-    constrs.push_back(ss.str());
+    constrs.push_back(aux::str(ic));
   }
   std::sort(constrs.begin(), constrs.end());
   for (const std::string& s : constrs) out << s << std::endl;
@@ -530,13 +566,12 @@ unordered_set<IntVar*> ILP::getLastCore() {
 
   unordered_set<IntVar*> core;
   if (solver.assumptionsClashWithUnits()) {
-    for (Lit l : assumptions) {
+    for (Lit l : assumptions.getKeys()) {
       if (isUnit(solver.getLevel(), -l)) core.insert(var2var.at(toVar(l)));
     }
   } else {
-    unordered_set<Lit> assumps(assumptions.begin(), assumptions.end());
     CeSuper clone = solver.lastCore->clone(global.cePools);
-    clone->weaken([&](Lit l) { return !assumps.count(-l); });
+    clone->weaken([&](Lit l) { return !assumptions.has(-l); });
     clone->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     clone->simplifyToClause();
     for (Var v : clone->vars) {
@@ -580,7 +615,7 @@ Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
   // NOTE: assumptions and input can overlap, and that is ok
   Var marker = solver.getNbVars() + 1;
   solver.setNbVars(marker, true);
-  assumptions.push_back(-marker);
+  assumptions.add(-marker);
   invalidator->addLhs(1, marker);
   invalidator->removeZeroes();
   assert(invalidator->isClause());
@@ -602,7 +637,7 @@ Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
     invalidator->removeZeroes();
   }
   assert(result == SolveState::INCONSISTENT);
-  assumptions.pop_back();
+  assumptions.remove(-marker);
   solver.addUnitConstraint(marker, Origin::INVALIDATOR);
   assert(invalidator->isClause());
   invalidator->weaken(marker);
@@ -612,7 +647,7 @@ Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
 }
 
 // NOTE: also throws AsynchronousInterrupt
-std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs) {
+const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs) {
   Ce32 invalidator = getSolIntersection(ivs);
   if (invalidator == nullptr) std::vector<std::pair<bigint, bigint>>();
 
@@ -679,55 +714,10 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
 }
 
 // NOTE: also throws AsynchronousInterrupt
-void ILP::pruneDomains(const std::vector<IntVar*>& ivs, std::vector<std::vector<bigint>>& doms) {
-  if (ivs.size() != doms.size()) {
-    throw std::invalid_argument("Length of variable list (" + std::to_string(ivs.size()) + ") and domain list (" +
-                                std::to_string(doms.size()) + ") for pruneDomains");
-  }
-  assumptions.clear();
-  for (IntVar* iv : ivs) {
-    if (iv->getEncodingVars().size() > 1 && iv->getEncoding() != Encoding::ONEHOT) {
-      throw std::invalid_argument("IntVar " + iv->getName() + " is not one-hot encoded");
-    }
-  }
-  for (auto& dom : doms) {
-    if (dom.empty()) {
-      for (auto& dom2 : doms) dom2.clear();
-      return;
-    }
-  }
-  for (int i = 0; i < (int)doms.size(); ++i) {
-    IntVar* iv = ivs[i];
-    std::vector<bigint>& dom = doms[i];
-    assert(!dom.empty());
-    if (iv->getEncodingVars().size() == 1) {
-      assert(iv->getEncoding() == Encoding::ORDER);
-      if (dom.size() == 2) continue;
-      assert(dom.size() == 1);
-      Var encvar = iv->getEncodingVars()[0];
-      assumptions.push_back(dom[0] == iv->getLowerBound() ? -encvar : encvar);
-      continue;
-    }
-    if (!std::is_sorted(dom.begin(), dom.end())) std::sort(dom.begin(), dom.end());
-    assert(iv->getEncoding() == Encoding::ONEHOT);
-    bigint val = iv->getLowerBound();
-    int j = 0;
-    dom.push_back(iv->getUpperBound() + 1);
-    for (const bigint& dval : dom) {
-      assert(dval >= val);
-      while (dval > val) {
-        assumptions.push_back(-iv->getEncodingVars()[j]);
-        ++j;
-        ++val;
-      }
-      ++j;
-      ++val;
-    }
-  }
-
-  for (auto& dom : doms) dom.clear();
+const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs) {
+  std::vector<std::vector<bigint>> doms(ivs.size());
   Ce32 invalidator = getSolIntersection(ivs);
-  if (invalidator == nullptr) return;  // inconsistent assumptions
+  if (invalidator == nullptr) return doms;  // inconsistent assumptions
 
   for (int i = 0; i < (int)ivs.size(); ++i) {
     IntVar* iv = ivs[i];
@@ -756,6 +746,7 @@ void ILP::pruneDomains(const std::vector<IntVar*>& ivs, std::vector<std::vector<
       ++val;
     }
   }
+  return doms;
 }
 
 void ILP::runOnce(int argc, char** argv) {

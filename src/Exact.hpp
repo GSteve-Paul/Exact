@@ -160,6 +160,22 @@ class Exact {
   void setAssumptions(const std::vector<std::string>& vars, const std::vector<std::string>& vals);
 
   /**
+   * Set assumption variables for a single variable under which a(n optimal) solution is found.
+   * Assumptions for other variables are left untouched.
+   *
+   * If no such solution exists, a subset of the assumption variables will form a "core".
+   * The assumptions over the variables in this core imply the non-existence of a solution to the constraints.
+   *
+   * @param var: the variable to assume
+   * @param vals: the possible values remaining for this variable
+   * @pre: the variable is 0-1 or uses the one-hot encoding
+   *
+   * Pass arbitrarily large values using the string-based function variant.
+   */
+  void setSingleAssumption(const std::string& var, const std::vector<long long>& vals);
+  void setSingleAssumption(const std::string& var, const std::vector<std::string>& vals);
+
+  /**
    * Initialize the solver with an objective function to be minimized.
    *
    * This function should be called exactly once, before the search.
@@ -287,7 +303,7 @@ class Exact {
   void printFormula();
 
   /**
-   * Under the assumptions set by setAssumptions, return implied lower and upper bound for variables in vars. If no
+   * Under previously set assumptions, return implied lower and upper bound for variables in vars. If no
    * solution exists under the assumptions, return empty vector.
    *
    * @param vars: variables for which to calculate the implied bounds
@@ -301,25 +317,20 @@ class Exact {
   std::vector<std::pair<std::string, std::string>> propagate_arb(const std::vector<std::string>& vars);
 
   /**
-   * Given a list of variables and domains (possible values) for each of those variables, prune these domains by
-   * removing impossible values. The given domains must be a subset of the range of the variables. Assumptions are added
-   * that invalidate values in a variable's range but not in its given domain. Other assumptions set by setAssumptions
-   * are overwritten. If no solution exists for the given domains, all returned domains will be empty.
+   * Under previously set assumptions, derive domains for the given variables where all impossible values are pruned.
+   * If no solution exists for the given domains, all returned domains will be empty.
    *
    * @param vars: variables for which to calculate the pruned domains
-   * @param doms: given domains for these variables, being sorted from small to large improves efficiency
    * @pre: the problem is not unsatisfiable
-   * @pre: all variables are either 0-1 or use the one-hot encoding
+   * @pre: all variables use the one-hot encoding or have a domain size of 2
    * @return: pruned domains for each variable in vars
    * @throw: UnsatEncounter exception in the case the instance is unsatisfiable. Domain pruning is undefined in this
    * case.
    *
    * Return arbitrarily large domain values using the string-based function variant '_arb'.
    */
-  std::vector<std::vector<long long>> pruneDomains(const std::vector<std::string>& vars,
-                                                   const std::vector<std::vector<long long>>& doms);
-  std::vector<std::vector<std::string>> pruneDomains_arb(const std::vector<std::string>& vars,
-                                                         const std::vector<std::vector<std::string>>& doms);
+  std::vector<std::vector<long long>> pruneDomains(const std::vector<std::string>& vars);
+  std::vector<std::vector<std::string>> pruneDomains_arb(const std::vector<std::string>& vars);
 
   /**
    * Set solver options. Run with --help or look at Options.hpp to find the possible options.

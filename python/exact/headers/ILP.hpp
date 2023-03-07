@@ -33,6 +33,7 @@ See the file LICENSE or run with the flag --license=MIT.
 #include <string>
 #include "Global.hpp"
 #include "Solver.hpp"
+#include "datastructures/IntSet.hpp"
 #include "typedefs.hpp"
 
 namespace xct {
@@ -103,7 +104,7 @@ class ILP {
 
   int maxSatVars = -1;
 
-  std::vector<Lit> assumptions;  // TODO: pass assumptions to run() instead of keeping track of them here?
+  xct::IntSet assumptions;
 
   // only for printing purposes:
   const bool keepInput;
@@ -132,6 +133,7 @@ class ILP {
   void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
   void setAssumptions(const std::vector<bigint>& vals, const std::vector<IntVar*>& vars);
+  void setSingleAssumption(const IntVar* iv, std::vector<bigint>& vals);
 
   bool initialized() const;
   void init();
@@ -171,8 +173,8 @@ class ILP {
   long long getNbVars() const;
   long long getNbConstraints() const;
 
-  std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs);
-  void pruneDomains(const std::vector<IntVar*>& ivs, std::vector<std::vector<bigint>>& doms);
+  const std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs);
+  const std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 

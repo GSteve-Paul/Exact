@@ -174,6 +174,15 @@ void Exact::setAssumptions(const std::vector<std::string>& vars, const std::vect
   ilp.setAssumptions(getCoefs(vals), getVariables(vars));
 }
 
+void Exact::setSingleAssumption(const std::string& var, const std::vector<long long>& vals) {
+  std::vector<bigint> bigvals = getCoefs(vals);
+  ilp.setSingleAssumption(getVariable(var), bigvals);
+}
+void Exact::setSingleAssumption(const std::string& var, const std::vector<std::string>& vals) {
+  std::vector<bigint> bigvals = getCoefs(vals);
+  ilp.setSingleAssumption(getVariable(var), bigvals);
+}
+
 void Exact::boundObjByLastSol() {
   if (unsatState) return;
   try {
@@ -275,31 +284,20 @@ std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<
 std::vector<std::pair<std::string, std::string>> Exact::propagate_arb(const std::vector<std::string>& vars) {
   if (unsatState) throw UnsatEncounter();
   return aux::comprehension(ilp.propagate(getVariables(vars)), [](const std::pair<bigint, bigint>& x) {
-    return std::pair<std::string, std::string>((std::stringstream() << x.first).str(),
-                                               (std::stringstream() << x.second).str());
+    return std::pair<std::string, std::string>(aux::str(x.first), aux::str(x.second));
   });
 }
 
-std::vector<std::vector<long long>> Exact::pruneDomains(const std::vector<std::string>& vars,
-                                                        const std::vector<std::vector<long long>>& doms) {
+std::vector<std::vector<long long>> Exact::pruneDomains(const std::vector<std::string>& vars) {
   if (unsatState) throw UnsatEncounter();
-  std::vector<std::vector<bigint>> domscasted = aux::comprehension(doms, [](const std::vector<long long>& x) {
-    return aux::comprehension(x, [](const long long y) { return static_cast<bigint>(y); });
-  });
-  ilp.pruneDomains(getVariables(vars), domscasted);
-  return aux::comprehension(domscasted, [](const std::vector<bigint>& x) {
+  return aux::comprehension(ilp.pruneDomains(getVariables(vars)), [](const std::vector<bigint>& x) {
     return aux::comprehension(x, [](const bigint& y) { return static_cast<long long>(y); });
   });
 }
-std::vector<std::vector<std::string>> Exact::pruneDomains_arb(const std::vector<std::string>& vars,
-                                                              const std::vector<std::vector<std::string>>& doms) {
+std::vector<std::vector<std::string>> Exact::pruneDomains_arb(const std::vector<std::string>& vars) {
   if (unsatState) throw UnsatEncounter();
-  std::vector<std::vector<bigint>> domscasted = aux::comprehension(doms, [](const std::vector<std::string>& x) {
-    return aux::comprehension(x, [](const std::string& y) { return bigint(y); });
-  });
-  ilp.pruneDomains(getVariables(vars), domscasted);
-  return aux::comprehension(domscasted, [](const std::vector<bigint>& x) {
-    return aux::comprehension(x, [](const bigint& y) { return (std::stringstream() << y).str(); });
+  return aux::comprehension(ilp.pruneDomains(getVariables(vars)), [](const std::vector<bigint>& x) {
+    return aux::comprehension(x, [](const bigint& y) { return aux::str(y); });
   });
 }
 
