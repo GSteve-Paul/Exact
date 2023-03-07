@@ -47,9 +47,7 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   std::vector<std::string> terms;
   terms.reserve(x.getLhs().size());
   for (const IntTerm& t : x.getLhs()) {
-    std::stringstream ss;
-    ss << t;
-    terms.push_back(ss.str());
+    terms.push_back(aux::str(t));
   }
   std::sort(terms.begin(), terms.end());
   for (const std::string& s : terms) o << s << " ";
@@ -507,9 +505,7 @@ std::ostream& ILP::printInput(std::ostream& out) const {
   out << "OBJ " << obj << std::endl;
   std::vector<std::string> reifics;
   for (const auto& pr : reifications) {
-    std::stringstream ss;
-    ss << *pr.first << " <=> " << pr.second;
-    reifics.push_back(ss.str());
+    reifics.push_back((std::stringstream() << *pr.first << " <=> " << pr.second).str());
   }
   std::sort(reifics.begin(), reifics.end());
   for (const std::string& s : reifics) out << s << std::endl;

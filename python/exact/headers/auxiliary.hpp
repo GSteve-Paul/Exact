@@ -445,9 +445,7 @@ uint64_t hashForList(const Iterable& els) {
 
 template <typename T>
 const std::string str(const T& t) {
-  std::stringstream ss;
-  ss << t;
-  return ss.str();
+  return (std::stringstream() << t).str();
 }
 
 template <typename... Args>

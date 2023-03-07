@@ -260,11 +260,7 @@ std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>&
                             [](const bigint& i) { return static_cast<long long>(i); });
 }
 std::vector<std::string> Exact::getLastSolutionFor_arb(const std::vector<std::string>& vars) const {
-  return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)), [](const bigint& i) {
-    std::stringstream ss;
-    ss << i;
-    return ss.str();
-  });
+  return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)), [](const bigint& i) { return aux::str(i); });
 }
 
 bool Exact::hasCore() const { return ilp.hasCore(); }
