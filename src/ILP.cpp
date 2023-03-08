@@ -218,9 +218,9 @@ IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const big
                     const std::string& encoding, bool nameAsId) {
   assert(!getVarFor(name));
   if (lowerbound >= upperbound) {
-    throw std::invalid_argument((std::stringstream() << "Upper bound " << upperbound << " of " << name
-                                                     << " is not larger than lower bound " << lowerbound)
-                                    .str());
+    std::stringstream ss;
+    ss << "Upper bound " << upperbound << " of " << name << " is not larger than lower bound " << lowerbound;
+    throw std::invalid_argument(ss.str());
   }
   vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound,
                                           opt2enc(encoding == "" ? solver.getOptions().ilpEncoding.get() : encoding)));
@@ -544,7 +544,9 @@ std::ostream& ILP::printInput(std::ostream& out) const {
   out << std::endl;
   std::vector<std::string> reifics;
   for (const auto& pr : reifications) {
-    reifics.push_back((std::stringstream() << *pr.first << " <=> " << pr.second).str());
+    std::stringstream ss;
+    ss << *pr.first << " <=> " << pr.second;
+    reifics.push_back(ss.str());
   }
   std::sort(reifics.begin(), reifics.end());
   for (const std::string& s : reifics) out << s << std::endl;

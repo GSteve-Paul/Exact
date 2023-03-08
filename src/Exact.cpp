@@ -247,11 +247,7 @@ std::pair<long long, long long> Exact::getObjectiveBounds() const {
   return {static_cast<long long>(ilp.getLowerBound()), static_cast<long long>(ilp.getUpperBound())};
 }
 std::pair<std::string, std::string> Exact::getObjectiveBounds_arb() const {
-  std::stringstream lower;
-  lower << ilp.getLowerBound();
-  std::stringstream upper;
-  upper << ilp.getUpperBound();
-  return {lower.str(), upper.str()};
+  return {aux::str(ilp.getLowerBound()), aux::str(ilp.getUpperBound())};
 }
 
 bool Exact::hasSolution() const { return ilp.hasSolution(); }
