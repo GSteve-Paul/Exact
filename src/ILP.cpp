@@ -294,7 +294,11 @@ void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
   }
   std::set<bigint> sorted(dom.begin(), dom.end());
   if (sorted.size() == iv->getUpperBound() - iv->getLowerBound() + 1) return;
-  assert(iv->getEncoding() == Encoding::ONEHOT);
+  if (iv->getEncoding() != Encoding::ONEHOT) {
+    throw std::invalid_argument("Variable " + iv->getName() + " is not one-hot encoded but has " +
+                                std::to_string(sorted.size()) +
+                                " (more than one and less than its range) values to assume.");
+  }
   bigint val = iv->getLowerBound();
   int j = 0;
   sorted.insert(iv->getUpperBound() + 1);
