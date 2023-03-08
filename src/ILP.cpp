@@ -35,15 +35,12 @@ See the file LICENSE or run with the flag --license=MIT.
 namespace xct {
 
 std::ostream& operator<<(std::ostream& o, const IntVar& x) {
-  o << x.getName();
-  if (!x.isBoolean()) {
-    o << "[" << x.getLowerBound() << "," << x.getUpperBound() << "]";
-  }
-  return o;
+  return o << x.getName() << "[" << x.getLowerBound() << "," << x.getUpperBound() << "]";
 }
-std::ostream& operator<<(std::ostream& o, const IntTerm& x) { return o << x.c << (x.negated ? " ~" : " ") << *x.v; }
-std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
-  if (x.getUB().has_value()) o << x.getUB().value() << " >= ";
+std::ostream& operator<<(std::ostream& o, const IntTerm& x) {
+  return o << (x.c < 0 ? "" : "+") << x.c << (x.negated ? "*~" : "*") << *x.v;
+}
+void lhs2str(std::ostream& o, const IntConstraint& x) {
   std::vector<std::string> terms;
   terms.reserve(x.getLhs().size());
   for (const IntTerm& t : x.getLhs()) {
@@ -51,6 +48,10 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   }
   std::sort(terms.begin(), terms.end());
   for (const std::string& s : terms) o << s << " ";
+}
+std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
+  if (x.getUB().has_value()) o << x.getUB().value() << " >= ";
+  lhs2str(o, x);
   if (x.getLB().has_value()) o << ">= " << x.getLB().value();
   return o;
 }
@@ -252,17 +253,22 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   objmult = mult;
 }
 
-void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntVar*>& vars) {
-  if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
-
-  assumptions.clear();
-  for (int i = 0; i < (int)vars.size(); ++i) {
-    IntVar* iv = vars[i];
-    if (!iv) throw std::invalid_argument("Unknown variable when setting assumptions.");
-    if (vals[i] < iv->getLowerBound() || vals[i] > iv->getUpperBound())
-      throw std::invalid_argument("Assumption value " + aux::str(vals[i]) + " for " + iv->getName() +
+void ILP::setAssumption(const IntVar* iv, std::vector<bigint>& dom) {
+  assert(iv);
+  if (dom.empty()) {
+    throw std::invalid_argument("No possible values given when setting assumptions for " + iv->getName() + ".");
+  }
+  for (const bigint& vals_i : dom) {
+    if (vals_i < iv->getLowerBound() || vals_i > iv->getUpperBound())
+      throw std::invalid_argument("Assumption value " + aux::str(vals_i) + " for " + iv->getName() +
                                   " exceeds variable bounds.");
-    bigint val = vals[i] - iv->getLowerBound();
+  }
+  for (Var v : iv->getEncodingVars()) {
+    assumptions.remove(v);
+    assumptions.remove(-v);
+  }
+  if (dom.size() == 1) {
+    bigint& val = dom[0];
     if (iv->getEncoding() == Encoding::LOG) {
       for (const Var v : iv->getEncodingVars()) {
         assumptions.add(val % 2 == 0 ? -v : v);
@@ -284,32 +290,10 @@ void ILP::setAssumptions(const std::vector<bigint>& vals, const std::vector<IntV
       int val_int = static_cast<int>(val);
       assumptions.add(iv->getEncodingVars()[val_int]);
     }
-  }
-}
-void ILP::setSingleAssumption(const IntVar* iv, std::vector<bigint>& dom) {
-  if (!iv) throw std::invalid_argument("Unknown variable when setting assumptions.");
-  for (const bigint& vals_i : dom) {
-    if (vals_i < iv->getLowerBound() || vals_i > iv->getUpperBound())
-      throw std::invalid_argument("Assumption value " + aux::str(vals_i) + " for " + iv->getName() +
-                                  " exceeds variable bounds.");
-  }
-  for (Var v : iv->getEncodingVars()) {
-    assumptions.remove(v);
-    assumptions.remove(-v);
-  }
-  if (iv->getEncodingVars().size() == 1) {
-    assert(iv->getEncoding() == Encoding::ORDER);
-    Var encvar = iv->getEncodingVars()[0];
-    if (dom.size() == 0) {  // TODO: test inconsistency for empty assumption domains!
-      assumptions.add(encvar);
-      assumptions.add(-encvar);
-    } else if (dom.size() == 1) {
-      assumptions.add(dom[0] == iv->getLowerBound() ? -encvar : encvar);
-    }
     return;
   }
-  if (!std::is_sorted(dom.begin(), dom.end())) std::sort(dom.begin(), dom.end());
   assert(iv->getEncoding() == Encoding::ONEHOT);
+  if (!std::is_sorted(dom.begin(), dom.end())) std::sort(dom.begin(), dom.end());
   bigint val = iv->getLowerBound();
   int j = 0;
   dom.push_back(iv->getUpperBound() + 1);
@@ -322,6 +306,59 @@ void ILP::setSingleAssumption(const IntVar* iv, std::vector<bigint>& dom) {
     }
     ++j;
     ++val;
+  }
+}
+
+bool ILP::hasAssumption(const IntVar* iv) const {
+  return std::any_of(iv->getEncodingVars().begin(), iv->getEncodingVars().end(),
+                     [&](Var v) { return assumptions.has(v) || assumptions.has(-v); });
+}
+std::vector<bigint> ILP::getAssumption(const IntVar* iv) const {
+  if (!hasAssumption(iv)) {
+    std::vector<bigint> res;
+    res.reserve(size_t(iv->getUpperBound() - iv->getLowerBound() + 1));
+    for (bigint i = iv->getLowerBound(); i <= iv->getUpperBound(); ++i) {
+      res.push_back(i);
+    }
+    return res;
+  }
+  assert(hasAssumption(iv));
+  if (iv->getEncoding() == Encoding::LOG) {
+    bigint val = iv->getLowerBound();
+    bigint base = 1;
+    for (const Var& v : iv->getEncodingVars()) {
+      if (assumptions.has(v)) val += base;
+      base *= 2;
+    }
+    return {val};
+  } else if (iv->getEncoding() == Encoding::ORDER) {
+    int i = 0;
+    for (const Var& v : iv->getEncodingVars()) {
+      if (assumptions.has(-v)) break;
+      ++i;
+    }
+    return {iv->getLowerBound() + i};
+  }
+  assert(iv->getEncoding() == Encoding::ONEHOT);
+  std::vector<bigint> res;
+  int i = 0;
+  for (const Var& v : iv->getEncodingVars()) {
+    if (assumptions.has(v)) {
+      return {iv->getLowerBound() + i};
+    }
+    if (!assumptions.has(-v)) {
+      res.emplace_back(iv->getLowerBound() + i);
+    }
+    ++i;
+  }
+  return res;
+}
+
+void ILP::clearAssumptions() { assumptions.clear(); }
+void ILP::clearAssumption(const IntVar* iv) {
+  for (Var v : iv->getEncodingVars()) {
+    assumptions.remove(v);
+    assumptions.remove(-v);
   }
 }
 
@@ -502,7 +539,9 @@ std::ostream& ILP::printFormula(std::ostream& out) {
 }
 
 std::ostream& ILP::printInput(std::ostream& out) const {
-  out << "OBJ " << obj << std::endl;
+  out << "OBJ ";
+  lhs2str(out, obj);
+  out << std::endl;
   std::vector<std::string> reifics;
   for (const auto& pr : reifications) {
     reifics.push_back((std::stringstream() << *pr.first << " <=> " << pr.second).str());
@@ -520,9 +559,8 @@ std::ostream& ILP::printInput(std::ostream& out) const {
 
 std::ostream& ILP::printVars(std::ostream& out) const {
   for (const auto& v : vars) {
-    out << *(v.get()) << "\n";
+    out << *v << std::endl;
   }
-  out << std::endl;
   return out;
 }
 

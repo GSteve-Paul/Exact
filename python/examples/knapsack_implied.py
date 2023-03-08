@@ -47,7 +47,7 @@ solver.setOption("inp-dombreaklim", "0")
 
 # Assume the auxiliary variable to 1, so that any solution found will have an objective value one higher than the 
 # optimal objective value for the original knapsack problem.
-solver.setAssumptions({"aux"}, {1})
+solver.setAssumption("aux", {1})
 
 # Run the solver
 print("run Exact:")
@@ -86,7 +86,7 @@ intersection = {vars[i]: sol[i] for i in range(0, len(vars))}
 
 # To find more solutions, first remove the "aux"=1 assumption, as otherwise solver.runOnce() would only return
 # SolveState::INCONSISTENT.
-solver.setAssumptions({}, {})
+solver.clearAssumptions()
 
 # Continue the search, forcing the solver to find solutions that reduce the intersection
 solver.invalidateLastSol()

@@ -53,7 +53,7 @@ solver.setOption("inp-dombreaklim", "0")
 
 # Assume the auxiliary variable to 1, so that any solution found will have an objective value one higher than the 
 # optimal objective value for the original knapsack problem.
-solver.setAssumptions({"aux"}, {1})
+solver.setAssumption("aux", {1})
 
 # Run the solver
 print("run Exact:")
@@ -78,10 +78,9 @@ while result != 0:
         break
 
 # Clear aux assumption to fix objective to optimal value
-solver.setAssumptions({}, {})
-
-# Note we could propagate under assumptions by just setting those assumptions:
-# solver.setAssumptions({1},{1})
+assert(solver.hasAssumption("aux"))
+solver.clearAssumption("aux")
+assert(not solver.hasAssumption("aux"))
 
 # add "2"!=0
 solver.addVariable("aux2",0,1)
@@ -92,7 +91,7 @@ solver.addVariable("aux2",0,1)
 solver.addConstraint([1,-3], ["2","aux2"], True, -2, True, -1)
 
 for v in var_range:
-    solver.setSingleAssumption(str(v),[val for val in range(lb(v),ub(v)+1) if val!=0])
+    solver.setAssumption(str(v),[val for val in range(lb(v),ub(v)+1) if val!=0])
 
 # Calculate the variable bounds shared by the set of optimal solutions under the assumptions
 propagatedBounds = [tuple(b) for b in solver.propagate(vars)]

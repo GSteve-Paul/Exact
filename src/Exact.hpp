@@ -145,35 +145,55 @@ class Exact {
   void fix(const std::string& var, const std::string& val);
 
   /**
-   * Set a list of assumptions under which a(n optimal) solution is found.
-   *
-   * If no such solution exists, a subset of the assumption variables will form a "core".
-   * The assumptions over the variables in this core imply the non-existence of a solution to the constraints.
-   * To reset the assumptions, pass two empty lists to this method.
-   *
-   * @param vars: the variables to assume
-   * @param vals: the values assumed for the variables
-   *
-   * Pass arbitrarily large values using the string-based function variant.
-   */
-  void setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals);
-  void setAssumptions(const std::vector<std::string>& vars, const std::vector<std::string>& vals);
-
-  /**
-   * Set assumption variables for a single variable under which a(n optimal) solution is found.
+   * Set assumptions for a single variable under which a(n optimal) solution is found. These assumptions enforce that
+   * the given variable can take only the given values, overriding any previous assumed restrictions on this variable.
    * Assumptions for other variables are left untouched.
    *
-   * If no such solution exists, a subset of the assumption variables will form a "core".
-   * The assumptions over the variables in this core imply the non-existence of a solution to the constraints.
+   * If no such solution exists, a subset of the assumption variables will form a "core" provided by "getLastCore()".
    *
    * @param var: the variable to assume
    * @param vals: the possible values remaining for this variable
-   * @pre: the variable is 0-1 or uses the one-hot encoding
+   * @pre: the set of possible values is not empty
+   * @pre: the number of possible values is larger than one only if the variable uses a one-hot encoding
+   * @pre: the given values are within the bounds of the variable
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void setSingleAssumption(const std::string& var, const std::vector<long long>& vals);
-  void setSingleAssumption(const std::string& var, const std::vector<std::string>& vals);
+  void setAssumption(const std::string& var, const std::vector<long long>& vals);
+  void setAssumption(const std::string& var, const std::vector<std::string>& vals);
+
+  /**
+   * Clears all assumptions.
+   */
+  void clearAssumptions();
+
+  /**
+   * Clears all assumptions for the given variables.
+   *
+   * @param var: the variable to clear the assumptions for.
+   */
+  void clearAssumption(const std::string& var);
+
+  /**
+   * Check whether a given variable has any assumed restrictions in the possible values it can take.
+   *
+   * @param var: the variable to check
+   * @return: true if the variable has assumed restrictions, false if not
+   */
+  bool hasAssumption(const std::string& var) const;
+
+  /**
+   * Get the possible values not restricted by the currently set assumptions for a given variable.
+   *
+   * This method is mainly meant for diagnostic purposes and is not very efficient.
+   *
+   * @param var: the variable under inspection
+   * @return: the values of the variable that are *not* restricted
+   *
+   * Return arbitrarily large values using the string-based function variant '_arb'.
+   */
+  std::vector<long long> getAssumption(const std::string& var) const;
+  std::vector<std::string> getAssumption_arb(const std::string& var) const;
 
   /**
    * Initialize the solver with an objective function to be minimized.
@@ -296,6 +316,16 @@ class Exact {
    * Print Exact's internal statistics
    */
   void printStats();
+
+  /**
+   * Print variables given to Exact.
+   */
+  void printVariables() const;
+
+  /**
+   * Print objective and constraints given to Exact.
+   */
+  void printInput() const;
 
   /**
    * Print Exact's internal formula.

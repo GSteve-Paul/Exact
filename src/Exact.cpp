@@ -57,7 +57,7 @@ std::vector<bigint> getCoefs(const std::vector<std::string>& cs) {
   return aux::comprehension(cs, [](const std::string& x) { return getCoef(x); });
 }
 
-Exact::Exact() : ilp(), unsatState(false) {
+Exact::Exact() : ilp(true), unsatState(false) {
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE
@@ -161,26 +161,25 @@ void Exact::addLeftReification(const std::string& head, const std::vector<std::s
 void Exact::fix(const std::string& var, long long val) { ilp.fix(getVariable(var), getCoef(val)); }
 void Exact::fix(const std::string& var, const std::string& val) { ilp.fix(getVariable(var), getCoef(val)); }
 
-void Exact::setAssumptions(const std::vector<std::string>& vars, const std::vector<long long>& vals) {
-  if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
-  if (vars.size() > 1e9) throw std::invalid_argument("More than 1e9 assumptions.");
-
-  ilp.setAssumptions(getCoefs(vals), getVariables(vars));
-}
-void Exact::setAssumptions(const std::vector<std::string>& vars, const std::vector<std::string>& vals) {
-  if (vals.size() != vars.size()) throw std::invalid_argument("Value and variable lists differ in size.");
-  if (vars.size() > 1e9) throw std::invalid_argument("More than 1e9 assumptions.");
-
-  ilp.setAssumptions(getCoefs(vals), getVariables(vars));
-}
-
-void Exact::setSingleAssumption(const std::string& var, const std::vector<long long>& vals) {
+void Exact::setAssumption(const std::string& var, const std::vector<long long>& vals) {
   std::vector<bigint> bigvals = getCoefs(vals);
-  ilp.setSingleAssumption(getVariable(var), bigvals);
+  ilp.setAssumption(getVariable(var), bigvals);
 }
-void Exact::setSingleAssumption(const std::string& var, const std::vector<std::string>& vals) {
+void Exact::setAssumption(const std::string& var, const std::vector<std::string>& vals) {
   std::vector<bigint> bigvals = getCoefs(vals);
-  ilp.setSingleAssumption(getVariable(var), bigvals);
+  ilp.setAssumption(getVariable(var), bigvals);
+}
+
+void Exact::clearAssumptions() { ilp.clearAssumptions(); }
+void Exact::clearAssumption(const std::string& var) { ilp.clearAssumption(getVariable(var)); }
+
+bool Exact::hasAssumption(const std::string& var) const { return ilp.hasAssumption(getVariable(var)); }
+std::vector<long long> Exact::getAssumption(const std::string& var) const {
+  return aux::comprehension(ilp.getAssumption(getVariable(var)),
+                            [](const bigint& i) { return static_cast<long long>(i); });
+}
+std::vector<std::string> Exact::getAssumption_arb(const std::string& var) const {
+  return aux::comprehension(ilp.getAssumption(getVariable(var)), [](const bigint& i) { return aux::str(i); });
 }
 
 void Exact::boundObjByLastSol() {
@@ -208,7 +207,9 @@ void Exact::invalidateLastSol(const std::vector<std::string>& vars) {
   }
 }
 
-void Exact::printFormula() { ilp.printFormula(); }
+void Exact::printVariables() const { ilp.printVars(std::cout); }
+void Exact::printInput() const { ilp.printInput(std::cout); }
+void Exact::printFormula() { ilp.printFormula(std::cout); }
 
 void Exact::init(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
