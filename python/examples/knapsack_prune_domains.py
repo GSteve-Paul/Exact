@@ -79,7 +79,7 @@ while result != 0:
 
 # Clear aux assumption to fix objective to optimal value
 assert(solver.hasAssumption("aux"))
-solver.clearAssumption("aux")
+solver.setAssumption("aux",[1,0]) # equivalent to solver.clearAssumption("aux")
 assert(not solver.hasAssumption("aux"))
 
 # add "2"!=0

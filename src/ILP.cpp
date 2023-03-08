@@ -253,7 +253,7 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   objmult = mult;
 }
 
-void ILP::setAssumption(const IntVar* iv, std::vector<bigint>& dom) {
+void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
   assert(iv);
   if (dom.empty()) {
     throw std::invalid_argument("No possible values given when setting assumptions for " + iv->getName() + ".");
@@ -268,7 +268,7 @@ void ILP::setAssumption(const IntVar* iv, std::vector<bigint>& dom) {
     assumptions.remove(-v);
   }
   if (dom.size() == 1) {
-    bigint& val = dom[0];
+    bigint val = dom[0];
     if (iv->getEncoding() == Encoding::LOG) {
       for (const Var v : iv->getEncodingVars()) {
         assumptions.add(val % 2 == 0 ? -v : v);
@@ -292,12 +292,13 @@ void ILP::setAssumption(const IntVar* iv, std::vector<bigint>& dom) {
     }
     return;
   }
+  std::set<bigint> sorted(dom.begin(), dom.end());
+  if (sorted.size() == iv->getUpperBound() - iv->getLowerBound() + 1) return;
   assert(iv->getEncoding() == Encoding::ONEHOT);
-  if (!std::is_sorted(dom.begin(), dom.end())) std::sort(dom.begin(), dom.end());
   bigint val = iv->getLowerBound();
   int j = 0;
-  dom.push_back(iv->getUpperBound() + 1);
-  for (const bigint& dval : dom) {
+  sorted.insert(iv->getUpperBound() + 1);
+  for (const bigint& dval : sorted) {
     assert(dval >= val);
     while (dval > val) {
       assumptions.add(-iv->getEncodingVars()[j]);

@@ -154,7 +154,8 @@ class Exact {
    * @param var: the variable to assume
    * @param vals: the possible values remaining for this variable
    * @pre: the set of possible values is not empty
-   * @pre: the number of possible values is larger than one only if the variable uses a one-hot encoding
+   * @pre: if the number of distinct possible values is larger than one and smaller than the range of the variable, then
+   * the variable uses a one-hot encoding. As a consequence, for Boolean variables the encoding does not matter.
    * @pre: the given values are within the bounds of the variable
    *
    * Pass arbitrarily large values using the string-based function variant.

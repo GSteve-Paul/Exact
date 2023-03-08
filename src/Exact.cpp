@@ -162,12 +162,10 @@ void Exact::fix(const std::string& var, long long val) { ilp.fix(getVariable(var
 void Exact::fix(const std::string& var, const std::string& val) { ilp.fix(getVariable(var), getCoef(val)); }
 
 void Exact::setAssumption(const std::string& var, const std::vector<long long>& vals) {
-  std::vector<bigint> bigvals = getCoefs(vals);
-  ilp.setAssumption(getVariable(var), bigvals);
+  ilp.setAssumption(getVariable(var), getCoefs(vals));
 }
 void Exact::setAssumption(const std::string& var, const std::vector<std::string>& vals) {
-  std::vector<bigint> bigvals = getCoefs(vals);
-  ilp.setAssumption(getVariable(var), bigvals);
+  ilp.setAssumption(getVariable(var), getCoefs(vals));
 }
 
 void Exact::clearAssumptions() { ilp.clearAssumptions(); }
