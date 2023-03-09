@@ -1,15 +1,6 @@
-# This file is part of the Exact program
-#
-# Copyright (c) 2021 Jo Devriendt, KU Leuven
-#
-# Exact is distributed under the terms of the MIT License.
-# You should have received a copy of the MIT License along with Exact.
-# See the file LICENSE.
-
 # This example showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
 # The first part is identical to knapsack_implied.py, generating a state of the solver where all solutions are optimal.
 # The second part consists of the last lines, which calculate the variable bounds that hold for all optimal solutions.
-
 
 import sys
 # Get the encoding for integer variables from the command line if available

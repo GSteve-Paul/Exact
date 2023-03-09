@@ -1,11 +1,11 @@
-### Main copyright & license:
+### Main license and copyright for files under src/ (except src/external/):
 
 Copyright (c) 2022 Jo Devriendt
 
 GNU Affero General Public License version 3 - see used_licenses/COPYING.
 
 
-### From commit 5687af8c to 1ad9b921, and from commit 5701bbdb, the following copyright & license applies:
+### From commit 5687af8c to 1ad9b921, and from commit 5701bbdb, the following MIT license and copyright applies to files under src/ (except src/external/):
 
 Copyright (c) 2021, 2023 Jo Devriendt, KU Leuven
 
@@ -29,7 +29,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-### Before commit 5687af8c the following copyright & license applies:
+### Before commit 5687af8c the following MIT license and copyright applies:
 
 Copyright (c) 2014-2020, Jan Elffers
 Copyright (c) 2019-2021, Jo Devriendt

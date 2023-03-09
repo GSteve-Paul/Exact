@@ -1,11 +1,3 @@
-# This file is part of the Exact program
-#
-# Copyright (c) 2021 Jo Devriendt, KU Leuven
-#
-# Exact is distributed under the terms of the MIT License.
-# You should have received a copy of the MIT License along with Exact.
-# See the file LICENSE.
-
 # This example showcases how to find the variable assignments implied by optimality, i.e., the variable assignments
 # shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse
 # the existing solver state (containing learned constraints) for optimal performance.
