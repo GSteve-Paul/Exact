@@ -339,7 +339,7 @@ class Exact {
    *
    * @param vars: variables for which to calculate the implied bounds
    * @pre: the problem is not unsatisfiable
-   * @return: a pair of bounds for each variable in vars
+   * @return: a list of pairs of bounds for each variable in vars - empty if inconsistent under the current assumptions.
    * @throw: UnsatEncounter exception in the case the instance is unsatisfiable. Propagation is undefined in this case.
    *
    * Return arbitrarily large bounds using the string-based function variant '_arb'.
@@ -349,7 +349,7 @@ class Exact {
 
   /**
    * Under previously set assumptions, derive domains for the given variables where all impossible values are pruned.
-   * If no solution exists for the given domains, all returned domains will be empty.
+   * If no solution exists for the given domains under the current assumptions, all returned domains will be empty.
    *
    * @param vars: variables for which to calculate the pruned domains
    * @pre: the problem is not unsatisfiable

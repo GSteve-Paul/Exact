@@ -268,7 +268,7 @@ void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
     assumptions.remove(-v);
   }
   if (dom.size() == 1) {
-    bigint val = dom[0];
+    bigint val = dom[0] - iv->getLowerBound();
     if (iv->getEncoding() == Encoding::LOG) {
       for (const Var v : iv->getEncodingVars()) {
         assumptions.add(val % 2 == 0 ? -v : v);
@@ -292,24 +292,18 @@ void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
     }
     return;
   }
-  std::set<bigint> sorted(dom.begin(), dom.end());
-  if (sorted.size() == iv->getUpperBound() - iv->getLowerBound() + 1) return;
+  unordered_set<bigint> toCheck(dom.begin(), dom.end());
+  if (toCheck.size() == iv->getUpperBound() - iv->getLowerBound() + 1) return;
   if (iv->getEncoding() != Encoding::ONEHOT) {
     throw std::invalid_argument("Variable " + iv->getName() + " is not one-hot encoded but has " +
-                                std::to_string(sorted.size()) +
+                                std::to_string(toCheck.size()) +
                                 " (more than one and less than its range) values to assume.");
   }
   bigint val = iv->getLowerBound();
-  int j = 0;
-  sorted.insert(iv->getUpperBound() + 1);
-  for (const bigint& dval : sorted) {
-    assert(dval >= val);
-    while (dval > val) {
-      assumptions.add(-iv->getEncodingVars()[j]);
-      ++j;
-      ++val;
+  for (Var v : iv->getEncodingVars()) {
+    if (!toCheck.count(val)) {
+      assumptions.add(-v);
     }
-    ++j;
     ++val;
   }
 }
@@ -689,10 +683,12 @@ Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
 
 // NOTE: also throws AsynchronousInterrupt
 const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs) {
-  Ce32 invalidator = getSolIntersection(ivs);
-  if (invalidator == nullptr) std::vector<std::pair<bigint, bigint>>();
-
   std::vector<std::pair<bigint, bigint>> consequences;
+  Ce32 invalidator = getSolIntersection(ivs);
+  if (!invalidator) {  // inconsistent assumptions
+    return consequences;
+  }
+
   consequences.reserve(ivs.size());
   for (IntVar* iv : ivs) {
     bigint lb = iv->getLowerBound();
@@ -758,7 +754,9 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
 const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs) {
   std::vector<std::vector<bigint>> doms(ivs.size());
   Ce32 invalidator = getSolIntersection(ivs);
-  if (invalidator == nullptr) return doms;  // inconsistent assumptions
+  if (!invalidator) {  // inconsistent assumptions
+    return doms;
+  }
 
   for (int i = 0; i < (int)ivs.size(); ++i) {
     IntVar* iv = ivs[i];
