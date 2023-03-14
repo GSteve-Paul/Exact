@@ -61,7 +61,7 @@ Encoding opt2enc(const std::string& opt) {
 }
 IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e)
     : name(n), lowerBound(lb), upperBound(ub), encoding(getRange() <= 1 ? Encoding::ORDER : e) {
-  assert(lb < ub);
+  assert(lb <= ub);
 
   if (nameAsId) {
     assert(isBoolean());
@@ -70,44 +70,49 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
     encodingVars.emplace_back(next);
   } else {
     const bigint range = getRange();
-    if (range != 0) {
-      int newvars = encoding == Encoding::LOG
-                        ? aux::msb(range) + 1
-                        : static_cast<int>(range) + static_cast<int>(encoding == Encoding::ONEHOT);
-      int oldvars = solver.getNbVars();
-      solver.setNbVars(oldvars + newvars, true);
-      for (Var var = oldvars + 1; var <= oldvars + newvars; ++var) {
-        encodingVars.emplace_back(var);
+    assert(range != 0 || encoding == Encoding::ORDER);
+    int newvars = range == 0 ? 1
+                             : (encoding == Encoding::LOG
+                                    ? aux::msb(range) + 1
+                                    : static_cast<int>(range) + static_cast<int>(encoding == Encoding::ONEHOT));
+    int oldvars = solver.getNbVars();
+    solver.setNbVars(oldvars + newvars, true);
+    for (Var var = oldvars + 1; var <= oldvars + newvars; ++var) {
+      encodingVars.emplace_back(var);
+    }
+    if (encoding == Encoding::LOG) {  // upper bound constraint
+      std::vector<Term<bigint>> lhs;
+      lhs.reserve(encodingVars.size());
+      bigint base = -1;
+      for (const Var v : encodingVars) {
+        lhs.emplace_back(base, v);
+        base *= 2;
       }
-      if (encoding == Encoding::LOG) {  // upper bound constraint
-        std::vector<Term<bigint>> lhs;
-        lhs.reserve(encodingVars.size());
-        bigint base = -1;
-        for (const Var v : encodingVars) {
-          lhs.emplace_back(base, v);
-          base *= 2;
-        }
-        // NOTE: last variable could have a smaller coefficient if the range is not a nice power of two - 1
-        // This would actually increase the number of solutions to the constraint. It would also not guarantee that each
-        // value for an integer variable had a unique Boolean representation. Bad idea probably.
-        solver.addConstraint(ConstrSimpleArb({lhs}, -range), Origin::FORMULA);
-      } else if (encoding == Encoding::ORDER) {
+      // NOTE: last variable could have a smaller coefficient if the range is not a nice power of two - 1
+      // This would actually increase the number of solutions to the constraint. It would also not guarantee that each
+      // value for an integer variable had a unique Boolean representation. Bad idea probably.
+      solver.addConstraint(ConstrSimpleArb({lhs}, -range), Origin::FORMULA);
+    } else if (encoding == Encoding::ORDER) {
+      if (range == 0) {
+        solver.addUnitConstraint(-newvars, Origin::FORMULA);
+        // TODO: project this variable away instead of adding a unit variable
+      } else {
         for (Var var = oldvars + 1; var < oldvars + newvars; ++var) {
           solver.addConstraint(ConstrSimple32({{1, var}, {-1, var + 1}}, 0), Origin::FORMULA);
         }
-      } else {
-        assert(encoding == Encoding::ONEHOT);
-        std::vector<Term<int>> lhs1;
-        lhs1.reserve(encodingVars.size());
-        std::vector<Term<int>> lhs2;
-        lhs2.reserve(encodingVars.size());
-        for (int var = oldvars + 1; var <= oldvars + newvars; ++var) {
-          lhs1.emplace_back(1, var);
-          lhs2.emplace_back(-1, var);
-        }
-        solver.addConstraint(ConstrSimple32(lhs1, 1), Origin::FORMULA);
-        solver.addConstraint(ConstrSimple32(lhs2, -1), Origin::FORMULA);
       }
+    } else {
+      assert(encoding == Encoding::ONEHOT);
+      std::vector<Term<int>> lhs1;
+      lhs1.reserve(encodingVars.size());
+      std::vector<Term<int>> lhs2;
+      lhs2.reserve(encodingVars.size());
+      for (int var = oldvars + 1; var <= oldvars + newvars; ++var) {
+        lhs1.emplace_back(1, var);
+        lhs2.emplace_back(-1, var);
+      }
+      solver.addConstraint(ConstrSimple32(lhs1, 1), Origin::FORMULA);
+      solver.addConstraint(ConstrSimple32(lhs2, -1), Origin::FORMULA);
     }
   }
 }
@@ -217,9 +222,9 @@ ILP::ILP(bool keepIn) : solver(global), obj({}, {}, {}, 0), keepInput(keepIn) {
 IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound,
                     const std::string& encoding, bool nameAsId) {
   assert(!getVarFor(name));
-  if (lowerbound >= upperbound) {
+  if (upperbound < lowerbound) {
     std::stringstream ss;
-    ss << "Upper bound " << upperbound << " of " << name << " is not larger than lower bound " << lowerbound;
+    ss << "Upper bound " << upperbound << " of " << name << " is smaller than lower bound " << lowerbound;
     throw std::invalid_argument(ss.str());
   }
   vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound,

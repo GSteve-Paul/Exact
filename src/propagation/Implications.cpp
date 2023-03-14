@@ -49,6 +49,8 @@ void Implications::removeImplied(Lit a) {
 
 const unordered_set<Lit>& Implications::getImplieds(Lit a) const { return implieds[a]; }
 
+bool Implications::hasImplieds(Lit a) const { return !implieds[a].empty(); }
+
 long long Implications::nImpliedsInMemory() const { return implInMem; }
 
 State Implications::propagate() {

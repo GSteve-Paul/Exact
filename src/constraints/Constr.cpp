@@ -212,16 +212,34 @@ bool Clause::isSatisfiedAtRoot(const IntMap<int>& level) const {
   return false;
 }
 
-bool Clause::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+bool Clause::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                             IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
   for (int i = 0; i < (int)size; ++i) {
     Lit l = data[i];
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
+  if (!isEquality) {
+    IntSet& hasImplieds = isp.take();
+    for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+      Lit l = data[i];
+      if (implications.hasImplieds(l)) hasImplieds.add(-l);
+    }
+    if (!hasImplieds.isEmpty()) {
+      for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+        if (hasImplieds.has(data[i])) {
+          isp.release(hasImplieds);
+          return true;
+        }
+      }
+    }
+    isp.release(hasImplieds);
+  }
   return false;
 }
 
 void Cardinality::initializeWatches(CRef cr, Solver& solver) {
+  assert(degr > 1);  // otherwise not a cardinality
   auto& level = solver.level;
   [[maybe_unused]] auto& position = solver.position;
   auto& adj = solver.adj;
@@ -342,12 +360,14 @@ bool Cardinality::isSatisfiedAtRoot(const IntMap<int>& level) const {
   return eval >= 0;
 }
 
-bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                                  IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
   for (int i = 0; i < (int)size; ++i) {
     Lit l = data[i];
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
+  // NOTE: no saturated literals in a cardinality, so no need to check for self-subsumption
   return false;
 }
 
@@ -460,11 +480,28 @@ bool Counting<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
 }
 
 template <typename CF, typename DG>
-bool Counting<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+bool Counting<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                                       IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
   for (int i = 0; i < (int)size; ++i) {
     Lit l = data[i].l;
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  if (!isEquality) {
+    IntSet& hasImplieds = isp.take();
+    for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+      Lit l = data[i].l;
+      if (implications.hasImplieds(l)) hasImplieds.add(-l);
+    }
+    if (!hasImplieds.isEmpty()) {
+      for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+        if (hasImplieds.has(data[i].l)) {
+          isp.release(hasImplieds);
+          return true;
+        }
+      }
+    }
+    isp.release(hasImplieds);
   }
   return false;
 }
@@ -626,11 +663,28 @@ bool Watched<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
 }
 
 template <typename CF, typename DG>
-bool Watched<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+bool Watched<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                                      IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
   for (int i = 0; i < (int)size; ++i) {
     Lit l = data[i].l;
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  if (!isEquality) {
+    IntSet& hasImplieds = isp.take();
+    for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+      Lit l = data[i].l;
+      if (implications.hasImplieds(l)) hasImplieds.add(-l);
+    }
+    if (!hasImplieds.isEmpty()) {
+      for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+        if (hasImplieds.has(data[i].l)) {
+          isp.release(hasImplieds);
+          return true;
+        }
+      }
+    }
+    isp.release(hasImplieds);
   }
   return false;
 }
@@ -748,11 +802,28 @@ bool CountingSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
 }
 
 template <typename CF, typename DG>
-bool CountingSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+bool CountingSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                                           IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
   for (int i = 0; i < (int)size; ++i) {
     Lit l = terms[i].l;
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  if (!isEquality) {
+    IntSet& hasImplieds = isp.take();
+    for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+      Lit l = terms[i].l;
+      if (implications.hasImplieds(l)) hasImplieds.add(-l);
+    }
+    if (!hasImplieds.isEmpty()) {
+      for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+        if (hasImplieds.has(terms[i].l)) {
+          isp.release(hasImplieds);
+          return true;
+        }
+      }
+    }
+    isp.release(hasImplieds);
   }
   return false;
 }
@@ -916,11 +987,28 @@ bool WatchedSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
 }
 
 template <typename CF, typename DG>
-bool WatchedSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities) const {
+bool WatchedSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                                          IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
   for (int i = 0; i < (int)size; ++i) {
     Lit l = terms[i].l;
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
+  }
+  if (!isEquality) {
+    IntSet& hasImplieds = isp.take();
+    for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+      Lit l = terms[i].l;
+      if (implications.hasImplieds(l)) hasImplieds.add(-l);
+    }
+    if (!hasImplieds.isEmpty()) {
+      for (int i = 0; i < (int)getUnsaturatedIdx(); ++i) {
+        if (hasImplieds.has(terms[i].l)) {
+          isp.release(hasImplieds);
+          return true;
+        }
+      }
+    }
+    isp.release(hasImplieds);
   }
   return false;
 }

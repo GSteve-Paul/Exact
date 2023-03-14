@@ -609,9 +609,10 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   assert(isLearned(orig));
   CeSuper learned = ce->clone(global.cePools);
   learned->orig = orig;
-  // NOTE: below two lines can cause loops when the equalities or implications are not yet propagated
-  //  if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities(), true);
-  //  learned->selfSubsumeImplications(implications);
+  // NOTE: below line can cause loops when the equalities are not yet propagated, as the conflict constraint becomes
+  // non-falsified
+  // if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities(), true);
+  learned->selfSubsumeImplications(implications);  // only strengthens the constraint
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   if (learned->isTautology()) return;
   learned->saturateAndFixOverflow(getLevel(), global.options.bitsLearned.get(), global.options.bitsLearned.get(), 0);
@@ -900,7 +901,10 @@ void Solver::reduceDB() {
   for (int i = 0; i < currentConstraints; ++i) {
     CRef cr = constraints[i];
     Constr& c = ca[cr];
-    if (c.isMarkedForDelete() || external.count(c.id) || !c.canBeSimplified(level, equalities)) continue;
+    if (c.isMarkedForDelete() || external.count(c.id) ||
+        !c.canBeSimplified(level, equalities, implications, global.isPool)) {
+      continue;
+    }
     ++global.stats.NCONSREADDED;
     CeSuper ce = c.toExpanded(global.cePools);
     bool isLocked = c.isLocked();

@@ -48,6 +48,7 @@ class Implications : public Propagator {
   void addImplied(Lit a, Lit b);
   void removeImplied(Lit a);
   const unordered_set<Lit>& getImplieds(Lit a) const;
+  bool hasImplieds(Lit a) const;
   long long nImpliedsInMemory() const;
 
   State propagate();

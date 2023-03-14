@@ -122,7 +122,7 @@ CePtr<SMALL, LARGE> ConstrExpPool<SMALL, LARGE>::take() {
       return ces[i + 1];
     }
   }
-  assert(ces.size() < 50);  // Sanity check that no large amounts of ConstrExps are created
+  assert(ces.size() < 30);  // Sanity check that no large amounts of ConstrExps are created
   // NOTE: in rare cases where propagation recursively triggers learning lots of constraints,
   // this assert may be violated
   // E.g. 32array_alg_ineq5.opb --bits-learned=0 --bits-overflow=0 --bits-reduced=0 --seed=2
