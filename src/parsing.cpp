@@ -214,7 +214,7 @@ void opb_read(std::istream& in, ILP& ilp) {
     }
 
     if (opt_line) {
-      ilp.setObjective(coefs, vars, negated, 1, -lb);
+      ilp.setObjective(coefs, vars, negated, -lb);
     } else {
       ilp.addConstraint(coefs, vars, negated, lb, aux::option(!isInequality, lb));
     }
@@ -374,16 +374,15 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
   }
   ratcoefs.emplace_back(parseCoinUtilsFloat(coinutils.objectiveOffset(), firstFloat));
   bigint cdenom = aux::commonDenominator(ratcoefs);
+  if (wasMaximization) {
+    cdenom = -cdenom;
+  }
   for (const ratio& r : ratcoefs) {
     coefs.emplace_back(r * cdenom);
   }
   bigint offset = coefs.back();
   coefs.pop_back();
-  if (wasMaximization) {
-    cdenom = -cdenom;
-    offset = -offset;
-  }
-  ilp.setObjective(coefs, vars, {}, cdenom, offset);
+  ilp.setObjective(coefs, vars, {}, offset);
 
   // Constraints
   const CoinPackedMatrix* cpm = coinutils.getMatrixByRow();

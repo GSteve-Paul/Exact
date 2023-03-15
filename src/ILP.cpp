@@ -174,7 +174,7 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   }
   for (const IntTerm& t : lhs) {
     assert(!t.negated);
-    if (t.v->getRange() == 0) continue;
+    if (t.v->getRange() == 0) continue; // variables will have value 0 anyway
     assert(!t.v->getEncodingVars().empty());
     if (t.v->getEncoding() == Encoding::LOG) {
       bigint base = 1;
@@ -249,13 +249,11 @@ std::vector<IntVar*> ILP::getVariables() const {
 std::pair<bigint, bigint> ILP::getBounds(IntVar* iv) const { return {iv->getLowerBound(), iv->getUpperBound()}; }
 
 void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                       const std::vector<bool>& negated, const bigint& mult, const bigint& offset) {
+                       const std::vector<bool>& negated, const bigint& offset) {
   if (coefs.size() != vars.size() || (!negated.empty() && negated.size() != vars.size()))
     throw std::invalid_argument("Coefficient, variable, or negated lists differ in size.");
-  if (mult == 0) throw std::invalid_argument("Objective multiplier should not be zero.");
   if (initialized()) throw std::invalid_argument("Objective already set.");
   obj = IntConstraint(coefs, vars, negated, -offset);
-  objmult = mult;
 }
 
 void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
