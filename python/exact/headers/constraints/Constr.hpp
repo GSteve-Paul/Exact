@@ -124,7 +124,8 @@ struct Constr {  // internal solver constraint optimized for fast propagation
 
   virtual CeSuper toExpanded(ConstrExpPools& cePools) const = 0;
   virtual bool isSatisfiedAtRoot(const IntMap<int>& level) const = 0;
-  virtual bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const = 0;
+  virtual bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                               IntSetPool& isp) const = 0;
 
   void print(const Solver& solver) const;
 
@@ -170,7 +171,8 @@ struct Clause final : public Constr {
 
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
-  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                       IntSetPool& isp) const;
 };
 
 struct Cardinality final : public Constr {
@@ -221,7 +223,8 @@ struct Cardinality final : public Constr {
 
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
-  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                       IntSetPool& isp) const;
 };
 
 template <typename CF, typename DG>
@@ -283,7 +286,8 @@ struct Counting final : public Constr {
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
-  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                       IntSetPool& isp) const;
 
   bool hasCorrectSlack(const Solver& solver);
 };
@@ -347,7 +351,8 @@ struct Watched final : public Constr {
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
-  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                       IntSetPool& isp) const;
 
   bool hasCorrectSlack(const Solver& solver);
   bool hasCorrectWatches(const Solver& solver);
@@ -417,7 +422,8 @@ struct CountingSafe final : public Constr {
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
-  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                       IntSetPool& isp) const;
 
   bool hasCorrectSlack(const Solver& solver);
 };
@@ -486,7 +492,8 @@ struct WatchedSafe final : public Constr {
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
-  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities) const;
+  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
+                       IntSetPool& isp) const;
 
   bool hasCorrectSlack(const Solver& solver);
   bool hasCorrectWatches(const Solver& solver);

@@ -98,7 +98,6 @@ class ILP {
 
   std::vector<std::unique_ptr<IntVar>> vars;
   IntConstraint obj;
-  bigint objmult = 1;
   unordered_map<std::string, IntVar*> name2var;
   unordered_map<Var, IntVar*> var2var;
 
@@ -131,7 +130,7 @@ class ILP {
   std::pair<bigint, bigint> getBounds(IntVar* iv) const;
 
   void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                    const std::vector<bool>& negated, const bigint& mult = 1, const bigint& offset = 0);
+                    const std::vector<bool>& negated, const bigint& offset = 0);
   void setAssumption(const IntVar* iv, const std::vector<bigint>& vals);
   bool hasAssumption(const IntVar* iv) const;
   std::vector<bigint> getAssumption(const IntVar* iv) const;
