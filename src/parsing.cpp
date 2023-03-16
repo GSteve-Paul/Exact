@@ -352,7 +352,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
         throw std::invalid_argument("No support for unbounded variables: " + varname);
       }
     }
-    if (upper < lower) {
+    if (std::ceil(upper) < std::floor(upper)) {
       std::cout << "c Conflicting bound on integer variable" << std::endl;
       throw UnsatEncounter();
     }

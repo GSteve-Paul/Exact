@@ -79,6 +79,7 @@ Solver::Solver(Global& g)
       nextToSort(0) {
   ca.capacity(1024 * 1024);  // 4MB
   position.resize(1, INF);
+  isorig.resize(1, true);
   assert(!lastCore);
   assert(!lastGlobalDual);
 }
@@ -92,7 +93,7 @@ Solver::~Solver() {
 bool Solver::foundSolution() const { return global.stats.NORIGVARS.z == 0 || lastSol.size() > 1; }
 
 void Solver::setNbVars(int nvars, bool orig) {
-  assert(nvars > 0);
+  assert(nvars >= 0);
   assert(nvars < INF);
   if (nvars <= n) {
     assert(isOrig(nvars) == orig);

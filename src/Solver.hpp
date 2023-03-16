@@ -150,7 +150,8 @@ class Solver {
   int getNbVars() const { return n; }
   void setNbVars(int nvars, bool orig);
   bool isOrig(Var v) const {
-    assert(v > 0);
+    assert(v >= 0);
+    assert(v <= getNbVars());
     return isorig[v];
   }
 

@@ -71,16 +71,15 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
   } else {
     const bigint range = getRange();
     assert(range != 0 || encoding == Encoding::ORDER);
-    int newvars = range == 0 ? 1
-                             : (encoding == Encoding::LOG
-                                    ? aux::msb(range) + 1
-                                    : static_cast<int>(range) + static_cast<int>(encoding == Encoding::ONEHOT));
+    int newvars = encoding == Encoding::LOG ? aux::msb(range) + 1
+                                            : static_cast<int>(range) + static_cast<int>(encoding == Encoding::ONEHOT);
     int oldvars = solver.getNbVars();
     solver.setNbVars(oldvars + newvars, true);
-    for (Var var = oldvars + 1; var <= oldvars + newvars; ++var) {
+    for (Var var = oldvars + 1; var <= solver.getNbVars(); ++var) {
       encodingVars.emplace_back(var);
     }
     if (encoding == Encoding::LOG) {  // upper bound constraint
+      assert(!encodingVars.empty());
       std::vector<Term<bigint>> lhs;
       lhs.reserve(encodingVars.size());
       bigint base = -1;
@@ -93,21 +92,18 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
       // value for an integer variable had a unique Boolean representation. Bad idea probably.
       solver.addConstraint(ConstrSimpleArb({lhs}, -range), Origin::FORMULA);
     } else if (encoding == Encoding::ORDER) {
-      if (range == 0) {
-        solver.addUnitConstraint(-newvars, Origin::FORMULA);
-        // TODO: project this variable away instead of adding a unit variable
-      } else {
-        for (Var var = oldvars + 1; var < oldvars + newvars; ++var) {
-          solver.addConstraint(ConstrSimple32({{1, var}, {-1, var + 1}}, 0), Origin::FORMULA);
-        }
+      assert(!encodingVars.empty() || range == 0);
+      for (Var var = oldvars + 1; var < solver.getNbVars(); ++var) {
+        solver.addConstraint(ConstrSimple32({{1, var}, {-1, var + 1}}, 0), Origin::FORMULA);
       }
     } else {
+      assert(!encodingVars.empty());
       assert(encoding == Encoding::ONEHOT);
       std::vector<Term<int>> lhs1;
       lhs1.reserve(encodingVars.size());
       std::vector<Term<int>> lhs2;
       lhs2.reserve(encodingVars.size());
-      for (int var = oldvars + 1; var <= oldvars + newvars; ++var) {
+      for (int var = oldvars + 1; var <= solver.getNbVars(); ++var) {
         lhs1.emplace_back(1, var);
         lhs2.emplace_back(-1, var);
       }
@@ -174,20 +170,21 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   }
   for (const IntTerm& t : lhs) {
     assert(!t.negated);
-    if (t.v->getRange() == 0) continue; // variables will have value 0 anyway
-    assert(!t.v->getEncodingVars().empty());
     if (t.v->getEncoding() == Encoding::LOG) {
+      assert(!t.v->getEncodingVars().empty());
       bigint base = 1;
       for (const Var v : t.v->getEncodingVars()) {
         input->addLhs(base * t.c, v);
         base *= 2;
       }
     } else if (t.v->getEncoding() == Encoding::ORDER) {
+      assert(t.v->getRange() == 0 || !t.v->getEncodingVars().empty());
       for (const Var v : t.v->getEncodingVars()) {
         input->addLhs(t.c, v);
       }
     } else {
       assert(t.v->getEncoding() == Encoding::ONEHOT);
+      assert(!t.v->getEncodingVars().empty());
       int ith = 0;
       for (const Var v : t.v->getEncodingVars()) {
         input->addLhs(ith * t.c, v);
