@@ -38,7 +38,7 @@ std::ostream& operator<<(std::ostream& o, const IntVar& x) {
   return o << x.getName() << "[" << x.getLowerBound() << "," << x.getUpperBound() << "]";
 }
 std::ostream& operator<<(std::ostream& o, const IntTerm& x) {
-  return o << (x.c < 0 ? "" : "+") << x.c << (x.negated ? "*~" : "*") << *x.v;
+  return o << (x.c < 0 ? "" : "+") << (x.c == 1 ? "" : aux::str(x.c) + "*") << (x.negated ? "~" : "") << *x.v;
 }
 void lhs2str(std::ostream& o, const IntConstraint& x) {
   std::vector<std::string> terms;
