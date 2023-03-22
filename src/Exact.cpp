@@ -63,8 +63,6 @@ Exact::Exact() : ilp(true), unsatState(false) {
 #if UNIXLIKE
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
-
-  ilp.global.logger.activate(ilp.global.options.proofLog.get());
 }
 
 void Exact::addVariable(const std::string& name, long long lb, long long ub, const std::string& encoding) {

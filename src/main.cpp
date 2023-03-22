@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
   ILP ilp;
   try {
-    ilp.runOnce(argc, argv);
+    ilp.runInternal(argc, argv);
   } catch (const AsynchronousInterrupt& ai) {
     std::cout << "c " << ai.what() << std::endl;
     return quit::exit_INDETERMINATE(ilp);
