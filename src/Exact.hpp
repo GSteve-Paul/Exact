@@ -219,8 +219,7 @@ class Exact {
    * and the search process is finished. No future calls should be made to this solver.
    * - SolveState::SAT (1): a solution consistent with the assumptions and the constraints has been found. The search
    * process can be continued, but to avoid finding the same solution over and over again, change the set of assumptions
-   * or add a constraint invalidating this solution. Note that the returned solution is invalidated by the the objective
-   * upper bound constraint. Disable this behavior by setting option "opt-boundupper" to "false".
+   * or add a constraint invalidating this solution via boundObjByLastSol().
    * - SolveState::INCONSISTENT (2): no solutions consistent with the assumptions exist and a core has been constructed.
    * The search process can be continued, but to avoid finding the same core over and over again, change the set of
    * assumptions.
@@ -232,8 +231,10 @@ class Exact {
   /**
    * Start / continue the search until an optimal solution or inconsistency is found.
    *
-   * @ param stopAtSat: whether to return whenever a solution is found. If stopAtSat is false, the search will continue
-   * until inconsistency or unsatisfiability is detected, so no SolveState::SAT will be returned. (default: false)
+   * @ param optimize: whether to optimize for the given objective. If optimize is true, SAT answers will be handled
+   * by adding an objective bound constraint, until unsatisfiability is reached, in which case the last found solution
+   * (if it exists) is the optimal one. If optimize is false, control will be handed back to the caller, without an
+   * objective bound constraint being added.
    * @ param timeout: return after timeout seconds. If timeout is zero, the no timeout is set (default: 0)
    *
    * @return: one of three values:
@@ -243,13 +244,12 @@ class Exact {
    * be retrieved if one exists via hasSolution() and getLastSolutionFor().
    * - SolveState::SAT (1): a solution consistent with the assumptions and the constraints has been found. The search
    * process can be continued, but to avoid finding the same solution over and over again, change the set of assumptions
-   * or add a constraint invalidating this solution. Note that the returned solution is invalidated by the the objective
-   * upper bound constraint. Disable this behavior by setting option "opt-boundupper" to "false".
+   * or add a constraint invalidating this solution. This answer will not be returned if optimize is true.
    * - SolveState::INCONSISTENT (2): no solutions consistent with the assumptions exist and a core has been constructed.
    * The search process can be continued, but to avoid finding the same core over and over again, change the set of
    * assumptions. A core can be retrieved via hasCore() and getLastCore().
    */
-  SolveState runFull(bool stopAtSat = false, double timeout = 0);
+  SolveState runFull(bool optimize, double timeout = 0);
 
   /**
    * Check whether a solution has been found.

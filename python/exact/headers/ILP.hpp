@@ -139,8 +139,8 @@ class ILP {
 
   bool initialized() const;
   void init();
-  SolveState runOnce();
-  SolveState runFull(bool stopAtSat = false, double timeout = 0);
+  SolveState runOnce(bool optimize);
+  SolveState runFull(bool optimize, double timeout = 0);
   void runInternal(int argc, char** argv);
 
   void addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,

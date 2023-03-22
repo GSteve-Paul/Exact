@@ -11,9 +11,9 @@ if len(sys.argv)==5 or len(sys.argv)==4:
 else:
     print("Usage: python3 graph_colorying.py <adjacency matrix file> <number of colors> <symmetry file> <print instead of solve>")
     print("Using default arguments: python3 python/examples/graph_coloring/graph_coloring.py python/examples/graph_coloring/graph_77v-7chrom_adj_matrix.txt 4 python/examples/graph_coloring/graph_77v-7chrom_symmetries.txt 0")
-    adjacencyfile = "python/examples/graph_coloring/graph_77v-7chrom_adj_matrix.txt"
+    adjacencyfile = "examples/graph_coloring/graph_77v-7chrom_adj_matrix.txt"
     colors = 4
-    symfile = "python/examples/graph_coloring/graph_77v-7chrom_symmetries.txt"
+    symfile = "examples/graph_coloring/graph_77v-7chrom_symmetries.txt"
     printNoSolve = False
 
 nodes = 0
@@ -148,7 +148,7 @@ if printNoSolve:
 else:
     # Run the solver
     print("run Exact:")
-    solver.runFull()
+    solver.runFull(False)
     if solver.hasSolution():
         print("SAT")
     else:

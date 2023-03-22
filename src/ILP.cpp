@@ -486,19 +486,20 @@ void ILP::init() {
   optim = OptimizationSuper::make(o, solver, global);
 }
 
-SolveState ILP::runOnce() {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
+SolveState ILP::runOnce(bool optimize) {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
   if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
+  global.options.boundUpper.set(optimize);
   return optim->optimize(assumptions.getKeys());
 }
 
-SolveState ILP::runFull(bool stopAtSat, double timeout) {
+SolveState ILP::runFull(bool optimize, double timeout) {
   if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
   while ((timeout == 0 || global.stats.getSolveTime() < timeout) &&
-         (result == SolveState::INPROCESSED || (result == SolveState::SAT && !stopAtSat))) {
+         (result == SolveState::INPROCESSED || (result == SolveState::SAT && optimize))) {
     try {
-      result = runOnce();
+      result = runOnce(optimize);
     } catch (const UnsatEncounter& ue) {
       return SolveState::UNSAT;
     }
@@ -629,12 +630,11 @@ void ILP::printOrigSol() const {
 }
 
 Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
-  global.options.boundUpper.set(false);
   global.options.pureLits.set(false);
   global.options.domBreakLim.set(0);
   SolveState result = SolveState::INPROCESSED;
   while (result == SolveState::INPROCESSED) {
-    result = runOnce();
+    result = runOnce(false);
   }
   if (result == SolveState::INCONSISTENT) {
     return nullptr;
@@ -660,7 +660,7 @@ Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
     solver.addConstraint(invalidator, Origin::INVALIDATOR);
     result = SolveState::INPROCESSED;
     while (result == SolveState::INPROCESSED) {
-      result = runOnce();
+      result = runOnce(false);
     }
     if (result != SolveState::SAT) break;
     for (Var v : invalidator->getVars()) {
@@ -813,7 +813,7 @@ void ILP::runInternal(int argc, char** argv) {
   SolveState res = SolveState::INPROCESSED;
 
   while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
-    res = runOnce();
+    res = runOnce(bool(global.options.boundUpper));
   }
 }
 

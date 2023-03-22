@@ -126,7 +126,7 @@ solver.init([], [])
 
 # Run Exact
 print("run Exact:")
-solver.runFull()
+solver.runFull(False)
 
 solver.printStats()
 

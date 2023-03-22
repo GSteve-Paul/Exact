@@ -10,7 +10,7 @@ else:
     print("Usage: python3 qubo.py <problem file>")
     print("Using default arguments: python3 python/examples/qubo/qubo.py python/examples/qubo/bqp50.1")
     print("More files can be found at https://github.com/rliang/qubo-benchmark-instances")
-    problem = "python3 python/examples/qubo/qubo.py python/examples/qubo/bqp50.1"
+    problem = "examples/qubo/bqp50.1"
 
 orig_vars = -1
 terms = [] # [coef [vars]]
@@ -66,7 +66,7 @@ if printNoSolve:
 else:
     # Run the solver
     print("run Exact:")
-    solver.runFull()
+    solver.runFull(True)
     if solver.hasSolution():
         print("SAT")
     else:

@@ -227,16 +227,16 @@ void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::s
 SolveState Exact::runOnce() {
   if (unsatState) return SolveState::UNSAT;
   try {
-    return ilp.runOnce();
+    return ilp.runOnce(false);
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
     return SolveState::UNSAT;
   }
 }
 
-SolveState Exact::runFull(bool stopAtSat, double timeout) {
+SolveState Exact::runFull(bool optimize, double timeout) {
   if (unsatState) return SolveState::UNSAT;
-  return ilp.runFull(stopAtSat, timeout);
+  return ilp.runFull(optimize, timeout);
 }
 
 std::pair<long long, long long> Exact::getObjectiveBounds() const {

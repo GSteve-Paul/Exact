@@ -29,7 +29,7 @@ solver.init(coefs_o, vars)
 
 # Run the solver
 print("run Exact:")
-result = solver.runFull()
+result = solver.runFull(True)
 
 # Check that the solution exists.
 assert solver.hasSolution()

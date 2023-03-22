@@ -35,9 +35,6 @@ solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
 # Initialize the solver with the knapsack objective, extended with the auxiliary variable.
 solver.init(coefs_o + [1], vars + ["aux"])
 
-# Disable the automatic objective upper bounding. We will add these upper bounds manually to prevent that finding an
-# optimal solution yields an UNSAT state - no useful further inferences can be made with a solver in an UNSAT state.
-solver.setOption("opt-boundupper", "0")
 # The following settings disable the generation of auxiliary constraints that may reduce the set of optimal solutions,
 # as we are interested in finding the intersection of all optimal solutions - i.e., the implied variable assignments.
 solver.setOption("inp-purelits", "0")
