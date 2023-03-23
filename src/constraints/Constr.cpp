@@ -360,8 +360,7 @@ bool Cardinality::isSatisfiedAtRoot(const IntMap<int>& level) const {
   return eval >= 0;
 }
 
-bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equalities,
-                                  [[maybe_unused]] Implications& implications, IntSetPool& isp) const {
+bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications&, IntSetPool&) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
   for (int i = 0; i < (int)size; ++i) {
     Lit l = data[i];
