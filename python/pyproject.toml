@@ -39,7 +39,7 @@ include = ["exact/libExact.so","exact/headers/**/*.hpp"]
 
 [tool.poetry.dependencies]
 python = "^3.6.9"
-cppyy = "^2.1.0"
+cppyy = "^3.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
