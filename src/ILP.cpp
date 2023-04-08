@@ -478,7 +478,6 @@ bool ILP::initialized() const { return optim != nullptr; }
 void ILP::init() {
   if (initialized()) throw std::invalid_argument("Solver already initialized.");
   aux::rng::seed = global.options.randomSeed.get();
-  global.logger.activate(global.options.proofLog.get());
 
   CeArb o = global.cePools.takeArb();
   obj.toConstrExp(o, true);
@@ -821,11 +820,10 @@ void ILP::runInternal(int argc, char** argv) {
               << std::endl;
   }
 
-  global.stats.runStartTime = std::chrono::steady_clock::now();
-
   init();
-  SolveState res = SolveState::INPROCESSED;
 
+  global.stats.runStartTime = std::chrono::steady_clock::now();
+  SolveState res = SolveState::INPROCESSED;
   while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
     res = runOnce(bool(global.options.boundUpper));
   }
