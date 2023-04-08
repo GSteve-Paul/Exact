@@ -235,7 +235,9 @@ class Exact {
    * by adding an objective bound constraint, until unsatisfiability is reached, in which case the last found solution
    * (if it exists) is the optimal one. If optimize is false, control will be handed back to the caller, without an
    * objective bound constraint being added.
-   * @ param timeout: return after timeout seconds. If timeout is zero, the no timeout is set (default: 0)
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
    *
    * @return: one of three values:
    *
@@ -339,6 +341,9 @@ class Exact {
    * solution exists under the assumptions, return empty vector.
    *
    * @param vars: variables for which to calculate the implied bounds
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
    * @pre: the problem is not unsatisfiable
    * @return: a list of pairs of bounds for each variable in vars. This list is empty if timeout is reached or the
    * problem is unsatisfiable or inconsistent under the current assumptions.
@@ -354,6 +359,9 @@ class Exact {
    * If no solution exists for the given domains under the current assumptions, all returned domains will be empty.
    *
    * @param vars: variables for which to calculate the pruned domains
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
    * @pre: the problem is not unsatisfiable
    * @pre: all variables use the one-hot encoding or have a domain size of 2
    * @return: pruned domains for each variable in vars. This list is empty if timeout is reached. This list contains
