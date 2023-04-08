@@ -127,7 +127,7 @@ ID Logger::logProofLine(const CeSuper& ce) {
   ID id;
   if (spacecount > 1) {  // non-trivial line
     id = ++last_proofID;
-    proof_out << "p " << buffer << "\n";
+    proof_out << "pol " << buffer << "\n";
     ce->resetBuffer(id);
   } else {  // line is just one id, don't print it
     id = std::stoll(buffer);
@@ -215,7 +215,7 @@ ID Logger::logAtMostOne(const ConstrSimple32& c, const CeSuper& ce) {
   std::stringstream buffer;
   ID previous = ID_Trivial;
   for (int i = 1; i < (int)c.size(); ++i) {
-    buffer << "p " << previous << " ";
+    buffer << "pol " << previous << " ";
     if (i > 2) buffer << i - 1 << " * ";
     for (int j = 0; j < i; ++j) {
       buffer << logRUP(c.terms[i].l, c.terms[j].l) << " + ";
@@ -242,7 +242,7 @@ ID Logger::logResolvent(ID id1, ID id2) {  // should be clauses
 #endif
   if (id1 == ID_Trivial) return id2;
   if (id2 == ID_Trivial) return id1;
-  proof_out << "p " << id1 << " " << id2 << " + s\n";
+  proof_out << "pol " << id1 << " " << id2 << " + s\n";
   return ++last_proofID;
 }
 
@@ -256,14 +256,14 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
   logComment("Equality");
 #endif
   ID aImpliesB = logRUP(-a, b);
-  proof_out << "p " << reprAImplA << " " << aImpliesB << " + " << bImpReprB << " + s\n";
+  proof_out << "pol " << reprAImplA << " " << aImpliesB << " + " << bImpReprB << " + s\n";
   ID reprAImpReprB = ++last_proofID;
 #if !NDEBUG
   proof_out << "e " << reprAImpReprB << " " << std::pair<int, Lit>{1, -reprA} << " " << std::pair<int, Lit>{1, reprB}
             << " >= 1 ;\n";
 #endif
   ID bImpliesA = logRUP(-b, a);
-  proof_out << "p " << reprBImplB << " " << bImpliesA << " + " << aImpReprA << " + s\n";
+  proof_out << "pol " << reprBImplB << " " << bImpliesA << " + " << aImpReprA << " + s\n";
   ID reprBImpReprA = ++last_proofID;
 #if !NDEBUG
   proof_out << "e " << reprBImpReprA << " " << std::pair<int, Lit>{1, -reprB} << " " << std::pair<int, Lit>{1, reprA}
