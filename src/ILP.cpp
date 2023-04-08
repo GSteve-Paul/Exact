@@ -363,21 +363,36 @@ void ILP::clearAssumption(const IntVar* iv) {
 
 void ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                         const std::vector<bool>& negated, const std::optional<bigint>& lb,
-                        const std::optional<bigint>& ub) {
+                        const std::optional<bigint>& ub, const std::vector<IntVar*>& subvars,
+                        const std::vector<bool>& subvals, const std::vector<IntVar*>& sublits) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (subvars.size() != subvals.size()) throw std::invalid_argument("Subvals and subvars differ in size.");
+  if (subvars.size() != sublits.size()) throw std::invalid_argument("Subvals and sublits differ in size.");
+
+  std::vector<VarSub> sub;
+  sub.reserve(subvars.size());
+  for (int i = 0; i < (int)subvars.size(); ++i) {
+    IntVar* iv = subvars[i];
+    assert(iv);
+    if (!iv->isBoolean()) throw std::invalid_argument("Non-Boolean variable in substitution: " + xct::aux::str(*iv));
+    IntVar* il = sublits[i];
+    if (il && !il->isBoolean())
+      throw std::invalid_argument("Non-Boolean variable in substitution: " + xct::aux::str(*il));
+    sub.push_back(VarSub{iv->getEncodingVars()[0], subvals[i], il ? il->getEncodingVars()[0] : INF});
+  }
 
   IntConstraint ic(coefs, vars, negated, lb, ub);
   if (keepInput) constraints.push_back(ic);
   if (ic.getLB().has_value()) {
     CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, true);
-    solver.addConstraint(input, Origin::FORMULA);
+    solver.addConstraint(input, Origin::FORMULA, sub);
   }
   if (ic.getUB().has_value()) {
     CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, false);
-    solver.addConstraint(input, Origin::FORMULA);
+    solver.addConstraint(input, Origin::FORMULA, sub);
   }
 }
 

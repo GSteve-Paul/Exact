@@ -44,3 +44,8 @@ assert(state==2) # inconsistent with assumptions
 
 # now you can run VeriPB on the generated files, e.g.:
 # veripb /tmp/logging_example.formula /tmp/logging_example.proof
+
+# The following (nonsensical) constraint addition yields the line
+# red +1 ~x2 +1 ~x4 >= 2 ; x4 1 x2 ~x3
+# in the .proof file.
+solver.addConstraint([-1,-1], ["w","y"], True, 0, False, 0,["w","y"],[True,False],["","z"])

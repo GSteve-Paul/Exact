@@ -68,6 +68,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+struct VarSub {
+  Var var;
+  bool val;
+  Var to;
+};
+
 class Logger {
   std::ofstream formula_out;
   std::ofstream proof_out;
@@ -97,6 +103,7 @@ class Logger {
   ID logImpliedUnit(Lit implying, Lit implied);
   ID logPure(const CeSuper& ce);
   ID logDomBreaker(const CeSuper& ce);  // second lit is the witness
+  ID logRedundant(const CeSuper& ce, const std::vector<VarSub>& sub);
   ID logAtMostOne(const ConstrSimple32& c, const CeSuper& ce);
   ID logResolvent(ID id1, ID id2);
   std::pair<ID, ID> logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB, Lit reprA,

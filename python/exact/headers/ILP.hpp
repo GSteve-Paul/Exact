@@ -146,7 +146,8 @@ class ILP {
 
   void addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                      const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
-                     const std::optional<bigint>& ub = std::nullopt);
+                     const std::optional<bigint>& ub = std::nullopt, const std::vector<IntVar*>& subvars = {},
+                     const std::vector<bool>& subvals = {}, const std::vector<IntVar*>& sublits = {});
   void addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                       const std::vector<bool>& negated, const bigint& lb);
   void addRightReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,

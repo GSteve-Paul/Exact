@@ -206,6 +206,27 @@ ID Logger::logDomBreaker(const CeSuper& ce) {
   return last_proofID;
 }
 
+ID Logger::logRedundant(const CeSuper& ce, const std::vector<VarSub>& sub) {
+  if (!active) return ++last_proofID;
+#if !NDEBUG
+  logComment("Redundance from user input");
+#endif
+  proof_out << "red " << ce << " ";
+  for (const VarSub& vs : sub) {
+    proof_out << "x" << vs.var << " ";
+    if (vs.to == INF) {
+      proof_out << int(vs.val);
+    } else {
+      proof_out << (vs.val ? "" : "~") << "x" << vs.to;
+    }
+    proof_out << " ";
+  }
+  proof_out << "\n";
+  ++last_proofID;
+  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
+}
+
 ID Logger::logAtMostOne(const ConstrSimple32& c, const CeSuper& ce) {
   if (!active) return ++last_proofID;
   assert(c.size() > 1);

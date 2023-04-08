@@ -60,6 +60,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Solver.hpp"
+#include "Logger.hpp"
 #include "auxiliary.hpp"
 #include "constraints/Constr.hpp"
 
@@ -666,24 +667,24 @@ void Solver::learnClause(const std::vector<Lit>& lits, Origin orig, ID id) {
   aux::timeCallVoid([&] { learnConstraint(clause.toExpanded(global.cePools), orig); }, global.stats.LEARNTIME);
 }
 
-std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
+std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce, const std::vector<VarSub>& sub) {
   assert(isInput(ce->orig));
   assert(decisionLevel() == 0);
   ID input = ID_Undef;
-  switch (ce->orig) {
-    case Origin::FORMULA:
-      input = global.logger.logInput(ce);
-      break;
-      // TODO: reactivate below when VeriPB's redundant rule becomes stronger
-      //      case Origin::PURE:
-      //        input = global.logger.logPure(ce);
-      //        break;
-      //      case Origin::DOMBREAKER:
-      //        input = global.logger.logDomBreaker(ce);
-      //        break;
-    default:
-      input = global.logger.logAssumption(ce);
+  if (!sub.empty()) {
+    input = global.logger.logRedundant(ce, sub);
+  } else if (ce->orig == Origin::FORMULA) {
+    input = global.logger.logInput(ce);
+  } else {
+    input = global.logger.logAssumption(ce);
   }
+  // TODO: reactivate below when VeriPB's redundant rule becomes stronger
+  //      case Origin::PURE:
+  //        input = global.logger.logPure(ce);
+  //        break;
+  //      case Origin::DOMBREAKER:
+  //        input = global.logger.logDomBreaker(ce);
+  //        break;
   ce->strongPostProcess(*this);
   if (ce->isTautology()) {
     return {input, ID_Undef};  // already satisfied.
@@ -713,12 +714,12 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
   return {input, id};
 }
 
-std::pair<ID, ID> Solver::addConstraint(const CeSuper& c, Origin orig) {
+std::pair<ID, ID> Solver::addConstraint(const CeSuper& c, Origin orig, const std::vector<VarSub>& sub) {
   // NOTE: copy to temporary constraint guarantees original constraint is not changed and does not need
   // global.logger
   CeSuper ce = c->clone(global.cePools);
   ce->orig = orig;
-  std::pair<ID, ID> result = addInputConstraint(ce);
+  std::pair<ID, ID> result = addInputConstraint(ce, sub);
   return result;
 }
 

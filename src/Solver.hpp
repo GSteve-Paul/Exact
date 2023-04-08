@@ -75,6 +75,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+struct VarSub;
+
 class Solver {
   friend class LpSolver;
   friend struct Constr;
@@ -168,7 +170,7 @@ class Solver {
   int assumptionLevel() const { return assumptions_lim.size() - 1; }
 
   // @return: formula line id, processed id, needed for optimization proof logging
-  std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
+  std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig, const std::vector<VarSub>& sub = {});
   std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
   void addUnitConstraint(Lit l, Origin orig);
   void invalidateLastSol(const std::vector<Var>& vars);
@@ -242,7 +244,7 @@ class Solver {
   void learnConstraint(const CeSuper& c, Origin orig);
   void learnUnitConstraint(Lit l, Origin orig, ID id);
   void learnClause(const std::vector<Lit>& lits, Origin orig, ID id);
-  std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
+  std::pair<ID, ID> addInputConstraint(const CeSuper& ce, const std::vector<VarSub>& sub = {});
 
   // ---------------------------------------------------------------------
   // Garbage collection

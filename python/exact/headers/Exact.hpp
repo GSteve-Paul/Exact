@@ -78,13 +78,25 @@ class Exact {
    * @param lb: the lower bound
    * @param useUB: whether or not the constraint is upper bounded
    * @param ub: the upper bound
+   * @param subvars, subvals, sublits: an optional substitution needed for VeriPB's red rule (see
+   * https://gitlab.com/MIAOresearch/software/VeriPB#substitution). When empty, this is just a regular formula
+   * constraint.
+   * @subvars is a list of variable names,
+   * @subvals a list of values (only Boolean variables, so only 0 or 1)
+   * @sublits is a list of variable names. If the name is "", use the simple value substitution (x1 -> 0/1).
+   * If not empty, use the literal substition with the corresponding value denoting the sign of the literal (0 means
+   * negative, 1 positive). E.g., @subvars == ["x1","x2"] @subvals == [1,0] @sublits == ["","x3"] represents the
+   * substitution x1 -> 1, x2 -> ~x3
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
   void addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
-                     long long lb, bool useUB, long long ub);
+                     long long lb, bool useUB, long long ub, const std::vector<std::string>& subvars = {},
+                     const std::vector<bool>& subvals = {}, const std::vector<std::string>& sublits = {});
   void addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
-                     const std::string& lb, bool useUB, const std::string& ub);
+                     const std::string& lb, bool useUB, const std::string& ub,
+                     const std::vector<std::string>& subvars = {}, const std::vector<bool>& subvals = {},
+                     const std::vector<std::string>& sublits = {});
 
   /**
    * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.
@@ -235,7 +247,9 @@ class Exact {
    * by adding an objective bound constraint, until unsatisfiability is reached, in which case the last found solution
    * (if it exists) is the optimal one. If optimize is false, control will be handed back to the caller, without an
    * objective bound constraint being added.
-   * @ param timeout: return after timeout seconds. If timeout is zero, the no timeout is set (default: 0)
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
    *
    * @return: one of three values:
    *
@@ -339,6 +353,9 @@ class Exact {
    * solution exists under the assumptions, return empty vector.
    *
    * @param vars: variables for which to calculate the implied bounds
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
    * @pre: the problem is not unsatisfiable
    * @return: a list of pairs of bounds for each variable in vars. This list is empty if timeout is reached or the
    * problem is unsatisfiable or inconsistent under the current assumptions.
@@ -354,6 +371,9 @@ class Exact {
    * If no solution exists for the given domains under the current assumptions, all returned domains will be empty.
    *
    * @param vars: variables for which to calculate the pruned domains
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
    * @pre: the problem is not unsatisfiable
    * @pre: all variables use the one-hot encoding or have a domain size of 2
    * @return: pruned domains for each variable in vars. This list is empty if timeout is reached. This list contains

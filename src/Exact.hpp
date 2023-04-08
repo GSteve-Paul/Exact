@@ -78,13 +78,25 @@ class Exact {
    * @param lb: the lower bound
    * @param useUB: whether or not the constraint is upper bounded
    * @param ub: the upper bound
+   * @param subvars, subvals, sublits: an optional substitution needed for VeriPB's red rule (see
+   * https://gitlab.com/MIAOresearch/software/VeriPB#substitution). When empty, this is just a regular formula
+   * constraint.
+   * @subvars is a list of variable names,
+   * @subvals a list of values (only Boolean variables, so only 0 or 1)
+   * @sublits is a list of variable names. If the name is "", use the simple value substitution (x1 -> 0/1).
+   * If not empty, use the literal substition with the corresponding value denoting the sign of the literal (0 means
+   * negative, 1 positive). E.g., @subvars == ["x1","x2"] @subvals == [1,0] @sublits == ["","x3"] represents the
+   * substitution x1 -> 1, x2 -> ~x3
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
   void addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
-                     long long lb, bool useUB, long long ub);
+                     long long lb, bool useUB, long long ub, const std::vector<std::string>& subvars = {},
+                     const std::vector<bool>& subvals = {}, const std::vector<std::string>& sublits = {});
   void addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
-                     const std::string& lb, bool useUB, const std::string& ub);
+                     const std::string& lb, bool useUB, const std::string& ub,
+                     const std::vector<std::string>& subvars = {}, const std::vector<bool>& subvals = {},
+                     const std::vector<std::string>& sublits = {});
 
   /**
    * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.

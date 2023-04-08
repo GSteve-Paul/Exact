@@ -36,8 +36,8 @@ See the file LICENSE or run with the flag --license=MIT.
 using namespace xct;
 
 IntVar* Exact::getVariable(const std::string& name) const {
-  IntVar* res = ilp.getVarFor(name);
-  if (!res) throw std::invalid_argument("No variable " + name + " found.");
+  IntVar* res = name == "" ? nullptr : ilp.getVarFor(name);
+  if (name != "" && !res) throw std::invalid_argument("No variable " + name + " found.");
   return res;
 }
 
@@ -81,27 +81,30 @@ std::vector<std::string> Exact::getVariables() const {
 }
 
 void Exact::addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
-                          long long lb, bool useUB, long long ub) {
+                          long long lb, bool useUB, long long ub, const std::vector<std::string>& subvars,
+                          const std::vector<bool>& subvals, const std::vector<std::string>& sublits) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
     ilp.addConstraint(getCoefs(coefs), getVariables(vars), {}, aux::option(useLB, getCoef(lb)),
-                      aux::option(useUB, getCoef(ub)));
+                      aux::option(useUB, getCoef(ub)), getVariables(subvars), subvals, getVariables(sublits));
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
 }
 void Exact::addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
-                          const std::string& lb, bool useUB, const std::string& ub) {
+                          const std::string& lb, bool useUB, const std::string& ub,
+                          const std::vector<std::string>& subvars, const std::vector<bool>& subvals,
+                          const std::vector<std::string>& sublits) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
     ilp.addConstraint(getCoefs(coefs), getVariables(vars), {}, aux::option(useLB, getCoef(lb)),
-                      aux::option(useUB, getCoef(ub)));
+                      aux::option(useUB, getCoef(ub)), getVariables(subvars), subvals, getVariables(sublits));
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
