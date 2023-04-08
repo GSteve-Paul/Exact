@@ -248,6 +248,7 @@ class Exact {
    * - SolveState::INCONSISTENT (2): no solutions consistent with the assumptions exist and a core has been constructed.
    * The search process can be continued, but to avoid finding the same core over and over again, change the set of
    * assumptions. A core can be retrieved via hasCore() and getLastCore().
+   * - SolveState::TIMEOUT (3): the timeout was reached. Solving can be resumed with a later call.
    */
   SolveState runFull(bool optimize, double timeout = 0);
 
@@ -339,13 +340,14 @@ class Exact {
    *
    * @param vars: variables for which to calculate the implied bounds
    * @pre: the problem is not unsatisfiable
-   * @return: a list of pairs of bounds for each variable in vars - empty if inconsistent under the current assumptions.
-   * @throw: UnsatEncounter exception in the case the instance is unsatisfiable. Propagation is undefined in this case.
+   * @return: a list of pairs of bounds for each variable in vars. This list is empty if timeout is reached or the
+   * problem is unsatisfiable or inconsistent under the current assumptions.
    *
    * Return arbitrarily large bounds using the string-based function variant '_arb'.
    */
-  std::vector<std::pair<long long, long long>> propagate(const std::vector<std::string>& vars);
-  std::vector<std::pair<std::string, std::string>> propagate_arb(const std::vector<std::string>& vars);
+  std::vector<std::pair<long long, long long>> propagate(const std::vector<std::string>& vars, double timeout = 0);
+  std::vector<std::pair<std::string, std::string>> propagate_arb(const std::vector<std::string>& vars,
+                                                                 double timeout = 0);
 
   /**
    * Under previously set assumptions, derive domains for the given variables where all impossible values are pruned.
@@ -354,14 +356,13 @@ class Exact {
    * @param vars: variables for which to calculate the pruned domains
    * @pre: the problem is not unsatisfiable
    * @pre: all variables use the one-hot encoding or have a domain size of 2
-   * @return: pruned domains for each variable in vars
-   * @throw: UnsatEncounter exception in the case the instance is unsatisfiable. Domain pruning is undefined in this
-   * case.
+   * @return: pruned domains for each variable in vars. This list is empty if timeout is reached. This list contains
+   * empty domains for all variables if the problem is unsatisfiable or inconsistent under the current assumptions.
    *
    * Return arbitrarily large domain values using the string-based function variant '_arb'.
    */
-  std::vector<std::vector<long long>> pruneDomains(const std::vector<std::string>& vars);
-  std::vector<std::vector<std::string>> pruneDomains_arb(const std::vector<std::string>& vars);
+  std::vector<std::vector<long long>> pruneDomains(const std::vector<std::string>& vars, double timeout = 0);
+  std::vector<std::vector<std::string>> pruneDomains_arb(const std::vector<std::string>& vars, double timeout = 0);
 
   /**
    * Set solver options. Run with --help or look at Options.hpp to find the possible options.

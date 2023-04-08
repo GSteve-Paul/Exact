@@ -105,7 +105,7 @@ using unordered_set = ankerl::unordered_dense::set<K, H>;
 // using unordered_set = std::unordered_set<K, H>;
 
 enum class State { SUCCESS, FAIL };
-enum class SolveState { UNSAT, SAT, INCONSISTENT, INPROCESSED };
+enum class SolveState { UNSAT, SAT, INCONSISTENT, TIMEOUT, INPROCESSED };
 std::ostream& operator<<(std::ostream& o, enum SolveState state);
 
 namespace xct {

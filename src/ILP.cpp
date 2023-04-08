@@ -486,6 +486,8 @@ void ILP::init() {
   optim = OptimizationSuper::make(o, solver, global);
 }
 
+bool ILP::reachedTimeout(double timeout) const { return timeout != 0 && global.stats.getRunTime() > timeout; }
+
 SolveState ILP::runOnce(bool optimize) {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
   if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   global.options.boundUpper.set(optimize);
@@ -496,15 +498,14 @@ SolveState ILP::runFull(bool optimize, double timeout) {
   if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
-  while ((timeout == 0 || global.stats.getSolveTime() < timeout) &&
-         (result == SolveState::INPROCESSED || (result == SolveState::SAT && optimize))) {
+  while (!reachedTimeout(timeout) && (result == SolveState::INPROCESSED || (result == SolveState::SAT && optimize))) {
     try {
       result = runOnce(optimize);
     } catch (const UnsatEncounter& ue) {
       return SolveState::UNSAT;
     }
   }
-  return result;
+  return reachedTimeout(timeout) ? SolveState::TIMEOUT : result;
 }
 
 void ILP::printFormula() { printFormula(std::cout); }
@@ -629,15 +630,18 @@ void ILP::printOrigSol() const {
   }
 }
 
-Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
+std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& ivs, double timeout) {
   global.options.pureLits.set(false);
   global.options.domBreakLim.set(0);
+  global.stats.runStartTime = std::chrono::steady_clock::now();
+  ;
   SolveState result = SolveState::INPROCESSED;
   while (result == SolveState::INPROCESSED) {
+    if (reachedTimeout(timeout)) return {SolveState::TIMEOUT, CeNull()};
     result = runOnce(false);
   }
-  if (result == SolveState::INCONSISTENT) {
-    return nullptr;
+  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) {
+    return {result, CeNull()};
   }
   assert(result == SolveState::SAT);
 
@@ -660,6 +664,7 @@ Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
     solver.addConstraint(invalidator, Origin::INVALIDATOR);
     result = SolveState::INPROCESSED;
     while (result == SolveState::INPROCESSED) {
+      if (reachedTimeout(timeout)) return {SolveState::TIMEOUT, CeNull()};
       result = runOnce(false);
     }
     if (result != SolveState::SAT) break;
@@ -679,14 +684,19 @@ Ce32 ILP::getSolIntersection(const std::vector<IntVar*>& ivs) {
   invalidator->weaken(marker);
   invalidator->removeZeroes();
   assert(invalidator->getDegree() == 0);
-  return invalidator;
+  return {SolveState::SAT, invalidator};
 }
 
 // NOTE: also throws AsynchronousInterrupt
-const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs) {
+const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, double timeout) {
+  auto [state, invalidator] = getSolIntersection(ivs, timeout);
+  if (state == SolveState::TIMEOUT) {
+    return {};
+  }
   std::vector<std::pair<bigint, bigint>> consequences;
-  Ce32 invalidator = getSolIntersection(ivs);
-  if (!invalidator) {  // inconsistent assumptions
+  if (state == SolveState::UNSAT || state == SolveState::INCONSISTENT) {
+    assert(!invalidator);
+    consequences.resize(ivs.size());
     return consequences;
   }
 
@@ -752,10 +762,14 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
 }
 
 // NOTE: also throws AsynchronousInterrupt
-const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs) {
+const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, double timeout) {
+  auto [state, invalidator] = getSolIntersection(ivs, timeout);
+  if (state == SolveState::TIMEOUT) {
+    return {};
+  }
   std::vector<std::vector<bigint>> doms(ivs.size());
-  Ce32 invalidator = getSolIntersection(ivs);
-  if (!invalidator) {  // inconsistent assumptions
+  if (state == SolveState::UNSAT || state == SolveState::INCONSISTENT) {
+    assert(!invalidator);
     return doms;
   }
 

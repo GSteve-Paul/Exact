@@ -10,8 +10,8 @@ echo $threads
 ./copy_headers.sh
 
 # compile shared library
-cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=OFF -Dsoplex=OFF
-# cmake .. -DCMAKE_BUILD_TYPE=Debug -Dbuild_result=SharedLib -Dbuild_static=OFF -Dsoplex=OFF
+# cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=OFF -Dsoplex=OFF
+cmake .. -DCMAKE_BUILD_TYPE=Debug -Dbuild_result=SharedLib -Dbuild_static=OFF -Dsoplex=OFF
 make -j $threads
 cp libExact.so exact/libExact.so
 # NOTE: the python/exact folder contains all files necessary for the python package
@@ -23,4 +23,4 @@ python3 -m pip install . -v
 # FOR macOS: when encountering the message that cppyy-backend could not be installed, first install cppyy-cling.
 
 # test on a knapsack example
-python3 examples/knapsack_classic.py
+python3 examples/knapsack_test.py
