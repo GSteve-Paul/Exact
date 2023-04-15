@@ -4,13 +4,6 @@ project(Exact)
 set(CMAKE_CXX_STANDARD 17)
 set(LINK_WHAT_YOU_USE TRUE)
 
-# include_directories("src" ) # NOTE: don't include non-standard directories, as cppyy complains about those
-
-# Feel free to decrease the required boost version if you can verify that it works with
-# a smaller version. It is known not to compile with version 1.53.0 and lower.
-find_package(Boost 1.65 REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS})
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
 
 set(CMAKE_CXX_FLAGS_TESTRUNS "-O3")
@@ -194,10 +187,13 @@ if(soplex)
 endif()
 if(coinutils)
     find_package(CoinUtils REQUIRED)
-    include_directories(${CoinUtils_INCLUDE_DIR})
+    target_include_directories(Exact PUBLIC ${CoinUtils_INCLUDE_DIR})
     target_link_libraries(Exact CoinUtils z bz2)
     target_compile_definitions(Exact PUBLIC WITHCOINUTILS=1)
 endif()
+
+find_package(Boost REQUIRED)
+target_include_directories(Exact PUBLIC ${Boost_INCLUDE_DIRS})
 
 FIND_PROGRAM(CLANG_FORMAT "clang-format")
 if(CLANG_FORMAT)
