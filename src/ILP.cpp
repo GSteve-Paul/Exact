@@ -633,7 +633,6 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
   global.options.pureLits.set(false);
   global.options.domBreakLim.set(0);
   global.stats.runStartTime = std::chrono::steady_clock::now();
-  ;
   SolveState result = SolveState::INPROCESSED;
   while (result == SolveState::INPROCESSED) {
     if (reachedTimeout(timeout)) return {SolveState::TIMEOUT, CeNull()};
@@ -827,10 +826,6 @@ void ILP::runInternal(int argc, char** argv) {
   while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
     res = runOnce(bool(global.options.boundUpper));
   }
-}
-
-void ILP::parseOption(const std::string& option, const std::string& value) {
-  global.options.parseOption(option, value);
 }
 
 }  // namespace xct
