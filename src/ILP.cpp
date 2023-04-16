@@ -829,4 +829,8 @@ void ILP::runInternal(int argc, char** argv) {
   }
 }
 
+void ILP::parseOption(const std::string& option, const std::string& value) {
+  global.options.parseOption(option, value);
+}
+
 }  // namespace xct

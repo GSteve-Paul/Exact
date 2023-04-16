@@ -313,6 +313,4 @@ std::vector<std::vector<std::string>> Exact::pruneDomains_arb(const std::vector<
   }
 }
 
-void Exact::setOption(const std::string& option, const std::string& value) {
-  ilp.global.options.parseOption(option, value);
-}
+void Exact::setOption(const std::string& option, const std::string& value) { ilp.parseOption(option, value); }
