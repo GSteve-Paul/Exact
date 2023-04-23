@@ -12,6 +12,7 @@ echo $threads
 # compile shared library
 cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=OFF -Dsoplex=OFF
 # cmake .. -DCMAKE_BUILD_TYPE=Debug -Dbuild_result=SharedLib -Dbuild_static=OFF -Dsoplex=OFF
+make format
 make -j $threads
 cp libExact.so exact/libExact.so
 # NOTE: the python/exact folder contains all files necessary for the python package

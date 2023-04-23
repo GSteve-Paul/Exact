@@ -56,11 +56,22 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   return o;
 }
 
+void log2assumptions(const std::vector<Var>& encoding, const bigint& value, const bigint& lowerbound,
+                     xct::IntSet& assumptions) {
+  bigint val = value - lowerbound;
+  assert(val >= 0);
+  for (Var v : encoding) {
+    assumptions.add(val % 2 == 0 ? -v : v);
+    val /= 2;
+  }
+  assert(val == 0);
+}
+
 Encoding opt2enc(const std::string& opt) {
   return opt == "order" ? Encoding::ORDER : opt == ("log") ? Encoding::LOG : Encoding::ONEHOT;
 }
 IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e)
-    : name(n), lowerBound(lb), upperBound(ub), encoding(getRange() <= 1 ? Encoding::ORDER : e) {
+    : name(n), lowerBound(lb), upperBound(ub), encoding(getRange() <= 1 ? Encoding::ORDER : e), propVars(), propVar(0) {
   assert(lb <= ub);
 
   if (nameAsId) {
@@ -71,11 +82,13 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
   } else {
     const bigint range = getRange();
     assert(range != 0 || encoding == Encoding::ORDER);
-    int newvars = encoding == Encoding::LOG ? aux::msb(range) + 1
-                                            : static_cast<int>(range) + static_cast<int>(encoding == Encoding::ONEHOT);
     int oldvars = solver.getNbVars();
-    solver.setNbVars(oldvars + newvars, true);
-    for (Var var = oldvars + 1; var <= solver.getNbVars(); ++var) {
+    int newvars = oldvars + (encoding == Encoding::LOG
+                                 ? aux::msb(range) + 1
+                                 : static_cast<int>(range) + static_cast<int>(encoding == Encoding::ONEHOT));
+
+    solver.setNbVars(newvars, true);
+    for (Var var = oldvars + 1; var <= newvars; ++var) {
       encodingVars.emplace_back(var);
     }
     if (encoding == Encoding::LOG) {  // upper bound constraint
@@ -118,6 +131,7 @@ bigint IntVar::getValue(const std::vector<Lit>& sol) const {
   if (encoding == Encoding::LOG) {
     bigint base = 1;
     for (Var v : getEncodingVars()) {
+      assert(v != 0);
       assert(v < (int)sol.size());
       assert(toVar(sol[v]) == v);
       if (sol[v] > 0) val += base;
@@ -145,6 +159,43 @@ bigint IntVar::getValue(const std::vector<Lit>& sol) const {
     }
   }
   return val;
+}
+
+Var IntVar::getPropVar() const {
+  assert(propVar != 0);  // call getPropVars(solver) first!
+  return propVar;
+}
+
+const std::vector<Var>& IntVar::getPropVars(Solver& solver) {
+  assert(encoding == Encoding::LOG);
+  if (propVar == 0) {
+    int oldvars = solver.getNbVars();
+    int newvars = oldvars + encodingVars.size() + 1;
+    solver.setNbVars(newvars, true);
+    propVar = oldvars + 1;
+    propVars.reserve(encodingVars.size());
+    for (Var v = propVar + 1; v <= newvars; ++v) {
+      propVars.push_back(v);
+    }
+    ConstrSimpleArb upperBound;  // M + propVars >= encodingVars + M*propVar
+    ConstrSimpleArb lowerBound;  // M*propVar + encodingVars >= propVars
+    bigint coef = 1;
+    for (int i = 0; i < (int)encodingVars.size(); ++i) {
+      upperBound.terms.push_back({coef, propVars[i]});
+      upperBound.terms.push_back({-coef, encodingVars[i]});
+      lowerBound.terms.push_back({-coef, propVars[i]});
+      lowerBound.terms.push_back({coef, encodingVars[i]});
+      coef *= 2;
+    }
+    coef -= 1;
+    upperBound.terms.push_back({-coef, propVar});
+    upperBound.rhs = -coef;
+    solver.addConstraint(upperBound, Origin::FORMULA);
+    lowerBound.terms.push_back({coef, propVar});
+    lowerBound.rhs = 0;
+    solver.addConstraint(lowerBound, Origin::FORMULA);
+  }
+  return propVars;
 }
 
 IntConstraint::IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
@@ -268,27 +319,22 @@ void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
     assumptions.remove(-v);
   }
   if (dom.size() == 1) {
-    bigint val = dom[0] - iv->getLowerBound();
     if (iv->getEncoding() == Encoding::LOG) {
-      for (const Var v : iv->getEncodingVars()) {
-        assumptions.add(val % 2 == 0 ? -v : v);
-        val /= 2;
-      }
-      assert(val == 0);
-    } else if (iv->getEncoding() == Encoding::ORDER) {
-      assert(val <= iv->getEncodingVars().size());
-      int val_int = static_cast<int>(val);
-      if (val_int > 0) {
-        assumptions.add(iv->getEncodingVars()[val_int - 1]);
-      }
-      if (val_int < (int)iv->getEncodingVars().size()) {
-        assumptions.add(-iv->getEncodingVars()[val_int]);
-      }
+      log2assumptions(iv->getEncodingVars(), dom[0], iv->getLowerBound(), assumptions);
     } else {
-      assert(iv->getEncoding() == Encoding::ONEHOT);
-      assert(val <= iv->getEncodingVars().size());
-      int val_int = static_cast<int>(val);
-      assumptions.add(iv->getEncodingVars()[val_int]);
+      assert(dom[0] - iv->getLowerBound() <= iv->getEncodingVars().size());
+      int val_int = static_cast<int>(dom[0] - iv->getLowerBound());
+      if (iv->getEncoding() == Encoding::ORDER) {
+        if (val_int > 0) {
+          assumptions.add(iv->getEncodingVars()[val_int - 1]);
+        }
+        if (val_int < (int)iv->getEncodingVars().size()) {
+          assumptions.add(-iv->getEncodingVars()[val_int]);
+        }
+      } else {
+        assert(iv->getEncoding() == Encoding::ONEHOT);
+        assumptions.add(iv->getEncodingVars()[val_int]);
+      }
     }
     return;
   }
@@ -662,7 +708,11 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
     solver.addConstraint(invalidator, Origin::INVALIDATOR);
     result = SolveState::INPROCESSED;
     while (result == SolveState::INPROCESSED) {
-      if (reachedTimeout(timeout)) return {SolveState::TIMEOUT, CeNull()};
+      if (reachedTimeout(timeout)) {
+        assumptions.remove(-marker);
+        solver.addUnitConstraint(marker, Origin::INVALIDATOR);
+        return {SolveState::TIMEOUT, CeNull()};
+      }
       result = runOnce(false);
     }
     if (result != SolveState::SAT) break;
@@ -685,6 +735,44 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
   return {SolveState::SAT, invalidator};
 }
 
+// TODO: fix optimization with assumption variable
+// TODO: refactor this when optimization works well with user-given assumptions
+std::pair<SolveState, bigint> ILP::optimizeVar(IntVar* iv, const bigint& startbound, bool minimize, double timeout) {
+  bigint currentbound = startbound;
+  int offset = minimize ? -1 : 1;
+  while (true) {
+    currentbound += offset;
+    log2assumptions(iv->getPropVars(solver), currentbound, iv->getLowerBound(), assumptions);
+    assumptions.add(minimize ? iv->getPropVar() : -iv->getPropVar());
+    SolveState state = SolveState::INPROCESSED;
+    while (state == SolveState::INPROCESSED) {
+      if (reachedTimeout(timeout)) return {SolveState::TIMEOUT, currentbound - offset};
+      state = runOnce(false);
+    }
+    assert(state != SolveState::INPROCESSED);
+    assert(state != SolveState::UNSAT);  // should have been caught previously
+    for (Var v : iv->getPropVars(solver)) {
+      assumptions.remove(v);
+      assumptions.remove(-v);
+      assumptions.remove(iv->getPropVar());
+      assumptions.remove(-iv->getPropVar());
+    }
+    if (state == SolveState::TIMEOUT) {
+      return {SolveState::TIMEOUT, currentbound - offset};
+    }
+    if (state == SolveState::INCONSISTENT) {
+      return {SolveState::SAT, currentbound - offset};
+    }
+    assert(state == SolveState::SAT);
+    bigint newVal = iv->getValue(solver.getLastSolution());
+    assert(!minimize || newVal <= currentbound);
+    assert(minimize || newVal >= currentbound);
+    currentbound = newVal;
+    if (minimize && currentbound == iv->getLowerBound()) return {SolveState::SAT, currentbound};
+    if (!minimize && currentbound == iv->getUpperBound()) return {SolveState::SAT, currentbound};
+  }
+}
+
 // NOTE: also throws AsynchronousInterrupt
 const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, double timeout) {
   auto [state, invalidator] = getSolIntersection(ivs, timeout);
@@ -703,8 +791,8 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
     bigint lb = iv->getLowerBound();
     bigint ub = iv->getUpperBound();
     if (iv->getEncoding() == Encoding::LOG) {
-      bigint ub2 =
-          lb;  // NOTE: upper bound is not a nice power of two difference with lower bound, so we cannot easily use it
+      bigint ub2 = lb;
+      // NOTE: upper bound is not a nice power of two difference with lower bound, so we cannot easily use it
       bigint coef = 1;
       for (Var v : iv->getEncodingVars()) {
         if (invalidator->hasLit(-v)) {
@@ -716,6 +804,21 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
         coef *= 2;
       }
       ub = aux::min(ub, ub2);
+      if (ub != lb) {
+        // we probably only have an approximate propagation, let's get the real one
+        auto [state, newlb] = optimizeVar(iv, ub, true, timeout);
+        if (state == SolveState::TIMEOUT) {
+          return {};
+        } else {
+          lb = newlb;
+        }
+        auto [state2, newub] = optimizeVar(iv, lb, false, timeout);
+        if (state2 == SolveState::TIMEOUT) {
+          return {};
+        } else {
+          ub = newub;
+        }
+      }
     } else if (iv->getEncoding() == Encoding::ORDER) {
       int lbi = 0;
       int ubi = 0;
@@ -761,6 +864,12 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
 
 // NOTE: also throws AsynchronousInterrupt
 const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, double timeout) {
+  for (IntVar* iv : ivs) {
+    if (iv->getEncoding() != Encoding::ONEHOT) {
+      throw std::invalid_argument("Variable " + iv->getName() +
+                                  " is passed to pruneDomains but is not one-hot encoded.");
+    }
+  }
   auto [state, invalidator] = getSolIntersection(ivs, timeout);
   if (state == SolveState::TIMEOUT) {
     return {};

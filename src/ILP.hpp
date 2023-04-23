@@ -54,6 +54,9 @@ struct IntVar {
   [[nodiscard]] const std::vector<Var>& getEncodingVars() const { return encodingVars; }
   [[nodiscard]] bigint getValue(const std::vector<Lit>& sol) const;
 
+  [[nodiscard]] const std::vector<Var>& getPropVars(Solver& solver);
+  [[nodiscatd]] Var getPropVar() const;
+
  private:
   const std::string name;
   const bigint lowerBound;
@@ -61,6 +64,9 @@ struct IntVar {
 
   const Encoding encoding;
   std::vector<Var> encodingVars;
+
+  std::vector<Var> propVars;
+  Var propVar;
 };
 std::ostream& operator<<(std::ostream& o, const IntVar& x);
 
@@ -111,6 +117,7 @@ class ILP {
   std::vector<std::pair<IntVar*, IntConstraint>> reifications;
 
   std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, double timeout = 0);
+  std::pair<SolveState, bigint> optimizeVar(IntVar* iv, const bigint& startbound, bool minimize, double timeout = 0);
   bool reachedTimeout(double timeout) const;
 
  public:
