@@ -865,8 +865,8 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
 // NOTE: also throws AsynchronousInterrupt
 const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, double timeout) {
   for (IntVar* iv : ivs) {
-    if (iv->getEncoding() != Encoding::ONEHOT) {
-      throw std::invalid_argument("Variable " + iv->getName() +
+    if (iv->getEncodingVars().size() != 1 && iv->getEncoding() != Encoding::ONEHOT) {
+      throw std::invalid_argument("Non-Boolean variable " + iv->getName() +
                                   " is passed to pruneDomains but is not one-hot encoded.");
     }
   }

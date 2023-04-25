@@ -24,7 +24,7 @@ solver = exact.Exact()
 
 # Add the variables. All have lower bound 0, but some have an upper bound of 1, others of 2.
 for v in var_range:
-    solver.addVariable(str(v), lb(v), ub(v), "onehot")
+    solver.addVariable(str(v), lb(v), ub(v), "" if lb(v)==0 and ub(v)==1 else "onehot")
 
 # Add an auxiliary variable to turn off the objective function when the optimal is found.
 solver.addVariable("aux", 0, 1)
