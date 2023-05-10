@@ -776,16 +776,11 @@ std::pair<SolveState, bigint> ILP::optimizeVar(IntVar* iv, const bigint& startbo
 // NOTE: also throws AsynchronousInterrupt
 const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, double timeout) {
   auto [state, invalidator] = getSolIntersection(ivs, timeout);
-  if (state == SolveState::TIMEOUT) {
+  if (state == SolveState::TIMEOUT || state == SolveState::UNSAT || state == SolveState::INCONSISTENT) {
+    assert(!invalidator);
     return {};
   }
   std::vector<std::pair<bigint, bigint>> consequences;
-  if (state == SolveState::UNSAT || state == SolveState::INCONSISTENT) {
-    assert(!invalidator);
-    consequences.resize(ivs.size());
-    return consequences;
-  }
-
   consequences.reserve(ivs.size());
   for (IntVar* iv : ivs) {
     bigint lb = iv->getLowerBound();
