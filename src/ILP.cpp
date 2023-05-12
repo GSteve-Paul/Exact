@@ -628,9 +628,11 @@ ratio ILP::getUpperBound() const {
 
 bool ILP::hasSolution() const {
   if (!initialized()) return false;
-  assert((optim->solutionsFound > 0) == solver.foundSolution());
+  assert(optim->solutionsFound == 0 || solver.foundSolution());
   return optim->solutionsFound > 0;
 }
+
+void ILP::clearSolution() { optim->solutionsFound = 0; }
 
 bigint ILP::getLastSolutionFor(IntVar* iv) const {
   if (!hasSolution()) throw std::invalid_argument("No solution to return.");
@@ -642,7 +644,7 @@ std::vector<bigint> ILP::getLastSolutionFor(const std::vector<IntVar*>& vars) co
   return aux::comprehension(vars, [&](IntVar* iv) { return getLastSolutionFor(iv); });
 }
 
-bool ILP::hasCore() const { return solver.assumptionsClashWithUnits() || solver.lastCore; }
+bool ILP::hasCore() const { return solver.lastCore || solver.assumptionsClashWithUnits(); }
 
 unordered_set<IntVar*> ILP::getLastCore() {
   if (!hasCore()) throw std::invalid_argument("No unsat core to return.");
@@ -664,6 +666,8 @@ unordered_set<IntVar*> ILP::getLastCore() {
   assert(!core.empty());
   return core;
 }
+
+void ILP::clearCore() { solver.lastCore.reset(); }
 
 void ILP::printOrigSol() const {
   if (!hasSolution()) throw std::invalid_argument("No solution to return.");
