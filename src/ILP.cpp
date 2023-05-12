@@ -536,7 +536,11 @@ bool ILP::reachedTimeout(double timeout) const { return timeout != 0 && global.s
 SolveState ILP::runOnce(bool optimize) {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
   if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   global.options.boundUpper.set(optimize);
-  return optim->optimize(assumptions.getKeys());
+  try {
+    return optim->optimize(assumptions.getKeys());
+  } catch (const UnsatEncounter& ue) {
+    return SolveState::UNSAT;
+  }
 }
 
 SolveState ILP::runFull(bool optimize, double timeout) {
@@ -544,11 +548,7 @@ SolveState ILP::runFull(bool optimize, double timeout) {
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
   while (!reachedTimeout(timeout) && (result == SolveState::INPROCESSED || (result == SolveState::SAT && optimize))) {
-    try {
-      result = runOnce(optimize);
-    } catch (const UnsatEncounter& ue) {
-      return SolveState::UNSAT;
-    }
+    result = runOnce(optimize);
   }
   return reachedTimeout(timeout) ? SolveState::TIMEOUT : result;
 }
@@ -928,7 +928,8 @@ void ILP::runInternal(int argc, char** argv) {
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState res = SolveState::INPROCESSED;
   while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
-    res = runOnce(bool(global.options.boundUpper));
+    global.options.boundUpper.set(bool(global.options.boundUpper));
+    res = optim->optimize(assumptions.getKeys());
   }
 }
 

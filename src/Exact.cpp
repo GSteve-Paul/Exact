@@ -228,12 +228,9 @@ void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::s
 
 SolveState Exact::runOnce() {
   if (unsatState) return SolveState::UNSAT;
-  try {
-    return ilp.runOnce(false);
-  } catch (const UnsatEncounter& ue) {
-    unsatState = true;
-    return SolveState::UNSAT;
-  }
+  SolveState state = ilp.runOnce(false);
+  unsatState = state == SolveState::UNSAT;
+  return state;
 }
 
 SolveState Exact::runFull(bool optimize, double timeout) {
