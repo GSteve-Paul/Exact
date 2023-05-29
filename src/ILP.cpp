@@ -263,7 +263,7 @@ void IntConstraint::normalize() {
   }
 }
 
-ILP::ILP(bool keepIn) : solver(global), obj({}, {}, {}, 0), keepInput(keepIn) {
+ILP::ILP(bool keepIn) : global(), solver(global), obj({}, {}, {}, 0), keepInput(keepIn) {
   global.stats.startTime = std::chrono::steady_clock::now();
 }
 

@@ -99,6 +99,10 @@ class IntConstraint {
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
 class ILP {
+ public:
+  Global global;
+
+ private:
   Solver solver;
   Optim optim;
 
@@ -121,8 +125,6 @@ class ILP {
   bool reachedTimeout(double timeout) const;
 
  public:
-  Global global;
-
   ILP(bool keepIn = false);
 
   const IntConstraint& getObjective() const { return obj; }
