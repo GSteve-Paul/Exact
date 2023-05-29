@@ -39,9 +39,10 @@ ENDIF()
 
 set(soplex "OFF"
     CACHE STRING "Use SoPlex to check for rational infeasibility.")
-
-set(soplex_pkg "${PROJECT_SOURCE_DIR}/soplex-6.0.1.tgz"
-    CACHE STRING "SoPlex zip package, available at https://soplex.zib.de/download.php?fname=soplex-6.0.1.tgz")
+set(soplex_src "${PROJECT_SOURCE_DIR}/soplex/src"
+    CACHE STRING "SoPlex /src directory used to find the header files.")
+set(soplex_build "${PROJECT_SOURCE_DIR}/soplex_build"
+    CACHE STRING "SoPlex build directory used to find the compiled libraries and the header file soplex/config.h.")
 
 set(coinutils "OFF"
     CACHE STRING "Coin OR Utils library to parse .mps and .lp files.")
@@ -174,15 +175,18 @@ if(build_result STREQUAL "StaticLib")
     set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
 endif()
 
-target_include_directories(Exact PUBLIC ${PROJECT_SOURCE_DIR}/src/ ${SOPLEX_INCLUDE_DIRS})
+target_include_directories(Exact PUBLIC ${PROJECT_SOURCE_DIR}/src/)
 
 if(unixlike)
     target_compile_definitions(Exact PUBLIC UNIXLIKE=1)
 endif()
 if(soplex)
-    # provides libsoplex and ${SOPLEX_INCLUDE_DIRS}
-    include(${PROJECT_SOURCE_DIR}/cmake/soplex_build_and_load.cmake)
-    target_link_libraries(Exact libsoplex)
+    target_include_directories(Exact PUBLIC ${soplex_src} ${soplex_build})
+    if(build_static)
+        target_link_libraries(Exact "${soplex_build}/lib/libsoplex.a")
+    else()
+        target_link_libraries(Exact "${soplex_build}/lib/libsoplexshared.so")
+    endif()
     target_compile_definitions(Exact PUBLIC WITHSOPLEX=1)
 endif()
 if(coinutils)

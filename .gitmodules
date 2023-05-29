@@ -1,0 +1,3 @@
+[submodule "soplex"]
+	path = soplex
+	url = https://github.com/scipopt/soplex.git
