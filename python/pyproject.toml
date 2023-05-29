@@ -29,7 +29,7 @@
 
 [tool.poetry]
 name = "exact"
-version = "1.0.0"
+version = "1.1.0"
 description = "A Python interface to the Exact integer linear programming solver"
 authors = ["Jo Devriendt"]
 readme = "exact/README.md"
@@ -38,7 +38,7 @@ repository = "https://gitlab.com/JoD/exact"
 include = ["exact/libExact.so","exact/headers/**/*.hpp"]
 
 [tool.poetry.dependencies]
-python = "^3.6.9"
+python = "^3.7.0"
 cppyy = "^3.0.0"
 
 [build-system]
