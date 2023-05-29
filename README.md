@@ -68,13 +68,13 @@ By default, Exact decides on the format based on the filename extension, but thi
 In the root directory of Exact:
 
     cd build
-    cmake -DCMAKE_BUILD_TYPE=Release ..
+    cmake .. -DCMAKE_BUILD_TYPE=Release
     make
 
 For a debug build:
 
     cd build_debug
-    cmake -DCMAKE_BUILD_TYPE=Debug ..
+    cmake .. -DCMAKE_BUILD_TYPE=Debug
     make
 
 For more builds, similar build directories can be created.
@@ -102,11 +102,11 @@ By default, the following commands in Exact's root directory should work with a 
 
     mkdir soplex_build
     cd soplex_build
-    cmake -DBUILD_TESTING:BOOL="0" -DSANITIZE_UNDEFINED:BOOL="0" -DCMAKE_BUILD_TYPE:STRING="Release" -DBOOST:BOOL="0" -DGMP:BOOL="0" -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS:BOOL="0" -DZLIB:BOOL="0"
+    cmake ../soplex -DBUILD_TESTING="0" -DSANITIZE_UNDEFINED="0" -DCMAKE_BUILD_TYPE="Release" -DBOOST="0" -DGMP="0" -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS="0" -DZLIB="0"
     make -j 8
 
     cd ../build_debug
-    cmake -DCMAKE_BUILD_TYPE="Release" -Dsoplex="ON"
+    cmake .. -DCMAKE_BUILD_TYPE="Release" -Dsoplex="ON"
     make -j 8
 ```
 The CMake options `soplex_src` and `soplex_build` allow to look for SoPlex in a different location.
