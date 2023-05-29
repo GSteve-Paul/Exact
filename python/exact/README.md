@@ -68,13 +68,13 @@ By default, Exact decides on the format based on the filename extension, but thi
 In the root directory of Exact:
 
     cd build
-    cmake -DCMAKE_BUILD_TYPE=Release ..
+    cmake .. -DCMAKE_BUILD_TYPE=Release
     make
 
 For a debug build:
 
     cd build_debug
-    cmake -DCMAKE_BUILD_TYPE=Debug ..
+    cmake .. -DCMAKE_BUILD_TYPE=Debug
     make
 
 For more builds, similar build directories can be created.
@@ -87,20 +87,29 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 - [Boost](https://www.boost.org) library.
   On a Debian/Ubuntu system, install with `sudo apt install libboost-dev`.
 - Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
-  Use cmake option `-Dcoinutils=ON` after [installing the library](https://github.com/coin-or/CoinUtils#binaries).
+  Use CMake option `-Dcoinutils=ON` after [installing the library](https://github.com/coin-or/CoinUtils#binaries).
 - Optionally: [SoPlex](https://soplex.zib.de) LP solver (see below).
 
 ## SoPlex
 
 Exact supports an integration with the LP solver [SoPlex](https://soplex.zib.de) to improve its search routine.
-For this, first [download](https://soplex.zib.de/download.php?fname=soplex-6.0.1.tgz) SoPlex 6.0.1 and place the downloaded file in the root directory of Exact.
-Next, follow the above build process, but configure with the cmake option `-Dsoplex=ON`:
+For this, checkout SoPlex from its [git repository](https://github.com/scipopt/soplex) as a submodule, compile it in some separate directory, and configure the right CMake options when compiling Exact.
 
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release -Dsoplex=ON ..
-    make
+By default, the following commands in Exact's root directory should work with a freshly checked out repository:
+```
+    git submodule init
+    git submodule update
 
-The location of the SoPlex package can be configured with the cmake option `-Dsoplex_pkg=<location>`.
+    mkdir soplex_build
+    cd soplex_build
+    cmake ../soplex -DBUILD_TESTING="0" -DSANITIZE_UNDEFINED="0" -DCMAKE_BUILD_TYPE="Release" -DBOOST="0" -DGMP="0" -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS="0" -DZLIB="0"
+    make -j 8
+
+    cd ../build_debug
+    cmake .. -DCMAKE_BUILD_TYPE="Release" -Dsoplex="ON"
+    make -j 8
+```
+The CMake options `soplex_src` and `soplex_build` allow to look for SoPlex in a different location.
 
 ## License
 
