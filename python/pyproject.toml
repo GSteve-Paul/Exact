@@ -26,22 +26,24 @@
 # You should have received a copy of the MIT License along with Exact.
 # See the file LICENSE.
 
-
 [tool.poetry]
 name = "exact"
-version = "1.1.1"
+version = "1.1.2"
 description = "A Python interface to the Exact integer linear programming solver"
 authors = ["Jo Devriendt"]
 readme = "exact/README.md"
 homepage = "https://gitlab.com/JoD/exact"
 repository = "https://gitlab.com/JoD/exact"
 include = ["exact/libExact.so","exact/headers/**/*.hpp"]
+classifiers = ["Operating System :: POSIX :: Linux"]
 
 [tool.poetry.dependencies]
 python = "^3.7.0"
 cppyy = "^3.0.0"
+exact = {version = "*", markers = "sys_platform == 'linux' and platform_machine == 'x86_64'"}
+# The above is a hacky way of enforcing Linux and x86_64 dependency.
+# See https://stackoverflow.com/questions/64094979/how-can-i-specify-dependencies-on-operating-system-in-python-poetry
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
