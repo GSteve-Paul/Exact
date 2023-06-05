@@ -8,7 +8,7 @@ $ git clone https://gitlab.com/JoD/exact.git
 1.2) install boost on AlmaLinux
 $ dnf -y install boost-devel
 1.3) install exact (optionally, after building SoPlex)
-$ cd python
+$ cd exact/python
 $ cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=ON -Dsoplex=OFF
 $ make -j 6
 $ cp libExact.so exact/libExact.so

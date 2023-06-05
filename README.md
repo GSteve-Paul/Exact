@@ -28,8 +28,7 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [
 
 ### PyPi package
 
-The easiest way is to use an x86_64 machine with Linux installed. In that case, this precompiled [PyPi package](https://pypi.org/project/exact).
-Simpy run `pip3 install exact`.
+The easiest way is to use an **x86_64** machine with **Linux** operating system. In that case, this precompiled [PyPi package](https://pypi.org/project/exact). Simpy run `pip3 install exact`.
 
 ### Compile your own Python package
 
