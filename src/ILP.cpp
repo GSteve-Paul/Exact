@@ -572,7 +572,8 @@ std::ostream& ILP::printFormula(std::ostream& out) {
   }
   for (Var v = 1; v <= solver.getNbVars(); ++v) {
     if (solver.getEqualities().isCanonical(v)) continue;
-    out << std::pair<int, Lit>{1, v} << std::pair<int, Lit>{-1, solver.getEqualities().getRepr(v).l} << " = 0 ;\n";
+    out << std::pair<int, Lit>{1, v} << " " << std::pair<int, Lit>{-1, solver.getEqualities().getRepr(v).l}
+        << " = 0 ;\n";
   }
   for (const CRef& cr : solver.getRawConstraints()) {
     const Constr& c = solver.getCA()[cr];
