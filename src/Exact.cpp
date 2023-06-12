@@ -279,9 +279,10 @@ std::vector<std::string> Exact::getLastSolutionFor_arb(const std::vector<std::st
   return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)), [](const bigint& i) { return aux::str(i); });
 }
 
-bool Exact::hasCore() const { return ilp.hasCore(); }
+bool Exact::hasCore() const { return unsatState || ilp.hasCore(); }
 
 std::vector<std::string> Exact::getLastCore() {
+  if (unsatState) return {};
   return aux::comprehension(ilp.getLastCore(), [](IntVar* iv) { return iv->getName(); });
 }
 
