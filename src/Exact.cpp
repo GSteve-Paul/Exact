@@ -113,7 +113,11 @@ void Exact::addReification(const std::string& head, const std::vector<long long>
   if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
-  ilp.addReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  try {
+    ilp.addReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+  }
 }
 void Exact::addReification(const std::string& head, const std::vector<std::string>& coefs,
                            const std::vector<std::string>& vars, const std::string& lb) {
@@ -121,7 +125,11 @@ void Exact::addReification(const std::string& head, const std::vector<std::strin
   if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
-  ilp.addReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  try {
+    ilp.addReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+  }
 }
 void Exact::addRightReification(const std::string& head, const std::vector<long long>& coefs,
                                 const std::vector<std::string>& vars, long long lb) {
@@ -129,7 +137,11 @@ void Exact::addRightReification(const std::string& head, const std::vector<long 
   if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
-  ilp.addRightReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  try {
+    ilp.addRightReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+  }
 }
 void Exact::addRightReification(const std::string& head, const std::vector<std::string>& coefs,
                                 const std::vector<std::string>& vars, const std::string& lb) {
@@ -137,7 +149,11 @@ void Exact::addRightReification(const std::string& head, const std::vector<std::
   if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
-  ilp.addRightReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  try {
+    ilp.addRightReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+  }
 }
 void Exact::addLeftReification(const std::string& head, const std::vector<long long>& coefs,
                                const std::vector<std::string>& vars, long long lb) {
@@ -145,7 +161,11 @@ void Exact::addLeftReification(const std::string& head, const std::vector<long l
   if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
-  ilp.addLeftReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  try {
+    ilp.addLeftReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+  }
 }
 void Exact::addLeftReification(const std::string& head, const std::vector<std::string>& coefs,
                                const std::vector<std::string>& vars, const std::string& lb) {
@@ -153,7 +173,11 @@ void Exact::addLeftReification(const std::string& head, const std::vector<std::s
   if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
-  ilp.addLeftReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  try {
+    ilp.addLeftReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+  }
 }
 
 void Exact::fix(const std::string& var, long long val) { ilp.fix(getVariable(var), getCoef(val)); }
