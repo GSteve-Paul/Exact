@@ -6,9 +6,11 @@ Exact is a fork of [RoundingSat](https://gitlab.com/miao_research/roundingsat) a
 The name "Exact" reflects that the answers are fully sound, as approximate and floating-point calculations only occur in heuristic parts of the algorithm.
 As such, Exact can soundly be used for verification and theorem proving, where its envisioned ability to emit machine-checkable certificates of optimality and unsatisfiability should prove useful.
 
+
 ## Stay updated
 
 Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [reddit community](https://reddit.com/r/exact).
+
 
 ## Features
 
@@ -21,12 +23,22 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [
 - Under development: **Python** interface with assumption solving and reuse of solver state (Linux only for now).
 - Under development: generation of **certificates** of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://github.com/StephanGocht/VeriPB).
 
+
 ## Python interface
 
-To use the Python interface, compile as a shared library and install it with your package manager (e.g., `pip`).
+### PyPi package
+
+The easiest way is to use an **x86_64** machine with **Linux** operating system. In that case, this precompiled [PyPi package](https://pypi.org/project/exact). Simpy run `pip3 install exact`.
+
+### Compile your own Python package
+
+To use the Exact Python interface with optimal binaries for your machine (and the option to include SoPlex in the binary), compile as a shared library and install it with your package manager (e.g., `pip`).
+
 On Linux, [this script](https://gitlab.com/JoD/exact/-/blob/main/python/install_package.sh) should do the trick.
-On other systems, something similar should happen.
+On other systems, something similar should work.
 Make sure to have the Boost libraries (see dependencies) installed.
+
+### Documentation
 
 The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/main/src/Exact.hpp) contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
@@ -37,7 +49,8 @@ Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/main/python/exampl
 - [`python/examples/ramsey.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_propagate.py) tries to compute the infamous [Ramsey numbers](https://en.wikipedia.org/wiki/Ramsey%27s_theorem).
 - [`python/examples/graph_coloring/graph_coloring.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/graph_coloring/graph_coloring.py) tries to find the chromatic number of a graph. If you can get Exact to prove the provided graph cannot be colored with 6 colors, contact @JoD ;)
 
-## File-based usage
+
+## Command line usage
 
 Exact takes as input an integer linear program and outputs a(n optimal) solution or reports that none exists.
 Either pipe the program
@@ -63,6 +76,7 @@ Rewrite constraints with fractional values to integral ones by multiplying with 
 
 By default, Exact decides on the format based on the filename extension, but this can be overridden with the `--format` option.
 
+
 ## Compilation
 
 In the root directory of Exact:
@@ -81,6 +95,7 @@ For more builds, similar build directories can be created.
 
 For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make install`.
 
+
 ## Dependencies
 
 - C++17 (i.e., a reasonably recent C++ compiler)
@@ -89,6 +104,7 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 - Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
   Use CMake option `-Dcoinutils=ON` after [installing the library](https://github.com/coin-or/CoinUtils#binaries).
 - Optionally: [SoPlex](https://soplex.zib.de) LP solver (see below).
+
 
 ## SoPlex
 
@@ -111,13 +127,16 @@ By default, the following commands in Exact's root directory should work with a 
 ```
 The CMake options `soplex_src` and `soplex_build` allow to look for SoPlex in a different location.
 
+
 ## License
 
 Exact is licensed under the [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.en.html). If this would hinder your intended usage, please contact @JoD.
 
+
 ## Benchmarks
 
 The current set of benchmarks which is used to assess performance is available [here](https://gitlab.com/JoD/exact-benchmarks).
+
 
 ## Citations
 

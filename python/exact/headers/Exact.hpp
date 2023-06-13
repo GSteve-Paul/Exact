@@ -281,6 +281,7 @@ class Exact {
 
   /**
    * The subset of assumption variables in the core. Their assumed values imply inconsistency under the constraints.
+   * When UNSAT is reached, the last core will be empty.
    *
    * @return: the variables in the core.
    */
