@@ -565,6 +565,7 @@ void LpSolver::convertConstraint(const ConstrSimple64& c, soplex::DSVectorReal& 
   for (auto& t : c.terms) {
     if (t.c == 0) continue;
     assert(t.l > 0);
+    setNbVariables(t.l + 1);
     assert(t.l < lp.numColsReal());
     assert(aux::abs(t.c) < INFLPINT);
     row.add(t.l, t.c);

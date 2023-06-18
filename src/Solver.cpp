@@ -106,7 +106,6 @@ void Solver::setNbVars(int nvars, bool orig) {
   freeHeur.resize(nvars + 1);
   cgHeur.resize(nvars + 1);
   global.cePools.resize(nvars + 1);
-  // if (lpSolver) lpSolver->setNbVariables(nvars + 1); // Currently, LP solver only reasons on formula constraints
   equalities.setNbVars(nvars);
   implications.setNbVars(nvars);
   isorig.resize(nvars + 1, orig);
