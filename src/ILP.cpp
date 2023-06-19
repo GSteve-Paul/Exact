@@ -547,6 +547,9 @@ SolveState ILP::runFull(bool optimize, double timeout) {
   if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
+  if (global.options.verbosity.get() > 0) {
+    std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
+  }
   while (!reachedTimeout(timeout) && (result == SolveState::INPROCESSED || (result == SolveState::SAT && optimize))) {
     result = runOnce(optimize);
   }
