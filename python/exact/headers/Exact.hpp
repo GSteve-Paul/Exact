@@ -207,8 +207,8 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars);
-  void init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars);
+  void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, long long offset = 0);
+  void init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, const std::string& offset = "0");
 
   /**
    * Start / continue the search.

@@ -231,21 +231,21 @@ void Exact::printVariables() const { ilp.printVars(std::cout); }
 void Exact::printInput() const { ilp.printInput(std::cout); }
 void Exact::printFormula() { ilp.printFormula(std::cout); }
 
-void Exact::init(const std::vector<long long>& coefs, const std::vector<std::string>& vars) {
+void Exact::init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, long long offset) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
   if (unsatState) return;
 
-  ilp.setObjective(getCoefs(coefs), getVariables(vars), {});
+  ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, offset);
   ilp.global.logger.activate(ilp.global.options.proofLog.get());
   ilp.init();
 }
-void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars) {
+void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, const std::string& offset) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
   if (unsatState) return;
 
-  ilp.setObjective(getCoefs(coefs), getVariables(vars), {});
+  ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, getCoef(offset));
   ilp.global.logger.activate(ilp.global.options.proofLog.get());
   ilp.init();
 }
