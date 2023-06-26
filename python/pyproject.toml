@@ -28,7 +28,7 @@
 
 [tool.poetry]
 name = "exact"
-version = "1.1.4"
+version = "1.1.5"
 description = "A Python interface to the Exact integer linear programming solver"
 license = "AGPL-3.0-only"
 authors = ["Jo Devriendt"]

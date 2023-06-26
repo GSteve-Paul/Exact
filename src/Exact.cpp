@@ -67,13 +67,23 @@ Exact::Exact() : ilp(true), unsatState(false) {
 
 void Exact::addVariable(const std::string& name, long long lb, long long ub, const std::string& encoding) {
   if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
-  ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
+  if (unsatState) return;
+  try {
+    ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+  }
 }
 
 void Exact::addVariable(const std::string& name, const std::string& lb, const std::string& ub,
                         const std::string& encoding) {
   if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
-  ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
+  if (unsatState) return;
+  try {
+    ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+  }
 }
 
 std::vector<std::string> Exact::getVariables() const {
