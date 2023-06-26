@@ -173,6 +173,7 @@ endif()
 if(build_result STREQUAL "StaticLib")
     add_library(Exact STATIC ${source_files})
     set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
+    set(Boost_USE_STATIC_LIBS ON)
 endif()
 
 target_include_directories(Exact PUBLIC ${PROJECT_SOURCE_DIR}/src/)

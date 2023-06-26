@@ -240,7 +240,8 @@ void Exact::init(const std::vector<long long>& coefs, const std::vector<std::str
   ilp.global.logger.activate(ilp.global.options.proofLog.get());
   ilp.init();
 }
-void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, const std::string& offset) {
+void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars,
+                 const std::string& offset) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
   if (unsatState) return;

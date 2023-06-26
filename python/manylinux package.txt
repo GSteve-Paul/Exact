@@ -45,10 +45,9 @@ cd exact/python &&
 cmake .. -DCMAKE_BUILD_TYPE=Release -Dbuild_result=SharedLib -Dbuild_static=ON -Dsoplex=OFF &&
 make -j 8 &&
 cp libExact.so exact/libExact.so &&
-alias python3=/opt/python/cp38-cp38/bin/python3 &&
-python3 -m pip install poetry twine &&
-python3 -m poetry build --format=wheel &&
+/opt/python/cp38-cp38/bin/python3 -m pip install poetry twine &&
+/opt/python/cp38-cp38/bin/python3 -m poetry build --format=wheel &&
 auditwheel repair dist/exact*.whl &&
-python3 -m pip install wheelhouse/exact*.whl &&
-python3 examples/knapsack_classic.py &&
-python3 -m twine upload wheelhouse/exact*.whl
+/opt/python/cp38-cp38/bin/python3 -m pip install wheelhouse/exact*.whl &&
+/opt/python/cp38-cp38/bin/python3 examples/knapsack_classic.py &&
+/opt/python/cp38-cp38/bin/python3 -m twine upload wheelhouse/exact*.whl
