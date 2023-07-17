@@ -249,11 +249,10 @@ struct Options {
       "var-weight", "Activity weight for latest conflict variables - 0 = fixed activity, 0.5 = ACIDS, 1 = VMTF.", 0.99,
       "0 =< float =< 1", [](const double& x) -> bool { return 0 <= x && x <= 1; }};
   BoolOption varSeparate{"var-separate", "Use separate phase and activity for linear and core-guided phases", true};
-  BoolOption varInitAct{"var-init", "Initialize activity based on watches and initial local search call", false};
   ValOption<int> dbDecayLBD{"db-decay", "Decay term for the LBD of constraints", 1, "0 (no decay) =< int",
                             [](const int& x) -> bool { return 0 <= x; }};
   ValOption<double> dbExp{"db-exp",
-                          "Exponent of the growth of the learned clause database and the inprocessing intervals, "
+                          "Exponent of the growth of the learned constraint database and the inprocessing intervals, "
                           "with log(#conflicts) as base",
                           3.5, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
   ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 1,
@@ -293,6 +292,7 @@ struct Options {
   BoolOption weakenNonImplying{"ca-weaken-nonimplying",
                                "Weaken non-implying falsified literals from learned constraints", true};
   BoolOption learnedMin{"ca-min", "Minimize learned constraints through generalized self-subsumption.", true};
+  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", true};
   ValOption<int> bitsOverflow{"bits-overflow",
                               "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
                               "unlimited or greater than 62 may use slower arbitrary precision implementations)",
@@ -339,7 +339,6 @@ struct Options {
                            "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
                               "0=< float", [](const DetTime& x) -> bool { return x >= 0; }};
-  BoolOption cgCancelingUnkns{"cg-cancelingunknowns", "Exploit canceling unknowns", true};
 
   const std::vector<Option*> options = {
       &help,
@@ -362,7 +361,6 @@ struct Options {
       &lubyMult,
       &varWeight,
       &varSeparate,
-      &varInitAct,
       &dbDecayLBD,
       &dbExp,
       &dbSafeLBD,
@@ -381,6 +379,7 @@ struct Options {
       &division,
       &weakenNonImplying,
       &learnedMin,
+      &caCancelingUnkns,
       &bitsOverflow,
       &bitsReduced,
       &bitsLearned,
@@ -399,7 +398,6 @@ struct Options {
       &inpProbing,
       &inpAMO,
       &basetime,
-      &cgCancelingUnkns,
   };
   unordered_map<std::string, Option*> name2opt;
 
