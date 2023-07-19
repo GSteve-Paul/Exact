@@ -72,8 +72,7 @@ struct ActNode {
 };
 
 class Heuristic {
- public:
-  std::vector<Lit> phase;
+  std::vector<std::pair<Lit, Lit>> phase;  // first lit is user-fixed phase, second is dynamic phase
   std::vector<ActNode> actList;
   Var nextDecision;
 
@@ -85,6 +84,7 @@ class Heuristic {
 
   void undoOne(Var v, Lit l);
   void setPhase(Var v, Lit l);
+  void setFixedPhase(Var v, Lit l);
   Lit getPhase(Var v) const;
 
   ActValV getActivity(Var v) const;

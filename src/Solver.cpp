@@ -135,6 +135,18 @@ Options& Solver::getOptions() { return global.options; }
 Stats& Solver::getStats() { return global.stats; }
 Logger& Solver::getLogger() { return global.logger; }
 
+void Solver::fixPhase(const std::vector<std::pair<Var, Lit>>& vls, bool bump) {
+  for (const auto& vl : vls) {
+    cgHeur.setFixedPhase(vl.first, vl.second);
+    freeHeur.setFixedPhase(vl.first, vl.second);
+  }
+  if (bump) {
+    std::vector<Var> vs = aux::comprehension(vls, [](const std::pair<Var, Lit>& vl) { return vl.first; });
+    cgHeur.vBumpActivity(vs, getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
+    freeHeur.vBumpActivity(vs, getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
+  }
+}
+
 // ---------------------------------------------------------------------
 // Assignment manipulation
 

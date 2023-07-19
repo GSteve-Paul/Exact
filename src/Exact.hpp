@@ -54,7 +54,7 @@ class Exact {
    * @param name: name of the variable
    * @param lb: lower bound
    * @param ub: upper bound
-   * @param encoding: "log", "order" or "onehot"
+   * @param encoding: none, "log", "order" or "onehot"
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
@@ -195,6 +195,27 @@ class Exact {
    */
   std::vector<long long> getAssumption(const std::string& var) const;
   std::vector<std::string> getAssumption_arb(const std::string& var) const;
+
+  /**
+   * Set solution hints for a list of variables. These hints guide the solver to prefer a solution with those values.
+   * Internally, this is done by the search heuristic trying to assign the hinted value when making a search decision.
+   *
+   * @param vars: the variables to set the hint for
+   * @param vals: the hinted values for the variables
+   * @pre: vars and vals have the same size
+   * @pre: the given values are within the bounds of the corresponding variables
+   *
+   * Pass arbitrarily large values using the string-based function variant.
+   */
+  void setSolutionHints(const std::vector<std::string>& vars, const std::vector<long long>& vals);
+  void setSolutionHints(const std::vector<std::string>& vars, const std::vector<std::string>& vals);
+
+  /**
+   * Clears solution hints for the given variables
+   *
+   * @param vars: the variables to clear the hint for.
+   */
+  void clearSolutionHints(const std::vector<std::string>& vars);
 
   /**
    * Initialize the solver with an objective function to be minimized.

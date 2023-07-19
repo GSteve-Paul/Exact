@@ -67,6 +67,10 @@ Exact::Exact() : ilp(true), unsatState(false) {
 
 void Exact::addVariable(const std::string& name, long long lb, long long ub, const std::string& encoding) {
   if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
+  if (encoding != "" && encoding != "order" && encoding != "log" && encoding != "onehot") {
+    throw std::invalid_argument("Unknown encoding " + encoding +
+                                ". Should be \"log\", \"order\" or \"onehot\", or left unspecified.");
+  }
   if (unsatState) return;
   try {
     ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
@@ -78,6 +82,10 @@ void Exact::addVariable(const std::string& name, long long lb, long long ub, con
 void Exact::addVariable(const std::string& name, const std::string& lb, const std::string& ub,
                         const std::string& encoding) {
   if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
+  if (encoding != "" && encoding != "order" && encoding != "log" && encoding != "onehot") {
+    throw std::invalid_argument("Unknown encoding " + encoding +
+                                ". Should be \"log\", \"order\" or \"onehot\", or left unspecified.");
+  }
   if (unsatState) return;
   try {
     ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
@@ -212,6 +220,15 @@ std::vector<std::string> Exact::getAssumption_arb(const std::string& var) const 
   return aux::comprehension(ilp.getAssumption(getVariable(var)), [](const bigint& i) { return aux::str(i); });
 }
 
+void Exact::setSolutionHints(const std::vector<std::string>& vars, const std::vector<long long>& vals) {
+  ilp.setSolutionHints(getVariables(vars), getCoefs(vals));
+}
+void Exact::setSolutionHints(const std::vector<std::string>& vars, const std::vector<std::string>& vals) {
+  ilp.setSolutionHints(getVariables(vars), getCoefs(vals));
+}
+
+void Exact::clearSolutionHints(const std::vector<std::string>& vars) { ilp.clearSolutionHints(getVariables(vars)); }
+
 void Exact::boundObjByLastSol() {
   if (unsatState) return;
   try {
@@ -283,6 +300,7 @@ std::pair<std::string, std::string> Exact::getObjectiveBounds_arb() const {
 bool Exact::hasSolution() const { return ilp.hasSolution(); }
 
 std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
+  if (!ilp.hasSolution()) throw std::invalid_argument("No solution can be returned if no solution has been found.");
   return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)),
                             [](const bigint& i) { return static_cast<long long>(i); });
 }

@@ -65,7 +65,7 @@ namespace xct {
 
 Heuristic::Heuristic() : nextDecision(0) {
   phase.resize(1);
-  phase[0] = 0;
+  phase[0] = {0, 0};
   actList.resize(1);
   actList[0].prev = 0;
   actList[0].next = 0;
@@ -85,7 +85,7 @@ void Heuristic::resize(int nvars) {
   phase.resize(nvars);
   actList.resize(nvars);
   for (Var v = old_n; v < nvars; ++v) {
-    phase[v] = -v;
+    phase[v] = {0, -v};
     ActNode& node = actList[v];
     node.activity = -v / static_cast<ActValV>(INF);  // early variables have slightly higher initial activity
     actList[v].next = v + 1;
@@ -100,12 +100,13 @@ void Heuristic::resize(int nvars) {
 }
 
 void Heuristic::undoOne(Var v, Lit l) {
-  phase[v] = l;
+  setPhase(v, l);
   if (before(v, nextDecision)) nextDecision = v;
 }
 
-void Heuristic::setPhase(Var v, Lit l) { phase[v] = l; }
-Lit Heuristic::getPhase(Var v) const { return phase[v]; }
+void Heuristic::setPhase(Var v, Lit l) { phase[v].second = l; }
+void Heuristic::setFixedPhase(Var v, Lit l) { phase[v].first = l; }
+Lit Heuristic::getPhase(Var v) const { return phase[v].first ? phase[v].first : phase[v].second; }
 
 ActValV Heuristic::getActivity(Var v) const {
   assert(v > 0);
@@ -114,18 +115,20 @@ ActValV Heuristic::getActivity(Var v) const {
 }
 
 void Heuristic::randomize(const std::vector<int>& position) {
-  std::vector<Lit> vars;
+  std::vector<Var> vars;
   vars.reserve((int)actList.size() - 1);
   for (Var v = 1; v < (int)actList.size(); ++v) {
     vars.push_back(v);
     actList[v].activity += aux::getRand(0, INF) / static_cast<ActValV>(INF);
   }
   nextDecision = 0;
-  vBumpActivity(vars, position, 1, 0);
+  vBumpActivity(vars, position, 0, 0);
 }
 
 void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position, double weightNew,
                               long long nConfl) {
+  assert(weightNew >= 0);
+  assert(weightNew <= 1);
   double weightOld = 1 - weightNew;
   ActValV toAdd = weightNew * (nConfl + 1);
   for (Var v : vars) {
@@ -133,6 +136,8 @@ void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& po
     actList[v].activity = weightOld * actList[v].activity + toAdd;
   }
   std::sort(vars.begin(), vars.end(), [&](const Var& v1, const Var& v2) { return before(v1, v2); });
+  // NOTE: order is complete, breaking ties on variable index. This means weightNew == 1 (== VMTF) will always sort ties
+  // based on variable index. This is probably not the greatest idea. TODO: fix?
   for (Var v : vars) {
     if (before(nextDecision, v)) {
       break;  // vars is sorted

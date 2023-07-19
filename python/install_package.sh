@@ -22,5 +22,7 @@ cp libExact.so exact/libExact.so
 python3 -m pip install . -v
 # FOR macOS: when encountering the message that cppyy-backend could not be installed, first install cppyy-cling.
 
-# test on a knapsack example
-python3 examples/knapsack_classic.py
+if [ "$#" -eq 2 ]; then
+    # test on a knapsack example
+    python3 examples/knapsack_classic.py
+fi

@@ -163,6 +163,7 @@ class Solver {
   Equalities& getEqualities() { return equalities; }
   Implications& getImplications() { return implications; }
   const Heuristic& getHeuristic() const { return *heur; }
+  void fixPhase(const std::vector<std::pair<Var, Lit>>& vls, bool bump = false);
 
   int decisionLevel() const { return trail_lim.size(); }
   int assumptionLevel() const { return assumptions_lim.size() - 1; }

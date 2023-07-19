@@ -56,6 +56,35 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   return o;
 }
 
+std::vector<Lit> val2lits(const IntVar* iv, const bigint& val) {
+  const std::vector<Var>& encoding = iv->getEncodingVars();
+  std::vector<Lit> res;
+  res.reserve(encoding.size());
+  if (iv->getEncoding() == Encoding::LOG) {
+    bigint value = val - iv->getLowerBound();
+    assert(value >= 0);
+    for (Var v : encoding) {
+      res.push_back(value % 2 == 0 ? -v : v);
+      value /= 2;
+    }
+    assert(value == 0);
+    return res;
+  }
+  assert(val - iv->getLowerBound() <= iv->getEncodingVars().size());
+  int val_int = static_cast<int>(val - iv->getLowerBound());
+  if (iv->getEncoding() == Encoding::ONEHOT) {
+    for (int i = 0; i < (int)encoding.size(); ++i) {
+      res.push_back(i == val_int ? encoding[i] : -encoding[i]);
+    }
+    return res;
+  }
+  assert(iv->getEncoding() == Encoding::ORDER);
+  for (int i = 0; i < (int)encoding.size(); ++i) {
+    res.push_back(i < val_int ? encoding[i] : -encoding[i]);
+  }
+  return res;
+}
+
 void log2assumptions(const std::vector<Var>& encoding, const bigint& value, const bigint& lowerbound,
                      xct::IntSet& assumptions) {
   bigint val = value - lowerbound;
@@ -68,6 +97,7 @@ void log2assumptions(const std::vector<Var>& encoding, const bigint& value, cons
 }
 
 Encoding opt2enc(const std::string& opt) {
+  assert(opt == "order" || opt == "log" || opt == "onehot");
   return opt == "order" ? Encoding::ORDER : opt == ("log") ? Encoding::LOG : Encoding::ONEHOT;
 }
 IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e)
@@ -407,12 +437,37 @@ void ILP::clearAssumption(const IntVar* iv) {
   }
 }
 
+void ILP::setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals) {
+  assert(ivs.size() == vals.size());
+  std::vector<std::pair<Var, Lit>> hints;
+  for (int i = 0; i < (int)ivs.size(); ++i) {
+    IntVar* iv = ivs[i];
+    assert(iv);
+    const bigint& vals_i = vals[i];
+    assert(vals_i >= iv->getLowerBound());
+    assert(vals_i <= iv->getUpperBound());
+    for (Lit l : val2lits(iv, vals_i)) {
+      assert(l != 0);
+      hints.emplace_back(toVar(l), l);
+    }
+  }
+  solver.fixPhase(hints, true);
+}
+void ILP::clearSolutionHints(const std::vector<IntVar*>& ivs) {
+  std::vector<std::pair<Var, Lit>> hints;
+  for (const IntVar* iv : ivs) {
+    for (const Var& v : iv->getEncodingVars()) {
+      hints.emplace_back(v, 0);
+    }
+  }
+  solver.fixPhase(hints);
+}
+
 void ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                         const std::vector<bool>& negated, const std::optional<bigint>& lb,
                         const std::optional<bigint>& ub) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
-
   IntConstraint ic(coefs, vars, negated, lb, ub);
   if (keepInput) constraints.push_back(ic);
   if (ic.getLB().has_value()) {

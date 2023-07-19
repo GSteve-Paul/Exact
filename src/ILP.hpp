@@ -147,6 +147,9 @@ class ILP {
   void clearAssumptions();
   void clearAssumption(const IntVar* iv);
 
+  void setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals);
+  void clearSolutionHints(const std::vector<IntVar*>& ivs);
+
   bool initialized() const;
   void init();
   SolveState runOnce(bool optimize);
