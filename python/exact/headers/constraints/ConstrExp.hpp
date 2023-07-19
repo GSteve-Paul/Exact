@@ -539,7 +539,7 @@ struct ConstrExp final : public ConstrExpSuper {
           assert(reasonCoef % bestDiv == 0);
           assert(conflCoef % (reasonCoef / bestDiv) == 0);
           const SMALL mult = conflCoef / (reasonCoef / bestDiv);
-          if (global.options.cgCancelingUnkns) {
+          if (global.options.caCancelingUnkns) {
             for (Var v : reason->vars) {
               Lit l = reason->getLit(v);
               global.stats.NUNKNOWNROUNDEDUP += isUnknown(pos, v) && getCoef(-l) >= mult;
