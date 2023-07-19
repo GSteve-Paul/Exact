@@ -8,15 +8,20 @@
   to) whether they want to optimize or search for satisfiability with just one parameter. 
 
 ### 2023-04-08
-- commit: 3f6db7a4acb38cdf7e0b362780f4f9305958120c
-- changes:
-- - add SolveState::TIMEOUT (3) to the Python interface.
-- - add timeout parameter to propagated and pruneDomains from Python
+commit: 3f6db7a4acb38cdf7e0b362780f4f9305958120c
+changes:
+- add SolveState::TIMEOUT (3) to the Python interface.
+- add timeout parameter to propagated and pruneDomains from Python
   interface.
-- - SolveState::TIMEOUT is now returned by runFull when timeout is
+- SolveState::TIMEOUT is now returned by runFull when timeout is
   detected to be exceeded. In particularly hard problems, timeouts may
   take a while to be detected (as we only check the outer loop). The
   search state is still valid after timeout is reached.
-- - propagate and pruneDomains no longer throw an unsatEncounter exception when called on an unsatisfiable problem, but have a defined return value.
-- rationale:
+- propagate and pruneDomains no longer throw an unsatEncounter exception when called on an unsatisfiable problem, but have a defined return value.
+rationale:
 It is useful to have some form of recoverable timeout from the Python interface, even though it is not as finegrained as the non-recoverable timeout from the commandline.
+
+commit 6e1fa28ee5cd8bd94f1192e92ff622f1fc1da862
+changes:
+- add a "setSolutionHints" and "clearSolutionHints" function to the Python interface.
+rationale: useful to search for solutions with certain characteristics, or to hot start an optimization problem.
