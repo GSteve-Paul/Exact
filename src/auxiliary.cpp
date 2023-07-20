@@ -91,6 +91,8 @@ bigint commonDenominator(const std::vector<ratio>& ratios) {
   return cdenom;
 }
 
+bool contains(const std::string& s, char c) { return s.find(c) != std::string::npos; }
+
 namespace rng {
 
 uint32_t seed = 1;

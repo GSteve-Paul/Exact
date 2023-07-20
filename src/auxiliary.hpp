@@ -161,6 +161,7 @@ template <typename T>
 bool contains(const std::vector<T>& v, const T& x) {
   return std::find(v.cbegin(), v.cend(), x) != v.cend();
 }
+bool contains(const std::string& s, char c);
 
 template <typename T>
 T ceildiv(const T& p, const T& q) {
