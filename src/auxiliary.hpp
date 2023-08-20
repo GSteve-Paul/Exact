@@ -96,13 +96,13 @@ using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
 
-template <typename K, typename V, typename H = std::hash<K>>
-using unordered_map = ankerl::unordered_dense::map<K, V, H>;
-// using unordered_map = std::unordered_map<K, V, H>;
+template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;
+// using unordered_map = std::unordered_map<K, V, H, KE>;
 
-template <typename K, typename H = std::hash<K>>
-using unordered_set = ankerl::unordered_dense::set<K, H>;
-// using unordered_set = std::unordered_set<K, H>;
+template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+using unordered_set = ankerl::unordered_dense::set<K, H, KE>;
+// using unordered_set = std::unordered_set<K, H, KE>;
 
 enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, TIMEOUT, INPROCESSED };
