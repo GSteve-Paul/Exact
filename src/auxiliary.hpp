@@ -426,20 +426,28 @@ uint32_t xorshift32();
 int32_t getRand(int32_t min, int32_t max);
 uint64_t hash(uint64_t x);
 
+template <typename T>
+uint64_t hash_comb_ordered(uint64_t seed, const T& add) {
+  return seed ^ hash(std::hash<T>()(add));
+}
+template <typename T>
+uint64_t hash_comb_unordered(uint64_t seed, const T& add) {
+  return seed ^ (hash(std::hash<T>()(add)) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
+
 template <typename Element, typename Iterable>
 uint64_t hashForSet(const Iterable& els) {
   uint64_t result = els.size();
   for (const Element& el : els) {
-    result ^= hash(std::hash<Element>()(el));
+    result = hash_comb_unordered<Element>(result, el);
   }
   return result;
 }
-
 template <typename Element, typename Iterable>
 uint64_t hashForList(const Iterable& els) {
   uint64_t result = els.size();
   for (const Element& el : els) {
-    result ^= hash(std::hash<Element>()(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
+    result = hash_comb_ordered<Element>(result, el);
   }
   return result;
 }
