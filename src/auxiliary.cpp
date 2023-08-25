@@ -113,13 +113,4 @@ int32_t getRand(int32_t min, int32_t max) {
   return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) + min;
 }
 
-uint64_t hash(uint64_t x) {
-  // based on
-  // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key/12996028#12996028
-  x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
-  x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
-  x = x ^ (x >> 31);
-  return x;
-}
-
 }  // namespace xct::aux
