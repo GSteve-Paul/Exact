@@ -86,8 +86,9 @@ Solver::Solver(Global& g)
 
 Solver::~Solver() {
   for (CRef cr : constraints) {
-    ca[cr].freeUp();
+    ca[cr].cleanup();
   }
+  ca.cleanup();
 }
 
 bool Solver::foundSolution() const { return global.stats.NORIGVARS.z == 0 || lastSol.size() > 1; }
@@ -962,7 +963,7 @@ void Solver::reduceDB() {
   for (size_t i = 0; i < constraints.size(); ++i) {
     Constr& c = ca[constraints[i]];
     if (c.isMarkedForDelete()) {
-      c.freeUp();  // free up indirectly owned memory before implicitly deleting c during garbage collect
+      c.cleanup();  // free up indirectly owned memory before implicitly deleting c during garbage collect
     } else {
       c.decayLBD(decay);
       constraints[j++] = constraints[i];

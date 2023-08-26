@@ -81,4 +81,8 @@ void ConstraintAllocator::capacity(uint32_t min_cap) {
   memory = (uint32_t*)xrealloc(memory, sizeof(uint32_t) * cap);
 }
 
+Constr& ConstraintAllocator::operator[](CRef cr) const { return (Constr&)*(memory + cr.ofs); }
+
+void ConstraintAllocator::cleanup() { free(memory); }
+
 }  // namespace xct

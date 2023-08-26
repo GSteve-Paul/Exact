@@ -93,7 +93,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
 
   Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth);
   virtual ~Constr() {}
-  virtual void freeUp() = 0;  // poor man's destructor
+  virtual void cleanup() = 0;  // poor man's destructor
 
   void setLocked(bool lkd) { header.locked = lkd; }
   bool isLocked() const { return header.locked; }
@@ -161,7 +161,7 @@ struct Clause final : public Constr {
     }
   }
 
-  void freeUp() {}
+  void cleanup() {}
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
@@ -213,7 +213,7 @@ struct Cardinality final : public Constr {
     }
   }
 
-  void freeUp() {}
+  void cleanup() {}
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
@@ -275,7 +275,7 @@ struct Counting final : public Constr {
     }
   }
 
-  void freeUp() {}
+  void cleanup() {}
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
@@ -340,7 +340,7 @@ struct Watched final : public Constr {
     }
   }
 
-  void freeUp() {}
+  void cleanup() {}
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
@@ -407,7 +407,7 @@ struct CountingSafe final : public Constr {
     }
   }
 
-  void freeUp() {
+  void cleanup() {
     delete degr;
     delete slack;
     delete[] terms;
@@ -477,7 +477,7 @@ struct WatchedSafe final : public Constr {
     }
   }
 
-  void freeUp() {
+  void cleanup() {
     delete degr;
     delete watchslack;
     delete[] terms;

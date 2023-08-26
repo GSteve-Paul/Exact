@@ -115,16 +115,19 @@ struct ConstraintAllocator {
     capacity(at);
     return (C*)(memory + oldAt);
   }
-  Constr& operator[](CRef cr) const { return (Constr&)*(memory + cr.ofs); }
+  Constr& operator[](CRef cr) const;
+  void cleanup();
 };
 
 class OutOfMemoryException : public std::exception {};
+
 static inline void* xrealloc(void* ptr, size_t size) {
   void* mem = realloc(ptr, size);
-  if (mem == nullptr && errno == ENOMEM)
+  if (mem == nullptr && errno == ENOMEM) {
     throw OutOfMemoryException();
-  else
+  } else {
     return mem;
+  }
 }
 
 }  // namespace xct
