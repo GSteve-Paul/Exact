@@ -944,12 +944,10 @@ void Solver::reduceDB() {
   }
 
   std::vector<int> cardPoints;
-  long long reduced = 0;
   for (size_t i = limit; i < learnts.size(); ++i) {
     Constr& c = ca[learnts[i]];
     assert(c.isMarkedForDelete());
     if (!c.isClauseOrCard()) {
-      ++reduced;
       CeSuper ce = c.toExpanded(global.cePools);
       ce->removeUnitsAndZeroes(getLevel(), getPos());
       if (ce->isTautology()) continue;  // possible due to further root propagations during rewriting of constraints
@@ -1305,8 +1303,8 @@ void Solver::probeRestart(Lit next) {
     }
     backjumpTo(0);
     std::vector<Lit> newUnits;
-    State state = probe(next, true);
-    if (state == State::SUCCESS) {
+    State state2 = probe(next, true);
+    if (state2 == State::SUCCESS) {
       for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
         Lit l = trail[i];
         if (trailSet.has(l)) {
