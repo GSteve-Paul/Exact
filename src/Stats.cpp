@@ -37,7 +37,6 @@ Copyright (c) 2014-2021, Jakob Nordström
 Parts of the code were copied or adapted from MiniSat.
 
 MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
-           Copyright (c) 2007-2010  Niklas Sorensson
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
@@ -59,66 +58,71 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
-#include "ConstrSimple.hpp"
-#include "ConstrExp.hpp"
+#include "Stats.hpp"
 
 namespace xct {
 
-template <typename CF, typename DG>
-CeSuper ConstrSimple<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
-  // TODO: make this the minimal bitwidth expanded constraint?
-  CePtr<CF, DG> ce = cePools.take<CF, DG>();
-  ce->addRhs(rhs);
-  for (const Term<CF>& t : terms) {
-    ce->addLhs(t.c, t.l);
+std::ostream& operator<<(std::ostream& o, const Stat& stat) {
+  o << stat.name << " ";
+  return aux::prettyPrint(o, stat.z);
+}
+
+void operator++(Stat& stat) { stat.z++; }
+void operator--(Stat& stat) { stat.z--; }
+
+StatNum operator+(const Stat& x, const Stat& y) { return x.z + y.z; }
+StatNum operator-(const Stat& x, const Stat& y) { return x.z - y.z; }
+StatNum operator*(const Stat& x, const Stat& y) { return x.z * y.z; }
+StatNum operator/(const Stat& x, const Stat& y) { return x.z / y.z; }
+bool operator==(const Stat& x, const Stat& y) { return x.z == y.z; }
+bool operator>(const Stat& x, const Stat& y) { return x.z > y.z; }
+bool operator<(const Stat& x, const Stat& y) { return x.z < y.z; }
+bool operator<=(const Stat& x, const Stat& y) { return x.z <= y.z; }
+bool operator>=(const Stat& x, const Stat& y) { return x.z >= y.z; }
+
+StatNum Stats::getTime() const {
+  return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - startTime)
+      .count();
+}
+StatNum Stats::getRunTime() const {
+  return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - runStartTime)
+      .count();
+}
+StatNum Stats::getSolveTime() const { return SOLVETIMEFREE + SOLVETIMEASSUMP; }
+// NOTE: below linear relations were determined by regression tests on experimental data,
+// so that the deterministic time correlates as closely as possible with the cpu time in seconds
+StatNum Stats::getLpDetTime() const { return (5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9; }
+StatNum Stats::getNonLpDetTime() const {
+  return (49.00 * NWATCHLOOKUPS + 9.09 * NWATCHCHECKS + 3.55 * NPROPCHECKS + 60.69 * NSATURATESTEPS +
+          61.86 * (NADDEDLITERALS - NLPADDEDLITERALS) + 1484.40 * NWEAKENEDNONIMPLIED + 268.51 * NTRAILPOPS) /
+         1e9;
+}
+
+StatNum Stats::getDetTime() const { return getLpDetTime() + getNonLpDetTime(); }
+
+void Stats::print(const StatNum& lowerbound, const StatNum& upperbound) {
+  setDerivedStats(lowerbound, upperbound);
+  for (Stat* s : statsToDisplay) {
+    std::cout << "c " << *s << std::endl;
   }
-  ce->orig = orig;
-  ce->resetBuffer(proofLine);
-  return ce;
 }
 
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toNormalFormLit() {
-  for (Term<CF>& t : terms) {
-    if (t.c < 0) {
-      rhs -= t.c;
-      t.c = -t.c;
-      t.l = -t.l;
-    }
+void Stats::printCsvLine(const StatNum& lowerbound, const StatNum& upperbound) {
+  setDerivedStats(lowerbound, upperbound);
+  std::cout << "c csvline";
+  for (Stat* s : statsToDisplay) {
+    aux::prettyPrint(std::cout << ",", s->z);
   }
+  std::cout << std::endl;
 }
 
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toNormalFormVar() {
-  for (Term<CF>& t : terms) {
-    if (t.l < 0) {
-      rhs -= t.c;
-      t.c = -t.c;
-      t.l = -t.l;
-    }
+void Stats::printCsvHeader() {
+  setDerivedStats(std::numeric_limits<StatNum>::quiet_NaN(), std::numeric_limits<StatNum>::quiet_NaN());
+  std::cout << "c csvheader";
+  for (Stat* s : statsToDisplay) {
+    std::cout << "," << s->name;
   }
+  std::cout << std::endl;
 }
-
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::reset() {
-  orig = Origin::UNKNOWN;
-  terms.clear();
-  rhs = 0;
-  proofLine = (std::to_string(ID_Trivial) + " ");
-}
-
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toStreamAsOPB(std::ostream& o) const {
-  for (const Term<CF>& t : terms) {
-    o << std::pair<CF, Lit>{t.c, t.l} << " ";
-  }
-  o << ">= " << rhs << " ;";
-}
-
-template struct ConstrSimple<int, long long>;
-template struct ConstrSimple<long long, int128>;
-template struct ConstrSimple<int128, int128>;
-template struct ConstrSimple<int128, int256>;
-template struct ConstrSimple<bigint, bigint>;
 
 }  // namespace xct

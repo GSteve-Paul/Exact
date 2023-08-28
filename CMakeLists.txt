@@ -96,6 +96,8 @@ set(source_files
     src/datastructures/IntSet.cpp
     src/parsing.cpp
     src/datastructures/Heuristic.cpp
+    src/Stats.cpp
+    src/Options.cpp
     src/auxiliary.cpp
     src/Optimization.cpp
     src/quit.cpp
