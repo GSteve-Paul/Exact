@@ -113,4 +113,22 @@ int32_t getRand(int32_t min, int32_t max) {
   return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) + min;
 }
 
+template <>
+uint64_t hash(const uint64_t& el) {
+  return el;
+}
+// template <>
+// uint64_t hash(const boost::multiprecision::cpp_int& el) {
+//   // 0xffffffffffffffc5 is largest prime less than 2^64
+//   return el >= 0 ? uint64_t(el % UINT64_C(0xffffffffffffffc5)) : ~uint64_t((-el) % UINT64_C(0xffffffffffffffc5));
+// }
+
+uint64_t shift_hash(uint64_t x) {
+  // based on
+  // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key/12996028#12996028
+  x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+  x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
+  return x ^ (x >> 31);
+}
+
 }  // namespace xct::aux

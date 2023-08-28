@@ -427,22 +427,21 @@ int32_t getRand(int32_t min, int32_t max);
 
 template <typename T>
 uint64_t hash(const T& el) {
-  // based on
-  // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key/12996028#12996028
-  uint64_t x = std::hash<T>()(el);
-  x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
-  x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
-  x = x ^ (x >> 31);
-  return x;
+  return std::hash<T>()(el);
 }
+template <>
+uint64_t hash(const uint64_t& el);
+// template <>
+// uint64_t hash(const boost::multiprecision::cpp_int& el);
 
+uint64_t shift_hash(uint64_t x);
 template <typename T>
 uint64_t hash_comb_ordered(uint64_t seed, const T& add) {
-  return seed ^ hash(add);
+  return seed ^ shift_hash(hash(add));
 }
 template <typename T>
 uint64_t hash_comb_unordered(uint64_t seed, const T& add) {
-  return seed ^ (hash(add) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+  return seed ^ (shift_hash(hash(add)) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
 
 template <typename Element, typename Iterable>
