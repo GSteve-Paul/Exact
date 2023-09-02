@@ -475,19 +475,26 @@ using predicate = std::function<bool(Args...)>;
 
 template <typename CONTAINER, typename LAM_MAP>
 auto comprehension(CONTAINER&& container, LAM_MAP&& map) {
-  std::vector<decltype(map(*container.begin()))> w;
-  w.reserve(container.size());
-  std::transform(container.begin(), container.end(), std::back_inserter(w), map);
+  std::vector<decltype(map(*container.begin()))> w(container.size());
+  int i = 0;
+  for (const auto& el : container) {
+    w[i] = map(el);
+    ++i;
+  }
   return w;
 }
 
 template <typename CONTAINER, typename LAM_MAP, typename LAM_FILTER>
 auto comprehension(CONTAINER&& container, LAM_MAP&& map, LAM_FILTER&& filter) {
-  std::vector<decltype(map(*container.begin()))> w;
-  w.reserve(container.size());
+  std::vector<decltype(map(*container.begin()))> w(container.size());
+  int i = 0;
   for (const auto& el : container) {
-    if (filter(el)) w.push_back(map(el));
+    if (filter(el)) {
+      w[i] = map(el);
+      ++i;
+    }
   }
+  w.resize(i);
   return w;
 }
 
