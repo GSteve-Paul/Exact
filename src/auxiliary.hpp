@@ -159,8 +159,8 @@ void swapErase(T& indexable, size_t index) {
   indexable.pop_back();
 }
 
-template <typename T>
-bool contains(const std::vector<T>& v, const T& x) {
+template <typename T, typename S>
+bool contains(const T& v, const S& x) {
   return std::find(v.cbegin(), v.cend(), x) != v.cend();
 }
 bool contains(const std::string& s, char c);
