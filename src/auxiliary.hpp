@@ -438,11 +438,11 @@ uint64_t hash(const uint64_t& el);
 
 uint64_t shift_hash(uint64_t x);
 template <typename T>
-uint64_t hash_comb_ordered(uint64_t seed, const T& add) {
+uint64_t hash_comb_unordered(uint64_t seed, const T& add) {
   return seed ^ shift_hash(hash(add));
 }
 template <typename T>
-uint64_t hash_comb_unordered(uint64_t seed, const T& add) {
+uint64_t hash_comb_ordered(uint64_t seed, const T& add) {
   return seed ^ (shift_hash(hash(add)) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
 
