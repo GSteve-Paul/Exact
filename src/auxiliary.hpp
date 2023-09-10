@@ -462,6 +462,14 @@ uint64_t hashForList(const Iterable& els) {
   }
   return result;
 }
+template <typename Element>
+uint64_t hashForArray(Element const* x, size_t n) {
+  uint64_t result = n;
+  for (size_t i = 0; i < n; ++i) {
+    result = hash_comb_ordered<Element>(result, x[i]);
+  }
+  return result;
+}
 
 template <typename T>
 const std::string str(const T& t) {
@@ -480,6 +488,15 @@ auto comprehension(CONTAINER&& container, LAM_MAP&& map) {
   for (const auto& el : container) {
     w[i] = map(el);
     ++i;
+  }
+  return w;
+}
+
+template <typename T, typename LAM_MAP>
+auto comprehension_(T* x, size_t n, LAM_MAP&& map) {
+  std::vector<decltype(map(*x))> w(n);
+  for (size_t i = 0; i < n; ++i) {
+    w[i] = map(x[i]);
   }
   return w;
 }
