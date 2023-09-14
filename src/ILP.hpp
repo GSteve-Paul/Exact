@@ -189,7 +189,7 @@ class ILP {
   std::ostream& printVars(std::ostream& out) const;
   long long getNbVars() const;
   long long getNbConstraints() const;
-  bigint getSolSpaceSize() const;
+  bigint getSolSpaceSize() const;  // in bits
 
   const std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs, double timeout = 0);
   const std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, double timeout = 0);

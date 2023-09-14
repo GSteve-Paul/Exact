@@ -677,9 +677,9 @@ long long ILP::getNbVars() const { return vars.size(); }
 long long ILP::getNbConstraints() const { return reifications.size() + constraints.size(); }
 
 bigint ILP::getSolSpaceSize() const {
-  bigint total = int(!vars.empty());
+  bigint total = 0;
   for (const std::unique_ptr<IntVar>& v : vars) {
-    total *= 1 + v->getRange();
+    total += aux::msb(1 + v->getRange());
   }
   return total;
 };
