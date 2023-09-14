@@ -47,7 +47,7 @@ struct IntVar {
   [[nodiscard]] const bigint& getUpperBound() const { return upperBound; }
   [[nodiscard]] const bigint& getLowerBound() const { return lowerBound; }
 
-  [[nodiscard]] bigint getRange() const { return upperBound - lowerBound; }
+  [[nodiscard]] bigint getRange() const { return upperBound - lowerBound; }  // TODO: Boolean range is 1?
   [[nodiscard]] bool isBoolean() const { return lowerBound == 0 && upperBound == 1; }
 
   [[nodiscard]] Encoding getEncoding() const { return encoding; }
@@ -189,6 +189,7 @@ class ILP {
   std::ostream& printVars(std::ostream& out) const;
   long long getNbVars() const;
   long long getNbConstraints() const;
+  bigint getSolSpaceSize() const;
 
   const std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs, double timeout = 0);
   const std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, double timeout = 0);

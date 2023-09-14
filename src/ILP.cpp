@@ -676,6 +676,14 @@ long long ILP::getNbVars() const { return vars.size(); }
 
 long long ILP::getNbConstraints() const { return reifications.size() + constraints.size(); }
 
+bigint ILP::getSolSpaceSize() const {
+  bigint total = int(!vars.empty());
+  for (const std::unique_ptr<IntVar>& v : vars) {
+    total *= 1 + v->getRange();
+  }
+  return total;
+};
+
 ratio ILP::getLowerBound() const {
   if (!initialized()) throw std::invalid_argument("Objective not yet initialized.");
   return static_cast<ratio>(optim->getLowerBound());
