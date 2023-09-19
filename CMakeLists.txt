@@ -107,7 +107,7 @@ set(source_files
     src/propagation/Implications.cpp
 
     src/used_licenses/licenses.cpp
-    src/used_licenses/zib_academic.cpp
+    src/used_licenses/zib_apache.cpp
     src/used_licenses/roundingsat.cpp
     src/used_licenses/MIT.cpp
     src/used_licenses/boost.cpp
@@ -142,7 +142,7 @@ set(header_files
     src/Exact.hpp
 
     src/used_licenses/licenses.hpp
-    src/used_licenses/zib_academic.hpp
+    src/used_licenses/zib_apache.hpp
     src/used_licenses/roundingsat.hpp
     src/used_licenses/MIT.hpp
     src/used_licenses/boost.hpp

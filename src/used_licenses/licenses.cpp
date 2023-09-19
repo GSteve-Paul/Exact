@@ -69,7 +69,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MIT.hpp"
 #include "boost.hpp"
 #include "roundingsat.hpp"
-#include "zib_academic.hpp"
+#include "zib_apache.hpp"
 
 namespace licenses {
 
@@ -87,7 +87,7 @@ std::vector<Codebase> usedCodebases = {
     {"Coin-OR Utils", "Coin-OR Utils library", "EPL"},
 #endif
 #if WITHSOPLEX
-    {"SoPlex", "SoPlex LP solver", "ZIB"},
+    {"SoPlex", "SoPlex LP solver", "Apache 2.0"},
 #endif
 };
 
@@ -100,7 +100,7 @@ void printLicense(const std::string& lic) {
 #endif
         {"MIT", MIT}, {"RS", roundingsat},
 #if WITHSOPLEX
-        {"ZIB", zib_academic},
+        {"ZIB", zib_apache},
 #endif
   });
 
