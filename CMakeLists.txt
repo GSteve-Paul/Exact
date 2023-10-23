@@ -83,6 +83,8 @@ add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wno-attributes")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wextra -Wno-attributes")
 
+include_directories("gzstream")
+
 set(source_files
     src/constraints/Constr.cpp
     src/constraints/ConstrExp.cpp
@@ -113,6 +115,8 @@ set(source_files
     src/used_licenses/boost.cpp
     src/used_licenses/EPL.cpp
     src/used_licenses/COPYING.cpp
+ 
+    src/gzstream/gzstream.C
 )
 
 set(header_files
@@ -192,12 +196,16 @@ if(soplex)
     endif()
     target_compile_definitions(Exact PUBLIC WITHSOPLEX=1)
 endif()
+
 if(coinutils)
     find_package(CoinUtils REQUIRED)
     target_include_directories(Exact PUBLIC ${CoinUtils_INCLUDE_DIR})
     target_link_libraries(Exact CoinUtils z bz2)
     target_compile_definitions(Exact PUBLIC WITHCOINUTILS=1)
 endif()
+
+find_package(ZLIB REQUIRED)
+target_link_libraries(Exact ${ZLIB_LIBRARY})
 
 find_package(Boost REQUIRED)
 target_include_directories(Exact PUBLIC ${Boost_INCLUDE_DIRS})

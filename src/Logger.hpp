@@ -65,12 +65,16 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Stats.hpp"
 #include "datastructures/IntMap.hpp"
 #include "typedefs.hpp"
+#include "gzstream/gzstream.h"
 
 namespace xct {
 
 class Logger {
   std::ofstream formula_out;
   std::ofstream proof_out;
+  ogzstream proof_out_zip;
+  bool proof_is_zip = false;
+
   std::vector<ID> unitIDs;
   [[maybe_unused]] const Stats& stats;
   bool active;
@@ -81,7 +85,7 @@ class Logger {
 
   explicit Logger(const Stats& stats);
 
-  void activate(const std::string& proof_log_name);
+  void activate(const std::string& proof_log_name, const bool zip);
   void deactivate();
   bool isActive();
   void flush();

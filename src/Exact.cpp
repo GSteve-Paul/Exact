@@ -264,7 +264,7 @@ void Exact::init(const std::vector<long long>& coefs, const std::vector<std::str
   if (unsatState) return;
 
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, offset);
-  ilp.global.logger.activate(ilp.global.options.proofLog.get());
+  ilp.global.logger.activate(ilp.global.options.proofLog.get(), (bool)ilp.global.options.proofZip);
   ilp.init();
 }
 void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars,
@@ -274,7 +274,7 @@ void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::s
   if (unsatState) return;
 
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, getCoef(offset));
-  ilp.global.logger.activate(ilp.global.options.proofLog.get());
+  ilp.global.logger.activate(ilp.global.options.proofLog.get(), (bool)ilp.global.options.proofZip);
   ilp.init();
 }
 
