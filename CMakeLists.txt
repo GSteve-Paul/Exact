@@ -115,7 +115,7 @@ set(source_files
     src/used_licenses/boost.cpp
     src/used_licenses/EPL.cpp
     src/used_licenses/COPYING.cpp
- 
+
     src/gzstream/gzstream.C
 )
 
