@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(Exact)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(LINK_WHAT_YOU_USE TRUE)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
@@ -80,8 +80,8 @@ execute_process(
 add_definitions("-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH}")
 add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wno-attributes")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wextra -Wno-attributes")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wno-attributes")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
 
 set(source_files
     src/constraints/Constr.cpp
