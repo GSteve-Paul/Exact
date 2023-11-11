@@ -202,6 +202,7 @@ void Solver::undoOne() {
     if (decisionLevel() < assumptionLevel()) {
       assumptions_lim.pop_back();
     }
+    assert(assumptionLevel() <= decisionLevel());
   }
   equalities.notifyBackjump();
   implications.notifyBackjump();
@@ -1282,17 +1283,20 @@ SolveState Solver::solve() {
       }
       assert(next != 0);
       if (global.options.inpProbing && decisionLevel() == 0 && toVar(lastRestartNext) != toVar(next)) {
-        aux::timeCallVoid([&] { probeRestart(next); }, global.stats.PROBETIME);
-        assert(isKnown(getPos(), next));  // invariant of calling heur->pickBranchLit(...)
+        aux::timeCallVoid([&] { return probeRestart(next); }, global.stats.PROBETIME);
+        // continue potentially without deciding variable if unit literals were found
+        // NOTE: unit literals may contradict assumptions, so impossible to just decide next here
       } else {
+        assert(!assumptions.has(-next));  // do not decide opposite of assumptions
         decide(next);
+        assert(isKnown(getPos(), next));
       }
-      assert(isKnown(getPos(), next));
     }
   }
 }
 
 void Solver::probeRestart(Lit next) {
+  assert(decisionLevel() == 0);
   lastRestartNext = toVar(next);
   int oldUnits = trail.size();
   State state = probe(-next, true);
@@ -1326,12 +1330,13 @@ void Solver::probeRestart(Lit next) {
     }
     global.isPool.release(trailSet);
   }
+  // at this point, either we learned unit literals and are at decision level 0
+  // or we did not and are at decision level 1 having decided next
+  assert(decisionLevel() == 1 || (decisionLevel() == 0 && (int)trail.size() > oldUnits));
   global.stats.NPROBINGLITS += (decisionLevel() == 0 ? trail.size() : trail_lim[0]) - oldUnits;
-  if (decisionLevel() == 0 && isUnknown(getPos(), next)) {
-    decide(next);
-  }
   assert(assumptionLevel() == 0);
   if (decisionLevel() == 1 && assumptions_lim.back() < (int)assumptions.size()) {
+    assert(assumptions.getKeys()[assumptions_lim.back()] == next);
     assumptions_lim.push_back(assumptions_lim.back() + 1);
     // repair assumptions_lim
   }

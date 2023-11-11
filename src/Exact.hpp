@@ -396,6 +396,17 @@ class Exact {
   std::vector<std::vector<std::string>> pruneDomains_arb(const std::vector<std::string>& vars, double timeout = 0);
 
   /**
+   * Under previously set assumptions, return number of different solutions projected to vars.
+   *
+   * @param vars: variables for which to calculate different solutions
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
+   * @return: an integer value
+   */
+  long long count(const std::vector<std::string>& vars, double timeout = 0);
+
+  /**
    * Set solver options. Run with --help or look at Options.hpp to find the possible options.
    *
    * @param option: name of the option
