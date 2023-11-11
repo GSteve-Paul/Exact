@@ -240,7 +240,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       if (weight < 0) {
         throw std::invalid_argument("Negative clause weight: " + line);
       }
-    };
+    }
     inputs.emplace_back();
     ConstrSimple32& input = inputs.back();
     input.rhs = 1;
@@ -270,7 +270,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       objnegated.push_back(aux < 0);
       // if (ilp.global.options.test.get()) {
       for (const Term32& t : input.terms) {  // reverse implication as binary clauses
-        ilp.getSolver().addConstraint(ConstrSimple32{{{1, -aux}, {1, -t.l}}, 1}, Origin::FORMULA);
+        ilp.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
       }
       //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
       //        ConstrSimple32 reverse;

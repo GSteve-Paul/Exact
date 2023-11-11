@@ -420,7 +420,7 @@ resolve:
   return confl;
 }
 
-void Solver::minimize(const CeSuper& conflict) {
+void Solver::minimize(CeSuper& conflict) {
   assert(conflict->isSaturated());
   assert(conflict->isAssertingBefore(getLevel(), decisionLevel()) == AssertionStatus::ASSERTING);
   IntSet& saturatedLits = global.isPool.take();
@@ -731,18 +731,31 @@ std::pair<ID, ID> Solver::addConstraint(const CeSuper& c, Origin orig) {
   // global.logger
   CeSuper ce = c->clone(global.cePools);
   ce->orig = orig;
-  std::pair<ID, ID> result = addInputConstraint(ce);
-  return result;
+  return addInputConstraint(ce);
 }
 
 std::pair<ID, ID> Solver::addConstraint(const ConstrSimpleSuper& c, Origin orig) {
   CeSuper ce = c.toExpanded(global.cePools);
   ce->orig = orig;
-  std::pair<ID, ID> result = addInputConstraint(ce);
-  return result;
+  return addInputConstraint(ce);
 }
 
-void Solver::addUnitConstraint(Lit l, Origin orig) { addConstraint(ConstrSimple32({{1, l}}, 1), orig); }
+std::pair<ID, ID> Solver::addUnitConstraint(Lit l, Origin orig) {
+  Ce32 ce = global.cePools.take32();
+  ce->addRhs(1);
+  ce->addLhs(1, l);
+  ce->orig = orig;
+  return addInputConstraint(ce);
+}
+
+std::pair<ID, ID> Solver::addBinaryConstraint(Lit l1, Lit l2, Origin orig) {
+  Ce32 ce = global.cePools.take32();
+  ce->addRhs(1);
+  ce->addLhs(1, l1);
+  ce->addLhs(1, l2);
+  ce->orig = orig;
+  return addInputConstraint(ce);
+}
 
 void Solver::invalidateLastSol(const std::vector<Var>& vars) {
   assert(foundSolution());
@@ -1157,7 +1170,7 @@ void Solver::dominanceBreaking() {
     for (Lit ll : saturating.getKeys()) {
       binaryImplicants.insert({ll, l});
       binaryImplicants.insert({-l, -ll});
-      addConstraint(ConstrSimple32{{{1, -ll}, {1, l}}, 1}, Origin::DOMBREAKER);
+      addBinaryConstraint(-ll, l, Origin::DOMBREAKER);
       removeSatisfiedNonImpliedsAtRoot();
     }
     saturating.clear();

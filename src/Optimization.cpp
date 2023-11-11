@@ -129,7 +129,7 @@ template <typename SMALL, typename LARGE>
 void LazyVar<SMALL, LARGE>::addSymBreakingConstraint(Var prevvar) const {
   assert(prevvar < currentVar);
   // y-- + ~y >= 1 (equivalent to y-- >= y)
-  solver.addConstraint(ConstrSimple32({{1, prevvar}, {1, -currentVar}}, 1), Origin::COREGUIDED);
+  solver.addBinaryConstraint(prevvar, -currentVar, Origin::COREGUIDED);
 }
 
 template <typename SMALL, typename LARGE>

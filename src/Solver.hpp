@@ -171,7 +171,8 @@ class Solver {
   // @return: formula line id, processed id, needed for optimization proof logging
   std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
   std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
-  void addUnitConstraint(Lit l, Origin orig);
+  std::pair<ID, ID> addUnitConstraint(Lit l, Origin orig);
+  std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
   void invalidateLastSol(const std::vector<Var>& vars);
 
   void dropExternal(ID id, bool erasable, bool forceDelete);
@@ -232,7 +233,7 @@ class Solver {
   // Conflict analysis
 
   [[nodiscard]] CeSuper analyze(const CeSuper& confl);
-  void minimize(const CeSuper& conflict);
+  void minimize(CeSuper& conflict);
   void extractCore(const CeSuper& confl, Lit l_assump = 0);
 
   // ---------------------------------------------------------------------

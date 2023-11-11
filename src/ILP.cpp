@@ -137,7 +137,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
     } else if (encoding == Encoding::ORDER) {
       assert(!encodingVars.empty() || range == 0);
       for (Var var = oldvars + 1; var < solver.getNbVars(); ++var) {
-        solver.addConstraint(ConstrSimple32({{1, var}, {-1, var + 1}}, 0), Origin::FORMULA);
+        solver.addBinaryConstraint(var, -(var + 1), Origin::FORMULA);
       }
     } else {
       assert(!encodingVars.empty());
