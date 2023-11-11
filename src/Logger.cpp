@@ -62,27 +62,36 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logger.hpp"
 #include "constraints/ConstrExp.hpp"
 
-#define write_proof(x) \
-  if (proof_is_zip) proof_out_zip << x; \
-  else proof_out << x;
-
 namespace xct {
 
 Logger::Logger(const Stats& s) : stats(s), active(false), last_formID(ID_Trivial), last_proofID(ID_Trivial) {}
 
-void Logger::activate(const std::string& proof_log_name, const bool zip) {
+std::ostream& Logger::proofStream() {
+#if WITHZLIB
+  if (proof_is_zip)
+    return proof_out_zip;
+  else
+#endif  // WITHZLIB
+    return proof_out;
+}
+
+void Logger::activate(const std::string& proof_log_name, [[maybe_unused]] const bool zip) {
   if (proof_log_name == "") return;
   flush();
   formula_out = std::ofstream(proof_log_name + ".formula");
   formula_out << "* #variable= 0 #constraint= 0\n";
   formula_out << " >= 0 ;\n";
 
+#if WITHZLIB
   proof_is_zip = zip;
-  if (proof_is_zip) proof_out_zip.open((proof_log_name + ".proof.zip").c_str());
-  else proof_out.open(proof_log_name + ".proof");
+  if (proof_is_zip)
+    proof_out_zip.open((proof_log_name + ".proof.zip").c_str());
+  else
+#endif  // WITHZLIB
+    proof_out.open(proof_log_name + ".proof");
 
-  write_proof("pseudo-Boolean proof version 1.1\n");
-  write_proof("l 1\n");
+  proofStream() << "pseudo-Boolean proof version 1.1\n";
+  proofStream() << "l 1\n";
   active = true;
 }
 
@@ -102,14 +111,14 @@ void Logger::flush() {
 void Logger::logComment([[maybe_unused]] const std::string& comment) {
   if (!active) return;
 #if !NDEBUG
-  write_proof("* " << comment << " " << stats.getDetTime() << "\n");
+  proofStream() << "* " << comment << " " << stats.getDetTime() << "\n";
 #endif
 }
 
 ID Logger::logInput(const CeSuper& ce) {
   if (!active) return ++last_proofID;
   formula_out << *ce << "\n";
-  write_proof("l " << ++last_formID << "\n");
+  proofStream() << "l " << ++last_formID << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
@@ -117,7 +126,7 @@ ID Logger::logInput(const CeSuper& ce) {
 
 ID Logger::logAssumption(const CeSuper& ce) {
   if (!active) return ++last_proofID;
-  write_proof("a " << *ce << "\n");
+  proofStream() << "a " << *ce << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
@@ -135,13 +144,13 @@ ID Logger::logProofLine(const CeSuper& ce) {
   ID id;
   if (spacecount > 1) {  // non-trivial line
     id = ++last_proofID;
-    write_proof("pol " << buffer << "\n");
+    proofStream() << "pol " << buffer << "\n";
     ce->resetBuffer(id);
   } else {  // line is just one id, don't print it
     id = std::stoll(buffer);
   }
 #if !NDEBUG
-  write_proof("e " << id << " " << *ce << "\n");
+  proofStream() << "e " << id << " " << *ce << "\n";
 #endif
   return id;
 }
@@ -159,7 +168,7 @@ void Logger::logInconsistency(const CeSuper& ce, const IntMap<int>& level, const
   ce->removeUnitsAndZeroes(level, position);
   assert(ce->isInconsistency());
   ID id = logProofLineWithInfo(ce, "Inconsistency");
-  write_proof("c " << id << "" << std::endl);
+  proofStream() << "c " << id << "" << std::endl;
 }
 
 void Logger::logUnit(const CeSuper& ce) {
@@ -170,7 +179,7 @@ void Logger::logUnit(const CeSuper& ce) {
 
 ID Logger::logRUP(Lit l, Lit ll) {
   if (!active) return ++last_proofID;
-  write_proof("u " << (std::pair<int, Lit>{1, l}) << " " << (std::pair<int, Lit>{1, ll}) << " >= 1 ;\n");
+  proofStream() << "u " << (std::pair<int, Lit>{1, l}) << " " << (std::pair<int, Lit>{1, ll}) << " >= 1 ;\n";
   return ++last_proofID;
 }
 
@@ -181,7 +190,7 @@ ID Logger::logImpliedUnit(Lit implying, Lit implied) {
 #endif
   ID result = logResolvent(logRUP(implying, implied), logRUP(-implying, implied));
 #if !NDEBUG
-  write_proof("e " << result << " " << (std::pair<int, Lit>{1, implied}) << " >= 1 ;\n");
+  proofStream() << "e " << result << " " << (std::pair<int, Lit>{1, implied}) << " >= 1 ;\n";
 #endif
   return result;
 }
@@ -193,7 +202,7 @@ ID Logger::logPure(const CeSuper& ce) {
   logComment("Pure");
 #endif
   Lit l = ce->getLit(ce->vars[0]);
-  write_proof("red " << (std::pair<int, Lit>{1, l}) << " >= 1 ; x" << toVar(l) << " " << (l > 0) << "\n");
+  proofStream() << "red " << (std::pair<int, Lit>{1, l}) << " >= 1 ; x" << toVar(l) << " " << (l > 0) << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
@@ -207,7 +216,8 @@ ID Logger::logDomBreaker(const CeSuper& ce) {
 #endif
   Lit a = ce->getLit(ce->vars[0]);
   Lit b = ce->getLit(ce->vars[1]);
-  write_proof("red " << (std::pair<int, Lit>{1, a}) << " " << (std::pair<int, Lit>{1, b}) << " >= 1 ; x" << toVar(a) << " )" << (a < 0) << " x" << toVar(b) << " " << (b > 0) << "\n");
+  proofStream() << "red " << (std::pair<int, Lit>{1, a}) << " " << (std::pair<int, Lit>{1, b}) << " >= 1 ; x"
+                << toVar(a) << " )" << (a < 0) << " x" << toVar(b) << " " << (b > 0) << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
@@ -228,13 +238,13 @@ ID Logger::logAtMostOne(const ConstrSimple32& c, const CeSuper& ce) {
       buffer << logRUP(c.terms[i].l, c.terms[j].l) << " + ";
     }
     if (i > 1) buffer << i << " d";
-    write_proof(buffer.rdbuf() << "\n");
+    proofStream() << buffer.rdbuf() << "\n";
     previous = ++last_proofID;
   }
 #if !NDEBUG
-  write_proof("e " << last_proofID << " ");
+  proofStream() << "e " << last_proofID << " ";
   c.toStreamAsOPB(proof_out);
-  write_proof("\n");
+  proofStream() << "\n";
 #endif
   ce->resetBuffer(last_proofID);
   return last_proofID;
@@ -249,7 +259,7 @@ ID Logger::logResolvent(ID id1, ID id2) {  // should be clauses
 #endif
   if (id1 == ID_Trivial) return id2;
   if (id2 == ID_Trivial) return id1;
-  write_proof("pol " << id1 << " " << id2 << " + s\n");
+  proofStream() << "pol " << id1 << " " << id2 << " + s\n";
   return ++last_proofID;
 }
 
@@ -263,16 +273,18 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
   logComment("Equality");
 #endif
   ID aImpliesB = logRUP(-a, b);
-  write_proof("pol " << reprAImplA << " " << aImpliesB << " + " << bImpReprB << " + s\n");
+  proofStream() << "pol " << reprAImplA << " " << aImpliesB << " + " << bImpReprB << " + s\n";
   ID reprAImpReprB = ++last_proofID;
 #if !NDEBUG
-  write_proof("e " << reprAImpReprB << " " << (std::pair<int, Lit>{1, -reprA}) << " " << (std::pair<int, Lit>{1, reprB}) << " >= 1 ;\n");
+  proofStream() << "e " << reprAImpReprB << " " << (std::pair<int, Lit>{1, -reprA}) << " "
+                << (std::pair<int, Lit>{1, reprB}) << " >= 1 ;\n";
 #endif
   ID bImpliesA = logRUP(-b, a);
-  write_proof("pol " << reprBImplB << " " << bImpliesA << " + " << aImpReprA << " + s\n");
+  proofStream() << "pol " << reprBImplB << " " << bImpliesA << " + " << aImpReprA << " + s\n";
   ID reprBImpReprA = ++last_proofID;
 #if !NDEBUG
-  write_proof("e " << reprBImpReprA << " " << (std::pair<int, Lit>{1, -reprB}) << " " << (std::pair<int, Lit>{1, reprA}) << " >= 1 ;\n");
+  proofStream() << "e " << reprBImpReprA << " " << (std::pair<int, Lit>{1, -reprB}) << " "
+                << (std::pair<int, Lit>{1, reprA}) << " >= 1 ;\n";
 #endif
   return {reprAImpReprB, reprBImpReprA};
 }
