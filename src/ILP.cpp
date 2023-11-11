@@ -1008,7 +1008,7 @@ int64_t ILP::count(const std::vector<IntVar*>& ivs, double timeout) {
 void ILP::runInternal(int argc, char** argv) {
   global.stats.startTime = std::chrono::steady_clock::now();
   global.options.parseCommandLine(argc, argv);
-  global.logger.activate(global.options.proofLog.get());
+  global.logger.activate(global.options.proofLog.get(), (bool)global.options.proofZip);
 
   if (global.options.verbosity.get() > 0) {
     std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;

@@ -47,8 +47,10 @@ set(soplex_build "${PROJECT_SOURCE_DIR}/soplex_build"
 set(coinutils "OFF"
     CACHE STRING "Coin OR Utils library to parse .mps and .lp files.")
 
-set(testruns_timeout 1
-    CACHE STRING "Timeout of scenario test runs.")
+set(zlib "OFF"
+    CACHE STRING "Use ZLIB to compress proof certificates.")
+
+set(testruns_timeout 1 CACHE STRING "Timeout of scenario test runs.")
 
 if(build_static)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -static")
@@ -154,10 +156,11 @@ set(main_files
     src/main.cpp
 )
 
-set(all_files ${source_files} ${main_files} ${header_files})
+set(files_to_format ${main_files} ${source_files} ${header_files})
+set(files_to_compile ${source_files})
 
 if(build_result STREQUAL "Executable")
-    add_executable(Exact src/main.cpp ${source_files})
+    add_executable(Exact src/main.cpp ${files_to_compile})
     install(TARGETS Exact RUNTIME DESTINATION bin)
     add_custom_target(
             testruns
@@ -168,12 +171,12 @@ if(build_result STREQUAL "Executable")
 endif()
 
 if(build_result STREQUAL "SharedLib")
-    add_library(Exact SHARED ${source_files})
+    add_library(Exact SHARED ${files_to_compile})
     set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
 endif()
 
 if(build_result STREQUAL "StaticLib")
-    add_library(Exact STATIC ${source_files})
+    add_library(Exact STATIC ${files_to_compile})
     set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
     set(Boost_USE_STATIC_LIBS ON)
 endif()
@@ -183,6 +186,7 @@ target_include_directories(Exact PUBLIC ${PROJECT_SOURCE_DIR}/src/)
 if(unixlike)
     target_compile_definitions(Exact PUBLIC UNIXLIKE=1)
 endif()
+
 if(soplex)
     target_include_directories(Exact PUBLIC ${soplex_src} ${soplex_build})
     if(build_static)
@@ -192,11 +196,18 @@ if(soplex)
     endif()
     target_compile_definitions(Exact PUBLIC WITHSOPLEX=1)
 endif()
+
 if(coinutils)
     find_package(CoinUtils REQUIRED)
     target_include_directories(Exact PUBLIC ${CoinUtils_INCLUDE_DIR})
     target_link_libraries(Exact CoinUtils z bz2)
     target_compile_definitions(Exact PUBLIC WITHCOINUTILS=1)
+endif()
+
+if(zlib)
+    find_package(ZLIB REQUIRED)
+    target_link_libraries(Exact ${ZLIB_LIBRARY})
+    target_compile_definitions(Exact PUBLIC WITHZLIB=1)
 endif()
 
 find_package(Boost REQUIRED)
@@ -210,7 +221,7 @@ if(CLANG_FORMAT)
         COMMAND ${CLANG_FORMAT}
         -style=file
         -i
-        ${all_files}
+        ${files_to_format}
     )
     add_custom_target(
         format_check
@@ -219,6 +230,6 @@ if(CLANG_FORMAT)
         --dry-run
         --Werror
         -style=file
-        ${all_files}
+        ${files_to_format}
     )
 endif()
