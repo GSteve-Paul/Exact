@@ -918,6 +918,35 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const a
   }
 }
 
+// NOTE: preserves ordered-ness
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div, const IntMap<int>& level,
+                                                                const std::vector<int>& pos, const SMALL& mult,
+                                                                const ConstrExp<SMALL, LARGE>& confl) {
+  assert(isSortedInDecreasingCoefOrder());
+  assert(div > 0);
+  if (div == 1) return;
+  weakenNonDivisibleCanceling(div, level, mult, confl);
+  weakenSuperfluousCanceling(div, pos);
+  repairOrder();
+  while (!vars.empty() && coefs[vars.back()] == 0) {
+    popLast();
+  }
+  assert(hasNoZeroes());
+  if (div >= degree) {
+    simplifyToClause();
+  } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
+    simplifyToCardinality(false, getCardinalityDegree());
+  } else {
+    divideRoundUp(div);
+    saturate(true, true);
+  }
+}
+
+// reason->weakenDivideRoundOrdered(
+//     bestDiv, [&](Lit l) { return !isFalse(level, l) && (isTrue(level, l) || getCoef(-l) < mult); },
+//     [&](Var v) { return pos[v] != INF; });
+
 // NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
 // NOTE: after call to weakenNonDivisible, order can be re repaired by call to repairOrder
 template <typename SMALL, typename LARGE>
@@ -926,6 +955,21 @@ void ConstrExp<SMALL, LARGE>::weakenNonDivisible(const aux::predicate<Lit>& toWe
   if (div == 1) return;
   for (Var v : vars) {
     if (coefs[v] % div != 0 && toWeaken(getLit(v))) {
+      weaken(-static_cast<SMALL>(coefs[v] % div), v);
+    }
+  }
+}
+
+// NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
+// NOTE: after call to weakenNonDivisible, order can be re repaired by call to repairOrder
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenNonDivisibleCanceling(const LARGE& div, const IntMap<int>& level, const SMALL& mult,
+                                                          const ConstrExp<SMALL, LARGE>& confl) {
+  assert(div > 0);
+  if (div == 1) return;
+  for (Var v : vars) {
+    Lit l = getLit(v);
+    if (coefs[v] % div != 0 && !isFalse(level, l) && (isTrue(level, l) || confl.getCoef(-l) < mult)) {
       weaken(-static_cast<SMALL>(coefs[v] % div), v);
     }
   }
@@ -972,6 +1016,24 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, c
   for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
     Var v = vars[i];
     if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
+    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
+    if (r <= rem) {
+      rem -= r;
+      weaken(coefs[v] < 0 ? r : -r, v);
+    }
+  }
+  assert(quot == aux::ceildiv(degree, div));
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos) {
+  assert(div > 1);
+  assert(!isTautology());
+  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
+  LARGE rem = (degree - 1) % div;
+  for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
+    Var v = vars[i];
+    if (pos[v] == INF || coefs[v] == 0 || saturatedVar(v)) continue;
     SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
     if (r <= rem) {
       rem -= r;

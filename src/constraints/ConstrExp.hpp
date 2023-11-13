@@ -336,9 +336,14 @@ struct ConstrExp final : public ConstrExpSuper {
   void weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& toWeaken);
   void weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken,
                                 const aux::predicate<Var>& toWeakenSuperfluous);
+  void weakenDivideRoundOrderedCanceling(const LARGE& div, const IntMap<int>& level, const std::vector<int>& pos,
+                                         const SMALL& mult, const ConstrExp<SMALL, LARGE>& confl);
   void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
+  void weakenNonDivisibleCanceling(const LARGE& div, const IntMap<int>& level, const SMALL& mult,
+                                   const ConstrExp<SMALL, LARGE>& confl);
   void repairOrder();
   void weakenSuperfluous(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken);
+  void weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
@@ -544,9 +549,7 @@ struct ConstrExp final : public ConstrExpSuper {
               Lit l = reason->getLit(v);
               global.stats.NUNKNOWNROUNDEDUP += isUnknown(pos, v) && getCoef(-l) >= mult;
             }
-            reason->weakenDivideRoundOrdered(
-                bestDiv, [&](Lit l) { return !isFalse(level, l) && (isTrue(level, l) || getCoef(-l) < mult); },
-                [&](Var v) { return pos[v] != INF; });
+            reason->weakenDivideRoundOrderedCanceling(bestDiv, level, pos, mult, *this);
             reason->multiply(mult);
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
