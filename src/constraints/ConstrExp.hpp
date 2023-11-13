@@ -163,7 +163,8 @@ struct ConstrExpSuper {
   virtual bool divideByGCD() = 0;
   virtual bool divideTo(double limit, const aux::predicate<Lit>& toWeaken) = 0;
   virtual AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const = 0;
-  virtual std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos) const = 0;
+  virtual std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
+                                                  std::vector<Lit>& litsByPos) const = 0;
   virtual void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos) = 0;
 
   virtual bool simplifyToCardinality(bool equivalencePreserving, int cardDegree) = 0;
@@ -345,7 +346,8 @@ struct ConstrExp final : public ConstrExpSuper {
   AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level
-  std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos) const;
+  std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
+                                          std::vector<Lit>& litsByPos) const;
   // @post: preserves order after removeZeroes()
   void weakenNonImplied(const IntMap<int>& level, const LARGE& slack);
   // @post: preserves order after removeZeroes()

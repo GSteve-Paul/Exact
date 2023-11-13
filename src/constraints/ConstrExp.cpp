@@ -1083,19 +1083,18 @@ AssertionStatus ConstrExp<SMALL, LARGE>::isAssertingBefore(const IntMap<int>& le
 // @return: highest decision level that does not make the constraint inconsistent
 // @return: whether or not the constraint is asserting at that level
 template <typename SMALL, typename LARGE>
-std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<int>& level,
-                                                                 const std::vector<int>& pos) const {
+std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
+                                                                 std::vector<Lit>& litsByPos) const {
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
   assert(hasNoUnits(level));
+  assert(litsByPos.empty());
   // calculate slack at level 0
   LARGE slack = -degree;
   for (Var v : vars) slack += aux::abs(coefs[v]);
   if (slack < 0) return {-1, false};
 
   // create useful datastructures
-  std::vector<Lit> litsByPos;
-  litsByPos.reserve(vars.size());
   for (Var v : vars) {
     Lit l = getLit(v);
     assert(l != 0);
@@ -1112,11 +1111,23 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<in
       slack -= aux::abs(coefs[aux::abs(*posIt)]);
       ++posIt;
     }
-    if (slack < 0) return {assertionLevel - 1, false};  // not asserting, but earliest non-conflicting level
+    if (slack < 0) {
+      litsByPos.clear();
+      return {assertionLevel - 1, false};  // not asserting, but earliest non-conflicting level
+    }
     while (coefIt != vars.cend() && assertionLevel >= level[getLit(*coefIt)]) ++coefIt;
-    if (coefIt == vars.cend()) return {INF, false};
-    if (slack < aux::abs(coefs[*coefIt])) return {assertionLevel, true};
-    if (posIt == litsByPos.cend()) return {INF, false};
+    if (coefIt == vars.cend()) {
+      litsByPos.clear();
+      return {INF, false};
+    }
+    if (slack < aux::abs(coefs[*coefIt])) {
+      litsByPos.clear();
+      return {assertionLevel, true};
+    }
+    if (posIt == litsByPos.cend()) {
+      litsByPos.clear();
+      return {INF, false};
+    }
     assertionLevel = level[*posIt];
   }
 }

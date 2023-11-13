@@ -442,18 +442,20 @@ void Solver::minimize(CeSuper& conflict) {
   std::sort(litsToSubsume.begin(), litsToSubsume.end(),
             [&](const std::pair<int, Lit>& x, const std::pair<int, Lit>& y) { return x.first > y.first; });
 
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   for (const std::pair<int, Lit>& pr : litsToSubsume) {
     Lit l = pr.second;
     assert(conflict->getLit(toVar(l)) != 0);
     Constr& reasonC = ca[reason[toVar(l)]];
-    int lbd = aux::timeCall<bool>([&] { return reasonC.subsumeWith(conflict, -l, *this, saturatedLits); },
-                                  global.stats.MINTIME);
+    int lbd = reasonC.subsumeWith(conflict, -l, *this, saturatedLits);
     if (lbd > 0) {
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered(global.stats);
     }
     if (saturatedLits.isEmpty()) break;
   }
+  global.stats.MINTIME +=
+      std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count();
   conflict->removeZeroes();  // remove weakened literals
   global.isPool.release(saturatedLits);
 }
@@ -632,7 +634,7 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   learned->saturateAndFixOverflow(getLevel(), global.options.bitsLearned.get(), global.options.bitsLearned.get(), 0);
   const std::vector<ActNode>& actList = getHeuristic().getActList();
   learned->sortInDecreasingCoefOrder([&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
-  auto [assertionLevel, isAsserting] = learned->getAssertionStatus(level, position);
+  auto [assertionLevel, isAsserting] = learned->getAssertionStatus(level, position, assertionStateMem);
   if (assertionLevel < 0) {
     backjumpTo(0);
     assert(learned->isInconsistency());

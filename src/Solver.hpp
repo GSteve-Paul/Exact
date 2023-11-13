@@ -140,6 +140,8 @@ class Solver {
   long long nconfl_to_restart = 0;
   Var nextToSort = 0;
 
+  std::vector<Lit> assertionStateMem;
+
   CeSuper getAnalysisCE(const CeSuper& conflict) const;
 
  public:
