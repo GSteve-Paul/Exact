@@ -334,15 +334,16 @@ struct ConstrExp final : public ConstrExpSuper {
   void divideRoundUp(const LARGE& d);
   void divideRoundDown(const LARGE& d);
   void weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& toWeaken);
-  void weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken,
-                                const aux::predicate<Var>& toWeakenSuperfluous);
+  void weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level);
   void weakenDivideRoundOrderedCanceling(const LARGE& div, const IntMap<int>& level, const std::vector<int>& pos,
                                          const SMALL& mult, const ConstrExp<SMALL, LARGE>& confl);
   void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
+  void weakenNonDivisible(const LARGE& div, const IntMap<int>& level);
   void weakenNonDivisibleCanceling(const LARGE& div, const IntMap<int>& level, const SMALL& mult,
                                    const ConstrExp<SMALL, LARGE>& confl);
   void repairOrder();
   void weakenSuperfluous(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken);
+  void weakenSuperfluous(const LARGE& div);
   void weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
@@ -500,15 +501,13 @@ struct ConstrExp final : public ConstrExpSuper {
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
       if (global.options.division.is("rto")) {
-        reason->weakenDivideRoundOrdered(
-            reasonCoef, [&](Lit l) { return !isFalse(level, l); }, []([[maybe_unused]] Var v) { return true; });
+        reason->weakenDivideRoundOrdered(reasonCoef, level);
         reason->multiply(conflCoef);
         assert(reason->getSlack(level) <= 0);
       } else {
         const LARGE reasonSlack = reason->getSlack(level);
         if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
-          reason->weakenDivideRoundOrdered(
-              reasonSlack + 1, [&](Lit l) { return !isFalse(level, l); }, []([[maybe_unused]] Var v) { return true; });
+          reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
           assert(reason->getSlack(level) <= 0);
         } else {
@@ -553,8 +552,7 @@ struct ConstrExp final : public ConstrExpSuper {
             reason->multiply(mult);
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
-            reason->weakenDivideRoundOrdered(
-                bestDiv, [&](Lit l) { return !isFalse(level, l); }, []([[maybe_unused]] Var v) { return true; });
+            reason->weakenDivideRoundOrdered(bestDiv, level);
             reason->multiply(mult);
             assert(reason->getSlack(level) <= 0);
           }
