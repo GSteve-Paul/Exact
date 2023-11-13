@@ -423,6 +423,7 @@ resolve:
 void Solver::minimize(CeSuper& conflict) {
   assert(conflict->isSaturated());
   assert(conflict->isAssertingBefore(getLevel(), decisionLevel()) == AssertionStatus::ASSERTING);
+  assert(litsToSubsumeMem.empty());
   IntSet& saturatedLits = global.isPool.take();
   conflict->removeZeroes();
   conflict->getSaturatedLits(saturatedLits);
@@ -431,19 +432,17 @@ void Solver::minimize(CeSuper& conflict) {
     return;
   }
 
-  std::vector<std::pair<int, Lit>> litsToSubsume;
-  litsToSubsume.reserve(conflict->nVars());
   for (Var v : conflict->getVars()) {
     Lit l = conflict->getLit(v);
     if (isFalse(getLevel(), l) && isPropagated(reason, l)) {
-      litsToSubsume.push_back({position[v], l});
+      litsToSubsumeMem.push_back({position[v], l});
     }
   }
-  std::sort(litsToSubsume.begin(), litsToSubsume.end(),
+  std::sort(litsToSubsumeMem.begin(), litsToSubsumeMem.end(),
             [&](const std::pair<int, Lit>& x, const std::pair<int, Lit>& y) { return x.first > y.first; });
 
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-  for (const std::pair<int, Lit>& pr : litsToSubsume) {
+  for (const std::pair<int, Lit>& pr : litsToSubsumeMem) {
     Lit l = pr.second;
     assert(conflict->getLit(toVar(l)) != 0);
     Constr& reasonC = ca[reason[toVar(l)]];
@@ -458,6 +457,7 @@ void Solver::minimize(CeSuper& conflict) {
       std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count();
   conflict->removeZeroes();  // remove weakened literals
   global.isPool.release(saturatedLits);
+  litsToSubsumeMem.clear();
 }
 
 void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
