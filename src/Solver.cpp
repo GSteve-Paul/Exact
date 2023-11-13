@@ -630,7 +630,8 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   if (learned->isTautology()) return;
   learned->saturateAndFixOverflow(getLevel(), global.options.bitsLearned.get(), global.options.bitsLearned.get(), 0);
-  learned->sortInDecreasingCoefOrder(getHeuristic());
+  const std::vector<ActNode>& actList = getHeuristic().getActList();
+  learned->sortInDecreasingCoefOrder([&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
   auto [assertionLevel, isAsserting] = learned->getAssertionStatus(level, position);
   if (assertionLevel < 0) {
     backjumpTo(0);

@@ -253,7 +253,9 @@ template <typename SMALL, typename LARGE>
 Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // does not modify core
   CeSuper card = core->clone(global.cePools);
   CeSuper cloneCoefOrder = card->clone(global.cePools);
-  cloneCoefOrder->sortInDecreasingCoefOrder(solver.getHeuristic());
+  const std::vector<ActNode>& actList = solver.getHeuristic().getActList();
+  cloneCoefOrder->sortInDecreasingCoefOrder(
+      [&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
   cloneCoefOrder->reverseOrder();  // *IN*creasing coef order
   card->sortWithCoefTiebreaker(
       [&](Var v1, Var v2) { return aux::sgn(aux::abs(reformObj->coefs[v1]) - aux::abs(reformObj->coefs[v2])); });

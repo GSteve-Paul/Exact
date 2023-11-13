@@ -1038,7 +1038,8 @@ void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int
   saturate(true, !sortFirst);
   if (isClause() || isCardinality()) return;
   if (sortFirst) {
-    sortInDecreasingCoefOrder(heur);
+    const std::vector<ActNode>& actList = heur.getActList();
+    sortInDecreasingCoefOrder([&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
   }
   if (divideByGCD()) {
     ++stats.NGCD;
@@ -1382,28 +1383,8 @@ bool ConstrExp<SMALL, LARGE>::isSortedInDecreasingCoefOrder() const {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::sortInDecreasingCoefOrder(const Heuristic& heur) {
-  if (isSortedInDecreasingCoefOrder()) return;
-  std::vector<std::tuple<SMALL, ActValV, Var>> tups;
-  tups.reserve(vars.size());
-  for (Var v : vars) {
-    tups.push_back({aux::abs(coefs[v]), heur.getActivity(v), v});
-  }
-  std::sort(tups.begin(), tups.end(),
-            [&](const std::tuple<SMALL, ActValV, Var>& x, const std::tuple<SMALL, ActValV, Var>& y) {
-              return std::get<0>(x) > std::get<0>(y) ||
-                     (std::get<0>(x) == std::get<0>(y) && std::get<1>(x) > std::get<1>(y));
-            });
-  for (int i = 0; i < (int)tups.size(); ++i) {
-    Var v = std::get<2>(tups[i]);
-    vars[i] = v;
-    index[v] = i;
-  }
-}
-
-template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) {
-  if (vars.size() <= 1) return;
+  if (vars.size() <= 1 || isSortedInDecreasingCoefOrder()) return;
   std::sort(vars.begin(), vars.end(), [&](Var v1, Var v2) {
     int res = aux::sgn(aux::abs(coefs[v1]) - aux::abs(coefs[v2]));
     return res > 0 || (res == 0 && tiebreaker(v1, v2));

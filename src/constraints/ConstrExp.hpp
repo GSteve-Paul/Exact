@@ -177,7 +177,6 @@ struct ConstrExpSuper {
   virtual void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit) = 0;
 
   virtual bool isSortedInDecreasingCoefOrder() const = 0;
-  virtual void sortInDecreasingCoefOrder(const Heuristic& heur) = 0;
   virtual void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) = 0;
   virtual void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) = 0;
 
@@ -379,7 +378,6 @@ struct ConstrExp final : public ConstrExpSuper {
   void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit);
 
   bool isSortedInDecreasingCoefOrder() const;
-  void sortInDecreasingCoefOrder(const Heuristic& heur);
   void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);
   void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
 
