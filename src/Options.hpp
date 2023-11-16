@@ -207,8 +207,8 @@ struct Options {
   ValOption<double> dbExp{"db-exp",
                           "Exponent of the growth of the learned constraint database and the inprocessing intervals, "
                           "with log(#conflicts) as base",
-                          3.5, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
-  ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 1,
+                          1.1, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
+  ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 500,
                             "0 < float", [](const double& x) -> bool { return 0 < x; }};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
@@ -317,6 +317,7 @@ struct Options {
       &varSeparate,
       &dbDecayLBD,
       &dbExp,
+      &dbScale,
       &dbSafeLBD,
       &propCounting,
 #if WITHSOPLEX
