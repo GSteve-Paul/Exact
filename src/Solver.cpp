@@ -229,14 +229,16 @@ State Solver::probe(Lit l, bool deriveImplications) {
   assert(decisionLevel() == 0);
   assert(isUnknown(getPos(), l));
   ++global.stats.NPROBINGS;
-  decide(l);
-  CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
-  if (confl) {
-    CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, global.stats.CATIME);
-    aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
-    return State::FAIL;
-  } else if (decisionLevel() == 0) {  // some missing propagation at level 0 could be made
-    return State::FAIL;
+  while (isUnknown(getPos(), l)) {
+    decide(l);
+    CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
+    if (confl) {
+      CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, global.stats.CATIME);
+      aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
+      return State::FAIL;
+    }
+    // NOTE: we may have backjumped to level 0 due to a learned constraint that did not propagate.
+    // in that case, we just decide l again.
   }
   assert(decisionLevel() == 1);
   if (deriveImplications) {
@@ -1313,6 +1315,7 @@ SolveState Solver::solve() {
 
 void Solver::probeRestart(Lit next) {
   assert(decisionLevel() == 0);
+  assert(isUnknown(getPos(), next));
   lastRestartNext = toVar(next);
   int oldUnits = trail.size();
   State state = probe(-next, true);
@@ -1360,7 +1363,11 @@ void Solver::probeRestart(Lit next) {
 
 void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vector<Lit>& previousProbe) {
   assert(decisionLevel() == 0);
+  DetTime currentDetTime = global.stats.getDetTime();
+  DetTime oldDetTime = currentDetTime;
   if (considered.count(seed) || isKnown(getPos(), seed) || probe(-seed, true) == State::FAIL) {
+    currentDetTime = global.stats.getDetTime();
+    global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
     return;  // if probe fails, found unit literals instead
   }
 
@@ -1398,17 +1405,23 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
             [&](Lit x, Lit y) { return getHeuristic().getActivity(toVar(x)) < getHeuristic().getActivity(toVar(y)); });
   assert(candidates.size() <= 1 ||
          getHeuristic().getActivity(toVar(candidates[0])) <= getHeuristic().getActivity(toVar(candidates[1])));
-  while (candidates.size() > 1) {
-    assert(decisionLevel() == 0);
+  IntSet& trailSet = global.isPool.take();
+  while (!candidates.empty()) {
     quit::checkInterrupt(global);
+    currentDetTime = global.stats.getDetTime();
+    global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
+    if (global.options.inpAMO.get() != 1 &&
+        global.stats.ATMOSTONEDETTIME >=
+            global.options.inpAMO.get() * std::max(global.options.basetime.get(), currentDetTime)) {
+      break;
+    }
+    oldDetTime = currentDetTime;
+    assert(decisionLevel() == 0);
     Lit current = candidates.back();
     candidates.pop_back();
     if (isKnown(getPos(), current)) continue;
-    State state = probe(-current, false);
-    if (state == State::FAIL) {
-      continue;
-    }
-    IntSet& trailSet = global.isPool.take();
+    if (State state = probe(-current, false); state == State::FAIL) continue;
+    trailSet.clear();
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       trailSet.add(trail[i]);
     }
@@ -1416,10 +1429,8 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
     for (Lit l : cardLits) {
       if (trailSet.has(-l) && isUnknown(getPos(), l)) {
         assert(decisionLevel() == 0);
-        global.isPool.release(trailSet);
         aux::timeCallVoid([&] { learnUnitConstraint(l, Origin::PROBING, global.logger.logImpliedUnit(l, current)); },
                           global.stats.LEARNTIME);
-        continue;
       }
     }
     if (std::any_of(candidates.begin(), candidates.end(), [&](Lit l) { return trailSet.has(l); })) {
@@ -1427,24 +1438,22 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
       candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [&](Lit l) { return !trailSet.has(l); }),
                        candidates.end());
     }
-    assert(!candidates.empty());
-    global.isPool.release(trailSet);
   }
-  for (Lit l : candidates) {
-    cardLits.push_back(l);
-  }
-  for (Lit l : cardLits) {
-    considered.insert(l);
-  }
+  global.isPool.release(trailSet);
   for (int i = 0; i < (int)cardLits.size(); ++i) {
     if (isUnit(getLevel(), -cardLits[i])) {
       aux::swapErase(cardLits, i--);
     }
   }
+  for (Lit l : cardLits) {
+    considered.insert(l);
+  }
   if (cardLits.size() > 2) {
     uint64_t hash = aux::hashForSet<Lit>(cardLits);
     if (auto bestsize = atMostOneHashes.find(hash);
         bestsize != atMostOneHashes.end() && bestsize->second >= cardLits.size()) {
+      currentDetTime = global.stats.getDetTime();
+      global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
       return;
     }
     atMostOneHashes[hash] = cardLits.size();
@@ -1457,26 +1466,24 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
     global.logger.logAtMostOne(card, ce);
     aux::timeCallVoid([&] { learnConstraint(ce, Origin::DETECTEDAMO); }, global.stats.LEARNTIME);
   }
+  currentDetTime = global.stats.getDetTime();
+  global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
 }
 
 void Solver::runAtMostOneDetection() {
   assert(decisionLevel() == 0);
   int currentUnits = trail.size();
-  DetTime currentDetTime = global.stats.getDetTime();
-  DetTime oldDetTime = currentDetTime;
   std::vector<Lit> previous;
   unordered_set<Lit> considered;
   Lit next = heur->firstInActOrder();
-  while (next != 0 && (global.options.inpAMO.get() == 1 ||
-                       global.stats.ATMOSTONEDETTIME <
-                           global.options.inpAMO.get() * std::max(global.options.basetime.get(), currentDetTime))) {
+  while (next != 0 &&
+         (global.options.inpAMO.get() == 1 ||
+          global.stats.ATMOSTONEDETTIME <
+              global.options.inpAMO.get() * std::max(global.options.basetime.get(), global.stats.getDetTime()))) {
     previous.clear();
     detectAtMostOne(-next, considered, previous);
     detectAtMostOne(next, considered, previous);
     next = heur->nextInActOrder(next);
-    oldDetTime = currentDetTime;
-    currentDetTime = global.stats.getDetTime();
-    global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
   }
   global.stats.NATMOSTONEUNITS += trail.size() - currentUnits;
 }
