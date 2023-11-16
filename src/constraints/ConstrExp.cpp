@@ -895,6 +895,9 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
 }
 
 // NOTE: preserves ordered-ness
+// div is a divisor
+// toWeaken tells how to weaken the non-divisible literals
+// toWeakenSuperfluous tells how to weaken superfluous literals (if any, if needed)
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken,
                                                        const aux::predicate<Var>& toWeakenSuperfluous) {

@@ -83,8 +83,8 @@ struct IntSet;
 struct ConstrExpSuper {
   // protected:
   // for some reason (templates?) copyTo_ cannot acces external vars and indexes if protected
-  std::vector<Var> vars;
-  std::vector<int> index;  // -1 implies the variable has coefficient 0
+  std::vector<Var> vars;   // variables in the constraint
+  std::vector<int> index;  // maps variables to their index in vars, -1 implies the variable has coefficient 0
 
  public:
   Global& global;
@@ -219,7 +219,7 @@ struct ConstrExp final : public ConstrExpSuper {
  public:
   LARGE degree = 0;
   LARGE rhs = 0;
-  std::vector<SMALL> coefs;
+  std::vector<SMALL> coefs;  // maps variables to coefficients
 
  private:
   void add(Var v, SMALL c, bool removeZeroes = false);
@@ -475,14 +475,20 @@ struct ConstrExp final : public ConstrExpSuper {
   template <typename CF, typename DG>
   int genericResolve(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o, Lit asserting,
                      const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
+    // "this" is the conflict constraint.
+    // The terms, degree, and other information from the reason constraint are in the arguments.
     assert(getCoef(-asserting) > 0);
     assert(hasNoZeroes());
 
+    // take an empty reason CE
     CePtr<SMALL, LARGE> reason = global.cePools.take<SMALL, LARGE>();
+    // add its data
     reason->initFixOverflow(terms, size, degr, id, o, level, pos, asserting);
+    // asserting literal has positive coefficient in reason
     assert(reason->getCoef(asserting) > 0);
     assert(reason->getCoef(asserting) > reason->getSlack(level));
 
+    // negation of asserting literal has positive coefficient in conflict
     const SMALL conflCoef = getCoef(-asserting);
     assert(conflCoef > 0);
     if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0
@@ -563,6 +569,9 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(reason->getCoef(asserting) < 2 * conflCoef);
     assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
+    // In most cases, at this point, the reason coefficient is equal to the conflict coefficient
+    // and the reason slack is at most zero, so we can safely add the reason to the conflict.
+
     for (Var v : reason->vars) {
       Lit ll = reason->getLit(v);
       if (isFalse(level, ll)) {
@@ -571,6 +580,7 @@ struct ConstrExp final : public ConstrExpSuper {
     }
 
     LARGE oldDegree = getDegree();
+    // add reason to conflict
     addUp(reason);
 
     std::vector<Var>& varsToCheck = oldDegree <= getDegree() ? reason->vars : vars;

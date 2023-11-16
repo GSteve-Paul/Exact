@@ -372,7 +372,7 @@ CeSuper Solver::analyze(const CeSuper& conflict) {
   conflict->saturateAndFixOverflow(getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0);
 
   CeSuper confl = getAnalysisCE(conflict);
-  conflict->reset(false);
+  conflict->reset(false);  // TODO: can be dropped, is done by CePools?
 
   IntSet& actSet = global.isPool.take();  // will hold the literals that need their activity bumped
   for (Var v : confl->getVars()) {
@@ -388,9 +388,9 @@ resolve:
     if (confl->hasLit(-l)) {
       assert(confl->hasNegativeSlack(level));
       AssertionStatus status = confl->isAssertingBefore(level, decisionLevel());
-      if (status == AssertionStatus::ASSERTING)
+      if (status == AssertionStatus::ASSERTING) {
         break;
-      else if (status == AssertionStatus::FALSIFIED) {
+      } else if (status == AssertionStatus::FALSIFIED) {
         backjumpTo(decisionLevel() - 1);
         assert(confl->hasNegativeSlack(level));
         continue;
