@@ -185,6 +185,11 @@ target_include_directories(Exact PUBLIC ${PROJECT_SOURCE_DIR}/src/)
 
 if(unixlike)
     target_compile_definitions(Exact PUBLIC UNIXLIKE=1)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -flto")
+    endif()
 endif()
 
 if(soplex)
