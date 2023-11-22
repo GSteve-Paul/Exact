@@ -63,21 +63,22 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-void ConstraintAllocator::capacity(uint32_t min_cap) {
+void ConstraintAllocator::capacity(int64_t min_cap) {
   if (cap >= min_cap) return;
-
-  uint32_t prev_cap = cap;
-  while (cap < min_cap) {
-    // NOTE: Multiply by a factor (13/8) without causing overflow, then add 2 and make the
-    // result even by clearing the least significant bit. The resulting sequence of capacities
-    // is carefully chosen to hit a maximum capacity that is close to the '2^32-1' limit when
-    // using 'uint32_t' as indices so that as much as possible of this space can be used.
-    uint32_t delta = ((cap >> 1) + (cap >> 3) + 2) & ~1;
-    cap += delta;
-    if (cap <= prev_cap) throw OutOfMemoryException();
+  if (min_cap > 0xfffffffc) {
+    throw OutOfMemoryException();
   }
 
+  uint64_t newcap = cap;
+  while (newcap < min_cap) {
+    // NOTE: Multiply by a factor of about  (13/8), then add 4 and make the result divisible by 4 by clearing the least
+    // significant two bits.
+    newcap += ((newcap >> 1) + (newcap >> 3) + 4) & ~3;
+  }
+  // if the new cap exceeds 2^32-4 (the largest feasible 32-bit value), shrink to that value.
+  cap = newcap > 0xfffffffc ? 0xfffffffc : newcap;
   assert(cap > 0);
+  assert(cap >= min_cap);
   memory = (uint32_t*)xrealloc(memory, sizeof(uint32_t) * cap);
 }
 

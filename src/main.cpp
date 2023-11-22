@@ -25,6 +25,13 @@ or run with the flag --license=AGPLv3. If not, see
 using namespace xct;
 
 int main(int argc, char** argv) {
+//  std::cout << sizeof(int32_t) << " " << alignof(int32_t) << std::endl;
+//  std::cout << sizeof(int64_t) << " " << alignof(int64_t) << std::endl;
+//  std::cout << sizeof(int128) << " " << alignof(int128) << std::endl;
+//  std::cout << sizeof(boost::multiprecision::int128_t) << " " << alignof(boost::multiprecision::int128_t) << std::endl;
+//  std::cout << sizeof(int256) << " " << alignof(int256) << std::endl;
+//  std::cout << sizeof(bigint) << " " << alignof(bigint) << std::endl;
+  return 0;
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE
