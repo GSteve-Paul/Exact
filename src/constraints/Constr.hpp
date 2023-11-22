@@ -82,7 +82,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   const ID id;
   // NOTE: above attributes not strictly needed in cache-sensitive Constr, but it did not matter after testing
   const float strength;
-  const unsigned int size;
+  const uint32_t size;
   struct {
     unsigned markedfordel : 1;
     unsigned locked : 1;
