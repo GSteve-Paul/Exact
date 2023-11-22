@@ -820,12 +820,15 @@ void ConstrExp<SMALL, LARGE>::saturateAndFixOverflowRational() {
   removeZeroes();
   LARGE maxRhs = std::max(getDegree(), aux::abs(getRhs()));
   // TODO: why do we look at degree and not max coefficient here?
-  if (maxRhs >= INFLPINT) {
+  while (maxRhs >= INFLPINT) {
     LARGE d = aux::ceildiv<LARGE>(maxRhs, INFLPINT - 1);
-    assert(d > 1);
-    divideRoundDown(d);
+    assert(d >= 2);
+    divideRoundUp(d);
+    saturate(true, false);
+    maxRhs = std::max(getDegree(), aux::abs(getRhs()));
+    // NOTE: due to cumulative round-off errors, we may not always have a sufficient small rhs/degree
+    // so we keep dividing by at least two until we get there
   }
-  saturate(true, false);
   assert(getDegree() < INFLPINT);
   assert(aux::abs(getRhs()) < INFLPINT);
 }
