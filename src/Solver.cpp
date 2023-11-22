@@ -229,14 +229,16 @@ State Solver::probe(Lit l, bool deriveImplications) {
   assert(decisionLevel() == 0);
   assert(isUnknown(getPos(), l));
   ++global.stats.NPROBINGS;
-  decide(l);
-  CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
-  if (confl) {
-    CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, global.stats.CATIME);
-    aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
-    return State::FAIL;
-  } else if (decisionLevel() == 0) {  // some missing propagation at level 0 could be made
-    return State::FAIL;
+  while (isUnknown(getPos(), l)) {
+    decide(l);
+    CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
+    if (confl) {
+      CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, global.stats.CATIME);
+      aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
+      return State::FAIL;
+    }
+    // NOTE: we may have backjumped to level 0 due to a learned constraint that did not propagate.
+    // in that case, we just decide l again.
   }
   assert(decisionLevel() == 1);
   if (deriveImplications) {
@@ -423,6 +425,7 @@ resolve:
 void Solver::minimize(CeSuper& conflict) {
   assert(conflict->isSaturated());
   assert(conflict->isAssertingBefore(getLevel(), decisionLevel()) == AssertionStatus::ASSERTING);
+  assert(litsToSubsumeMem.empty());
   IntSet& saturatedLits = global.isPool.take();
   conflict->removeZeroes();
   conflict->getSaturatedLits(saturatedLits);
@@ -431,31 +434,32 @@ void Solver::minimize(CeSuper& conflict) {
     return;
   }
 
-  std::vector<std::pair<int, Lit>> litsToSubsume;
-  litsToSubsume.reserve(conflict->nVars());
   for (Var v : conflict->getVars()) {
     Lit l = conflict->getLit(v);
     if (isFalse(getLevel(), l) && isPropagated(reason, l)) {
-      litsToSubsume.push_back({position[v], l});
+      litsToSubsumeMem.push_back({position[v], l});
     }
   }
-  std::sort(litsToSubsume.begin(), litsToSubsume.end(),
+  std::sort(litsToSubsumeMem.begin(), litsToSubsumeMem.end(),
             [&](const std::pair<int, Lit>& x, const std::pair<int, Lit>& y) { return x.first > y.first; });
 
-  for (const std::pair<int, Lit>& pr : litsToSubsume) {
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  for (const std::pair<int, Lit>& pr : litsToSubsumeMem) {
     Lit l = pr.second;
     assert(conflict->getLit(toVar(l)) != 0);
     Constr& reasonC = ca[reason[toVar(l)]];
-    int lbd = aux::timeCall<bool>([&] { return reasonC.subsumeWith(conflict, -l, *this, saturatedLits); },
-                                  global.stats.MINTIME);
+    int lbd = reasonC.subsumeWith(conflict, -l, *this, saturatedLits);
     if (lbd > 0) {
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered(global.stats);
     }
     if (saturatedLits.isEmpty()) break;
   }
+  global.stats.MINTIME +=
+      std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count();
   conflict->removeZeroes();  // remove weakened literals
   global.isPool.release(saturatedLits);
+  litsToSubsumeMem.clear();
 }
 
 void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
@@ -630,8 +634,9 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   if (learned->isTautology()) return;
   learned->saturateAndFixOverflow(getLevel(), global.options.bitsLearned.get(), global.options.bitsLearned.get(), 0);
-  learned->sortInDecreasingCoefOrder(getHeuristic());
-  auto [assertionLevel, isAsserting] = learned->getAssertionStatus(level, position);
+  const std::vector<ActNode>& actList = getHeuristic().getActList();
+  learned->sortInDecreasingCoefOrder([&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
+  auto [assertionLevel, isAsserting] = learned->getAssertionStatus(level, position, assertionStateMem);
   if (assertionLevel < 0) {
     backjumpTo(0);
     assert(learned->isInconsistency());
@@ -1310,6 +1315,7 @@ SolveState Solver::solve() {
 
 void Solver::probeRestart(Lit next) {
   assert(decisionLevel() == 0);
+  assert(isUnknown(getPos(), next));
   lastRestartNext = toVar(next);
   int oldUnits = trail.size();
   State state = probe(-next, true);
@@ -1357,7 +1363,11 @@ void Solver::probeRestart(Lit next) {
 
 void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vector<Lit>& previousProbe) {
   assert(decisionLevel() == 0);
+  DetTime currentDetTime = global.stats.getDetTime();
+  DetTime oldDetTime = currentDetTime;
   if (considered.count(seed) || isKnown(getPos(), seed) || probe(-seed, true) == State::FAIL) {
+    currentDetTime = global.stats.getDetTime();
+    global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
     return;  // if probe fails, found unit literals instead
   }
 
@@ -1395,17 +1405,23 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
             [&](Lit x, Lit y) { return getHeuristic().getActivity(toVar(x)) < getHeuristic().getActivity(toVar(y)); });
   assert(candidates.size() <= 1 ||
          getHeuristic().getActivity(toVar(candidates[0])) <= getHeuristic().getActivity(toVar(candidates[1])));
-  while (candidates.size() > 1) {
-    assert(decisionLevel() == 0);
+  IntSet& trailSet = global.isPool.take();
+  while (!candidates.empty()) {
     quit::checkInterrupt(global);
+    currentDetTime = global.stats.getDetTime();
+    global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
+    if (global.options.inpAMO.get() != 1 &&
+        global.stats.ATMOSTONEDETTIME >=
+            global.options.inpAMO.get() * std::max(global.options.basetime.get(), currentDetTime)) {
+      break;
+    }
+    oldDetTime = currentDetTime;
+    assert(decisionLevel() == 0);
     Lit current = candidates.back();
     candidates.pop_back();
     if (isKnown(getPos(), current)) continue;
-    State state = probe(-current, false);
-    if (state == State::FAIL) {
-      continue;
-    }
-    IntSet& trailSet = global.isPool.take();
+    if (State state = probe(-current, false); state == State::FAIL) continue;
+    trailSet.clear();
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
       trailSet.add(trail[i]);
     }
@@ -1413,10 +1429,8 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
     for (Lit l : cardLits) {
       if (trailSet.has(-l) && isUnknown(getPos(), l)) {
         assert(decisionLevel() == 0);
-        global.isPool.release(trailSet);
         aux::timeCallVoid([&] { learnUnitConstraint(l, Origin::PROBING, global.logger.logImpliedUnit(l, current)); },
                           global.stats.LEARNTIME);
-        continue;
       }
     }
     if (std::any_of(candidates.begin(), candidates.end(), [&](Lit l) { return trailSet.has(l); })) {
@@ -1424,24 +1438,22 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
       candidates.erase(std::remove_if(candidates.begin(), candidates.end(), [&](Lit l) { return !trailSet.has(l); }),
                        candidates.end());
     }
-    assert(!candidates.empty());
-    global.isPool.release(trailSet);
   }
-  for (Lit l : candidates) {
-    cardLits.push_back(l);
-  }
-  for (Lit l : cardLits) {
-    considered.insert(l);
-  }
+  global.isPool.release(trailSet);
   for (int i = 0; i < (int)cardLits.size(); ++i) {
     if (isUnit(getLevel(), -cardLits[i])) {
       aux::swapErase(cardLits, i--);
     }
   }
+  for (Lit l : cardLits) {
+    considered.insert(l);
+  }
   if (cardLits.size() > 2) {
     uint64_t hash = aux::hashForSet<Lit>(cardLits);
     if (auto bestsize = atMostOneHashes.find(hash);
         bestsize != atMostOneHashes.end() && bestsize->second >= cardLits.size()) {
+      currentDetTime = global.stats.getDetTime();
+      global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
       return;
     }
     atMostOneHashes[hash] = cardLits.size();
@@ -1454,26 +1466,24 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
     global.logger.logAtMostOne(card, ce);
     aux::timeCallVoid([&] { learnConstraint(ce, Origin::DETECTEDAMO); }, global.stats.LEARNTIME);
   }
+  currentDetTime = global.stats.getDetTime();
+  global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
 }
 
 void Solver::runAtMostOneDetection() {
   assert(decisionLevel() == 0);
   int currentUnits = trail.size();
-  DetTime currentDetTime = global.stats.getDetTime();
-  DetTime oldDetTime = currentDetTime;
   std::vector<Lit> previous;
   unordered_set<Lit> considered;
   Lit next = heur->firstInActOrder();
-  while (next != 0 && (global.options.inpAMO.get() == 1 ||
-                       global.stats.ATMOSTONEDETTIME <
-                           global.options.inpAMO.get() * std::max(global.options.basetime.get(), currentDetTime))) {
+  while (next != 0 &&
+         (global.options.inpAMO.get() == 1 ||
+          global.stats.ATMOSTONEDETTIME <
+              global.options.inpAMO.get() * std::max(global.options.basetime.get(), global.stats.getDetTime()))) {
     previous.clear();
     detectAtMostOne(-next, considered, previous);
     detectAtMostOne(next, considered, previous);
     next = heur->nextInActOrder(next);
-    oldDetTime = currentDetTime;
-    currentDetTime = global.stats.getDetTime();
-    global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;
   }
   global.stats.NATMOSTONEUNITS += trail.size() - currentUnits;
 }

@@ -188,7 +188,7 @@ if(unixlike)
 endif()
 
 if(soplex)
-    target_include_directories(Exact PUBLIC ${soplex_src} ${soplex_build})
+    target_include_directories(Exact SYSTEM PUBLIC ${soplex_src} ${soplex_build})
     if(build_static)
         target_link_libraries(Exact "${soplex_build}/lib/libsoplex.a")
     else()

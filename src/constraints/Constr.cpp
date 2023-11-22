@@ -528,8 +528,8 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
   assert(hasCorrectSlack(solver));
   if (watchslack < lrgstCf) {
     // set sufficient falsified watches
-    std::vector<unsigned int> falsifiedIdcs;
-    falsifiedIdcs.reserve(length);
+    std::vector<unsigned int>& falsifiedIdcs = solver.falsifiedIdcsMem;
+    assert(falsifiedIdcs.empty());
     for (unsigned int i = 0; i < length; ++i)
       if (isFalse(level, data[i].l) && position[toVar(data[i].l)] < qhead) falsifiedIdcs.push_back(i);
     std::sort(falsifiedIdcs.begin(), falsifiedIdcs.end(), [&](unsigned int i1, unsigned int i2) {
@@ -544,11 +544,13 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
       if (diff <= 0) break;
     }
     // perform initial propagation
-    for (unsigned int i = 0; i < length && aux::abs(data[i].c) > watchslack; ++i)
+    for (unsigned int i = 0; i < length && aux::abs(data[i].c) > watchslack; ++i) {
       if (isUnknown(position, data[i].l)) {
         assert(isCorrectlyPropagating(solver, i));
         solver.propagate(data[i].l, cr);
       }
+    }
+    falsifiedIdcs.clear();
   }
 }
 
@@ -851,8 +853,8 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
   assert(hasCorrectSlack(solver));
   if (wslk < lrgstCf) {
     // set sufficient falsified watches
-    std::vector<unsigned int> falsifiedIdcs;
-    falsifiedIdcs.reserve(length);
+    std::vector<unsigned int>& falsifiedIdcs = solver.falsifiedIdcsMem;
+    assert(falsifiedIdcs.empty());
     for (unsigned int i = 0; i < length; ++i)
       if (isFalse(level, terms[i].l) && position[toVar(terms[i].l)] < qhead) falsifiedIdcs.push_back(i);
     std::sort(falsifiedIdcs.begin(), falsifiedIdcs.end(), [&](unsigned int i1, unsigned int i2) {
@@ -867,11 +869,13 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
       if (diff <= 0) break;
     }
     // perform initial propagation
-    for (unsigned int i = 0; i < length && aux::abs(terms[i].c) > wslk; ++i)
+    for (unsigned int i = 0; i < length && aux::abs(terms[i].c) > wslk; ++i) {
       if (isUnknown(position, terms[i].l)) {
         assert(isCorrectlyPropagating(solver, i));
         solver.propagate(terms[i].l, cr);
       }
+    }
+    falsifiedIdcs.clear();
   }
 }
 

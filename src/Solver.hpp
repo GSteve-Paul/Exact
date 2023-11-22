@@ -140,6 +140,11 @@ class Solver {
   long long nconfl_to_restart = 0;
   Var nextToSort = 0;
 
+  // vectors used in subroutines that should not be reallocated over and over
+  std::vector<Lit> assertionStateMem;
+  std::vector<std::pair<int, Lit>> litsToSubsumeMem;
+  std::vector<unsigned int> falsifiedIdcsMem;
+
   CeSuper getAnalysisCE(const CeSuper& conflict) const;
 
  public:
