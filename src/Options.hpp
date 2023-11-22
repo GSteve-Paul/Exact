@@ -261,8 +261,6 @@ struct Options {
   ValOption<float> cgHybrid{"cg",
                             "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
-  EnumOption cgEncoding{
-      "cg-encoding", "Encoding of the extension constraints", "lazysum", {"lazysum", "binary", "smallsum"}};
   ValOption<int> cgMaxCoef{"cg-maxcoef", "Max coefficient when reducing cores", 100, "1 =< int =< 1e9",
                            [](const int& x) -> bool { return x >= 1 && x <= limitAbs<int, long long>(); }};
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
@@ -339,7 +337,6 @@ struct Options {
       &bitsReduced,
       &bitsLearned,
       &cgHybrid,
-      &cgEncoding,
       &cgMaxCoef,
       &cgResolveProp,
       &cgStrat,

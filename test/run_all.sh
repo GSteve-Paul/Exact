@@ -9,9 +9,9 @@ declare -a arr_configs=(
 "simple"
 "arbitrary"
 "noproof"
-"binary"
-"lazysum"
-"smallsum"
+"mindiv"
+"rto"
+"slack+1"
 )
 
 for idx in "${!arr_configs[@]}"; do
