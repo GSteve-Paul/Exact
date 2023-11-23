@@ -79,9 +79,8 @@ struct Stats;
 struct Constr {  // internal solver constraint optimized for fast propagation
   virtual size_t getMemSize() const = 0;
 
-  const ID id;
-  // NOTE: above attributes not strictly needed in cache-sensitive Constr, but it did not matter after testing
-  const float strength;
+  const ID id;  // NOTE: ID attribute not strictly needed in cache-sensitive Constr, but it did not matter after testing
+  const double strength;  // NOTE: can also be a float, but let's make use of 4 bits left in this struct after padding
   const uint32_t size;
   struct {
     unsigned markedfordel : 1;
@@ -179,7 +178,7 @@ struct Clause final : public Constr {
 
 struct Cardinality final : public Constr {
   unsigned int watchIdx;
-  unsigned int degr;
+  const unsigned int degr;
   long long ntrailpops;
   Lit data[];
 
@@ -365,8 +364,8 @@ struct CountingSafe final : public Constr {
   unsigned int unsaturatedIdx;
   unsigned int watchIdx;
   long long ntrailpops;
-  DG* degr;
-  DG* slack;
+  const DG degr;
+  DG slack;
   Term<CF>* terms;  // array
 
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
@@ -374,7 +373,7 @@ struct CountingSafe final : public Constr {
   }
   size_t getMemSize() const { return getMemSize(size); }
 
-  bigint degree() const { return bigint(*degr); }
+  bigint degree() const { return bigint(degr); }
   bigint coef(unsigned int i) const { return bigint(terms[i].c); }
   Lit lit(unsigned int i) const { return terms[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
@@ -393,8 +392,8 @@ struct CountingSafe final : public Constr {
         unsaturatedIdx(0),
         watchIdx(0),
         ntrailpops(-1),
-        degr(new DG(static_cast<DG>(constraint->getDegree()))),
-        slack(new DG(0)),
+        degr(static_cast<DG>(constraint->getDegree())),
+        slack(0),
         terms(new Term<CF>[constraint->nVars()]) {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
@@ -404,16 +403,12 @@ struct CountingSafe final : public Constr {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       terms[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += terms[i].c >= *degr;
-      assert(terms[i].c <= *degr);
+      unsaturatedIdx += terms[i].c >= degr;
+      assert(terms[i].c <= degr);
     }
   }
 
-  void cleanup() {
-    delete degr;
-    delete slack;
-    delete[] terms;
-  }
+  void cleanup() { delete[] terms; }
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
@@ -435,8 +430,8 @@ struct WatchedSafe final : public Constr {
   unsigned int unsaturatedIdx;
   unsigned int watchIdx;
   long long ntrailpops;
-  DG* degr;
-  DG* watchslack;
+  const DG degr;
+  DG watchslack;
   Term<CF>* terms;  // array
 
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
@@ -444,7 +439,7 @@ struct WatchedSafe final : public Constr {
   }
   size_t getMemSize() const { return getMemSize(size); }
 
-  bigint degree() const { return bigint(*degr); }
+  bigint degree() const { return bigint(degr); }
   bigint coef(unsigned int i) const { return bigint(aux::abs(terms[i].c)); }
   Lit lit(unsigned int i) const { return terms[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
@@ -463,8 +458,8 @@ struct WatchedSafe final : public Constr {
         unsaturatedIdx(0),
         watchIdx(0),
         ntrailpops(-1),
-        degr(new DG(static_cast<DG>(constraint->getDegree()))),
-        watchslack(new DG(0)),
+        degr(static_cast<DG>(constraint->getDegree())),
+        watchslack(0),
         terms(new Term<CF>[constraint->nVars()]) {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
@@ -474,16 +469,12 @@ struct WatchedSafe final : public Constr {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       terms[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += terms[i].c >= *degr;
-      assert(terms[i].c <= *degr);
+      unsaturatedIdx += terms[i].c >= degr;
+      assert(terms[i].c <= degr);
     }
   }
 
-  void cleanup() {
-    delete degr;
-    delete watchslack;
-    delete[] terms;
-  }
+  void cleanup() { delete[] terms; }
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);

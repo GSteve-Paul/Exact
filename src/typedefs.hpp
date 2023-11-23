@@ -328,27 +328,28 @@ struct Cardinality;
 template <typename CF, typename DG>
 struct Counting;
 using Counting32 = Counting<int, long long>;
+using Counting64 = Counting<long long, int128>;
+using Counting96 = Counting<int128, int128>;
+using Counting128 = Counting<int128, int256>;
 template <typename CF, typename DG>
 struct CountingSafe;
-using Counting64 = CountingSafe<long long, int128>;
-using Counting96 = CountingSafe<int128, int128>;
-using Counting128 = CountingSafe<int128, int256>;
 using CountingArb = CountingSafe<bigint, bigint>;
 
 template <typename CF, typename DG>
 struct Watched;
 using Watched32 = Watched<int, long long>;
+using Watched64 = Watched<long long, int128>;
+using Watched96 = Watched<int128, int128>;
+using Watched128 = Watched<int128, int256>;
 template <typename CF, typename DG>
 struct WatchedSafe;
-using Watched64 = WatchedSafe<long long, int128>;
-using Watched96 = WatchedSafe<int128, int128>;
-using Watched128 = WatchedSafe<int128, int256>;
 using WatchedArb = WatchedSafe<bigint, bigint>;
 
 template <typename CF>
 struct Term {
   Term() : c(0), l(0) {}
   Term(const CF& x, Lit y) : c(x), l(y) {}
+  ~Term() = default;
   CF c;
   Lit l;
 };

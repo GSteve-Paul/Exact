@@ -697,8 +697,8 @@ void CountingSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
   auto& adj = solver.adj;
   auto& qhead = solver.qhead;
 
-  DG& slk = *slack;
-  slk = -*degr;
+  DG& slk = slack;
+  slk = -degr;
   unsigned int length = size;
   for (unsigned int i = 0; i < length; ++i) {
     Lit l = terms[i].l;
@@ -730,7 +730,7 @@ WatchStatus CountingSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe
   const CF& lrgstCf = terms[0].c;
   const CF& c = terms[idx - INF].c;
 
-  DG& slk = *slack;
+  DG& slk = slack;
   slk -= c;
   assert(hasCorrectSlack(solver));
 
@@ -748,8 +748,8 @@ WatchStatus CountingSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe
     for (; watchIdx < length && terms[watchIdx].c > slk; ++watchIdx) {
       const Lit l = terms[watchIdx].l;
       if (isUnknown(position, l)) {
-        stats.NPROPCLAUSE += (*degr == 1);
-        stats.NPROPCARD += (*degr != 1 && lrgstCf == 1);
+        stats.NPROPCLAUSE += (degr == 1);
+        stats.NPROPCARD += (degr != 1 && lrgstCf == 1);
         ++countingprops;
         assert(isCorrectlyPropagating(solver, watchIdx));
         solver.propagate(l, cr);
@@ -764,22 +764,22 @@ WatchStatus CountingSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe
 template <typename CF, typename DG>
 void CountingSafe<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
-  *slack += terms[i - INF].c;
+  slack += terms[i - INF].c;
 }
 
 template <typename CF, typename DG>
 int CountingSafe<CF, DG>::resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(terms, size, *degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
+  return confl->resolveWith(terms, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
 int CountingSafe<CF, DG>::subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(terms, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
 CePtr<CF, DG> CountingSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   CePtr<CF, DG> result = cePools.take<CF, DG>();
-  result->addRhs(*degr);
+  result->addRhs(degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(terms[i].c, terms[i].l);
   }
@@ -795,7 +795,7 @@ CeSuper CountingSafe<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 
 template <typename CF, typename DG>
 bool CountingSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
-  DG eval = -*degr;
+  DG eval = -degr;
   for (int i = 0; i < (int)size && eval < 0; ++i) {
     if (isUnit(level, terms[i].l)) eval += terms[i].c;
   }
@@ -836,8 +836,8 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
   auto& adj = solver.adj;
   auto& qhead = solver.qhead;
 
-  DG& wslk = *watchslack;
-  wslk = -*degr;
+  DG& wslk = watchslack;
+  wslk = -degr;
   unsigned int length = size;
   const CF lrgstCf = aux::abs(terms[0].c);
   for (unsigned int i = 0; i < length && wslk < lrgstCf; ++i) {
@@ -898,7 +898,7 @@ WatchStatus WatchedSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_
   }
 
   assert(c < 0);
-  DG& wslk = *watchslack;
+  DG& wslk = watchslack;
   wslk += c;
   if (wslk - c >= lrgstCf) {  // look for new watches if previously, slack was at least lrgstCf
     stats.NWATCHCHECKS -= watchIdx;
@@ -935,8 +935,8 @@ WatchStatus WatchedSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_
   for (; watchIdx < length && aux::abs(terms[watchIdx].c) > wslk; ++watchIdx) {
     const Lit l = terms[watchIdx].l;
     if (isUnknown(position, l)) {
-      stats.NPROPCLAUSE += (*degr == 1);
-      stats.NPROPCARD += (*degr != 1 && lrgstCf == 1);
+      stats.NPROPCLAUSE += (degr == 1);
+      stats.NPROPCARD += (degr != 1 && lrgstCf == 1);
       ++watchprops;
       assert(isCorrectlyPropagating(solver, watchIdx));
       solver.propagate(l, cr);
@@ -951,22 +951,22 @@ template <typename CF, typename DG>
 void WatchedSafe<CF, DG>::undoFalsified(int i) {
   assert(i >= INF);
   assert(terms[i - INF].c < 0);
-  *watchslack -= terms[i - INF].c;
+  watchslack -= terms[i - INF].c;
 }
 
 template <typename CF, typename DG>
 int WatchedSafe<CF, DG>::resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(terms, size, *degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
+  return confl->resolveWith(terms, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
 int WatchedSafe<CF, DG>::subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(terms, size, *degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(terms, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
 CePtr<CF, DG> WatchedSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   CePtr<CF, DG> result = cePools.take<CF, DG>();
-  result->addRhs(*degr);
+  result->addRhs(degr);
   for (size_t i = 0; i < size; ++i) {
     result->addLhs(aux::abs(terms[i].c), terms[i].l);
   }
@@ -982,7 +982,7 @@ CeSuper WatchedSafe<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 
 template <typename CF, typename DG>
 bool WatchedSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
-  DG eval = -*degr;
+  DG eval = -degr;
   for (int i = 0; i < (int)size && eval < 0; ++i) {
     if (isUnit(level, terms[i].l)) eval += aux::abs(terms[i].c);
   }
@@ -1073,24 +1073,24 @@ bool Watched<CF, DG>::hasCorrectSlack(const Solver& solver) {
 template <typename CF, typename DG>
 bool CountingSafe<CF, DG>::hasCorrectSlack(const Solver& solver) {
   return true;  // comment to run check
-  DG slk = -*degr;
+  DG slk = -degr;
   for (int i = 0; i < (int)size; ++i) {
     if (solver.getPos()[toVar(lit(i))] >= solver.qhead || !isFalse(solver.getLevel(), lit(i))) {
       slk += terms[i].c;
     }
   }
-  return (slk == *slack);
+  return (slk == slack);
 }
 
 template <typename CF, typename DG>
 bool WatchedSafe<CF, DG>::hasCorrectSlack(const Solver& solver) {
   return true;  // comment to run check
-  DG slk = -*degr;
+  DG slk = -degr;
   for (int i = 0; i < (int)size; ++i) {
     if (terms[i].c < 0 && (solver.getPos()[toVar(lit(i))] >= solver.qhead || !isFalse(solver.getLevel(), lit(i))))
       slk += aux::abs(terms[i].c);
   }
-  return (slk == *watchslack);
+  return (slk == watchslack);
 }
 
 template <typename CF, typename DG>
@@ -1111,7 +1111,7 @@ bool Watched<CF, DG>::hasCorrectWatches(const Solver& solver) {
 template <typename CF, typename DG>
 bool WatchedSafe<CF, DG>::hasCorrectWatches(const Solver& solver) {
   return true;  // comment to run check
-  if (*watchslack >= aux::abs(terms[0].c)) return true;
+  if (watchslack >= aux::abs(terms[0].c)) return true;
   for (int i = 0; i < (int)watchIdx; ++i) assert(isKnown(solver.getPos(), lit(i)));
   for (int i = 0; i < (int)size; ++i) {
     if (!(terms[i].c < 0 || isFalse(solver.getLevel(), terms[i].l))) {
@@ -1124,17 +1124,15 @@ bool WatchedSafe<CF, DG>::hasCorrectWatches(const Solver& solver) {
 }
 
 template struct Counting<int, long long>;
-
-template struct Watched<int, long long>;
-
-template struct CountingSafe<long long, int128>;
-template struct CountingSafe<int128, int128>;
-template struct CountingSafe<int128, int256>;
+template struct Counting<long long, int128>;
+template struct Counting<int128, int128>;
+template struct Counting<int128, int256>;
 template struct CountingSafe<bigint, bigint>;
 
-template struct WatchedSafe<long long, int128>;
-template struct WatchedSafe<int128, int128>;
-template struct WatchedSafe<int128, int256>;
+template struct Watched<int, long long>;
+template struct Watched<long long, int128>;
+template struct Watched<int128, int128>;
+template struct Watched<int128, int256>;
 template struct WatchedSafe<bigint, bigint>;
 
 }  // namespace xct
