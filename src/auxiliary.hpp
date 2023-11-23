@@ -96,7 +96,7 @@ using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
 
-constexpr uint8_t maxAlign = 16;
+constexpr size_t maxAlign = 16;  // NOTE: size_t type to make sure multiplication is in the size_t domain
 static_assert(alignof(int128) <= maxAlign);
 static_assert(alignof(int256) <= maxAlign);
 static_assert(alignof(bigint) <= maxAlign);

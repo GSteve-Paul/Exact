@@ -882,7 +882,7 @@ void Solver::garbage_collect() {
   for (CRef& cr : constraints) {
     uint32_t offset = cr.ofs;
     size_t memSize = ca[cr].getMemSize();
-    memmove(ca.memory + ca.at, ca.memory + cr.ofs, sizeof(uint32_t) * memSize);
+    std::memmove(ca.memory + maxAlign * ca.at, ca.memory + maxAlign * cr.ofs, maxAlign * memSize);
     cr.ofs = ca.at;
     ca.at += memSize;
     crefmap[offset] = cr;

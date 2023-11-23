@@ -137,7 +137,9 @@ std::ostream& operator<<(std::ostream& o, const Constr& c);
 struct Clause final : public Constr {
   Lit data[];
 
-  static size_t getMemSize(unsigned int length) { return (sizeof(Clause) + sizeof(Lit) * length) / sizeof(uint32_t); }
+  static size_t getMemSize(unsigned int length) {
+    return aux::ceildiv(sizeof(Clause) + sizeof(Lit) * length, maxAlign);
+  }
   size_t getMemSize() const { return getMemSize(size); }
 
   bigint degree() const { return 1; }
@@ -182,7 +184,7 @@ struct Cardinality final : public Constr {
   Lit data[];
 
   static size_t getMemSize(unsigned int length) {
-    return (sizeof(Cardinality) + sizeof(Lit) * length) / sizeof(uint32_t);
+    return aux::ceildiv(sizeof(Cardinality) + sizeof(Lit) * length, maxAlign);
   }
   size_t getMemSize() const { return getMemSize(size); }
 
@@ -237,7 +239,7 @@ struct Counting final : public Constr {
   Term<CF> data[];
 
   static size_t getMemSize(unsigned int length) {
-    return (sizeof(Counting<CF, DG>) + sizeof(Term<CF>) * length) / sizeof(uint32_t);
+    return aux::ceildiv(sizeof(Counting<CF, DG>) + sizeof(Term<CF>) * length, maxAlign);
   }
   size_t getMemSize() const { return getMemSize(size); }
 
@@ -302,7 +304,7 @@ struct Watched final : public Constr {
   Term<CF> data[];
 
   static size_t getMemSize(unsigned int length) {
-    return (sizeof(Watched<CF, DG>) + sizeof(Term<CF>) * length) / sizeof(uint32_t);
+    return aux::ceildiv(sizeof(Watched<CF, DG>) + sizeof(Term<CF>) * length, maxAlign);
   }
   size_t getMemSize() const { return getMemSize(size); }
 
@@ -368,7 +370,7 @@ struct CountingSafe final : public Constr {
   Term<CF>* terms;  // array
 
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
-    return sizeof(CountingSafe<CF, DG>) / sizeof(uint32_t);
+    return aux::ceildiv(sizeof(CountingSafe<CF, DG>), maxAlign);
   }
   size_t getMemSize() const { return getMemSize(size); }
 
@@ -438,7 +440,7 @@ struct WatchedSafe final : public Constr {
   Term<CF>* terms;  // array
 
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
-    return sizeof(WatchedSafe<CF, DG>) / sizeof(uint32_t);
+    return aux::ceildiv(sizeof(WatchedSafe<CF, DG>), maxAlign);
   }
   size_t getMemSize() const { return getMemSize(size); }
 

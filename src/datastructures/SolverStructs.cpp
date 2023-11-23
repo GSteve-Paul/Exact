@@ -65,25 +65,36 @@ namespace xct {
 
 void ConstraintAllocator::capacity(int64_t min_cap) {
   if (cap >= min_cap) return;
-  if (min_cap > 0xfffffffc) {
-    throw OutOfMemoryException();
+  if (min_cap > 0xffffffff) {
+    throw OutOfMemoryException();  // throws when exceeding 64 GiB, as memory is measured in maxAlign bytes (128 bits)
   }
 
-  uint64_t newcap = cap;
+  int64_t newcap = cap;
+  size_t oldsize = maxAlign * cap;
   while (newcap < min_cap) {
-    // NOTE: Multiply by a factor of about  (13/8), then add 4 and make the result divisible by 4 by clearing the least
-    // significant two bits.
-    newcap += ((newcap >> 1) + (newcap >> 3) + 4) & ~3;
+    // NOTE: Add 1 and multiply by a factor of 7/4
+    newcap += (newcap >> 1) + (newcap >> 2) + 1;
   }
-  // if the new cap exceeds 2^32-4 (the largest feasible 32-bit value), shrink to that value.
-  cap = newcap > 0xfffffffc ? 0xfffffffc : newcap;
+  // if the new cap exceeds 2^32-1 (the largest feasible 32-bit value), shrink to that value.
+  cap = newcap > 0xffffffff ? 0xffffffff : newcap;
   assert(cap > 0);
   assert(cap >= min_cap);
-  memory = (uint32_t*)xrealloc(memory, sizeof(uint32_t) * cap);
+  memory = xrealloc(memory, oldsize, maxAlign * cap);
 }
 
-Constr& ConstraintAllocator::operator[](CRef cr) const { return (Constr&)*(memory + cr.ofs); }
+Constr& ConstraintAllocator::operator[](CRef cr) const { return (Constr&)*(memory + maxAlign * cr.ofs); }
 
-void ConstraintAllocator::cleanup() { free(memory); }
+void ConstraintAllocator::cleanup() { std::free(memory); }
+
+std::byte* xrealloc(std::byte* ptr, size_t oldsize, size_t newsize) {
+  // copy to a larger memory block
+  // not the most efficient, but no better option right now:
+  // https://stackoverflow.com/questions/64884745/is-there-a-linux-equivalent-of-aligned-realloc
+  std::byte* mem = (std::byte*)std::aligned_alloc(maxAlign, newsize);
+  if (mem == nullptr) throw OutOfMemoryException();
+  std::memcpy(mem, ptr, oldsize);
+  std::free(ptr);
+  return mem;
+}
 
 }  // namespace xct

@@ -100,40 +100,38 @@ struct Watch {
   bool operator==(const Watch& other) const { return other.cref == cref && other.idx == idx; }
 };
 
-// ----------------------------------------------------------------------------------------
-// Memory. Maximum supported size of learnt constraint database is slightly less than 16GiB
+// ----------------------------------------------------------------------
+// Memory. Maximum supported size of learnt constraint database is 64GiB.
 
 struct ConstraintAllocator {
   // NOTE: no uint64_t as this allows constraint reference CRef to be only 32 bit
-  uint32_t* memory = nullptr;
+  std::byte* memory = nullptr;
   uint32_t cap = 0;
   uint32_t at = 0;
   uint32_t wasted = 0;  // for GC
+
   void capacity(int64_t min_cap);
+
   template <typename C>
   C* alloc(int nTerms) {
     int64_t newAt = at;
     newAt += C::getMemSize(nTerms);
     capacity(newAt);
-    C* res = (C*)(memory + at);
     assert(newAt <= 0xffffffff);
+    C* res = (C*)(memory + maxAlign * at);
+    assert(size_t(res) % maxAlign == 0);
     at = newAt;
     return res;
   }
+
   Constr& operator[](CRef cr) const;
+
   void cleanup();
 };
 
 class OutOfMemoryException : public std::exception {};
 
-static inline void* xrealloc(void* ptr, size_t size) {
-  void* mem = realloc(ptr, size);
-  if (mem == nullptr && errno == ENOMEM) {
-    throw OutOfMemoryException();
-  } else {
-    return mem;
-  }
-}
+std::byte* xrealloc(std::byte* ptr, size_t oldsize, size_t newsize);
 
 }  // namespace xct
 
