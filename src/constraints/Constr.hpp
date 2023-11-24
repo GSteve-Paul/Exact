@@ -80,7 +80,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   virtual size_t getMemSize() const = 0;
 
   const ID id;  // NOTE: ID attribute not strictly needed in cache-sensitive Constr, but it did not matter after testing
-  const double strength;  // NOTE: can also be a float, but let's make use of 4 bits left in this struct after padding
+  const double strength;  // NOTE: can also be a float, but let's make use of 4 padding bytes left in this struct
   const uint32_t size;
   struct {
     unsigned markedfordel : 1;
@@ -90,7 +90,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
     unsigned lbd : LBDBITS;
   } header;
 
-  Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth);
+  Constr(ID i, Origin o, bool lkd, unsigned int lngth, double strngth);
   virtual ~Constr() {}
   virtual void cleanup() = 0;  // poor man's destructor
 
@@ -150,7 +150,7 @@ struct Clause final : public Constr {
 
   template <typename SMALL, typename LARGE>
   Clause(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), 1 / (float)constraint->nVars()) {
+      : Constr(_id, constraint->orig, locked, constraint->nVars(), 1 / static_cast<double>(constraint->nVars())) {
     assert(_id > ID_Trivial);
     assert(constraint->nVars() < INF);
     assert(constraint->getDegree() == 1);
@@ -197,7 +197,7 @@ struct Cardinality final : public Constr {
   template <typename SMALL, typename LARGE>
   Cardinality(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
       : Constr(_id, constraint->orig, locked, constraint->nVars(),
-               static_cast<float>(constraint->getDegree()) / constraint->nVars()),
+               static_cast<double>(constraint->getDegree()) / constraint->nVars()),
         watchIdx(0),
         degr(static_cast<unsigned int>(constraint->getDegree())),
         ntrailpops(-1) {
@@ -256,8 +256,8 @@ struct Counting final : public Constr {
   }
 
   template <typename SMALL, typename LARGE>
-  Counting(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), constraint->getStrength()),
+  Counting(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id, double strngth)
+      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth),
         unsaturatedIdx(0),
         watchIdx(0),
         ntrailpops(-1),
@@ -266,6 +266,7 @@ struct Counting final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
+    assert(strngth == constraint->getStrength());
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -321,8 +322,8 @@ struct Watched final : public Constr {
   }
 
   template <typename SMALL, typename LARGE>
-  Watched(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), constraint->getStrength()),
+  Watched(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id, double strngth)
+      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth),
         unsaturatedIdx(0),
         watchIdx(0),
         ntrailpops(-1),
@@ -331,6 +332,7 @@ struct Watched final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
+    assert(strngth == constraint->getStrength());
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -387,8 +389,8 @@ struct CountingSafe final : public Constr {
   }
 
   template <typename SMALL, typename LARGE>
-  CountingSafe(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), constraint->getStrength()),
+  CountingSafe(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id, double strngth)
+      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth),
         unsaturatedIdx(0),
         watchIdx(0),
         ntrailpops(-1),
@@ -398,6 +400,7 @@ struct CountingSafe final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
+    assert(strngth == constraint->getStrength());
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];
@@ -453,8 +456,8 @@ struct WatchedSafe final : public Constr {
   }
 
   template <typename SMALL, typename LARGE>
-  WatchedSafe(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), constraint->getStrength()),
+  WatchedSafe(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id, double strngth)
+      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth),
         unsaturatedIdx(0),
         watchIdx(0),
         ntrailpops(-1),
@@ -464,6 +467,7 @@ struct WatchedSafe final : public Constr {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
+    assert(strngth == constraint->getStrength());
 
     for (unsigned int i = 0; i < size; ++i) {
       Var v = constraint->getVars()[i];

@@ -64,7 +64,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-Constr::Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth)
+Constr::Constr(ID i, Origin o, bool lkd, unsigned int lngth, double strngth)
     : id(i), strength(strngth), size(lngth), header{0, lkd, 0, (unsigned int)o, MAXLBD} {
   assert(strength <= 1);
   assert(strength > 0);

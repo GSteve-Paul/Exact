@@ -212,9 +212,9 @@ struct Options {
                             "0 < float", [](const double& x) -> bool { return 0 < x; }};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
-  ValOption<double> propCounting{"prop-counting", "Counting propagation instead of watched propagation", 0.6,
-                                 "0 (no counting) =< float =< 1 (always counting)",
-                                 [](const double& x) -> bool { return 0 <= x && x <= 1; }};
+  ValOption<double> propCounting{"prop-counting", "Counting propagation instead of watched propagation", 100,
+                                 "0 (always counting) =< float =< 1e9 (no counting)",
+                                 [](const double& x) -> bool { return 0 <= x && x <= 1e9; }};
   ValOption<double> lpTimeRatio {
     "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
 #if WITHSOPLEX
