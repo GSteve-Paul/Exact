@@ -134,7 +134,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
 std::ostream& operator<<(std::ostream& o, const Constr& c);
 
 struct Clause final : public Constr {
-  Lit data[];
+  Lit data[];  // Flexible Array Member
 
   static size_t getMemSize(unsigned int length) {
     return aux::ceildiv(sizeof(Clause) + sizeof(Lit) * length, maxAlign);
@@ -180,7 +180,7 @@ struct Cardinality final : public Constr {
   unsigned int watchIdx;
   const unsigned int degr;
   long long ntrailpops;
-  Lit data[];
+  Lit data[];  // Flexible Array Member
 
   static size_t getMemSize(unsigned int length) {
     return aux::ceildiv(sizeof(Cardinality) + sizeof(Lit) * length, maxAlign);
@@ -235,7 +235,7 @@ struct Counting final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG slack;
-  Term<CF> data[];
+  Term<CF> data[0];  // Flexible Array Member - gcc complains about destruction when using the proper syntax '[]'
 
   static size_t getMemSize(unsigned int length) {
     return aux::ceildiv(sizeof(Counting<CF, DG>) + sizeof(Term<CF>) * length, maxAlign);
@@ -300,7 +300,7 @@ struct Watched final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG watchslack;
-  Term<CF> data[];
+  Term<CF> data[0];  // Flexible Array Member - gcc complains about destruction when using the proper syntax '[]'
 
   static size_t getMemSize(unsigned int length) {
     return aux::ceildiv(sizeof(Watched<CF, DG>) + sizeof(Term<CF>) * length, maxAlign);
