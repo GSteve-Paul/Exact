@@ -165,7 +165,7 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
     new (ca.alloc<Cardinality>(vars.size())) Cardinality(this, locked, id);
   } else {
     double strngth = getStrength();
-    bool useCounting = global.options.propCounting.get() < strngth * vars.size();
+    bool useCounting = strngth > global.options.propCounting.get();
     global.stats.NCOUNTING += useCounting;
     global.stats.NWATCHED += !useCounting;
     if (maxCoef <= static_cast<LARGE>(limitAbs<int, long long>())) {
