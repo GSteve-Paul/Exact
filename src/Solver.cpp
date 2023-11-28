@@ -607,7 +607,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
 
   // NOTE: propagation is not necessary, but do it at first level to make sure to derive as many unit lits as possible
   if (decisionLevel() == 0) {
-    CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
+    CeSuper confl = aux::timeCall<CeSuper>([&] { return runDatabasePropagation(); }, global.stats.PROPTIME);
     if (confl) {
       assert(confl->hasNegativeSlack(getLevel()));
       global.logger.logInconsistency(confl, getLevel(), getPos());
