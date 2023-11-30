@@ -121,12 +121,14 @@ class Solver {
   IntMap<int> lit2consOldSize;
 
   IntMap<std::vector<Watch>> adj;
-  IntMap<int> level;  // TODO: make position, level, contiguous memory for better cache efficiency.
-  std::vector<int> position;
-  std::vector<Lit> trail;
-  std::vector<int> trail_lim;
-  std::vector<CRef> reason;
-  int qhead = 0;  // for unit propagation
+  // TODO: make position, level, contiguous memory for better cache efficiency.
+  IntMap<int> level;  // map from literal to decision level when on the trail. INF means unset.
+  std::vector<int> position; // map from variable to index ('position') in the trail.
+  std::vector<Lit> trail; // current assignment in chronological order
+  std::vector<int> trail_lim; // for each level, first index on the trail. This is the index of the decision literal.
+  std::vector<CRef> reason; // map from variable to reason constraint (when propagated, otherwise CRef_Undef)
+
+  int qhead = 0;  // tracks where next index on trail for constraint propagation
 
   std::vector<int> assumptions_lim;
   IntSet assumptions;
