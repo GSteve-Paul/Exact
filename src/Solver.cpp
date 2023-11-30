@@ -240,7 +240,10 @@ State Solver::probe(Lit l, bool deriveImplications) {
     // NOTE: we may have backjumped to level 0 due to a learned constraint that did not propagate.
     // in that case, we just decide l again.
   }
-  assert(decisionLevel() == 1);
+  if (decisionLevel() != 1) {
+    assert(decisionLevel() == 0);
+    return State::FAIL;  // derived l >= 1 or 0 >= l
+  }
   if (deriveImplications) {
     implications.removeImplied(l);
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
