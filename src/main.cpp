@@ -25,6 +25,29 @@ or run with the flag --license=AGPLv3. If not, see
 using namespace xct;
 
 int main(int argc, char** argv) {
+
+  Global global;
+  ConstrExp32 ce32(global);
+
+  global.cePools.resize(3);
+
+  Ce32 constr = global.cePools.take32();
+
+  // configure using addLhs and addRhs
+
+
+
+  
+
+
+
+
+
+
+
+
+  return 0;
+
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE

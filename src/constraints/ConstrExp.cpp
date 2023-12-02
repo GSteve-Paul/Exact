@@ -563,7 +563,7 @@ void ConstrExpSuper::popLast() {
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntMap<int>& level, const std::vector<int>& pos) {
   if (global.logger.isActive()) {
-    for (Var v : vars) {
+    for (Var v : vars) { 
       Lit l = getLit(v);
       if (l != 0) {
         if (isUnit(level, l)) {

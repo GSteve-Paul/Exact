@@ -364,6 +364,8 @@ CeSuper Solver::getAnalysisCE(const CeSuper& conflict) const {
   }
 }
 
+
+
 CeSuper Solver::analyze(const CeSuper& conflict) {
   global.logger.logComment("Analyze");
   assert(conflict->hasNegativeSlack(level));
