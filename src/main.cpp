@@ -34,17 +34,12 @@ int main(int argc, char** argv) {
   Ce32 constr = global.cePools.take32();
 
   // configure using addLhs and addRhs
+  constr->addLhs(2, 1);
+  constr->addLhs(3, 2);
 
+  constr->addRhs(5);
 
-
-  
-
-
-
-
-
-
-
+  std::cout << "constr: " << constr << std::endl;
 
   return 0;
 
