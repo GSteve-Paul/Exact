@@ -21,6 +21,11 @@ or run with the flag --license=AGPLv3. If not, see
 #include <csignal>
 #include "ILP.hpp"
 #include "quit.hpp"
+#include "constraints/ConstrExpPools.hpp"
+#include "constraints/ConstrExp.hpp"
+#include "constraints/Constr.hpp"
+#include "constraints/ConstrSimple.hpp"
+#include "auxiliary.hpp"
 
 using namespace xct;
 
