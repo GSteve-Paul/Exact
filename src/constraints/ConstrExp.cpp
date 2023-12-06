@@ -869,7 +869,7 @@ void ConstrExp<SMALL, LARGE>::divideRoundDown(const LARGE& d) {
   assert(d > 0);
   if (d == 1) return;
   for (Var v : vars) {
-    weaken(-static_cast<SMALL>(coefs[v] % d), v);
+    weaken(-static_cast<SMALL>(coefs[v] % d), v); // partial weakening
     assert(coefs[v] % d == 0);
     coefs[v] = static_cast<SMALL>(coefs[v] / d);
   }
@@ -926,7 +926,7 @@ void ConstrExp<SMALL, LARGE>::weakenNonDivisible(const aux::predicate<Lit>& toWe
   if (div == 1) return;
   for (Var v : vars) {
     if (coefs[v] % div != 0 && toWeaken(getLit(v))) {
-      weaken(-static_cast<SMALL>(coefs[v] % div), v);
+      weaken(-static_cast<SMALL>(coefs[v] % div), v); // partial weakening
     }
   }
 }
@@ -957,7 +957,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, c
   assert(div > 1);
   assert(!isTautology());
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
-  LARGE rem = (degree - 1) % div;
+  LARGE rem = (degree - 1) % div; 
   if (!sorted) {                                             // extra iteration to weaken literals fully
     for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
       Var v = vars[i];
@@ -972,7 +972,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, c
   for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
     Var v = vars[i];
     if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
-    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
+    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div); // same partial weakening as above
     if (r <= rem) {
       rem -= r;
       weaken(coefs[v] < 0 ? r : -r, v);

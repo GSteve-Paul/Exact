@@ -31,22 +31,46 @@ using namespace xct;
 
 int main(int argc, char** argv) {
 
-  Global global;
-  ConstrExp32 ce32(global);
+  // Global global;
+  // ConstrExp32 ce32(global);
 
-  global.cePools.resize(3);
+  // global.cePools.resize(5);
 
-  Ce32 constr = global.cePools.take32();
+  // Ce32 constr = global.cePools.take32();
 
-  // configure using addLhs and addRhs
-  constr->addLhs(2, 1);
-  constr->addLhs(3, 2);
+  // // configure using addLhs and addRhs
+  // constr->addLhs(2, 1);
+  // constr->addLhs(3, 2);
+  // constr->addLhs(1, 3);
+  // constr->addLhs(4, 4);
 
-  constr->addRhs(5);
+  // constr->addRhs(8);
 
-  std::cout << "constr: " << constr << std::endl;
+  // constr->toStreamPure(std::cout);
+  // std::cout << "\n weaken first lit: " << std::endl;
 
-  return 0;
+  // constr->weaken(1);
+
+  // constr->toStreamPure(std::cout);
+  // std::cout << "\n restore: " << std::endl;
+
+  // constr->addLhs(2, 1);
+  // constr->addRhs(2);
+
+  // constr->toStreamPure(std::cout);
+  // std::cout << "\n weaken superfluous: " << std::endl;
+
+  // // decide(1);
+
+  // constr->weakenSuperfluous(2, false, []([[maybe_unused]] Var v) { return true; });
+  // // std::cout << "\n divide by 2 and round up: " << std::endl;
+
+  // // constr->divideRoundUp(2);
+
+  // constr->toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
+
+  // return 0;
 
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
