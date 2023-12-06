@@ -240,7 +240,10 @@ State Solver::probe(Lit l, bool deriveImplications) {
     // NOTE: we may have backjumped to level 0 due to a learned constraint that did not propagate.
     // in that case, we just decide l again.
   }
-  assert(decisionLevel() == 1);
+  if (decisionLevel() != 1) {
+    assert(decisionLevel() == 0);
+    return State::FAIL;  // derived l >= 1 or 0 >= l
+  }
   if (deriveImplications) {
     implications.removeImplied(l);
     for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
@@ -607,7 +610,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
 
   // NOTE: propagation is not necessary, but do it at first level to make sure to derive as many unit lits as possible
   if (decisionLevel() == 0) {
-    CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
+    CeSuper confl = aux::timeCall<CeSuper>([&] { return runDatabasePropagation(); }, global.stats.PROPTIME);
     if (confl) {
       assert(confl->hasNegativeSlack(getLevel()));
       global.logger.logInconsistency(confl, getLevel(), getPos());
@@ -882,7 +885,7 @@ void Solver::garbage_collect() {
   for (CRef& cr : constraints) {
     uint32_t offset = cr.ofs;
     size_t memSize = ca[cr].getMemSize();
-    memmove(ca.memory + ca.at, ca.memory + cr.ofs, sizeof(uint32_t) * memSize);
+    std::memmove(ca.memory + maxAlign * ca.at, ca.memory + maxAlign * cr.ofs, maxAlign * memSize);
     cr.ofs = ca.at;
     ca.at += memSize;
     crefmap[offset] = cr;

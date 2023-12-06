@@ -465,11 +465,11 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
   }
 
   while (true) {
-    assert(upper_bound >= lower_bound);
+    // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
+    // constraint yields UNSAT, at which case core-guided search can derive any constraint.
     StatNum current_time = global.stats.getDetTime();
-    if (reply == SolveState::INPROCESSED) {
-      if (global.options.printCsvData)
-        global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
+    if (reply == SolveState::INPROCESSED && global.options.printCsvData) {
+      global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
     }
     if (lower_bound >= upper_bound && global.options.boundUpper) {
       logProof();
