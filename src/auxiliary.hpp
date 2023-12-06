@@ -96,6 +96,11 @@ using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
 
+constexpr size_t maxAlign = 16;  // NOTE: size_t type to make sure multiplication is in the size_t domain
+static_assert(alignof(int128) <= maxAlign);
+static_assert(alignof(int256) <= maxAlign);
+static_assert(alignof(bigint) <= maxAlign);
+
 template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
 using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;  // TODO: switch to this once Boost 1.81 is in Ubuntu
 // using unordered_map = std::unordered_map<K, V, H, KE>;

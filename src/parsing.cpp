@@ -302,7 +302,6 @@ void cnf_read(std::istream& in, ILP& ilp) {
       input.terms.push_back({1, l});
     }
     ilp.getSolver().addConstraint(input, Origin::FORMULA);
-    ;
     quit::checkInterrupt(ilp.global);
   }
 }

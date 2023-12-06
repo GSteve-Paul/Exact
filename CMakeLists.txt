@@ -29,13 +29,16 @@ set(build_static "OFF"
 set(profile_flags "OFF"
     CACHE STRING "Build using gprof flag (-pg).")
 
-IF (WIN32)
-  set(unixlike "OFF"
-    CACHE STRING "Compiling on Linux or macOS.")
-ELSE()
-  set(unixlike "ON"
-    CACHE STRING "Compiling on Linux or macOS.")
-ENDIF()
+set(flto "OFF"
+    CACHE STRING "Build with link-time optimization (-flto).")
+
+if(WIN32)
+    set(unixlike "OFF"
+        CACHE STRING "Compiling on Linux or macOS.")
+else()
+    set(unixlike "ON"
+        CACHE STRING "Compiling on Linux or macOS.")
+endif()
 
 set(soplex "OFF"
     CACHE STRING "Use SoPlex to check for rational infeasibility.")
@@ -61,6 +64,12 @@ if(profile_flags)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
+endif()
+
+if(flto)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -flto")
 endif()
 
 set(GIT_BRANCH "unknown")
@@ -185,11 +194,6 @@ target_include_directories(Exact PUBLIC ${PROJECT_SOURCE_DIR}/src/)
 
 if(unixlike)
     target_compile_definitions(Exact PUBLIC UNIXLIKE=1)
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto")
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -flto")
-    endif()
 endif()
 
 if(soplex)
