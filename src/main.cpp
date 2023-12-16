@@ -32,40 +32,42 @@ using namespace xct;
 int main(int argc, char** argv) {
 
   // Global global;
-  // ConstrExp32 ce32(global);
 
-  // global.cePools.resize(5);
+  // Solver solver(global);
+  // CeArb obj = global.cePools.takeArb();
 
+  // solver.init(obj);
+  
   // Ce32 constr = global.cePools.take32();
+  // solver.setNbVars(3, true);
 
   // // configure using addLhs and addRhs
-  // constr->addLhs(2, 1);
-  // constr->addLhs(3, 2);
-  // constr->addLhs(1, 3);
-  // constr->addLhs(4, 4);
+  // constr->addLhs(4, 1);
+  // constr->addLhs(4, 2);
+  // constr->addLhs(8, 3);
 
-  // constr->addRhs(8);
+  // constr->addRhs(9);
+
+  // // constr->toStreamPure(std::cout);
+  // // std::cout << "\n weaken first lit: " << std::endl;
+
+  // // constr->weaken(1);
+
+  // // constr->toStreamPure(std::cout);
+  // // std::cout << "\n restore: " << std::endl;
+
+  // // constr->addLhs(2, 1);
+  // // constr->addRhs(2);
 
   // constr->toStreamPure(std::cout);
-  // std::cout << "\n weaken first lit: " << std::endl;
+  // std::cout << "\n weaken superfluous sweeping: " << std::endl;
 
-  // constr->weaken(1);
+  // // solver.decide(1);
 
-  // constr->toStreamPure(std::cout);
-  // std::cout << "\n restore: " << std::endl;
-
-  // constr->addLhs(2, 1);
-  // constr->addRhs(2);
-
-  // constr->toStreamPure(std::cout);
-  // std::cout << "\n weaken superfluous: " << std::endl;
-
-  // // decide(1);
-
-  // constr->weakenSuperfluous(2, false, []([[maybe_unused]] Var v) { return true; });
+  // constr->weakenSuperfluousSweeping(3, false, []([[maybe_unused]] Var v) { return true; });
   // // std::cout << "\n divide by 2 and round up: " << std::endl;
 
-  // // constr->divideRoundUp(2);
+  // constr->divideRoundUp(3);
 
   // constr->toStreamPure(std::cout);
   // std::cout << "\n" << std::endl;

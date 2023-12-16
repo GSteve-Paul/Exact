@@ -887,7 +887,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
     saturate(false, false);
     removeZeroes();
   } else {
-    weakenSuperfluous(div, false, []([[maybe_unused]] Var v) { return true; });
+    weakenSuperfluousSweeping(div, false, []([[maybe_unused]] Var v) { return true; });
     removeZeroes();
     divideRoundUp(div);
     saturate(true, false);
@@ -902,7 +902,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const a
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(toWeaken, div);
-  weakenSuperfluous(div, true, toWeakenSuperfluous);
+  weakenSuperfluousSweeping(div, true, toWeakenSuperfluous);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -977,6 +977,41 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, c
       rem -= r;
       weaken(coefs[v] < 0 ? r : -r, v);
     }
+  }
+  assert(quot == aux::ceildiv(degree, div));
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken) {
+  assert(div > 1);
+  assert(!isTautology());
+  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
+  LARGE rem = (degree - 1) % div; 
+  // if (!sorted) {                                             // extra iteration to weaken literals fully
+  //   for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
+  //     Var v = vars[i];
+  //     if (!toWeaken(v) || coefs[v] == 0) continue;
+  //     SMALL r = aux::abs(coefs[v]);
+  //     if (r <= rem) {
+  //       rem -= r;
+  //       weaken(v);
+  //     }
+  //   }
+  // }
+  int j = 0;
+  while (j <= rem)
+  {
+    for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
+      Var v = vars[i];
+      if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
+      SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div); // same partial weakening as above
+      if (r <= rem && r == j) {
+        rem -= r;
+        weaken(coefs[v] < 0 ? r : -r, v);
+        if (rem < j) break;
+      }
+    }
+    j++;
   }
   assert(quot == aux::ceildiv(degree, div));
 }

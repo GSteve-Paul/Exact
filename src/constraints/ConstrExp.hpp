@@ -339,6 +339,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
   void repairOrder();
   void weakenSuperfluous(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken);
+  void weakenSuperfluousSweeping(const LARGE& div, bool sorted, const aux::predicate<Lit>& toWeaken);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
