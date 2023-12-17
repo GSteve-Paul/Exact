@@ -998,9 +998,9 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
   //     }
   //   }
   // }
-  int j = 1;
-  int shift = rem/10;
+  int shift = rem/3;
   if (shift == 0) shift = 1;
+  int j = shift;
   while (j <= rem)
   {
     for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
