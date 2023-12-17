@@ -998,7 +998,9 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
   //     }
   //   }
   // }
-  int j = 0;
+  int j = 1;
+  int shift = rem/10;
+  if (shift == 0) shift = 1;
   while (j <= rem)
   {
     for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
@@ -1011,7 +1013,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
         if (rem < j) break;
       }
     }
-    j++;
+    j += shift;
   }
   assert(quot == aux::ceildiv(degree, div));
 }
