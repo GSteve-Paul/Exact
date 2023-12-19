@@ -195,6 +195,8 @@ struct Stats {
   Stat LEARNEDDEGREESUM{0, "learned degree sum"};
   Stat LEARNEDSTRENGTHSUM{0, "learned strength sum"};
   Stat LEARNEDLBDSUM{0, "learned LBD sum"};
+  Stat SWEEPINGSTRENGHTSUM{0, "sweeping strength sum"};
+  Stat NONSWEEPINGSTRENGTHSUM{0, "non-sweeping strength sum"};
 
   Stat NUNITS{0, "unit literals derived"};
   Stat NHARDENINGS{0, "hardened literals"};
@@ -239,6 +241,9 @@ struct Stats {
   Stat NWEAKENEDNONIMPLIED{0, "weakened non-implied"};
   Stat NORIGVARS{0, "original variables"};
   Stat NAUXVARS{0, "auxiliary variables"};
+  Stat NSWEEPINGSTRONGER{0, "sweeping stronger"};
+  Stat NSWEEPINGWEAKER{0, "sweeping weaker"};
+  Stat NSWEEPINGEQUAL{0, "sweeping equal"};
 
   Stat NCONSFORMULA{0, "formula constraints"};
   Stat NCONSLEARNED{0, "learned constraints"};
@@ -308,6 +313,8 @@ struct Stats {
   Stat LEARNEDDEGREEAVG{0, "learned degree average"};
   Stat LEARNEDSTRENGTHAVG{0, "learned strength average"};
   Stat LEARNEDLBDAVG{0, "learned LBD average"};
+  Stat SWEEPINGSTRENGHTAVG{0, "sweeping strength average"};
+  Stat NONSWEEPINGSTRENGTHAVG{0, "non-sweeping strength average"};
 
   Stat LASTLB{std::numeric_limits<StatNum>::quiet_NaN(), "best lower bound"};
   Stat LASTUB{std::numeric_limits<StatNum>::quiet_NaN(), "best upper bound"};
@@ -332,6 +339,11 @@ struct Stats {
     LEARNEDDEGREEAVG.z = (learneds == 0 ? 0 : LEARNEDDEGREESUM / learneds);
     LEARNEDSTRENGTHAVG.z = (learneds == 0 ? 0 : LEARNEDSTRENGTHSUM / learneds);
     LEARNEDLBDAVG.z = (learneds == 0 ? 0 : LEARNEDLBDSUM / learneds);
+
+    StatNum nsuperfluous = NSWEEPINGSTRONGER + NSWEEPINGWEAKER + NSWEEPINGEQUAL;
+    SWEEPINGSTRENGHTAVG.z = (nsuperfluous == 0 ? 0 : SWEEPINGSTRENGHTSUM / nsuperfluous);
+    NONSWEEPINGSTRENGTHAVG.z = (nsuperfluous == 0 ? 0 : NONSWEEPINGSTRENGTHSUM / nsuperfluous);
+
 
     LASTLB.z = lowerbound;
     LASTUB.z = upperbound;

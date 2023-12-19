@@ -39,14 +39,32 @@ int main(int argc, char** argv) {
   // solver.init(obj);
   
   // Ce32 constr = global.cePools.take32();
-  // solver.setNbVars(3, true);
+  // solver.setNbVars(4, true);
 
   // // configure using addLhs and addRhs
-  // constr->addLhs(4, 1);
-  // constr->addLhs(4, 2);
-  // constr->addLhs(8, 3);
+  // constr->addLhs(10, 1);
+  // constr->addLhs(10, 2);
+  // constr->addLhs(10, 3);
+  // constr->addLhs(1, 4);
 
-  // constr->addRhs(9);
+
+
+  // constr->addRhs(20);
+
+  // std::cout << "\n initial: " << std::endl;
+  // constr->toStreamPure(std::cout);
+
+  // int cardDegree = constr->getCardinalityDegree();
+
+  // std::cout << "\n cardinality degree: " << cardDegree << std::endl;
+
+  // bool isCard = constr->simplifyToCardinality(false, cardDegree);
+
+  // std::cout << "\n cardinality: " << std::endl;
+  // constr->toStreamPure(std::cout);
+
+  // std::cout << "\n is cardinality: " << isCard << std::endl;
+
 
   // // constr->toStreamPure(std::cout);
   // // std::cout << "\n weaken first lit: " << std::endl;
@@ -59,18 +77,18 @@ int main(int argc, char** argv) {
   // // constr->addLhs(2, 1);
   // // constr->addRhs(2);
 
-  // constr->toStreamPure(std::cout);
-  // std::cout << "\n weaken superfluous sweeping: " << std::endl;
+  // // constr->toStreamPure(std::cout);
+  // // std::cout << "\n weaken superfluous sweeping: " << std::endl;
 
-  // // solver.decide(1);
+  // // // solver.decide(1);
 
-  // constr->weakenSuperfluousSweeping(3, false, []([[maybe_unused]] Var v) { return true; });
-  // // std::cout << "\n divide by 2 and round up: " << std::endl;
+  // // constr->weakenSuperfluousSweeping(3, false, []([[maybe_unused]] Var v) { return true; });
+  // // // std::cout << "\n divide by 2 and round up: " << std::endl;
 
-  // constr->divideRoundUp(3);
+  // // constr->divideRoundUp(3);
 
-  // constr->toStreamPure(std::cout);
-  // std::cout << "\n" << std::endl;
+  // // constr->toStreamPure(std::cout);
+  // // std::cout << "\n" << std::endl;
 
   // return 0;
 

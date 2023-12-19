@@ -887,7 +887,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
     saturate(false, false);
     removeZeroes();
   } else {
-    weakenSuperfluousSweeping(div, false, []([[maybe_unused]] Var v) { return true; });
+    weakenSuperfluousDouble(div, false, []([[maybe_unused]] Var v) { return true; });
     removeZeroes();
     divideRoundUp(div);
     saturate(true, false);
@@ -902,7 +902,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const a
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(toWeaken, div);
-  weakenSuperfluousSweeping(div, true, toWeakenSuperfluous);
+  weakenSuperfluousDouble(div, true, toWeakenSuperfluous);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -987,18 +987,9 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
   assert(!isTautology());
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
   LARGE rem = (degree - 1) % div; 
-  // if (!sorted) {                                             // extra iteration to weaken literals fully
-  //   for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
-  //     Var v = vars[i];
-  //     if (!toWeaken(v) || coefs[v] == 0) continue;
-  //     SMALL r = aux::abs(coefs[v]);
-  //     if (r <= rem) {
-  //       rem -= r;
-  //       weaken(v);
-  //     }
-  //   }
-  // }
-  int shift = rem/3;
+
+  // TODO: store the remainders so they can just be looked up
+  int shift = 1;
   if (shift == 0) shift = 1;
   int j = shift;
   while (j <= rem)
@@ -1007,7 +998,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
       Var v = vars[i];
       if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
       SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div); // same partial weakening as above
-      if (r <= rem && r == j) {
+      if (r <= rem && r <= j) {
         rem -= r;
         weaken(coefs[v] < 0 ? r : -r, v);
         if (rem < j) break;
@@ -1016,6 +1007,29 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
     j += shift;
   }
   assert(quot == aux::ceildiv(degree, div));
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenSuperfluousDouble(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken) {
+  Ce32 copy = global.cePools.take32();
+  copyTo(copy);
+  copy.weakenSuperfluous(div, sorted, toWeaken);
+  weakenSuperfluousSweeping(div, sorted, toWeaken);
+
+  double non_sweeping_strength = copy->getStrength();
+  double sweeping_strength = getStrength();
+
+  global.stats.SWEEPINGSTRENGHTSUM += sweeping_strength;
+  global.stats.NONSWEEPINGSTRENGTHSUM += non_sweeping_strength;
+
+  if (sweeping_strength > non_sweeping_strength) {
+    global.stats.NSWEEPINGSTRONGER++;
+  } else if (sweeping_strength < non_sweeping_strength) {
+    global.stats.NNONSWEEPINGWEAKER++;
+  } else {
+    global.stats.NSWEEPINGEQUAL++;
+  }
+
 }
 
 template <typename SMALL, typename LARGE>
