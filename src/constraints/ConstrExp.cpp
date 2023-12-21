@@ -1084,6 +1084,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
   if (shift == 0) shift = 1;
   int j = shift;
   while (j <= rem) {
+    std::cout << "j " << j << " rem " << rem << std::endl;
     for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
       Var v = vars[i];
       if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
