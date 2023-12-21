@@ -20,24 +20,23 @@ or run with the flag --license=AGPLv3. If not, see
 
 #include <csignal>
 #include "ILP.hpp"
-#include "quit.hpp"
-#include "constraints/ConstrExpPools.hpp"
-#include "constraints/ConstrExp.hpp"
-#include "constraints/Constr.hpp"
-#include "constraints/ConstrSimple.hpp"
 #include "auxiliary.hpp"
+#include "constraints/Constr.hpp"
+#include "constraints/ConstrExp.hpp"
+#include "constraints/ConstrExpPools.hpp"
+#include "constraints/ConstrSimple.hpp"
+#include "quit.hpp"
 
 using namespace xct;
 
 int main(int argc, char** argv) {
-
   // Global global;
 
   // Solver solver(global);
   // CeArb obj = global.cePools.takeArb();
 
   // solver.init(obj);
-  
+
   // Ce32 constr = global.cePools.take32();
   // solver.setNbVars(4, true);
 
@@ -46,8 +45,6 @@ int main(int argc, char** argv) {
   // constr->addLhs(10, 2);
   // constr->addLhs(10, 3);
   // constr->addLhs(1, 4);
-
-
 
   // constr->addRhs(20);
 
@@ -64,7 +61,6 @@ int main(int argc, char** argv) {
   // constr->toStreamPure(std::cout);
 
   // std::cout << "\n is cardinality: " << isCard << std::endl;
-
 
   // // constr->toStreamPure(std::cout);
   // // std::cout << "\n weaken first lit: " << std::endl;

@@ -114,7 +114,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
     assert(range != 0 || encoding == Encoding::ORDER);
     int oldvars = solver.getNbVars();
     int newvars = oldvars + (encoding == Encoding::LOG
-                                 ? aux::msb(range) + 1
+                                 ? aux::msb(range) + 1  // TODO: correct?
                                  : static_cast<int>(range) + static_cast<int>(encoding == Encoding::ONEHOT));
 
     solver.setNbVars(newvars, true);
@@ -137,7 +137,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
     } else if (encoding == Encoding::ORDER) {
       assert(!encodingVars.empty() || range == 0);
       for (Var var = oldvars + 1; var < solver.getNbVars(); ++var) {
-        solver.addConstraint(ConstrSimple32({{1, var}, {-1, var + 1}}, 0), Origin::FORMULA);
+        solver.addBinaryConstraint(var, -(var + 1), Origin::FORMULA);
       }
     } else {
       assert(!encodingVars.empty());
@@ -976,10 +976,39 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
   return doms;
 }
 
+int64_t ILP::count(const std::vector<IntVar*>& ivs, double timeout) {
+  if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
+  global.options.pureLits.set(false);
+  global.options.domBreakLim.set(0);
+  global.stats.runStartTime = std::chrono::steady_clock::now();
+  if (global.options.verbosity.get() > 0) {
+    std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
+  }
+  int64_t res = 0;
+  SolveState result;
+  while (true) {
+    if (reachedTimeout(timeout)) return -(res + 1);
+    result = runOnce(false);
+    if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) {
+      return res;
+    }
+    if (result == SolveState::SAT) {
+      ++res;
+      try {
+        invalidateLastSol(ivs);
+      } catch (const UnsatEncounter& ue) {
+        return res;
+      }
+    } else {
+      assert(result == SolveState::INPROCESSED);
+    }
+  }
+}
+
 void ILP::runInternal(int argc, char** argv) {
   global.stats.startTime = std::chrono::steady_clock::now();
   global.options.parseCommandLine(argc, argv);
-  global.logger.activate(global.options.proofLog.get());
+  global.logger.activate(global.options.proofLog.get(), (bool)global.options.proofZip);
 
   if (global.options.verbosity.get() > 0) {
     std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;

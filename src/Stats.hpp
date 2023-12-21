@@ -185,8 +185,6 @@ struct Stats {
   Stat NPROPCOUNTING{0, "counting propagations"};
   Stat NRESOLVESTEPS{0, "resolve steps"};
   Stat NSUBSUMESTEPS{0, "self-subsumptions"};
-  Stat NWATCHED{0, "watched constraints"};
-  Stat NCOUNTING{0, "counting constraints"};
 
   Stat EXTERNLENGTHSUM{0, "input length sum"};
   Stat EXTERNDEGREESUM{0, "input degree sum"};
@@ -230,6 +228,13 @@ struct Stats {
   Stat NCLAUSESLEARNED{0, "learned clauses"};
   Stat NCARDINALITIESLEARNED{0, "learned cardinalities"};
   Stat NGENERALSLEARNED{0, "learned general constraints"};
+
+  Stat NSMALL{0, "small coef constraints"};
+  Stat NLARGE{0, "large coef constraints"};
+  Stat NARB{0, "arbitrary coef constraints"};
+
+  Stat NWATCHED{0, "watched constraints"};
+  Stat NCOUNTING{0, "counting constraints"};
 
   Stat NCLEANUP{0, "inprocessing phases"};
   Stat NRESTARTS{0, "restarts"};
@@ -344,7 +349,6 @@ struct Stats {
     SWEEPINGSTRENGHTAVG.z = (nsuperfluous == 0 ? 0 : SWEEPINGSTRENGHTSUM / nsuperfluous);
     NONSWEEPINGSTRENGTHAVG.z = (nsuperfluous == 0 ? 0 : NONSWEEPINGSTRENGTHSUM / nsuperfluous);
 
-
     LASTLB.z = lowerbound;
     LASTUB.z = upperbound;
   }
@@ -401,6 +405,11 @@ struct Stats {
       &NPURELITS,
       &NSATISFIEDSREMOVED,
       &NCONSREADDED,
+      &NWATCHED,
+      &NCOUNTING,
+      &NSMALL,
+      &NLARGE,
+      &NARB,
       &NPROBINGS,
       &PROBETIME,
       &NPROBINGLITS,
@@ -409,8 +418,6 @@ struct Stats {
       &NPROBINGIMPLMEM,
       &ATMOSTONES,
       &NATMOSTONEUNITS,
-      &NWATCHED,
-      &NCOUNTING,
       &NRESOLVESTEPS,
       &NSUBSUMESTEPS,
       &NGCD,

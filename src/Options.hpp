@@ -186,6 +186,8 @@ struct Options {
                            [](const int& x) -> bool { return x >= 0; }};
   ValOption<std::string> proofLog{"proof-log", "Filename for the proof logs, left unspecified disables proof logging",
                                   "", "/path/to/file", [](const std::string&) -> bool { return true; }};
+  BoolOption proofZip{"proof-zip", "Generate proof file in ZIP format. This can alleviate space and IO constraints.",
+                      false};
   ValOption<double> timeout{"timeout", "Timeout in seconds, 0 is infinite ", 0, "0 =< float",
                             [](double x) -> bool { return 0 <= x; }};
   ValOption<long long> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
@@ -205,14 +207,14 @@ struct Options {
   ValOption<double> dbExp{"db-exp",
                           "Exponent of the growth of the learned constraint database and the inprocessing intervals, "
                           "with log(#conflicts) as base",
-                          3.5, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
-  ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 1,
+                          1.1, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
+  ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 500,
                             "0 < float", [](const double& x) -> bool { return 0 < x; }};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
-  ValOption<double> propCounting{"prop-counting", "Counting propagation instead of watched propagation", 0.6,
-                                 "0 (no counting) =< float =< 1 (always counting)",
-                                 [](const double& x) -> bool { return 0 <= x && x <= 1; }};
+  ValOption<double> propWatched{"prop-watched", "Watched propagation instead of counting propagation", 1,
+                                "0 (always counting) =< float =< 1 (always watched)",
+                                [](const double& x) -> bool { return 0 <= x && x <= 1e9; }};
   ValOption<double> lpTimeRatio {
     "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
 #if WITHSOPLEX
@@ -259,8 +261,6 @@ struct Options {
   ValOption<float> cgHybrid{"cg",
                             "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
-  EnumOption cgEncoding{
-      "cg-encoding", "Encoding of the extension constraints", "lazysum", {"lazysum", "binary", "smallsum"}};
   ValOption<int> cgMaxCoef{"cg-maxcoef", "Max coefficient when reducing cores", 100, "1 =< int =< 1e9",
                            [](const int& x) -> bool { return x >= 1 && x <= limitAbs<int, long long>(); }};
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
@@ -307,6 +307,7 @@ struct Options {
       &timeout,
       &timeoutDet,
       &proofLog,
+      &proofZip,
       &boundUpper,
       &lubyBase,
       &lubyMult,
@@ -314,8 +315,9 @@ struct Options {
       &varSeparate,
       &dbDecayLBD,
       &dbExp,
+      &dbScale,
       &dbSafeLBD,
-      &propCounting,
+      &propWatched,
 #if WITHSOPLEX
       &lpTimeRatio,
       &lpPivotBudget,
@@ -335,7 +337,6 @@ struct Options {
       &bitsReduced,
       &bitsLearned,
       &cgHybrid,
-      &cgEncoding,
       &cgMaxCoef,
       &cgResolveProp,
       &cgStrat,

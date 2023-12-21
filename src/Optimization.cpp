@@ -129,7 +129,7 @@ template <typename SMALL, typename LARGE>
 void LazyVar<SMALL, LARGE>::addSymBreakingConstraint(Var prevvar) const {
   assert(prevvar < currentVar);
   // y-- + ~y >= 1 (equivalent to y-- >= y)
-  solver.addConstraint(ConstrSimple32({{1, prevvar}, {1, -currentVar}}, 1), Origin::COREGUIDED);
+  solver.addBinaryConstraint(prevvar, -currentVar, Origin::COREGUIDED);
 }
 
 template <typename SMALL, typename LARGE>
@@ -253,7 +253,9 @@ template <typename SMALL, typename LARGE>
 Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // does not modify core
   CeSuper card = core->clone(global.cePools);
   CeSuper cloneCoefOrder = card->clone(global.cePools);
-  cloneCoefOrder->sortInDecreasingCoefOrder(solver.getHeuristic());
+  const std::vector<ActNode>& actList = solver.getHeuristic().getActList();
+  cloneCoefOrder->sortInDecreasingCoefOrder(
+      [&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
   cloneCoefOrder->reverseOrder();  // *IN*creasing coef order
   card->sortWithCoefTiebreaker(
       [&](Var v1, Var v2) { return aux::sgn(aux::abs(reformObj->coefs[v1]) - aux::abs(reformObj->coefs[v2])); });
@@ -299,72 +301,6 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // 
 }
 
 template <typename SMALL, typename LARGE>
-State Optimization<SMALL, LARGE>::reformObjectiveLog(const CeSuper& core) {
-  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  aux::predicate<Lit> toWeaken = [&](Lit l) { return !reformObj->hasLit(l); };
-  if (!core->isSaturated(toWeaken)) {
-    core->weaken(toWeaken);
-    core->removeZeroes();
-  }
-  core->saturate(true, false);
-  if (core->isTautology()) {
-    return State::FAIL;
-  }
-  // the following operations do not turn core/reduced into a tautology
-  core->divideTo(limitAbs<int, long long>(), [&](Lit l) { return !reformObj->hasLit(l); });
-  assert(!core->isTautology());
-  CePtr<SMALL, LARGE> reduced = global.cePools.take<SMALL, LARGE>();
-  core->copyTo(reduced);
-
-  // decide rational multiplier using knapsack heuristic
-
-  Lit cutoff = getKnapsackLit(reduced);
-  LARGE div = reduced->getCoef(cutoff);
-  assert(div > 0);
-  SMALL mult = reformObj->getCoef(cutoff);
-  assert(mult > 0);
-  reduced->multiply(mult);
-  reduced->weakenDivideRound(
-      div, [&](Lit l) { return !reformObj->hasLit(l) || reformObj->getCoef(l) * div < reduced->getCoef(l); });
-  // weaken all literals with a lower objective to reduced coefficient ratio than the ith literal in reduced
-  // TODO: sorted?
-
-  // create extended lower bound
-  LARGE range = reduced->absCoeffSum() - reduced->getDegree();
-  assert(range > 0);
-  int newvars = aux::msb(range) + 1;
-  assert((limitBit<SMALL, LARGE>()) >= newvars);
-  int oldvars = solver.getNbVars();
-  solver.setNbVars(oldvars + newvars, false);
-  SMALL base = 1;
-  for (Var var = oldvars + 1; var <= solver.getNbVars(); ++var) {
-    reduced->addLhs(-base, var);
-    range -= base;
-    base *= 2;
-    if (base > range) {
-      base = static_cast<SMALL>(range);
-    }
-  }
-  assert(range == 0);
-
-  // add extended lower bound as constraint
-  solver.addConstraint(reduced, Origin::COREGUIDED);
-
-  // add other side of equality as constraint
-  reduced->invert();
-  solver.addConstraint(reduced, Origin::COREGUIDED);
-
-  // add to objective
-  reformObj->addUp(reduced);
-  lower_bound = -reformObj->getDegree();
-
-  // wrap up
-  addLowerBound();
-
-  return State::SUCCESS;
-}
-
-template <typename SMALL, typename LARGE>
 Lit Optimization<SMALL, LARGE>::getKnapsackLit(const CePtr<SMALL, LARGE>& core) const {
   core->sortWithCoefTiebreaker([&](Var v1, Var v2) {
     const LARGE o1r2 = reformObj->getLit(v1) == core->getLit(v1) ? aux::abs(reformObj->coefs[v1] * core->coefs[v2]) : 0;
@@ -383,82 +319,6 @@ Lit Optimization<SMALL, LARGE>::getKnapsackLit(const CePtr<SMALL, LARGE>& core) 
   assert(i <= core->nVars());
   assert(i >= 0);
   return core->getLit(core->vars[i]);
-}
-
-template <typename SMALL, typename LARGE>
-State Optimization<SMALL, LARGE>::reformObjectiveSmallSum(const CeSuper& core) {
-  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  aux::predicate<Lit> toWeaken = [&](Lit l) { return !reformObj->hasLit(l); };
-  if (!core->isSaturated(toWeaken)) {
-    core->weaken(toWeaken);
-    core->removeZeroes();
-  }
-  core->saturate(true, false);
-  if (core->isTautology()) {
-    return State::FAIL;
-  }
-  CeSuper clone = core->clone(global.cePools);
-  // the following operations do not turn core/reduced into a tautology
-  SMALL largestCoef = 0;
-  for (Var v : core->getVars()) {
-    largestCoef = std::max(largestCoef, reformObj->getCoef(core->getLit(v)));
-  }
-  assert(largestCoef > 0);
-  int maxCoef = static_cast<int>(std::min(largestCoef, static_cast<SMALL>(global.options.cgMaxCoef.get())));
-  maxCoef = std::min(maxCoef, static_cast<int>(limitAbs<int, long long>()) / core->nVars());
-  assert(maxCoef >= 1);
-  if (maxCoef == 1) return reformObjective(core);
-
-  core->divideTo(maxCoef, [&](Lit l) { return !reformObj->hasLit(l); });
-  assert(!core->isTautology());
-  CePtr<SMALL, LARGE> reduced = global.cePools.take<SMALL, LARGE>();
-  core->copyTo(reduced);
-
-  // decide rational multiplier using knapsack heuristic
-  Lit cutoff = getKnapsackLit(reduced);
-  // ensure sum of coefficients fits in int
-  LARGE div = reduced->getCoef(cutoff);
-  assert(div > 0);
-  SMALL mult = reformObj->getCoef(cutoff);
-  assert(mult > 0);
-  if (div > mult) {
-    reduced->multiply(mult);
-    // weaken all literals with a lower objective to reduced coefficient ratio than the ith literal in reduced
-    // TODO: sorted?
-    reduced->weakenDivideRound(
-        div, [&](Lit l) { return !reformObj->hasLit(l) || reformObj->getCoef(l) * div < reduced->getCoef(l); });
-    mult = 1;
-  } else {
-    mult /= static_cast<SMALL>(div);
-  }
-  assert(reduced->getLargestCoef() <= global.options.cgMaxCoef.get());
-  assert(reduced->getDegree() > 0);
-  assert(reduced->absCoeffSum() - reduced->getDegree() >= 0);
-  assert(reduced->absCoeffSum() - reduced->getDegree() > 0);  // TODO: if it is 0, we have a unit constraint!
-  assert(reduced->absCoeffSum() - reduced->getDegree() < INF - solver.getNbVars());
-  Ce32 cardCore = global.cePools.take32();
-  reduced->copyTo(cardCore);  // TODO: simply work in Ce32?
-  reduced->multiply(mult);
-
-  // TODO: don't add LazyVar when only 1 auxiliary variable is needed.
-  // add auxiliary variable
-  int newN = solver.getNbVars() + 1;
-  solver.setNbVars(newN, false);
-  // reformulate the objective
-  reduced->invert();
-  reformObj->addUp(reduced);
-  reformObj->addLhs(mult, newN);  // add only one variable for now
-  reduced->invert();
-  LARGE exceedSum = reformObj->getDegree() + lower_bound + reduced->getDegree();
-  lower_bound = -reformObj->getDegree();
-  // add first lazy constraint
-  lazyVars.push_back(
-      std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, exceedSum, normalizedUpperBound()));
-  lazyVars.back()->addAtLeastConstraint();
-  lazyVars.back()->addAtMostConstraint();
-  addLowerBound();
-
-  return State::SUCCESS;
 }
 
 template <typename SMALL, typename LARGE>
@@ -530,21 +390,9 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
   assert(!core->hasNegativeSlack(solver.getLevel()));  // Would be handled by solver's learnConstraint
   --global.stats.NCGCOREREUSES;
   State result = State::SUCCESS;
-  if (global.options.cgEncoding.is("binary")) {
-    while (result == State::SUCCESS) {
-      ++global.stats.NCGCOREREUSES;
-      result = reformObjectiveLog(core);
-    }
-  } else if (global.options.cgEncoding.is("smallsum")) {
-    while (result == State::SUCCESS) {
-      ++global.stats.NCGCOREREUSES;
-      result = reformObjectiveSmallSum(core);
-    }
-  } else {
-    while (result == State::SUCCESS) {
-      ++global.stats.NCGCOREREUSES;
-      result = reformObjective(core);
-    }
+  while (result == State::SUCCESS) {
+    ++global.stats.NCGCOREREUSES;
+    result = reformObjective(core);
   }
   if (global.stats.DEPLTIME.z == -1 &&
       std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(), [&](Var v) { return solver.isOrig(v); })) {
@@ -617,11 +465,11 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
   }
 
   while (true) {
-    assert(upper_bound >= lower_bound);
+    // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
+    // constraint yields UNSAT, at which case core-guided search can derive any constraint.
     StatNum current_time = global.stats.getDetTime();
-    if (reply == SolveState::INPROCESSED) {
-      if (global.options.printCsvData)
-        global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
+    if (reply == SolveState::INPROCESSED && global.options.printCsvData) {
+      global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
     }
     if (lower_bound >= upper_bound && global.options.boundUpper) {
       logProof();

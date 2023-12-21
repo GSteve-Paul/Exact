@@ -20,10 +20,10 @@ echo "binary: $binary"
 echo "options: $options"
 echo ""
 
-declare -a arr_lazy=(
-# binary
-lazysum
-# smallsum
+declare -a arr_divis=(
+# "mindiv"
+# "rto"
+"slack+1"
 )
 
 declare -a arr_opt=(
@@ -74,13 +74,13 @@ declare -a arr_opt=(
 "opb/opt/knapPI_16_1000_1000_1_-27147.opb*-27147"
 )
 
-for idx in "${!arr_lazy[@]}"; do
-    lazy=${arr_lazy[$idx]}
-    echo "########## lazy=$lazy ##########"
+for idx in "${!arr_divis[@]}"; do
+    divis=${arr_divis[$idx]}
+    echo "########## divis=$divis ##########"
     echo ""
     for j in "${arr_opt[@]}"; do
         formula="$(cut -d'*' -f1 <<<$j)"
-        logfile="$logfolder/$lazy/$formula"
+        logfile="$logfolder/$divis/$formula"
         mkdir -p `dirname $logfile`
         echo -n "" > $logfile.proof
         echo -n "" > $logfile.formula
@@ -90,8 +90,8 @@ for idx in "${!arr_lazy[@]}"; do
             exit 1
         fi
         obj="$(cut -d'*' -f2 <<<$j)"
-        echo "running $binary $formula $options --cg-encoding=$lazy --proof-log=$logfile --seed=4"
-        output=`$binary $formula $options --cg-encoding=$lazy --proof-log=$logfile --seed=4 2>&1`
+        echo "running $binary $formula $options --ca-division=$divis --proof-log=$logfile --seed=5"
+        output=`$binary $formula $options --ca-division=$divis --proof-log=$logfile --seed=5 2>&1`
         error=`echo "$output" | awk '/Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
         if [ "$error" != "" ] ; then
             errors=`expr 1000 + $errors`
