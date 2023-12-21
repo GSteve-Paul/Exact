@@ -1011,9 +1011,10 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenSuperfluousDouble(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken) {
-  Ce32 copy = global.cePools.take32();
+  // CeArb copy = global.cePools.takeArb();
+  CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL,LARGE>(); 
   copyTo(copy);
-  copy.weakenSuperfluous(div, sorted, toWeaken);
+  copy->weakenSuperfluous(div, sorted, toWeaken);
   weakenSuperfluousSweeping(div, sorted, toWeaken);
 
   double non_sweeping_strength = copy->getStrength();
@@ -1023,11 +1024,11 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousDouble(const LARGE& div, bool sor
   global.stats.NONSWEEPINGSTRENGTHSUM += non_sweeping_strength;
 
   if (sweeping_strength > non_sweeping_strength) {
-    global.stats.NSWEEPINGSTRONGER++;
+    ++global.stats.NSWEEPINGSTRONGER;
   } else if (sweeping_strength < non_sweeping_strength) {
-    global.stats.NNONSWEEPINGWEAKER++;
+    ++global.stats.NSWEEPINGWEAKER;
   } else {
-    global.stats.NSWEEPINGEQUAL++;
+    ++global.stats.NSWEEPINGEQUAL;
   }
 
 }
