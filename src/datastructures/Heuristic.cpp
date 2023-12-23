@@ -114,6 +114,8 @@ ActValV Heuristic::getActivity(Var v) const {
   return actList[v].activity;
 }
 
+const std::vector<ActNode>& Heuristic::getActList() const { return actList; }
+
 void Heuristic::randomize(const std::vector<int>& position) {
   std::vector<Var> vars;
   vars.reserve((int)actList.size() - 1);

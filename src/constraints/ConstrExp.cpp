@@ -164,51 +164,44 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
   } else if (maxCoef == 1) {
     new (ca.alloc<Cardinality>(vars.size())) Cardinality(this, locked, id);
   } else {
-    LARGE watchSum = -degree;
-    unsigned int minWatches = 1;  // sorted per decreasing coefs, so we can skip the first, largest coef
-    for (; minWatches < vars.size() && watchSum < 0; ++minWatches) {
-      watchSum += aux::abs(coefs[vars[minWatches]]);
-    }
-    unsigned int maxWatches = minWatches;
-    if (minWatches < vars.size()) {
-      watchSum = -degree - aux::abs(coefs[vars[0]]);
-      for (maxWatches = 0; maxWatches < vars.size() && watchSum < 0; ++maxWatches) {
-        watchSum += aux::abs(coefs[vars[vars.size() - 1 - maxWatches]]);
-      }
-    }
-    bool useCounting = global.options.propCounting.get() == 1 ||
-                       global.options.propCounting.get() > (1 - (minWatches + maxWatches) / (2 * (double)vars.size()));
+    double strngth = getStrength();
+    bool useCounting = strngth > global.options.propWatched.get();
     global.stats.NCOUNTING += useCounting;
     global.stats.NWATCHED += !useCounting;
     if (maxCoef <= static_cast<LARGE>(limitAbs<int, long long>())) {
+      global.stats.NSMALL += 1;
       if (useCounting) {
-        new (ca.alloc<Counting32>(vars.size())) Counting32(this, locked, id);
+        new (ca.alloc<Counting32>(vars.size())) Counting32(this, locked, id, strngth);
       } else {
-        new (ca.alloc<Watched32>(vars.size())) Watched32(this, locked, id);
+        new (ca.alloc<Watched32>(vars.size())) Watched32(this, locked, id, strngth);
       }
     } else if (maxCoef <= static_cast<LARGE>(limitAbs<long long, int128>())) {
+      global.stats.NLARGE += 1;
       if (useCounting) {
-        new (ca.alloc<Counting64>(vars.size())) Counting64(this, locked, id);
+        new (ca.alloc<Counting64>(vars.size())) Counting64(this, locked, id, strngth);
       } else {
-        new (ca.alloc<Watched64>(vars.size())) Watched64(this, locked, id);
+        new (ca.alloc<Watched64>(vars.size())) Watched64(this, locked, id, strngth);
       }
     } else if (maxCoef <= static_cast<LARGE>(limitAbs<int128, int128>())) {
+      global.stats.NLARGE += 1;
       if (useCounting) {
-        new (ca.alloc<Counting96>(vars.size())) Counting96(this, locked, id);
+        new (ca.alloc<Counting96>(vars.size())) Counting96(this, locked, id, strngth);
       } else {
-        new (ca.alloc<Watched96>(vars.size())) Watched96(this, locked, id);
+        new (ca.alloc<Watched96>(vars.size())) Watched96(this, locked, id, strngth);
       }
     } else if (maxCoef <= static_cast<LARGE>(limitAbs<int128, int256>())) {
+      global.stats.NLARGE += 1;
       if (useCounting) {
-        new (ca.alloc<Counting128>(vars.size())) Counting128(this, locked, id);
+        new (ca.alloc<Counting128>(vars.size())) Counting128(this, locked, id, strngth);
       } else {
-        new (ca.alloc<Watched128>(vars.size())) Watched128(this, locked, id);
+        new (ca.alloc<Watched128>(vars.size())) Watched128(this, locked, id, strngth);
       }
     } else {
+      global.stats.NARB += 1;
       if (useCounting) {
-        new (ca.alloc<CountingArb>(vars.size())) CountingArb(this, locked, id);
+        new (ca.alloc<CountingArb>(vars.size())) CountingArb(this, locked, id, strngth);
       } else {
-        new (ca.alloc<WatchedArb>(vars.size())) WatchedArb(this, locked, id);
+        new (ca.alloc<WatchedArb>(vars.size())) WatchedArb(this, locked, id, strngth);
       }
     }
   }
@@ -563,7 +556,7 @@ void ConstrExpSuper::popLast() {
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntMap<int>& level, const std::vector<int>& pos) {
   if (global.logger.isActive()) {
-    for (Var v : vars) { 
+    for (Var v : vars) {
       Lit l = getLit(v);
       if (l != 0) {
         if (isUnit(level, l)) {
@@ -820,12 +813,15 @@ void ConstrExp<SMALL, LARGE>::saturateAndFixOverflowRational() {
   removeZeroes();
   LARGE maxRhs = std::max(getDegree(), aux::abs(getRhs()));
   // TODO: why do we look at degree and not max coefficient here?
-  if (maxRhs >= INFLPINT) {
+  while (maxRhs >= INFLPINT) {
     LARGE d = aux::ceildiv<LARGE>(maxRhs, INFLPINT - 1);
-    assert(d > 1);
-    divideRoundDown(d);
+    assert(d >= 2);
+    divideRoundUp(d);
+    saturate(true, false);
+    maxRhs = std::max(getDegree(), aux::abs(getRhs()));
+    // NOTE: due to cumulative round-off errors, we may not always have a sufficient small rhs/degree
+    // so we keep dividing by at least two until we get there
   }
-  saturate(true, false);
   assert(getDegree() < INFLPINT);
   assert(aux::abs(getRhs()) < INFLPINT);
 }
@@ -869,7 +865,7 @@ void ConstrExp<SMALL, LARGE>::divideRoundDown(const LARGE& d) {
   assert(d > 0);
   if (d == 1) return;
   for (Var v : vars) {
-    weaken(v); // full weakening
+    weaken(-static_cast<SMALL>(coefs[v] % d), v);
     assert(coefs[v] % d == 0);
     coefs[v] = static_cast<SMALL>(coefs[v] / d);
   }
@@ -887,6 +883,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
     saturate(false, false);
     removeZeroes();
   } else {
+    // weakenSuperfluous(div, false, []([[maybe_unused]] Var v) { return true; });
     weakenSuperfluousDouble(div, false, []([[maybe_unused]] Var v) { return true; });
     removeZeroes();
     divideRoundUp(div);
@@ -895,14 +892,43 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
 }
 
 // NOTE: preserves ordered-ness
+// div is a divisor
+// toWeaken tells how to weaken the non-divisible literals
+// toWeakenSuperfluous tells how to weaken superfluous literals (if any, if needed)
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken,
-                                                       const aux::predicate<Var>& toWeakenSuperfluous) {
+void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level) {
   assert(isSortedInDecreasingCoefOrder());
   assert(div > 0);
   if (div == 1) return;
-  weakenNonDivisible(toWeaken, div);
-  weakenSuperfluousDouble(div, true, toWeakenSuperfluous);
+  weakenNonDivisible(div, level);
+  // weakenSuperfluous(div);
+  weakenSuperfluousDouble(div, true, []([[maybe_unused]] Var v) { return true; });
+  repairOrder();
+  while (!vars.empty() && coefs[vars.back()] == 0) {
+    popLast();
+  }
+  assert(hasNoZeroes());
+  if (div >= degree) {
+    simplifyToClause();
+  } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
+    simplifyToCardinality(false, getCardinalityDegree());
+  } else {
+    divideRoundUp(div);
+    saturate(true, true);
+  }
+}
+
+// NOTE: preserves ordered-ness
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div, const IntMap<int>& level,
+                                                                const std::vector<int>& pos, const SMALL& mult,
+                                                                const ConstrExp<SMALL, LARGE>& confl) {
+  assert(isSortedInDecreasingCoefOrder());
+  assert(div > 0);
+  if (div == 1) return;
+  weakenNonDivisibleCanceling(div, level, mult, confl);
+  // weakenSuperfluousCanceling(div, pos);
+  weakenSuperfluousDouble(div, true, [&](Var v) { return pos[v] != INF; });
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -926,7 +952,35 @@ void ConstrExp<SMALL, LARGE>::weakenNonDivisible(const aux::predicate<Lit>& toWe
   if (div == 1) return;
   for (Var v : vars) {
     if (coefs[v] % div != 0 && toWeaken(getLit(v))) {
-      weaken(v); // full weakening
+      weaken(-static_cast<SMALL>(coefs[v] % div), v);
+    }
+  }
+}
+
+// NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
+// NOTE: after call to weakenNonDivisible, order can be re repaired by call to repairOrder
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenNonDivisible(const LARGE& div, const IntMap<int>& level) {
+  assert(div > 0);
+  if (div == 1) return;
+  for (Var v : vars) {
+    if (coefs[v] % div != 0 && !isFalse(level, getLit(v))) {
+      weaken(-static_cast<SMALL>(coefs[v] % div), v);
+    }
+  }
+}
+
+// NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
+// NOTE: after call to weakenNonDivisible, order can be re repaired by call to repairOrder
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenNonDivisibleCanceling(const LARGE& div, const IntMap<int>& level, const SMALL& mult,
+                                                          const ConstrExp<SMALL, LARGE>& confl) {
+  assert(div > 0);
+  if (div == 1) return;
+  for (Var v : vars) {
+    Lit l = getLit(v);
+    if (coefs[v] % div != 0 && !isFalse(level, l) && (isTrue(level, l) || confl.getCoef(-l) < mult)) {
+      weaken(-static_cast<SMALL>(coefs[v] % div), v);
     }
   }
 }
@@ -957,7 +1011,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, c
   assert(div > 1);
   assert(!isTautology());
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
-  LARGE rem = (degree - 1) % div; 
+  LARGE rem = (degree - 1) % div;
   if (!sorted) {                                             // extra iteration to weaken literals fully
     for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
       Var v = vars[i];
@@ -972,7 +1026,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, c
   for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
     Var v = vars[i];
     if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
-    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div); // same partial weakening as above
+    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);  // same partial weakening as above
     if (r <= rem) {
       rem -= r;
       weaken(coefs[v] < 0 ? r : -r, v);
@@ -982,22 +1036,59 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, c
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken) {
+void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div) {
   assert(div > 1);
   assert(!isTautology());
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
-  LARGE rem = (degree - 1) % div; 
+  LARGE rem = (degree - 1) % div;
+  for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
+    Var v = vars[i];
+    if (coefs[v] == 0 || saturatedVar(v)) continue;
+    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
+    if (r <= rem) {
+      rem -= r;
+      weaken(coefs[v] < 0 ? r : -r, v);
+    }
+  }
+  assert(quot == aux::ceildiv(degree, div));
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos) {
+  assert(div > 1);
+  assert(!isTautology());
+  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
+  LARGE rem = (degree - 1) % div;
+  for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
+    Var v = vars[i];
+    if (pos[v] == INF || coefs[v] == 0 || saturatedVar(v)) continue;
+    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
+    if (r <= rem) {
+      rem -= r;
+      weaken(coefs[v] < 0 ? r : -r, v);
+    }
+  }
+  assert(quot == aux::ceildiv(degree, div));
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool sorted,
+                                                        const aux::predicate<Var>& toWeaken) {
+  assert(div > 1);
+  assert(!isTautology());
+  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
+  LARGE rem = (degree - 1) % div;
 
   // TODO: store the remainders so they can just be looked up
   int shift = 1; // global.options.shiftOpt.get();
   if (shift == 0) shift = 1;
   int j = shift;
-  while (j <= rem)
-  {
+  while (j <= rem) {
+    std::cout << "j " << j << " rem " << rem << std::endl;
     for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
       Var v = vars[i];
       if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
-      SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div); // same partial weakening as above
+      SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);  // same partial weakening as above
       if (r <= rem && r <= j) {
         rem -= r;
         weaken(coefs[v] < 0 ? r : -r, v);
@@ -1010,12 +1101,13 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenSuperfluousDouble(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken) {
+void ConstrExp<SMALL, LARGE>::weakenSuperfluousDouble(const LARGE& div, bool sorted,
+                                                      const aux::predicate<Var>& toWeaken) {
   // CeArb copy = global.cePools.takeArb();
-  CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL,LARGE>(); 
+  CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
   copyTo(copy);
-  copy->weakenSuperfluous(div, sorted, toWeaken);
-  weakenSuperfluousSweeping(div, sorted, toWeaken);
+  copy->weakenSuperfluousSweeping(div, sorted, toWeaken);
+  weakenSuperfluous(div, sorted, toWeaken);
 
   double non_sweeping_strength = copy->getStrength();
   double sweeping_strength = getStrength();
@@ -1030,7 +1122,6 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousDouble(const LARGE& div, bool sor
   } else {
     ++global.stats.NSWEEPINGEQUAL;
   }
-
 }
 
 template <typename SMALL, typename LARGE>
@@ -1090,7 +1181,8 @@ void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int
   saturate(true, !sortFirst);
   if (isClause() || isCardinality()) return;
   if (sortFirst) {
-    sortInDecreasingCoefOrder(heur);
+    const std::vector<ActNode>& actList = heur.getActList();
+    sortInDecreasingCoefOrder([&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
   }
   if (divideByGCD()) {
     ++stats.NGCD;
@@ -1134,19 +1226,18 @@ AssertionStatus ConstrExp<SMALL, LARGE>::isAssertingBefore(const IntMap<int>& le
 // @return: highest decision level that does not make the constraint inconsistent
 // @return: whether or not the constraint is asserting at that level
 template <typename SMALL, typename LARGE>
-std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<int>& level,
-                                                                 const std::vector<int>& pos) const {
+std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
+                                                                 std::vector<Lit>& litsByPos) const {
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
   assert(hasNoUnits(level));
+  assert(litsByPos.empty());
   // calculate slack at level 0
   LARGE slack = -degree;
   for (Var v : vars) slack += aux::abs(coefs[v]);
   if (slack < 0) return {-1, false};
 
   // create useful datastructures
-  std::vector<Lit> litsByPos;
-  litsByPos.reserve(vars.size());
   for (Var v : vars) {
     Lit l = getLit(v);
     assert(l != 0);
@@ -1163,11 +1254,23 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<in
       slack -= aux::abs(coefs[aux::abs(*posIt)]);
       ++posIt;
     }
-    if (slack < 0) return {assertionLevel - 1, false};  // not asserting, but earliest non-conflicting level
+    if (slack < 0) {
+      litsByPos.clear();
+      return {assertionLevel - 1, false};  // not asserting, but earliest non-conflicting level
+    }
     while (coefIt != vars.cend() && assertionLevel >= level[getLit(*coefIt)]) ++coefIt;
-    if (coefIt == vars.cend()) return {INF, false};
-    if (slack < aux::abs(coefs[*coefIt])) return {assertionLevel, true};
-    if (posIt == litsByPos.cend()) return {INF, false};
+    if (coefIt == vars.cend()) {
+      litsByPos.clear();
+      return {INF, false};
+    }
+    if (slack < aux::abs(coefs[*coefIt])) {
+      litsByPos.clear();
+      return {assertionLevel, true};
+    }
+    if (posIt == litsByPos.cend()) {
+      litsByPos.clear();
+      return {INF, false};
+    }
     assertionLevel = level[*posIt];
   }
 }
@@ -1434,28 +1537,8 @@ bool ConstrExp<SMALL, LARGE>::isSortedInDecreasingCoefOrder() const {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::sortInDecreasingCoefOrder(const Heuristic& heur) {
-  if (isSortedInDecreasingCoefOrder()) return;
-  std::vector<std::tuple<SMALL, ActValV, Var>> tups;
-  tups.reserve(vars.size());
-  for (Var v : vars) {
-    tups.push_back({aux::abs(coefs[v]), heur.getActivity(v), v});
-  }
-  std::sort(tups.begin(), tups.end(),
-            [&](const std::tuple<SMALL, ActValV, Var>& x, const std::tuple<SMALL, ActValV, Var>& y) {
-              return std::get<0>(x) > std::get<0>(y) ||
-                     (std::get<0>(x) == std::get<0>(y) && std::get<1>(x) > std::get<1>(y));
-            });
-  for (int i = 0; i < (int)tups.size(); ++i) {
-    Var v = std::get<2>(tups[i]);
-    vars[i] = v;
-    index[v] = i;
-  }
-}
-
-template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) {
-  if (vars.size() <= 1) return;
+  if (vars.size() <= 1 || isSortedInDecreasingCoefOrder()) return;
   std::sort(vars.begin(), vars.end(), [&](Var v1, Var v2) {
     int res = aux::sgn(aux::abs(coefs[v1]) - aux::abs(coefs[v2]));
     return res > 0 || (res == 0 && tiebreaker(v1, v2));
