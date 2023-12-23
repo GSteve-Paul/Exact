@@ -949,7 +949,7 @@ void ConstrExp<SMALL, LARGE>::weakenNonDivisible(const aux::predicate<Lit>& toWe
   if (div == 1) return;
   for (Var v : vars) {
     if (coefs[v] % div != 0 && toWeaken(getLit(v))) {
-      weaken(-static_cast<SMALL>(coefs[v] % div), v);
+      weaken(v); // weaken fully
     }
   }
 }
@@ -962,7 +962,7 @@ void ConstrExp<SMALL, LARGE>::weakenNonDivisible(const LARGE& div, const IntMap<
   if (div == 1) return;
   for (Var v : vars) {
     if (coefs[v] % div != 0 && !isFalse(level, getLit(v))) {
-      weaken(-static_cast<SMALL>(coefs[v] % div), v);
+      weaken(v); // weaken fully
     }
   }
 }
