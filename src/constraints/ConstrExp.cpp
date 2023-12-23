@@ -989,7 +989,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, bool s
   LARGE rem = (degree - 1) % div; 
 
   // TODO: store the remainders so they can just be looked up
-  int shift = 1;
+  int shift = 1; // global.options.shiftOpt.get();
   if (shift == 0) shift = 1;
   int j = shift;
   while (j <= rem)
