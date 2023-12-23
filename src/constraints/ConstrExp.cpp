@@ -900,7 +900,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(div, level);
-  weakenSuperfluous(div);
+  //weakenSuperfluous(div);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -925,7 +925,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisibleCanceling(div, level, mult, confl);
-  weakenSuperfluousCanceling(div, pos);
+  //weakenSuperfluousCanceling(div, pos);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
