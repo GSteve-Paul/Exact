@@ -883,13 +883,17 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
     saturate(false, false);
     removeZeroes();
   } else {
-    
-
+    CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
+    copyTo(copy);
+    copy->weakenSuperfluousSweeping(div);
     weakenSuperfluous(div, false, []([[maybe_unused]] Var v) { return true; });
-    
     removeZeroes();
+    copy->removeZeroes();
     divideRoundUp(div);
     saturate(true, false);
+    copy->divideRoundUp(div);
+    copy->saturate(true, false);
+    compare(copy);
   }
 }
 
@@ -905,21 +909,30 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   weakenNonDivisible(div, level);
   CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
   copyTo(copy);
-  weakenSuperfluousCanceling(div);
-  copy->weakenSuperfluousSweeping(div, true, []([[maybe_unused]] Var v) { return true; });
+  weakenSuperfluous(div);
+  copy->weakenSuperfluousSweeping(div);
   repairOrder();
+  copy->repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
+  }
+  while(!copy->vars.empty() && copy->coefs[copy->vars.back()] == 0) {
+    copy->popLast();
   }
   assert(hasNoZeroes());
   if (div >= degree) {
     simplifyToClause();
-  } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
-    simplifyToCardinality(false, getCardinalityDegree());
+    copy->simplifyToClause();
+  } else if ((!vars.empty() && div >= aux::abs(coefs[vars[0]])) || (!copy->vars.empty() && div >= aux::abs(copy->coefs[copy->vars[0]]))) {
+    if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {simplifyToCardinality(false, getCardinalityDegree());}
+    else {copy->simplifyToCardinality(false, copy->getCardinalityDegree());}
   } else {
     divideRoundUp(div);
     saturate(true, true);
+    copy->divideRoundUp(div);
+    copy->saturate(true, true);
   }
+  compare(copy);
 }
 
 // NOTE: preserves ordered-ness
@@ -934,7 +947,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
   CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
   copyTo(copy);
   weakenSuperfluousCanceling(div, pos);
-  copy->weakenSuperfluousSweeping(div, pos);
+  copy->weakenSuperfluousSweepingCanceling(div, pos);
   repairOrder();
   copy->repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
@@ -947,7 +960,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
   if (div >= degree) {
     simplifyToClause();
     copy->simplifyToClause();
-  } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]]) || !copy->vars.empty() && div >= aux::abs(copy->coefs[copy->vars[0]])) {
+  } else if ((!vars.empty() && div >= aux::abs(coefs[vars[0]])) || (!copy->vars.empty() && div >= aux::abs(copy->coefs[copy->vars[0]]))) {
     if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {simplifyToCardinality(false, getCardinalityDegree());}
     else {copy->simplifyToCardinality(false, copy->getCardinalityDegree());}
   } else {
@@ -956,20 +969,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
     copy->divideRoundUp(div);
     copy->saturate(true, true);
   }
-
-  double non_sweeping_strength = copy->getStrength();
-  double sweeping_strength = getStrength();
-
-  global.stats.SWEEPINGSTRENGHTSUM += sweeping_strength;
-  global.stats.NONSWEEPINGSTRENGTHSUM += non_sweeping_strength;
-
-  if (sweeping_strength > non_sweeping_strength) {
-    ++global.stats.NSWEEPINGSTRONGER;
-  } else if (sweeping_strength < non_sweeping_strength) {
-    ++global.stats.NSWEEPINGWEAKER;
-  } else {
-    ++global.stats.NSWEEPINGEQUAL;
-  }
+  compare(copy);
 }
 
 // NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
@@ -1100,7 +1100,36 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousCanceling(const LARGE& div, const
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, const std::vector<int>& pos) {
+void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div) {
+  assert(div > 1);
+  assert(!isTautology());
+  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
+  LARGE rem = (degree - 1) % div;
+  // TODO: store the remainders so they can just be looked up
+  int bd = global.options.blockDivision.get();
+  int shift = rem / bd;
+  if (shift == 0) shift = 1;
+  int j = shift;
+  while (j <= rem) {
+    std::cout << "j " << j << " rem " << rem << std::endl;
+    for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
+      Var v = vars[i];
+      if (coefs[v] == 0 || saturatedVar(v)) continue;
+      SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);  // same partial weakening as above
+      if (r <= rem && r <= j && r != 0) {
+        std::cout << "weaken " << r << std::endl;
+        rem -= r;
+        weaken(coefs[v] < 0 ? r : -r, v);
+        if (rem < j) break;
+      }
+    }
+    j += shift;
+  }
+  assert(quot == aux::ceildiv(degree, div));
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweepingCanceling(const LARGE& div, const std::vector<int>& pos) {
   assert(div > 1);
   assert(!isTautology());
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
@@ -1129,16 +1158,9 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div, const 
 }
 
 template <typename SMALL, typename LARGE>
-CePtr<SMALL, LARGE> ConstrExp<SMALL, LARGE>::weakenSuperfluousDouble(const LARGE& div, bool sorted,
-                                                      const aux::predicate<Var>& toWeaken) {
-  // CeArb copy = global.cePools.takeArb();
-  CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
-  copyTo(copy);
-  copy->weakenSuperfluousSweeping(div, sorted, toWeaken);
-  weakenSuperfluous(div, sorted, toWeaken);
-
-  double non_sweeping_strength = copy->getStrength();
-  double sweeping_strength = getStrength();
+void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
+  double non_sweeping_strength = getStrength();
+  double sweeping_strength = other->getStrength();
 
   global.stats.SWEEPINGSTRENGHTSUM += sweeping_strength;
   global.stats.NONSWEEPINGSTRENGTHSUM += non_sweeping_strength;
@@ -1150,8 +1172,6 @@ CePtr<SMALL, LARGE> ConstrExp<SMALL, LARGE>::weakenSuperfluousDouble(const LARGE
   } else {
     ++global.stats.NSWEEPINGEQUAL;
   }
-
-  return copy;
 }
 
 template <typename SMALL, typename LARGE>

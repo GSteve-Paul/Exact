@@ -343,11 +343,13 @@ struct ConstrExp final : public ConstrExpSuper {
                                    const ConstrExp<SMALL, LARGE>& confl);
   void repairOrder();
   void weakenSuperfluous(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken);
-  void weakenSuperfluousSweeping(const LARGE& div, const std::vector<int>& pos);
-  CePtr<SMALL, LARGE> weakenSuperfluousDouble(const LARGE& div, bool sorted, const aux::predicate<Lit>& toWeaken);
+  void weakenSuperfluousSweeping(const LARGE& div);
+  void weakenSuperfluousSweepingCanceling(const LARGE& div, const std::vector<int>& pos);
   void weakenSuperfluous(const LARGE& div);
   void weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
+
+  void compare(const CePtr<SMALL, LARGE>& other) const;
 
   bool divideByGCD();
   bool divideTo(double limit, const aux::predicate<Lit>& toWeaken);
