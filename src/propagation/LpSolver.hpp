@@ -127,8 +127,8 @@ class LpSolver {
   friend struct CandidateCut;
 
   soplex::SoPlex lp;
-  Global& global;  // TODO: needed? We already have solver?
   Solver& solver;
+  Global& global;  // TODO: needed? We already have solver?
 
   double lpPivotMult = 1;
   constexpr static double INFTY = 1e100;
@@ -158,8 +158,9 @@ class LpSolver {
   std::vector<CandidateCut> candidateCuts;
 
  public:
-  explicit LpSolver(Solver& s, const CeArb& o, Global& g);
+  explicit LpSolver(Solver& s);
   void setNbVariables(int n);
+  void setObjective(const CeArb& o);
 
   [[nodiscard]] std::pair<LpStatus, CeSuper> checkFeasibility(
       bool inProcessing);  // TODO: don't use objective function here?
@@ -197,8 +198,9 @@ struct Global;
 
 class LpSolver {
  public:
-  LpSolver([[maybe_unused]] Solver& s, [[maybe_unused]] const CeArb& o, [[maybe_unused]] Global& g){};
+  LpSolver([[maybe_unused]] Solver& s){};
   void setNbVariables([[maybe_unused]] int n){};
+  void setObjective([[maybe_unused]] const CeArb& o){};
 
   std::pair<LpStatus, CeSuper> checkFeasibility([[maybe_unused]] bool inProcessing) {
     assert(false);

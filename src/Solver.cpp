@@ -74,12 +74,13 @@ Solver::Solver(Global& g)
       assumptions_lim({0}),
       equalities(*this),
       implications(*this),
-      nconfl_to_reduce(0),
-      nconfl_to_restart(0),
+      nconfl_to_reduce(1000),
+      nconfl_to_restart(100),
       nextToSort(0) {
   ca.capacity(1024 * 1024);  // 4MB
   position.resize(1, INF);
   isorig.resize(1, true);
+  objective = std::make_shared<ConstrExpArb>(global);
   assert(!lastCore);
   assert(!lastGlobalDual);
 }
@@ -107,6 +108,7 @@ void Solver::setNbVars(int nvars, bool orig) {
   freeHeur.resize(nvars + 1);
   cgHeur.resize(nvars + 1);
   global.cePools.resize(nvars + 1);
+  objective->resize(nvars + 1);
   equalities.setNbVars(nvars);
   implications.setNbVars(nvars);
   isorig.resize(nvars + 1, orig);
@@ -121,15 +123,12 @@ void Solver::setNbVars(int nvars, bool orig) {
   n = nvars;
 }
 
-void Solver::init(const CeArb& obj) {
-  for (Var v : obj->vars) {
-    objectiveLits.add(obj->getLit(v));
-  }
-  nconfl_to_restart = global.options.lubyMult.get();
-  nconfl_to_reduce = 1000;
-  aux::timeCallVoid([&] { heur->randomize(getPos()); }, global.stats.HEURTIME);
-  objective = global.cePools.takeArb();
+void Solver::setObjective(const CeArb& obj) {
+  obj->reset(true);
   obj->copyTo(objective);
+  obj->removeUnitsAndZeroes(getLevel(), getPos());
+  obj->removeEqualities(getEqualities(), false);
+  if (lpSolver) lpSolver->setObjective(objective);
 }
 
 Options& Solver::getOptions() { return global.options; }
@@ -1053,11 +1052,14 @@ void Solver::sortWatchlists() {
 
 void Solver::presolve() {
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
+  nconfl_to_restart = global.options.lubyMult.get();
+  aux::timeCallVoid([&] { heur->randomize(getPos()); }, global.stats.HEURTIME);
   aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
 
 #if WITHSOPLEX
   if (global.options.lpTimeRatio.get() > 0) {
-    lpSolver = std::make_shared<LpSolver>(*this, objective, global);
+    lpSolver = std::make_shared<LpSolver>(*this);
+    lpSolver->setObjective(objective);
     CeSuper bound = aux::timeCall<CeSuper>([&] { return lpSolver->inProcess(); }, global.stats.LPTOTALTIME);
     if (bound) lastGlobalDual = bound;
   }
@@ -1094,9 +1096,10 @@ void Solver::derivePureLits() {
   assert(decisionLevel() == 0);
   for (Lit l = -getNbVars(); l <= getNbVars(); ++l) {
     quit::checkInterrupt(global);
-    if (l == 0 || !isOrig(toVar(l)) || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l) ||
-        !lit2cons[-l].empty())
+    if (l == 0 || !isOrig(toVar(l)) || isKnown(getPos(), l) || objective->hasLit(l) || equalities.isPartOfEquality(l) ||
+        !lit2cons[-l].empty()) {
       continue;  // NOTE: core-guided variables will not be eliminated
+    }
     addUnitConstraint(l, Origin::PURE);
     removeSatisfiedNonImpliedsAtRoot();
   }
@@ -1108,8 +1111,9 @@ void Solver::dominanceBreaking() {
   IntSet& saturating = global.isPool.take();
   IntSet& intersection = global.isPool.take();
   for (Lit l = -getNbVars(); l <= getNbVars(); ++l) {
-    if (l == 0 || !isOrig(toVar(l)) || isKnown(getPos(), l) || objectiveLits.has(l) || equalities.isPartOfEquality(l))
+    if (l == 0 || !isOrig(toVar(l)) || isKnown(getPos(), l) || objective->hasLit(l) || equalities.isPartOfEquality(l)) {
       continue;
+    }
     assert(saturating.isEmpty());
     unordered_map<CRef, int>& col = lit2cons[-l];
     if (col.empty()) {

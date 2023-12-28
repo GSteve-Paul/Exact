@@ -100,7 +100,6 @@ class Solver {
   bool foundSolution() const;
   CeSuper lastCore;
   CeSuper lastGlobalDual;
-  IntSet objectiveLits;
   CeArb objective;
 
  private:
@@ -152,7 +151,7 @@ class Solver {
  public:
   Solver(Global& g);
   ~Solver();
-  void init(const CeArb& obj);
+  void setObjective(const CeArb& obj);
 
   int getNbVars() const { return n; }
   void setNbVars(int nvars, bool orig);

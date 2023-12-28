@@ -133,8 +133,7 @@ std::ostream& operator<<(std::ostream& o, const CandidateCut& cc) {
   return o << cc.simpcons << " norm " << cc.norm << " ratSlack " << cc.ratSlack;
 }
 
-LpSolver::LpSolver(Solver& s, const CeArb& o, Global& g) : global(g), solver(s) {
-  assert(o);
+LpSolver::LpSolver(Solver& s) : solver(s), global(s.global) {
   assert(INFTY == lp.realParam(lp.INFTY));
 
   if (global.options.verbosity.get() > 1) std::cout << "c Initializing LP" << std::endl;
@@ -164,24 +163,7 @@ LpSolver::LpSolver(Solver& s, const CeArb& o, Global& g) : global(g), solver(s) 
     }
   }
 
-  soplex::DVectorReal objective;
-  objective.reDim(getNbCols());  // NOTE: automatically set to zero
-  o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  o->removeEqualities(solver.getEqualities(), false);
-  if (o->nVars() == 0) {
-    for (int v = 1; v < getNbCols(); ++v) objective[v] = 1;  // add default objective function
-  } else {
-    for (Var v : o->getVars()) {
-      objective[v] = aux::toDouble(o->coefs[v]);
-    }
-  }
-  lp.changeObjReal(objective);
-
   if (global.options.verbosity.get() > 1) std::cout << "c Finished initializing LP" << std::endl;
-}
-
-bool LpSolver::canInProcess() const {
-  return madeInternalCall && (global.options.lpGomoryCuts || global.options.lpLearnedCuts);
 }
 
 void LpSolver::setNbVariables(int n) {
@@ -198,6 +180,24 @@ void LpSolver::setNbVariables(int n) {
   lowerBounds.reDim(n);
   upperBounds.reDim(n);
   assert(getNbCols() == n);
+}
+
+void LpSolver::setObjective(const CeArb& o) {
+  assert(o);
+  soplex::DVectorReal objective;
+  objective.reDim(getNbCols());  // NOTE: automatically set to zero
+  if (o->nVars() == 0) {
+    for (int v = 1; v < getNbCols(); ++v) objective[v] = 1;  // add default objective function
+  } else {
+    for (Var v : o->getVars()) {
+      objective[v] = aux::toDouble(o->coefs[v]);
+    }
+  }
+  lp.changeObjReal(objective);
+}
+
+bool LpSolver::canInProcess() const {
+  return madeInternalCall && (global.options.lpGomoryCuts || global.options.lpLearnedCuts);
 }
 
 int LpSolver::getNbCols() const { return lp.numCols(); }
@@ -246,8 +246,9 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
   }
 
   int256 b = lcc->getRhs();
-  for (Var v : lcc->getVars())
+  for (Var v : lcc->getVars()) {
     if (lpSolution[v] > 0.5) b -= lcc->coefs[v];
+  }
   if (b == 0) {
     return CandidateCut();
   }

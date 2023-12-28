@@ -330,8 +330,10 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
                        const std::vector<bool>& negated, const bigint& offset) {
   if (coefs.size() != vars.size() || (!negated.empty() && negated.size() != vars.size()))
     throw std::invalid_argument("Coefficient, variable, or negated lists differ in size.");
-  if (initialized()) throw std::invalid_argument("Objective already set.");
   obj = IntConstraint(coefs, vars, negated, -offset);
+  CeArb o = global.cePools.takeArb();
+  obj.toConstrExp(o, true);
+  solver.setObjective(o);
 }
 
 void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
@@ -582,7 +584,7 @@ void ILP::init() {
 
   CeArb o = global.cePools.takeArb();
   obj.toConstrExp(o, true);
-  solver.init(o);
+  solver.setObjective(o);
   optim = OptimizationSuper::make(o, solver, global);
 }
 
