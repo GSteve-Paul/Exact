@@ -174,8 +174,8 @@ struct Options {
                          }};
   ValOption<long long> randomSeed{"seed", "Seed for the pseudo-random number generator", 1, "1 =< int",
                                   [](long long x) -> bool { return 1 <= x; }};
-  ValOption<long long> blockDivision{"block-division", "Divide the remainder when weakening superfluous by this amount", 10, "1 =< int",
-                             [](long long x) -> bool { return 1 <= x; }};
+  ValOption<long long> blockDivision{"block-division", "Divide the remainder when weakening superfluous by this amount",
+                                     10, "1 =< int", [](long long x) -> bool { return 1 <= x; }};
   VoidOption noSolve{"onlyparse", "Quit after parsing file"};
   EnumOption fileFormat{
       "format", "File format (overridden by corresponding file extension)", "opb", {"opb", "cnf", "wcnf", "mps", "lp"}};
@@ -320,7 +320,7 @@ struct Options {
       &dbScale,
       &dbSafeLBD,
       &propWatched,
-      &shift,
+      &blockDivision,
 #if WITHSOPLEX
       &lpTimeRatio,
       &lpPivotBudget,

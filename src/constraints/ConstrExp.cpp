@@ -912,20 +912,26 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   weakenSuperfluous(div);
   copy->weakenSuperfluousSweeping(div);
   repairOrder();
+  assert(isSortedInDecreasingCoefOrder());
   copy->repairOrder();
+  assert(copy->isSortedInDecreasingCoefOrder());
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
   }
-  while(!copy->vars.empty() && copy->coefs[copy->vars.back()] == 0) {
+  while (!copy->vars.empty() && copy->coefs[copy->vars.back()] == 0) {
     copy->popLast();
   }
   assert(hasNoZeroes());
   if (div >= degree) {
     simplifyToClause();
     copy->simplifyToClause();
-  } else if ((!vars.empty() && div >= aux::abs(coefs[vars[0]])) || (!copy->vars.empty() && div >= aux::abs(copy->coefs[copy->vars[0]]))) {
-    if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {simplifyToCardinality(false, getCardinalityDegree());}
-    else {copy->simplifyToCardinality(false, copy->getCardinalityDegree());}
+  } else if ((!vars.empty() && div >= aux::abs(coefs[vars[0]])) ||
+             (!copy->vars.empty() && div >= aux::abs(copy->coefs[copy->vars[0]]))) {
+    if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
+      simplifyToCardinality(false, getCardinalityDegree());
+    } else {
+      copy->simplifyToCardinality(false, copy->getCardinalityDegree());
+    }
   } else {
     divideRoundUp(div);
     saturate(true, true);
@@ -953,16 +959,20 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
   }
-  while(!copy->vars.empty() && copy->coefs[copy->vars.back()] == 0) {
+  while (!copy->vars.empty() && copy->coefs[copy->vars.back()] == 0) {
     copy->popLast();
   }
   assert(hasNoZeroes());
   if (div >= degree) {
     simplifyToClause();
     copy->simplifyToClause();
-  } else if ((!vars.empty() && div >= aux::abs(coefs[vars[0]])) || (!copy->vars.empty() && div >= aux::abs(copy->coefs[copy->vars[0]]))) {
-    if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {simplifyToCardinality(false, getCardinalityDegree());}
-    else {copy->simplifyToCardinality(false, copy->getCardinalityDegree());}
+  } else if ((!vars.empty() && div >= aux::abs(coefs[vars[0]])) ||
+             (!copy->vars.empty() && div >= aux::abs(copy->coefs[copy->vars[0]]))) {
+    if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
+      simplifyToCardinality(false, getCardinalityDegree());
+    } else {
+      copy->simplifyToCardinality(false, copy->getCardinalityDegree());
+    }
   } else {
     divideRoundUp(div);
     saturate(true, true);
@@ -1106,10 +1116,10 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div) {
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
   LARGE rem = (degree - 1) % div;
   // TODO: store the remainders so they can just be looked up
-  int bd = global.options.blockDivision.get();
-  int shift = rem / bd;
+  long long bd = global.options.blockDivision.get();
+  LARGE shift = rem / bd;
   if (shift == 0) shift = 1;
-  int j = shift;
+  LARGE j = shift;
   while (j <= rem) {
     std::cout << "j " << j << " rem " << rem << std::endl;
     for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
@@ -1136,7 +1146,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweepingCanceling(const LARGE& di
   LARGE rem = (degree - 1) % div;
 
   // TODO: store the remainders so they can just be looked up
-  int shift = 1; // global.options.shiftOpt.get();
+  int shift = 1;  // global.options.shiftOpt.get();
   if (shift == 0) shift = 1;
   int j = shift;
   while (j <= rem) {
