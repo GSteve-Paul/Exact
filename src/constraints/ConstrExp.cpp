@@ -883,7 +883,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
     saturate(false, false);
     removeZeroes();
   } else {
-    weakenSuperfluous(div, false, []([[maybe_unused]] Var v) { return true; });
+    // weakenSuperfluous(div, false, []([[maybe_unused]] Var v) { return true; });
     removeZeroes();
     divideRoundUp(div);
     saturate(true, false);
