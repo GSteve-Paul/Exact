@@ -98,7 +98,7 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 
 ## Dependencies
 
-- C++17 (i.e., a reasonably recent C++ compiler)
+- A reasonably recent C++ compiler (GCC, Clang or MSVC should do)
 - [Boost](https://www.boost.org) library.
   On a Debian/Ubuntu system, install with `sudo apt install libboost-dev`.
 - Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
@@ -140,10 +140,10 @@ The current set of benchmarks which is used to assess performance is available [
 
 ## Citations
 
-If you use Exact, please **cite this repository** and the RoundingSat origin paper (which focuses on cutting planes conflict analysis):  
+If you use Exact, please **star and cite this repository** and cite the RoundingSat origin paper (which focuses on cutting planes conflict analysis):  
 **[EN18]** J. Elffers, J. Nordström. Divide and Conquer: Towards Faster Pseudo-Boolean Solving. *IJCAI 2018*
 
-When relevant, please cite the following papers as well.
+Please cite any of the foloowing papers if they are relevant.
 
 Integration with SoPlex:  
 **[DGN20]** J. Devriendt, A. Gleixner, J. Nordström. Learn to Relax: Integrating 0-1 Integer Linear Programming with Pseudo-Boolean Conflict-Driven Search. *CPAIOR 2020 / Constraints journal*
