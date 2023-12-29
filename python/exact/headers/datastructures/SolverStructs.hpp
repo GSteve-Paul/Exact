@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022 Jo Devriendt
+Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -100,32 +100,38 @@ struct Watch {
   bool operator==(const Watch& other) const { return other.cref == cref && other.idx == idx; }
 };
 
-// ---------------------------------------------------------------------
-// Memory. Maximum supported size of learnt constraint database is 16GB
+// ----------------------------------------------------------------------
+// Memory. Maximum supported size of learnt constraint database is 64GiB.
 
 struct ConstraintAllocator {
-  uint32_t* memory = nullptr;  // TODO: why not uint64_t?
-  uint32_t at = 0, cap = 0;
+  // NOTE: no uint64_t as this allows constraint reference CRef to be only 32 bit
+  std::byte* memory = nullptr;
+  uint32_t cap = 0;
+  uint32_t at = 0;
   uint32_t wasted = 0;  // for GC
-  void capacity(uint32_t min_cap);
+
+  void capacity(int64_t min_cap);
+
   template <typename C>
   C* alloc(int nTerms) {
-    uint32_t oldAt = at;
-    at += C::getMemSize(nTerms);
-    capacity(at);
-    return (C*)(memory + oldAt);
+    int64_t newAt = at;
+    newAt += C::getMemSize(nTerms);
+    capacity(newAt);
+    assert(newAt <= 0xffffffff);
+    C* res = (C*)(memory + maxAlign * at);
+    assert(size_t(res) % maxAlign == 0);
+    at = newAt;
+    return res;
   }
-  Constr& operator[](CRef cr) const { return (Constr&)*(memory + cr.ofs); }
+
+  Constr& operator[](CRef cr) const;
+
+  void cleanup();
 };
 
 class OutOfMemoryException : public std::exception {};
-static inline void* xrealloc(void* ptr, size_t size) {
-  void* mem = realloc(ptr, size);
-  if (mem == nullptr && errno == ENOMEM)
-    throw OutOfMemoryException();
-  else
-    return mem;
-}
+
+std::byte* xrealloc(std::byte* ptr, size_t oldsize, size_t newsize);
 
 }  // namespace xct
 

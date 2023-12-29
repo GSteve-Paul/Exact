@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022 Jo Devriendt
+Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -156,11 +156,8 @@ class Optimization final : public OptimizationSuper {
   void checkLazyVariables();
   void addLowerBound();
 
-  Ce32 reduceToCardinality(const CeSuper& core);                // does not modify core
-  [[nodiscard]] State reformObjective(const CeSuper& core);     // modifies core
-  [[nodiscard]] State reformObjectiveLog(const CeSuper& core);  // modifies core
-  [[nodiscard]] bool reformObjectiveLogTest(const CePtr<SMALL, LARGE>& core) const;
-  [[nodiscard]] State reformObjectiveSmallSum(const CeSuper& core);         // modifies core
+  Ce32 reduceToCardinality(const CeSuper& core);                            // does not modify core
+  [[nodiscard]] State reformObjective(const CeSuper& core);                 // modifies core
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
   void handleInconsistency(const CeSuper& core);                            // modifies core
   void handleNewSolution(const std::vector<Lit>& sol);

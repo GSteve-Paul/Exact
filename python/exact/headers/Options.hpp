@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022 Jo Devriendt
+Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -82,51 +82,25 @@ class VoidOption : public Option {
   bool val = false;
 
  public:
-  VoidOption(const std::string& n, const std::string& d) : Option{n, d} {}
+  VoidOption(const std::string& n, const std::string& d);
 
   explicit operator bool() const { return val; }
 
-  void printUsage(int colwidth) const override {
-    std::cout << " --" << name;
-    for (int i = name.size() + 3; i < colwidth; ++i) std::cout << " ";
-    std::cout << description << "\n";
-  }
-
-  void parse([[maybe_unused]] const std::string& v) override {
-    assert(v.empty());
-    val = true;
-  }
+  void printUsage(int colwidth) const override;
+  void parse([[maybe_unused]] const std::string& v) override;
 };
 
 class BoolOption : public Option {
   bool val = false;
 
  public:
-  BoolOption(const std::string& n, const std::string& d, bool v) : Option{n, d}, val(v) {}
+  BoolOption(const std::string& n, const std::string& d, bool v);
 
   explicit operator bool() const { return val; }
-  void set(bool v) { val = v; }
+  void set(bool v);
 
-  void printUsage(int colwidth) const override {
-    std::stringstream output;
-    output << " --" << name << "=" << val << " ";
-    std::cout << output.str();
-    for (int i = 0; i < colwidth - (int)output.str().size(); ++i) std::cout << " ";
-    std::cout << description << " (0 or 1)\n";
-  }
-
-  void parse(const std::string& v) override {
-    try {
-      int x = std::stoi(v);
-      if (x == 0 || x == 1) {
-        val = x;
-      } else {
-        throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
-      }
-    } catch (const std::invalid_argument& ia) {
-      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
-    }
-  }
+  void printUsage(int colwidth) const override;
+  void parse(const std::string& v) override;
 };
 
 template <typename T>
@@ -168,39 +142,16 @@ class EnumOption : public Option {
   std::vector<std::string> values;
 
  public:
-  EnumOption(const std::string& n, const std::string& d, const std::string& v, const std::vector<std::string>& vs)
-      : Option{n, d}, val(v), values(vs) {}
+  EnumOption(const std::string& n, const std::string& d, const std::string& v, const std::vector<std::string>& vs);
 
-  void printUsage(int colwidth) const override {
-    std::stringstream output;
-    output << " --" << name << "=" << val << " ";
-    std::cout << output.str();
-    for (int i = 0; i < colwidth - (int)output.str().size(); ++i) std::cout << " ";
-    std::cout << description << " (";
-    for (int i = 0; i < (int)values.size(); ++i) {
-      if (i > 0) std::cout << ", ";
-      std::cout << values[i];
-    }
-    std::cout << ")\n";
-  }
+  void printUsage(int colwidth) const override;
 
-  [[nodiscard]] bool valid(const std::string& v) const {
-    return std::find(std::begin(values), std::end(values), v) != std::end(values);
-  }
+  [[nodiscard]] bool valid(const std::string& v) const;
 
-  void parse(const std::string& v) override {
-    if (!valid(v)) {
-      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
-    }
-    val = v;
-  }
+  void parse(const std::string& v) override;
 
-  [[nodiscard]] bool is(const std::string& v) const {
-    assert(valid(v));
-    return val == v;
-  }
-
-  [[nodiscard]] const std::string& get() const { return val; }
+  [[nodiscard]] bool is(const std::string& v) const;
+  [[nodiscard]] const std::string& get() const;
 };
 
 struct Options {
@@ -235,7 +186,8 @@ struct Options {
                            [](const int& x) -> bool { return x >= 0; }};
   ValOption<std::string> proofLog{"proof-log", "Filename for the proof logs, left unspecified disables proof logging",
                                   "", "/path/to/file", [](const std::string&) -> bool { return true; }};
-  BoolOption proofZip{"proof-zip", "Generate proof file in ZIP format. This can alleviate space and IO constraints.", false};
+  BoolOption proofZip{"proof-zip", "Generate proof file in ZIP format. This can alleviate space and IO constraints.",
+                      false};
   ValOption<double> timeout{"timeout", "Timeout in seconds, 0 is infinite ", 0, "0 =< float",
                             [](double x) -> bool { return 0 <= x; }};
   ValOption<long long> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
@@ -255,14 +207,14 @@ struct Options {
   ValOption<double> dbExp{"db-exp",
                           "Exponent of the growth of the learned constraint database and the inprocessing intervals, "
                           "with log(#conflicts) as base",
-                          3.5, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
-  ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 1,
+                          1.1, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
+  ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 500,
                             "0 < float", [](const double& x) -> bool { return 0 < x; }};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
-  ValOption<double> propCounting{"prop-counting", "Counting propagation instead of watched propagation", 0.6,
-                                 "0 (no counting) =< float =< 1 (always counting)",
-                                 [](const double& x) -> bool { return 0 <= x && x <= 1; }};
+  ValOption<double> propWatched{"prop-watched", "Watched propagation instead of counting propagation", 1,
+                                "0 (always counting) =< float =< 1 (always watched)",
+                                [](const double& x) -> bool { return 0 <= x && x <= 1e9; }};
   ValOption<double> lpTimeRatio {
     "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
 #if WITHSOPLEX
@@ -309,8 +261,6 @@ struct Options {
   ValOption<float> cgHybrid{"cg",
                             "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
-  EnumOption cgEncoding{
-      "cg-encoding", "Encoding of the extension constraints", "lazysum", {"lazysum", "binary", "smallsum"}};
   ValOption<int> cgMaxCoef{"cg-maxcoef", "Max coefficient when reducing cores", 100, "1 =< int =< 1e9",
                            [](const int& x) -> bool { return x >= 1 && x <= limitAbs<int, long long>(); }};
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
@@ -365,8 +315,9 @@ struct Options {
       &varSeparate,
       &dbDecayLBD,
       &dbExp,
+      &dbScale,
       &dbSafeLBD,
-      &propCounting,
+      &propWatched,
 #if WITHSOPLEX
       &lpTimeRatio,
       &lpPivotBudget,
@@ -386,7 +337,6 @@ struct Options {
       &bitsReduced,
       &bitsLearned,
       &cgHybrid,
-      &cgEncoding,
       &cgMaxCoef,
       &cgResolveProp,
       &cgStrat,
@@ -403,57 +353,13 @@ struct Options {
   };
   unordered_map<std::string, Option*> name2opt;
 
-  Options() {
-    for (Option* opt : options) name2opt[opt->name] = opt;
-  }
-
   std::string formulaName;
 
-  void parseOption(const std::string& option, const std::string& value) {
-    if (name2opt.count(option) == 0) {
-      throw std::invalid_argument("Unknown option: " + option + ".\nCheck usage with --help");
-    } else {
-      name2opt[option]->parse(value);
-    }
-  }
+  Options();
 
-  void parseCommandLine(int argc, char** argv) {
-    if (argc == 0) return;
-    unordered_map<std::string, std::string> opt_val;
-    for (int i = 1; i < argc; i++) {
-      std::string arg = argv[i];
-      if (arg.substr(0, 2) != "--") {
-        formulaName = arg;
-      } else {
-        size_t eqindex = std::min(arg.size(), arg.find('='));
-        parseOption(arg.substr(2, eqindex - 2), arg.substr(std::min(arg.size(), eqindex + 1)));
-      }
-    }
-
-    if (help) {
-      usage(argv[0]);
-      throw EarlyTermination();
-    } else if (copyright) {
-      licenses::printUsed();
-      throw EarlyTermination();
-    } else if (licenseInfo.get() != "") {
-      licenses::printLicense(licenseInfo.get());
-      throw EarlyTermination();
-    }
-  }
-
-  void usage(const char* name) {
-    std::cout << "Welcome to Exact!\n\n";
-    std::cout << "Source code: https://gitlab.com/JoD/exact\n";
-    std::cout << "branch       " EXPANDED(GIT_BRANCH) "\n";
-    std::cout << "commit       " EXPANDED(GIT_COMMIT_HASH) "\n";
-    std::cout << "\n";
-    std::cout << "Usage: " << name << " [OPTIONS] instancefile\n";
-    std::cout << "or     cat instancefile | " << name << " [OPTIONS]\n";
-    std::cout << "\n";
-    std::cout << "Options:\n";
-    for (Option* opt : options) opt->printUsage(24);
-  }
+  void parseOption(const std::string& option, const std::string& value);
+  void parseCommandLine(int argc, char** argv);
+  void usage(const char* name);
 };
 
 }  // namespace xct

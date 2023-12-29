@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022 Jo Devriendt
+Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -96,13 +96,20 @@ using int256 = boost::multiprecision::int256_t;
 using bigint = boost::multiprecision::cpp_int;
 using ratio = boost::multiprecision::cpp_rational;
 
-template <typename K, typename V, typename H = std::hash<K>>
-using unordered_map = ankerl::unordered_dense::map<K, V, H>;
-// using unordered_map = std::unordered_map<K, V, H>;
+constexpr size_t maxAlign = 16;  // NOTE: size_t type to make sure multiplication is in the size_t domain
+static_assert(alignof(int128) <= maxAlign);
+static_assert(alignof(int256) <= maxAlign);
+static_assert(alignof(bigint) <= maxAlign);
 
-template <typename K, typename H = std::hash<K>>
-using unordered_set = ankerl::unordered_dense::set<K, H>;
-// using unordered_set = std::unordered_set<K, H>;
+template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;  // TODO: switch to this once Boost 1.81 is in Ubuntu
+// using unordered_map = std::unordered_map<K, V, H, KE>;
+// using unordered_map = boost::unordered_flat_map<K, V, H, KE>;
+
+template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+using unordered_set = ankerl::unordered_dense::set<K, H, KE>;
+// using unordered_set = std::unordered_set<K, H, KE>;
+// using unordered_set = boost::unordered_flat_set<K, V, H, KE>; // TODO: switch to this once Boost 1.81 is in Ubuntu
 
 enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, TIMEOUT, INPROCESSED };
@@ -157,10 +164,11 @@ void swapErase(T& indexable, size_t index) {
   indexable.pop_back();
 }
 
-template <typename T>
-bool contains(const std::vector<T>& v, const T& x) {
+template <typename T, typename S>
+bool contains(const T& v, const S& x) {
   return std::find(v.cbegin(), v.cend(), x) != v.cend();
 }
+bool contains(const std::string& s, char c);
 
 template <typename T>
 T ceildiv(const T& p, const T& q) {
@@ -423,22 +431,47 @@ uint32_t xorshift32();
 }  // namespace rng
 
 int32_t getRand(int32_t min, int32_t max);
-uint64_t hash(uint64_t x);
+
+template <typename T>
+uint64_t hash(const T& el) {
+  return std::hash<T>()(el);
+}
+template <>
+uint64_t hash(const uint64_t& el);
+// template <>
+// uint64_t hash(const boost::multiprecision::cpp_int& el);
+
+uint64_t shift_hash(uint64_t x);
+template <typename T>
+uint64_t hash_comb_unordered(uint64_t seed, const T& add) {
+  return seed ^ shift_hash(hash(add));
+}
+template <typename T>
+uint64_t hash_comb_ordered(uint64_t seed, const T& add) {
+  return seed ^ (shift_hash(hash(add)) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
 
 template <typename Element, typename Iterable>
 uint64_t hashForSet(const Iterable& els) {
   uint64_t result = els.size();
   for (const Element& el : els) {
-    result ^= hash(std::hash<Element>()(el));
+    result = hash_comb_unordered<Element>(result, el);
   }
   return result;
 }
-
 template <typename Element, typename Iterable>
 uint64_t hashForList(const Iterable& els) {
   uint64_t result = els.size();
   for (const Element& el : els) {
-    result ^= hash(std::hash<Element>()(el)) + 0x9e3779b9 + (result << 6) + (result >> 2);
+    result = hash_comb_ordered<Element>(result, el);
+  }
+  return result;
+}
+template <typename Element>
+uint64_t hashForArray(Element const* x, size_t n) {
+  uint64_t result = n;
+  for (size_t i = 0; i < n; ++i) {
+    result = hash_comb_ordered<Element>(result, x[i]);
   }
   return result;
 }
@@ -455,19 +488,35 @@ using predicate = std::function<bool(Args...)>;
 
 template <typename CONTAINER, typename LAM_MAP>
 auto comprehension(CONTAINER&& container, LAM_MAP&& map) {
-  std::vector<decltype(map(*container.begin()))> w;
-  w.reserve(container.size());
-  std::transform(container.begin(), container.end(), std::back_inserter(w), map);
+  std::vector<decltype(map(*container.begin()))> w(container.size());
+  int i = 0;
+  for (const auto& el : container) {
+    w[i] = map(el);
+    ++i;
+  }
+  return w;
+}
+
+template <typename T, typename LAM_MAP>
+auto comprehension_(T* x, size_t n, LAM_MAP&& map) {
+  std::vector<decltype(map(*x))> w(n);
+  for (size_t i = 0; i < n; ++i) {
+    w[i] = map(x[i]);
+  }
   return w;
 }
 
 template <typename CONTAINER, typename LAM_MAP, typename LAM_FILTER>
 auto comprehension(CONTAINER&& container, LAM_MAP&& map, LAM_FILTER&& filter) {
-  std::vector<decltype(map(*container.begin()))> w;
-  w.reserve(container.size());
+  std::vector<decltype(map(*container.begin()))> w(container.size());
+  int i = 0;
   for (const auto& el : container) {
-    if (filter(el)) w.push_back(map(el));
+    if (filter(el)) {
+      w[i] = map(el);
+      ++i;
+    }
   }
+  w.resize(i);
   return w;
 }
 

@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022 Jo Devriendt
+Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -88,6 +88,7 @@ class Heuristic {
   Lit getPhase(Var v) const;
 
   ActValV getActivity(Var v) const;
+  const std::vector<ActNode>& getActList() const;
   void randomize(const std::vector<int>& position);
   void vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position, double weightNew, long long nConfl);
   bool before(Var v1, Var v2) const;
