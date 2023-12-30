@@ -977,7 +977,7 @@ void ConstrExp<SMALL, LARGE>::weakenNonDivisibleCanceling(const LARGE& div, cons
   for (Var v : vars) {
     Lit l = getLit(v);
     if (coefs[v] % div != 0 && !isFalse(level, l) && (isTrue(level, l) || confl.getCoef(-l) < mult)) {
-      weaken(-static_cast<SMALL>(coefs[v] % div), v);
+      weaken(v); // weaken fully
     }
   }
 }
