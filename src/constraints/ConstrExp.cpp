@@ -883,17 +883,10 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
     saturate(false, false);
     removeZeroes();
   } else {
-    CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
-    copyTo(copy);
-    copy->weakenSuperfluousSweeping(div);
-    weakenSuperfluous(div, false, []([[maybe_unused]] Var v) { return true; });
+    // weakenSuperfluous(div, false, []([[maybe_unused]] Var v) { return true; });
     removeZeroes();
-    copy->removeZeroes();
     divideRoundUp(div);
     saturate(true, false);
-    copy->divideRoundUp(div);
-    copy->saturate(true, false);
-    compare(copy);
   }
 }
 
@@ -907,38 +900,20 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(div, level);
-  CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
-  copyTo(copy);
-  weakenSuperfluous(div);
-  copy->weakenSuperfluousSweeping(div);
+  // weakenSuperfluous(div);
   repairOrder();
-  assert(isSortedInDecreasingCoefOrder());
-  copy->repairOrder();
-  assert(copy->isSortedInDecreasingCoefOrder());
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
-  }
-  while (!copy->vars.empty() && copy->coefs[copy->vars.back()] == 0) {
-    copy->popLast();
   }
   assert(hasNoZeroes());
   if (div >= degree) {
     simplifyToClause();
-    copy->simplifyToClause();
-  } else if ((!vars.empty() && div >= aux::abs(coefs[vars[0]])) ||
-             (!copy->vars.empty() && div >= aux::abs(copy->coefs[copy->vars[0]]))) {
-    if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
-      simplifyToCardinality(false, getCardinalityDegree());
-    } else {
-      copy->simplifyToCardinality(false, copy->getCardinalityDegree());
-    }
+  } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
+    simplifyToCardinality(false, getCardinalityDegree());
   } else {
     divideRoundUp(div);
     saturate(true, true);
-    copy->divideRoundUp(div);
-    copy->saturate(true, true);
   }
-  compare(copy);
 }
 
 // NOTE: preserves ordered-ness
@@ -950,36 +925,20 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisibleCanceling(div, level, mult, confl);
-  CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
-  copyTo(copy);
-  weakenSuperfluousCanceling(div, pos);
-  copy->weakenSuperfluousSweepingCanceling(div, pos);
+  // weakenSuperfluousCanceling(div, pos);
   repairOrder();
-  copy->repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
-  }
-  while (!copy->vars.empty() && copy->coefs[copy->vars.back()] == 0) {
-    copy->popLast();
   }
   assert(hasNoZeroes());
   if (div >= degree) {
     simplifyToClause();
-    copy->simplifyToClause();
-  } else if ((!vars.empty() && div >= aux::abs(coefs[vars[0]])) ||
-             (!copy->vars.empty() && div >= aux::abs(copy->coefs[copy->vars[0]]))) {
-    if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
-      simplifyToCardinality(false, getCardinalityDegree());
-    } else {
-      copy->simplifyToCardinality(false, copy->getCardinalityDegree());
-    }
+  } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
+    simplifyToCardinality(false, getCardinalityDegree());
   } else {
     divideRoundUp(div);
     saturate(true, true);
-    copy->divideRoundUp(div);
-    copy->saturate(true, true);
   }
-  compare(copy);
 }
 
 // NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
@@ -1064,7 +1023,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, c
   for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
     Var v = vars[i];
     if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
-    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);  // same partial weakening as above
+    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
     if (r <= rem) {
       rem -= r;
       weaken(coefs[v] < 0 ? r : -r, v);
@@ -1107,81 +1066,6 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousCanceling(const LARGE& div, const
     }
   }
   assert(quot == aux::ceildiv(degree, div));
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div) {
-  assert(div > 1);
-  assert(!isTautology());
-  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
-  LARGE rem = (degree - 1) % div;
-  // TODO: store the remainders so they can just be looked up
-  long long bd = global.options.blockDivision.get();
-  LARGE shift = rem / bd;
-  if (shift == 0) shift = 1;
-  LARGE j = shift;
-  while (j <= rem) {
-    std::cout << "j " << j << " rem " << rem << std::endl;
-    for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
-      Var v = vars[i];
-      if (coefs[v] == 0 || saturatedVar(v)) continue;
-      SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);  // same partial weakening as above
-      if (r <= rem && r <= j && r != 0) {
-        std::cout << "weaken " << r << std::endl;
-        rem -= r;
-        weaken(coefs[v] < 0 ? r : -r, v);
-        if (rem < j) break;
-      }
-    }
-    j += shift;
-  }
-  assert(quot == aux::ceildiv(degree, div));
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweepingCanceling(const LARGE& div, const std::vector<int>& pos) {
-  assert(div > 1);
-  assert(!isTautology());
-  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
-  LARGE rem = (degree - 1) % div;
-
-  // TODO: store the remainders so they can just be looked up
-  int shift = 1;  // global.options.shiftOpt.get();
-  if (shift == 0) shift = 1;
-  int j = shift;
-  while (j <= rem) {
-    std::cout << "j " << j << " rem " << rem << std::endl;
-    for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
-      Var v = vars[i];
-      if (pos[v] == INF || coefs[v] == 0 || saturatedVar(v)) continue;
-      SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);  // same partial weakening as above
-      if (r <= rem && r <= j && r != 0) {
-        std::cout << "weaken " << r << std::endl;
-        rem -= r;
-        weaken(coefs[v] < 0 ? r : -r, v);
-        if (rem < j) break;
-      }
-    }
-    j += shift;
-  }
-  assert(quot == aux::ceildiv(degree, div));
-}
-
-template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
-  double non_sweeping_strength = getStrength();
-  double sweeping_strength = other->getStrength();
-
-  global.stats.SWEEPINGSTRENGHTSUM += sweeping_strength;
-  global.stats.NONSWEEPINGSTRENGTHSUM += non_sweeping_strength;
-
-  if (sweeping_strength > non_sweeping_strength) {
-    ++global.stats.NSWEEPINGSTRONGER;
-  } else if (sweeping_strength < non_sweeping_strength) {
-    ++global.stats.NSWEEPINGWEAKER;
-  } else {
-    ++global.stats.NSWEEPINGEQUAL;
-  }
 }
 
 template <typename SMALL, typename LARGE>

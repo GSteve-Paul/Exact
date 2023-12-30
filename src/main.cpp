@@ -20,71 +20,55 @@ or run with the flag --license=AGPLv3. If not, see
 
 #include <csignal>
 #include "ILP.hpp"
-#include "auxiliary.hpp"
-#include "constraints/Constr.hpp"
-#include "constraints/ConstrExp.hpp"
-#include "constraints/ConstrExpPools.hpp"
-#include "constraints/ConstrSimple.hpp"
 #include "quit.hpp"
+#include "constraints/ConstrExpPools.hpp"
+#include "constraints/ConstrExp.hpp"
+#include "constraints/Constr.hpp"
+#include "constraints/ConstrSimple.hpp"
+#include "auxiliary.hpp"
 
 using namespace xct;
 
 int main(int argc, char** argv) {
+
   // Global global;
+  // ConstrExp32 ce32(global);
 
-  // Solver solver(global);
-  // CeArb obj = global.cePools.takeArb();
-
-  // solver.init(obj);
+  // global.cePools.resize(5);
 
   // Ce32 constr = global.cePools.take32();
-  // solver.setNbVars(4, true);
 
   // // configure using addLhs and addRhs
-  // constr->addLhs(10, 1);
-  // constr->addLhs(10, 2);
-  // constr->addLhs(10, 3);
-  // constr->addLhs(1, 4);
+  // constr->addLhs(2, 1);
+  // constr->addLhs(3, 2);
+  // constr->addLhs(1, 3);
+  // constr->addLhs(4, 4);
 
-  // constr->addRhs(20);
+  // constr->addRhs(8);
 
-  // std::cout << "\n initial: " << std::endl;
   // constr->toStreamPure(std::cout);
+  // std::cout << "\n weaken first lit: " << std::endl;
 
-  // int cardDegree = constr->getCardinalityDegree();
+  // constr->weaken(1);
 
-  // std::cout << "\n cardinality degree: " << cardDegree << std::endl;
-
-  // bool isCard = constr->simplifyToCardinality(false, cardDegree);
-
-  // std::cout << "\n cardinality: " << std::endl;
   // constr->toStreamPure(std::cout);
+  // std::cout << "\n restore: " << std::endl;
 
-  // std::cout << "\n is cardinality: " << isCard << std::endl;
+  // constr->addLhs(2, 1);
+  // constr->addRhs(2);
 
-  // // constr->toStreamPure(std::cout);
-  // // std::cout << "\n weaken first lit: " << std::endl;
+  // constr->toStreamPure(std::cout);
+  // std::cout << "\n weaken superfluous: " << std::endl;
 
-  // // constr->weaken(1);
+  // // decide(1);
 
-  // // constr->toStreamPure(std::cout);
-  // // std::cout << "\n restore: " << std::endl;
+  // constr->weakenSuperfluous(2, false, []([[maybe_unused]] Var v) { return true; });
+  // // std::cout << "\n divide by 2 and round up: " << std::endl;
 
-  // // constr->addLhs(2, 1);
-  // // constr->addRhs(2);
+  // // constr->divideRoundUp(2);
 
-  // // constr->toStreamPure(std::cout);
-  // // std::cout << "\n weaken superfluous sweeping: " << std::endl;
-
-  // // // solver.decide(1);
-
-  // // constr->weakenSuperfluousSweeping(3, false, []([[maybe_unused]] Var v) { return true; });
-  // // // std::cout << "\n divide by 2 and round up: " << std::endl;
-
-  // // constr->divideRoundUp(3);
-
-  // // constr->toStreamPure(std::cout);
-  // // std::cout << "\n" << std::endl;
+  // constr->toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
 
   // return 0;
 
