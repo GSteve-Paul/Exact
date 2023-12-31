@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022 Jo Devriendt
+Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -83,8 +83,8 @@ struct IntSet;
 struct ConstrExpSuper {
   // protected:
   // for some reason (templates?) copyTo_ cannot acces external vars and indexes if protected
-  std::vector<Var> vars;
-  std::vector<int> index;  // -1 implies the variable has coefficient 0
+  std::vector<Var> vars;   // variables in the constraint
+  std::vector<int> index;  // maps variables to their index in vars, -1 implies the variable has coefficient 0
 
  public:
   Global& global;
@@ -163,7 +163,8 @@ struct ConstrExpSuper {
   virtual bool divideByGCD() = 0;
   virtual bool divideTo(double limit, const aux::predicate<Lit>& toWeaken) = 0;
   virtual AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const = 0;
-  virtual std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos) const = 0;
+  virtual std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
+                                                  std::vector<Lit>& litsByPos) const = 0;
   virtual void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos) = 0;
 
   virtual bool simplifyToCardinality(bool equivalencePreserving, int cardDegree) = 0;
@@ -177,7 +178,6 @@ struct ConstrExpSuper {
   virtual void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit) = 0;
 
   virtual bool isSortedInDecreasingCoefOrder() const = 0;
-  virtual void sortInDecreasingCoefOrder(const Heuristic& heur) = 0;
   virtual void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) = 0;
   virtual void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) = 0;
 
@@ -219,7 +219,7 @@ struct ConstrExp final : public ConstrExpSuper {
  public:
   LARGE degree = 0;
   LARGE rhs = 0;
-  std::vector<SMALL> coefs;
+  std::vector<SMALL> coefs;  // maps variables to coefficients
 
  private:
   void add(Var v, SMALL c, bool removeZeroes = false);
@@ -334,11 +334,17 @@ struct ConstrExp final : public ConstrExpSuper {
   void divideRoundUp(const LARGE& d);
   void divideRoundDown(const LARGE& d);
   void weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& toWeaken);
-  void weakenDivideRoundOrdered(const LARGE& div, const aux::predicate<Lit>& toWeaken,
-                                const aux::predicate<Var>& toWeakenSuperfluous);
+  void weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level);
+  void weakenDivideRoundOrderedCanceling(const LARGE& div, const IntMap<int>& level, const std::vector<int>& pos,
+                                         const SMALL& mult, const ConstrExp<SMALL, LARGE>& confl);
   void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
+  void weakenNonDivisible(const LARGE& div, const IntMap<int>& level);
+  void weakenNonDivisibleCanceling(const LARGE& div, const IntMap<int>& level, const SMALL& mult,
+                                   const ConstrExp<SMALL, LARGE>& confl);
   void repairOrder();
   void weakenSuperfluous(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken);
+  void weakenSuperfluous(const LARGE& div);
+  void weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
 
   bool divideByGCD();
@@ -346,7 +352,8 @@ struct ConstrExp final : public ConstrExpSuper {
   AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level
-  std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos) const;
+  std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
+                                          std::vector<Lit>& litsByPos) const;
   // @post: preserves order after removeZeroes()
   void weakenNonImplied(const IntMap<int>& level, const LARGE& slack);
   // @post: preserves order after removeZeroes()
@@ -379,7 +386,6 @@ struct ConstrExp final : public ConstrExpSuper {
   void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit);
 
   bool isSortedInDecreasingCoefOrder() const;
-  void sortInDecreasingCoefOrder(const Heuristic& heur);
   void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);
   void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
 
@@ -475,14 +481,20 @@ struct ConstrExp final : public ConstrExpSuper {
   template <typename CF, typename DG>
   int genericResolve(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o, Lit asserting,
                      const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
+    // "this" is the conflict constraint.
+    // The terms, degree, and other information from the reason constraint are in the arguments.
     assert(getCoef(-asserting) > 0);
     assert(hasNoZeroes());
 
+    // take an empty reason CE
     CePtr<SMALL, LARGE> reason = global.cePools.take<SMALL, LARGE>();
+    // add its data
     reason->initFixOverflow(terms, size, degr, id, o, level, pos, asserting);
+    // asserting literal has positive coefficient in reason
     assert(reason->getCoef(asserting) > 0);
     assert(reason->getCoef(asserting) > reason->getSlack(level));
 
+    // negation of asserting literal has positive coefficient in conflict
     const SMALL conflCoef = getCoef(-asserting);
     assert(conflCoef > 0);
     if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0
@@ -495,15 +507,13 @@ struct ConstrExp final : public ConstrExpSuper {
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
       if (global.options.division.is("rto")) {
-        reason->weakenDivideRoundOrdered(
-            reasonCoef, [&](Lit l) { return !isFalse(level, l); }, []([[maybe_unused]] Var v) { return true; });
+        reason->weakenDivideRoundOrdered(reasonCoef, level);
         reason->multiply(conflCoef);
         assert(reason->getSlack(level) <= 0);
       } else {
         const LARGE reasonSlack = reason->getSlack(level);
         if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
-          reason->weakenDivideRoundOrdered(
-              reasonSlack + 1, [&](Lit l) { return !isFalse(level, l); }, []([[maybe_unused]] Var v) { return true; });
+          reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
           assert(reason->getSlack(level) <= 0);
         } else {
@@ -544,14 +554,11 @@ struct ConstrExp final : public ConstrExpSuper {
               Lit l = reason->getLit(v);
               global.stats.NUNKNOWNROUNDEDUP += isUnknown(pos, v) && getCoef(-l) >= mult;
             }
-            reason->weakenDivideRoundOrdered(
-                bestDiv, [&](Lit l) { return !isFalse(level, l) && (isTrue(level, l) || getCoef(-l) < mult); },
-                [&](Var v) { return pos[v] != INF; });
+            reason->weakenDivideRoundOrderedCanceling(bestDiv, level, pos, mult, *this);
             reason->multiply(mult);
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
-            reason->weakenDivideRoundOrdered(
-                bestDiv, [&](Lit l) { return !isFalse(level, l); }, []([[maybe_unused]] Var v) { return true; });
+            reason->weakenDivideRoundOrdered(bestDiv, level);
             reason->multiply(mult);
             assert(reason->getSlack(level) <= 0);
           }
@@ -563,6 +570,9 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(reason->getCoef(asserting) < 2 * conflCoef);
     assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
+    // In most cases, at this point, the reason coefficient is equal to the conflict coefficient
+    // and the reason slack is at most zero, so we can safely add the reason to the conflict.
+
     for (Var v : reason->vars) {
       Lit ll = reason->getLit(v);
       if (isFalse(level, ll)) {
@@ -571,6 +581,7 @@ struct ConstrExp final : public ConstrExpSuper {
     }
 
     LARGE oldDegree = getDegree();
+    // add reason to conflict
     addUp(reason);
 
     std::vector<Var>& varsToCheck = oldDegree <= getDegree() ? reason->vars : vars;

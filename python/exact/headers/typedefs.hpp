@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022 Jo Devriendt
+Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -71,13 +71,14 @@ const ID ID_Undef = std::numeric_limits<ID>::max();
 const ID ID_Trivial = 1;  // represents constraint 0 >= 0
 inline bool isValid(ID id) { return id > 0 && id < ID_Undef; }
 
-using Var = int;
-using Lit = int;
+using Var = int32_t;
+using Lit = int32_t;
 inline Var toVar(Lit l) { return std::abs(l); }
 
-const int resize_factor = 2;
+const int32_t resize_factor = 2;
 
-const int INF = 1e9 + 1;  // 1e9 < 30 bits is the maximum number of variables in the system, anything beyond is infinity
+const int32_t INF =
+    1e9 + 1;  // 1e9 < 30 bits is the maximum number of variables in the system, anything beyond is infinity
 // NOTE: 31 bits is not possible due to the idx entry in the Watch struct
 const long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long long range captured by double
 
@@ -327,27 +328,28 @@ struct Cardinality;
 template <typename CF, typename DG>
 struct Counting;
 using Counting32 = Counting<int, long long>;
+using Counting64 = Counting<long long, int128>;
+using Counting96 = Counting<int128, int128>;
+using Counting128 = Counting<int128, int256>;
 template <typename CF, typename DG>
 struct CountingSafe;
-using Counting64 = CountingSafe<long long, int128>;
-using Counting96 = CountingSafe<int128, int128>;
-using Counting128 = CountingSafe<int128, int256>;
 using CountingArb = CountingSafe<bigint, bigint>;
 
 template <typename CF, typename DG>
 struct Watched;
 using Watched32 = Watched<int, long long>;
+using Watched64 = Watched<long long, int128>;
+using Watched96 = Watched<int128, int128>;
+using Watched128 = Watched<int128, int256>;
 template <typename CF, typename DG>
 struct WatchedSafe;
-using Watched64 = WatchedSafe<long long, int128>;
-using Watched96 = WatchedSafe<int128, int128>;
-using Watched128 = WatchedSafe<int128, int256>;
 using WatchedArb = WatchedSafe<bigint, bigint>;
 
 template <typename CF>
 struct Term {
   Term() : c(0), l(0) {}
   Term(const CF& x, Lit y) : c(x), l(y) {}
+  ~Term() = default;
   CF c;
   Lit l;
 };

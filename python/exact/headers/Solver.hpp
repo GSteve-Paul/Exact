@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022 Jo Devriendt
+Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -121,12 +121,14 @@ class Solver {
   IntMap<int> lit2consOldSize;
 
   IntMap<std::vector<Watch>> adj;
-  IntMap<int> level;  // TODO: make position, level, contiguous memory for better cache efficiency.
-  std::vector<int> position;
-  std::vector<Lit> trail;
-  std::vector<int> trail_lim;
-  std::vector<CRef> reason;
-  int qhead = 0;  // for unit propagation
+  // TODO: make position, level, contiguous memory for better cache efficiency.
+  IntMap<int> level;           // map from literal to decision level when on the trail. INF means unset.
+  std::vector<int> position;   // map from variable to index ('position') in the trail.
+  std::vector<Lit> trail;      // current assignment in chronological order
+  std::vector<int> trail_lim;  // for each level, first index on the trail. This is the index of the decision literal.
+  std::vector<CRef> reason;    // map from variable to reason constraint (when propagated, otherwise CRef_Undef)
+
+  int qhead = 0;  // tracks where next index on trail for constraint propagation
 
   std::vector<int> assumptions_lim;
   IntSet assumptions;
@@ -139,6 +141,11 @@ class Solver {
   long long nconfl_to_reduce = 0;
   long long nconfl_to_restart = 0;
   Var nextToSort = 0;
+
+  // vectors used in subroutines that should not be reallocated over and over
+  std::vector<Lit> assertionStateMem;
+  std::vector<std::pair<int, Lit>> litsToSubsumeMem;
+  std::vector<unsigned int> falsifiedIdcsMem;
 
   CeSuper getAnalysisCE(const CeSuper& conflict) const;
 
@@ -171,7 +178,8 @@ class Solver {
   // @return: formula line id, processed id, needed for optimization proof logging
   std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
   std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
-  void addUnitConstraint(Lit l, Origin orig);
+  std::pair<ID, ID> addUnitConstraint(Lit l, Origin orig);
+  std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
   void invalidateLastSol(const std::vector<Var>& vars);
 
   void dropExternal(ID id, bool erasable, bool forceDelete);
@@ -232,7 +240,7 @@ class Solver {
   // Conflict analysis
 
   [[nodiscard]] CeSuper analyze(const CeSuper& confl);
-  void minimize(const CeSuper& conflict);
+  void minimize(CeSuper& conflict);
   void extractCore(const CeSuper& confl, Lit l_assump = 0);
 
   // ---------------------------------------------------------------------

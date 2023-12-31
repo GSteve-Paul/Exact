@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022 Jo Devriendt
+Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -37,7 +37,6 @@ Copyright (c) 2014-2021, Jakob Nordström
 Parts of the code were copied or adapted from MiniSat.
 
 MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
-           Copyright (c) 2007-2010  Niklas Sorensson
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
@@ -71,13 +70,10 @@ struct Stat {
   std::string name;
 };
 
-inline std::ostream& operator<<(std::ostream& o, const Stat& stat) {
-  o << stat.name << " ";
-  return aux::prettyPrint(o, stat.z);
-}
+std::ostream& operator<<(std::ostream& o, const Stat& stat);
 
-inline void operator++(Stat& stat) { stat.z++; }
-inline void operator--(Stat& stat) { stat.z--; }
+void operator++(Stat& stat);
+void operator--(Stat& stat);
 template <typename IN>
 Stat& operator+=(Stat& stat, const IN& rhs) {
   stat.z += static_cast<StatNum>(rhs);
@@ -96,7 +92,7 @@ template <typename IN>
 StatNum operator+(const IN& in, const Stat& stat) {
   return static_cast<StatNum>(in) + stat.z;
 }
-inline StatNum operator+(const Stat& x, const Stat& y) { return x.z + y.z; }
+StatNum operator+(const Stat& x, const Stat& y);
 template <typename IN>
 StatNum operator-(const Stat& stat, const IN& in) {
   return stat.z - static_cast<StatNum>(in);
@@ -105,7 +101,7 @@ template <typename IN>
 StatNum operator-(const IN& in, const Stat& stat) {
   return static_cast<StatNum>(in) - stat.z;
 }
-inline StatNum operator-(const Stat& x, const Stat& y) { return x.z - y.z; }
+StatNum operator-(const Stat& x, const Stat& y);
 template <typename IN>
 StatNum operator*(const Stat& stat, const IN& in) {
   return stat.z * static_cast<StatNum>(in);
@@ -114,7 +110,7 @@ template <typename IN>
 StatNum operator*(const IN& in, const Stat& stat) {
   return static_cast<StatNum>(in) * stat.z;
 }
-inline StatNum operator*(const Stat& x, const Stat& y) { return x.z * y.z; }
+StatNum operator*(const Stat& x, const Stat& y);
 template <typename IN>
 StatNum operator/(const Stat& stat, const IN& in) {
   return stat.z / static_cast<StatNum>(in);
@@ -123,7 +119,7 @@ template <typename IN>
 StatNum operator/(const IN& in, const Stat& stat) {
   return static_cast<StatNum>(in) / stat.z;
 }
-inline StatNum operator/(const Stat& x, const Stat& y) { return x.z / y.z; }
+StatNum operator/(const Stat& x, const Stat& y);
 template <typename IN>
 bool operator==(const Stat& stat, const IN& in) {
   return stat.z == static_cast<StatNum>(in);
@@ -132,7 +128,7 @@ template <typename IN>
 bool operator==(const IN& in, const Stat& stat) {
   return static_cast<StatNum>(in) == stat.z;
 }
-inline bool operator==(const Stat& x, const Stat& y) { return x.z == y.z; }
+bool operator==(const Stat& x, const Stat& y);
 template <typename IN>
 bool operator>(const Stat& stat, const IN& in) {
   return stat.z > static_cast<StatNum>(in);
@@ -141,7 +137,7 @@ template <typename IN>
 bool operator>(const IN& in, const Stat& stat) {
   return static_cast<StatNum>(in) > stat.z;
 }
-inline bool operator>(const Stat& x, const Stat& y) { return x.z > y.z; }
+bool operator>(const Stat& x, const Stat& y);
 template <typename IN>
 bool operator<(const Stat& stat, const IN& in) {
   return stat.z < static_cast<StatNum>(in);
@@ -150,7 +146,7 @@ template <typename IN>
 bool operator<(const IN& in, const Stat& stat) {
   return static_cast<StatNum>(in) < stat.z;
 }
-inline bool operator<(const Stat& x, const Stat& y) { return x.z < y.z; }
+bool operator<(const Stat& x, const Stat& y);
 template <typename IN>
 bool operator<=(const Stat& stat, const IN& in) {
   return stat.z <= static_cast<StatNum>(in);
@@ -159,7 +155,7 @@ template <typename IN>
 bool operator<=(const IN& in, const Stat& stat) {
   return static_cast<StatNum>(in) <= stat.z;
 }
-inline bool operator<=(const Stat& x, const Stat& y) { return x.z <= y.z; }
+bool operator<=(const Stat& x, const Stat& y);
 template <typename IN>
 bool operator>=(const Stat& stat, const IN& in) {
   return stat.z >= static_cast<StatNum>(in);
@@ -168,7 +164,7 @@ template <typename IN>
 bool operator>=(const IN& in, const Stat& stat) {
   return static_cast<StatNum>(in) >= stat.z;
 }
-inline bool operator>=(const Stat& x, const Stat& y) { return x.z >= y.z; }
+bool operator>=(const Stat& x, const Stat& y);
 
 struct Stats {
   Stat NTRAILPOPS{0, "trail pops"};
@@ -189,8 +185,6 @@ struct Stats {
   Stat NPROPCOUNTING{0, "counting propagations"};
   Stat NRESOLVESTEPS{0, "resolve steps"};
   Stat NSUBSUMESTEPS{0, "self-subsumptions"};
-  Stat NWATCHED{0, "watched constraints"};
-  Stat NCOUNTING{0, "counting constraints"};
 
   Stat EXTERNLENGTHSUM{0, "input length sum"};
   Stat EXTERNDEGREESUM{0, "input degree sum"};
@@ -232,6 +226,13 @@ struct Stats {
   Stat NCLAUSESLEARNED{0, "learned clauses"};
   Stat NCARDINALITIESLEARNED{0, "learned cardinalities"};
   Stat NGENERALSLEARNED{0, "learned general constraints"};
+
+  Stat NSMALL{0, "small coef constraints"};
+  Stat NLARGE{0, "large coef constraints"};
+  Stat NARB{0, "arbitrary coef constraints"};
+
+  Stat NWATCHED{0, "watched constraints"};
+  Stat NCOUNTING{0, "counting constraints"};
 
   Stat NCLEANUP{0, "inprocessing phases"};
   Stat NRESTARTS{0, "restarts"};
@@ -393,6 +394,11 @@ struct Stats {
       &NPURELITS,
       &NSATISFIEDSREMOVED,
       &NCONSREADDED,
+      &NWATCHED,
+      &NCOUNTING,
+      &NSMALL,
+      &NLARGE,
+      &NARB,
       &NPROBINGS,
       &PROBETIME,
       &NPROBINGLITS,
@@ -401,8 +407,6 @@ struct Stats {
       &NPROBINGIMPLMEM,
       &ATMOSTONES,
       &NATMOSTONEUNITS,
-      &NWATCHED,
-      &NCOUNTING,
       &NRESOLVESTEPS,
       &NSUBSUMESTEPS,
       &NGCD,
@@ -471,52 +475,18 @@ struct Stats {
 #endif  // WITHSOPLEX
   };
 
-  [[nodiscard]] inline StatNum getTime() const {
-    return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - startTime)
-        .count();
-  }
-  [[nodiscard]] inline StatNum getRunTime() const {
-    return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - runStartTime)
-        .count();
-  }
-  [[nodiscard]] inline StatNum getSolveTime() const { return SOLVETIMEFREE + SOLVETIMEASSUMP; }
+  [[nodiscard]] StatNum getTime() const;
+  [[nodiscard]] StatNum getRunTime() const;
+  [[nodiscard]] StatNum getSolveTime() const;
   // NOTE: below linear relations were determined by regression tests on experimental data,
   // so that the deterministic time correlates as closely as possible with the cpu time in seconds
-  [[nodiscard]] inline StatNum getLpDetTime() const {
-    return (5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9;
-  }
-  [[nodiscard]] inline StatNum getNonLpDetTime() const {
-    return (49.00 * NWATCHLOOKUPS + 9.09 * NWATCHCHECKS + 3.55 * NPROPCHECKS + 60.69 * NSATURATESTEPS +
-            61.86 * (NADDEDLITERALS - NLPADDEDLITERALS) + 1484.40 * NWEAKENEDNONIMPLIED + 268.51 * NTRAILPOPS) /
-           1e9;
-  }
+  [[nodiscard]] StatNum getLpDetTime() const;
+  [[nodiscard]] StatNum getNonLpDetTime() const;
+  [[nodiscard]] StatNum getDetTime() const;
 
-  [[nodiscard]] inline StatNum getDetTime() const { return getLpDetTime() + getNonLpDetTime(); }
-
-  void print(const StatNum& lowerbound, const StatNum& upperbound) {
-    setDerivedStats(lowerbound, upperbound);
-    for (Stat* s : statsToDisplay) {
-      std::cout << "c " << *s << std::endl;
-    }
-  }
-
-  void printCsvLine(const StatNum& lowerbound, const StatNum& upperbound) {
-    setDerivedStats(lowerbound, upperbound);
-    std::cout << "c csvline";
-    for (Stat* s : statsToDisplay) {
-      aux::prettyPrint(std::cout << ",", s->z);
-    }
-    std::cout << std::endl;
-  }
-
-  void printCsvHeader() {
-    setDerivedStats(std::numeric_limits<StatNum>::quiet_NaN(), std::numeric_limits<StatNum>::quiet_NaN());
-    std::cout << "c csvheader";
-    for (Stat* s : statsToDisplay) {
-      std::cout << "," << s->name;
-    }
-    std::cout << std::endl;
-  }
+  void print(const StatNum& lowerbound, const StatNum& upperbound);
+  void printCsvLine(const StatNum& lowerbound, const StatNum& upperbound);
+  void printCsvHeader();
 };
 
 }  // namespace xct
