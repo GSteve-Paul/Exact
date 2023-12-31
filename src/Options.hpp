@@ -320,7 +320,7 @@ struct Options {
       &dbScale,
       &dbSafeLBD,
       &propWatched,
-      &shift,
+      &blockDivision,
 #if WITHSOPLEX
       &lpTimeRatio,
       &lpPivotBudget,
