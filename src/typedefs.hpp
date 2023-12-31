@@ -357,11 +357,16 @@ struct Term {
 using Term32 = Term<int>;
 using Term64 = Term<long long>;
 using Term128 = Term<int128>;
-using Term256 = Term<int256>;
 using TermArb = Term<bigint>;
 
 class OptimizationSuper;
 using Optim = std::shared_ptr<OptimizationSuper>;
+template <typename SMALL, typename LARGE>
+class Optimization;
+using Optim32 = std::shared_ptr<Optimization<int, long long>>;
+using Optim64 = std::shared_ptr<Optimization<long long, int128>>;
+using Optim128 = std::shared_ptr<Optimization<int128, int256>>;
+using OptimArb = std::shared_ptr<Optimization<bigint, bigint>>;
 
 template <typename CF>
 std::ostream& operator<<(std::ostream& o, const Term<CF>& t) {

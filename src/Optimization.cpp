@@ -143,7 +143,22 @@ void LazyVar<SMALL, LARGE>::addFinalAtMost() {
 OptimizationSuper::OptimizationSuper(Solver& s, Global& g) : solver(s), global(g) {}
 
 Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, Global& g) {
-  bigint maxVal = obj->getCutoffVal() * INF;  // INF factor allows adding log-encoded core to the objective
+  bigint maxVal = obj->absCoeffSum();
+  // The argument that maxVal is a safe upper bound is that we may *increase* the coefficient of assumption literals
+  // during core-based reformulation, but never higher than the original coefficient sum.
+  // E.g., ax+by+cz
+  // assuming q to false may yield the sequence of cores q+x>=1, q+y>=1, q+z>=1.
+  // these will lead to the following reformulation equalities: x=u+~q, y=v+~q, z=w+~q.
+  // with final reformulation (a+b+c)~q + au + bv + cz.
+  // Sum of coefficients is a sensible upper bound, since the assumption of the corresponding literal to true would
+  // mean that the objective is at its maximal value.
+  //
+  // Since q is assumed to false (user assumption) and auxiliaries u, v, w are assumed to false (reformulated objective
+  // literals), the only cores that will increase q at the expense of u, v, w are those where both q and u, v, w are
+  // positive. However, since q and u, v, w have opposed polarity in the reformulation equalities, no such cores exist.
+  // Hence, q's coefficient will not be reformulated beyond the sum of coefficients.
+  // TODO: get a more rigorous proof from this argument?
+
   if (maxVal <= static_cast<bigint>(limitAbs<int, long long>())) {  // TODO: try to internalize this check in ConstrExp
     Ce32 o = g.cePools.take32();
     obj->copyTo(o);
