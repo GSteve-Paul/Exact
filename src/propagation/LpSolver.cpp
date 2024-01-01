@@ -535,9 +535,6 @@ CeSuper LpSolver::inProcess() {
   for (int i = 0; i < lpSol.dim(); ++i) lpSolution[i] = lpSol[i];
   lp.getSlacksReal(lpSlackSolution);
   assert(solver.getNbVars() + 1 >= getNbCols());
-  for (Var v = 1; v < getNbCols(); ++v) {
-    solver.freeHeur.setPhase(v, (lpSolution[v] <= 0.5) ? -v : v);
-  }
   double objVal = lp.objValueReal();
   if (isfinite(objVal)) {
     if (isnan(global.stats.LPOBJ.z) || global.stats.LPOBJ.z < objVal) {

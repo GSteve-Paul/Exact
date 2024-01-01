@@ -106,8 +106,7 @@ void Solver::setNbVars(int nvars, bool orig) {
   level.resize(nvars, INF);
   position.resize(nvars + 1, INF);
   reason.resize(nvars + 1, CRef_Undef);
-  freeHeur.resize(nvars + 1);
-  cgHeur.resize(nvars + 1);
+  heur.resize(nvars + 1);
   global.cePools.resize(nvars + 1);
   objective->resize(nvars + 1);
   equalities.setNbVars(nvars);
@@ -138,13 +137,11 @@ Logger& Solver::getLogger() { return global.logger; }
 
 void Solver::fixPhase(const std::vector<std::pair<Var, Lit>>& vls, bool bump) {
   for (const auto& vl : vls) {
-    cgHeur.setFixedPhase(vl.first, vl.second);
-    freeHeur.setFixedPhase(vl.first, vl.second);
+    heur.setFixedPhase(vl.first, vl.second);
   }
   if (bump) {
     std::vector<Var> vs = aux::comprehension(vls, [](const std::pair<Var, Lit>& vl) { return vl.first; });
-    cgHeur.vBumpActivity(vs, getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
-    freeHeur.vBumpActivity(vs, getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
+    heur.vBumpActivity(vs, getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
   }
 }
 
@@ -194,7 +191,7 @@ void Solver::undoOne() {
   trail.pop_back();
   level[l] = INF;
   position[v] = INF;
-  heur->undoOne(v, l);
+  heur.undoOne(v, l);
   if (isDecided(reason, v)) {
     assert(!trail_lim.empty());
     assert(trail_lim.back() == (int)trail.size());
@@ -416,7 +413,7 @@ resolve:
 
   aux::timeCallVoid(
       [&] {
-        heur->vBumpActivity(actSet.getKeysMutable(), getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
+        heur.vBumpActivity(actSet.getKeysMutable(), getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
       },
       global.stats.HEURTIME);
   global.isPool.release(actSet);
@@ -521,7 +518,7 @@ void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
 
   aux::timeCallVoid(
       [&] {
-        heur->vBumpActivity(actSet.getKeysMutable(), getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
+        heur.vBumpActivity(actSet.getKeysMutable(), getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
       },
       global.stats.HEURTIME);
   global.isPool.release(actSet);
@@ -816,9 +813,6 @@ void Solver::setAssumptions(const std::vector<Lit>& assumps) {
     assumptions.add(l);
   }
   assumptions_lim.reserve((int)assumptions.size() + 1);
-  if (global.options.varSeparate && !assumps.empty()) {
-    heur = &cgHeur;
-  }
 }
 
 void Solver::clearAssumptions() {
@@ -826,7 +820,6 @@ void Solver::clearAssumptions() {
   backjumpTo(0);
   assert(assumptionLevel() == 0);
   assumptions_lim[0] = 0;
-  heur = &freeHeur;
 }
 
 bool Solver::assumptionsClashWithUnits() const {
@@ -1057,7 +1050,7 @@ void Solver::presolve() {
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   nconfl_to_restart = global.options.lubyMult.get();
-  aux::timeCallVoid([&] { heur->randomize(getPos()); }, global.stats.HEURTIME);
+  aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);
   aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
 
 #if WITHSOPLEX
@@ -1300,7 +1293,7 @@ SolveState Solver::solve() {
         }
       }
       if (next == 0) {
-        next = aux::timeCall<Lit>([&] { return heur->pickBranchLit(getPos()); }, global.stats.HEURTIME);
+        next = aux::timeCall<Lit>([&] { return heur.pickBranchLit(getPos()); }, global.stats.HEURTIME);
       }
       if (next == 0) {
         assert((int)trail.size() == getNbVars());
@@ -1486,7 +1479,7 @@ void Solver::runAtMostOneDetection() {
   int currentUnits = trail.size();
   std::vector<Lit> previous;
   unordered_set<Lit> considered;
-  Lit next = heur->firstInActOrder();
+  Lit next = heur.firstInActOrder();
   while (next != 0 &&
          (global.options.inpAMO.get() == 1 ||
           global.stats.ATMOSTONEDETTIME <
@@ -1494,7 +1487,7 @@ void Solver::runAtMostOneDetection() {
     previous.clear();
     detectAtMostOne(-next, considered, previous);
     detectAtMostOne(next, considered, previous);
-    next = heur->nextInActOrder(next);
+    next = heur.nextInActOrder(next);
   }
   global.stats.NATMOSTONEUNITS += trail.size() - currentUnits;
 }

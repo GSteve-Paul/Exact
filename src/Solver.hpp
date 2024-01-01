@@ -109,9 +109,7 @@ class Solver {
   bool firstRun;
 
   ConstraintAllocator ca;
-  Heuristic freeHeur;
-  Heuristic cgHeur;
-  Heuristic* heur = &freeHeur;
+  Heuristic heur;
 
   std::vector<CRef> constraints;  // row-based view
   unordered_map<ID, CRef> external;
@@ -169,7 +167,7 @@ class Solver {
   const std::vector<int>& getPos() const { return position; }
   Equalities& getEqualities() { return equalities; }
   Implications& getImplications() { return implications; }
-  const Heuristic& getHeuristic() const { return *heur; }
+  const Heuristic& getHeuristic() const { return heur; }
   void fixPhase(const std::vector<std::pair<Var, Lit>>& vls, bool bump = false);
 
   int decisionLevel() const { return trail_lim.size(); }
