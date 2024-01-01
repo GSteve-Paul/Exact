@@ -125,10 +125,10 @@ void Solver::setNbVars(int nvars, bool orig) {
 }
 
 void Solver::setObjective(const CeArb& obj) {
-  obj->reset(true);
-  obj->copyTo(objective);
   obj->removeUnitsAndZeroes(getLevel(), getPos());
   obj->removeEqualities(getEqualities(), false);
+  objective->reset(true);
+  obj->copyTo(objective);
   if (lpSolver) lpSolver->setObjective(objective);
 }
 

@@ -687,5 +687,15 @@ struct ConstrExp final : public ConstrExpSuper {
     return result;
   }
 };
+template <typename SMALL, typename LARGE>
+std::ostream& operator<<(std::ostream& o, const ConstrExp<SMALL, LARGE>& ce) {
+  ce.toStreamAsOPB(o);
+  return o;
+}
+template <typename SMALL, typename LARGE>
+std::ostream& operator<<(std::ostream& o, const CePtr<SMALL, LARGE>& ce) {
+  ce->toStreamAsOPB(o);
+  return o;
+}
 
 }  // namespace xct
