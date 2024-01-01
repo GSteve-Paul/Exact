@@ -184,7 +184,7 @@ Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, Global& g) {
 
 template <typename SMALL, typename LARGE>
 Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, Global& g)
-    : OptimizationSuper(s, g), origObj(obj), somethingHappened(false), firstRun(true) {
+    : OptimizationSuper(s, g), origObj(obj), somethingHappened(false) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
   lower_bound = -origObj->getDegree();
   upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
@@ -474,11 +474,7 @@ void Optimization<SMALL, LARGE>::harden() {
 
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumptions) {
-  if (firstRun) {
-    firstRun = false;
-    solver.presolve();
-  }
-
+  solver.presolve();  // will run only once
   while (true) {
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
     // constraint yields UNSAT, at which case core-guided search can derive any constraint.

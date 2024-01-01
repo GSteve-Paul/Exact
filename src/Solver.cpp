@@ -71,6 +71,7 @@ namespace xct {
 Solver::Solver(Global& g)
     : global(g),
       n(0),
+      firstRun(true),
       assumptions_lim({0}),
       equalities(*this),
       implications(*this),
@@ -1051,6 +1052,9 @@ void Solver::sortWatchlists() {
 }
 
 void Solver::presolve() {
+  if (!firstRun) return;
+  firstRun = false;
+
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   nconfl_to_restart = global.options.lubyMult.get();
   aux::timeCallVoid([&] { heur->randomize(getPos()); }, global.stats.HEURTIME);

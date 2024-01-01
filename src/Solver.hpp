@@ -106,6 +106,7 @@ class Solver {
   Global& global;
   int n;
   std::vector<bool> isorig;
+  bool firstRun;
 
   ConstraintAllocator ca;
   Heuristic freeHeur;
