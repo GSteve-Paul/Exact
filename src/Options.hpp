@@ -129,10 +129,10 @@ class ValOption : public Option {
     try {
       set(aux::sto<T>(v));
     } catch (const std::invalid_argument& ia) {
-      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
+      throw InvalidArgument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
     if (!check(val)) {
-      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
+      throw InvalidArgument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
   }
 };
