@@ -101,6 +101,9 @@ std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
   return o;
 }
 
+class OptimizationSuper;
+using Optim = std::unique_ptr<OptimizationSuper>;
+
 class OptimizationSuper {
  protected:
   Solver& solver;
@@ -137,7 +140,7 @@ class Optimization final : public OptimizationSuper {
 
   // State variables during solve loop:
   SolveState reply;
-  float stratDiv;
+  double stratDiv;
   double stratLim;
   bool coreguided;
   bool somethingHappened;

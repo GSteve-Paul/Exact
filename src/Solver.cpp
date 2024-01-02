@@ -1049,6 +1049,7 @@ void Solver::presolve() {
   firstRun = false;
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
+  aux::rng::seed = global.options.randomSeed.get();
   nconfl_to_restart = global.options.lubyMult.get();
   aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);
   aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);

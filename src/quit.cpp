@@ -88,10 +88,8 @@ void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
 
 void quit::printFinalStats(ILP& ilp) {
   if (ilp.global.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
-  StatNum lb = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getLowerBound())
-                                     : std::numeric_limits<StatNum>::quiet_NaN();
-  StatNum ub = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getUpperBound())
-                                     : std::numeric_limits<StatNum>::quiet_NaN();
+  StatNum lb = static_cast<StatNum>(ilp.getLowerBound());
+  StatNum ub = static_cast<StatNum>(ilp.getUpperBound());
   if (ilp.global.options.verbosity.get() > 0) ilp.global.stats.print(lb, ub);
   if (ilp.global.options.printCsvData) ilp.global.stats.printCsvLine(lb, ub);
   if (ilp.global.options.printOpb) ilp.printFormula();

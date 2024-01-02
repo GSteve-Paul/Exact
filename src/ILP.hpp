@@ -32,6 +32,7 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #include <string>
 #include "Global.hpp"
+#include "Optimization.hpp"
 #include "Solver.hpp"
 #include "datastructures/IntSet.hpp"
 #include "typedefs.hpp"
@@ -127,11 +128,10 @@ class ILP {
  public:
   ILP(bool keepIn = false);
 
-  const IntConstraint& getObjective() const { return obj; }
-  Solver& getSolver() { return solver; }
-  Optim getOptimization() { return optim; }
-  void setMaxSatVars() { maxSatVars = solver.getNbVars(); }
-  int getMaxSatVars() const { return maxSatVars; }
+  const IntConstraint& getObjective() const;
+  Solver& getSolver();
+  void setMaxSatVars();
+  int getMaxSatVars() const;
 
   IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound,
                  const std::string& encoding = "", bool nameAsId = false);
@@ -150,8 +150,6 @@ class ILP {
   void setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals);
   void clearSolutionHints(const std::vector<IntVar*>& ivs);
 
-  bool initialized() const;
-  void init();
   SolveState runOnce(bool optimize);
   SolveState runFull(bool optimize, double timeout = 0);
   void runInternal(int argc, char** argv);

@@ -45,8 +45,11 @@ class Exact {
  public:
   /**
    * Create an instance of the Exact solver.
+   *
+   * @param: list of pairs of option names and values for the option, both encoded as a string. Run with --help or look
+   * at Options.hpp to find the possible options. Options without an argument are activated regardless of any value.
    */
-  Exact();
+  Exact(const std::vector<std::pair<std::string, std::string>>& options = {});
 
   /**
    * Add a bounded integer variable.
@@ -218,19 +221,24 @@ class Exact {
   void clearSolutionHints(const std::vector<std::string>& vars);
 
   /**
-   * Initialize the solver with an objective function to be minimized.
+   * Pass an objective function to be minimized.
    *
-   * This function should be called exactly once, before the search.
-   * Constraints and variables can still be added after initialization is called.
+   * This function can be called multiple times, replacing the previous objective with the new one.
+   * Any constraints implied by the previous objective are *not* removed. If this is desired, add an auxiliary variable
+   * to the objective that can disable objective bounds. E.g., if the objective is x+2y+3z, then adding the auxiliary
+   * variable a with coefficient 6 and assuming it to true will allow the invalidation of any objective bound later on
+   * by fixing it to false.
+   * I.e., any bound on x+2y+3z+6a with a assumed to true will have at least 6 as upper bound, and fixing a to false
+   * will satisfy any such upper bound, in effect disabling the upper bound constraints.
    *
    * @param coefs: coefficients of the objective function
    * @param vars: variables of the objective function
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, long long offset = 0);
-  void init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars,
-            const std::string& offset = "0");
+  void setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars, long long offset = 0);
+  void setObjective(const std::vector<std::string>& coefs, const std::vector<std::string>& vars,
+                    const std::string& offset = "0");
 
   /**
    * Start / continue the search.
@@ -405,15 +413,6 @@ class Exact {
    * @return: an integer value
    */
   long long count(const std::vector<std::string>& vars, double timeout = 0);
-
-  /**
-   * Set solver options. Run with --help or look at Options.hpp to find the possible options.
-   *
-   * @param option: name of the option
-   * @param value: value for the option encoded as a string. Boolean options, when passed, are set to true regardless of
-   * this value.
-   */
-  void setOption(const std::string& option, const std::string& value);
 
   // TODO: void getStat()
 };

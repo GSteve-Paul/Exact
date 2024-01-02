@@ -108,6 +108,7 @@ uint32_t xorshift32() {
 }  // namespace rng
 
 int32_t getRand(int32_t min, int32_t max) {
+  assert(rng::seed != 0);
   // based on https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction
   assert(min < max);
   return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) + min;

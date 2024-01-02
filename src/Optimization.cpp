@@ -162,23 +162,23 @@ Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, Global& g) {
   if (maxVal <= static_cast<bigint>(limitAbs<int, long long>())) {  // TODO: try to internalize this check in ConstrExp
     Ce32 o = g.cePools.take32();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int, long long>>(o, solver, g);
+    return std::make_unique<Optimization<int, long long>>(o, solver, g);
   } else if (maxVal <= static_cast<bigint>(limitAbs<long long, int128>())) {
     Ce64 o = g.cePools.take64();
     obj->copyTo(o);
-    return std::make_shared<Optimization<long long, int128>>(o, solver, g);
+    return std::make_unique<Optimization<long long, int128>>(o, solver, g);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
     Ce96 o = g.cePools.take96();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int128, int128>>(o, solver, g);
+    return std::make_unique<Optimization<int128, int128>>(o, solver, g);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
     Ce128 o = g.cePools.take128();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int128, int256>>(o, solver, g);
+    return std::make_unique<Optimization<int128, int256>>(o, solver, g);
   } else {
     CeArb o = g.cePools.takeArb();
     obj->copyTo(o);
-    return std::make_shared<Optimization<bigint, bigint>>(o, solver, g);
+    return std::make_unique<Optimization<bigint, bigint>>(o, solver, g);
   }
 }
 

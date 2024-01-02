@@ -295,7 +295,13 @@ void IntConstraint::normalize() {
 
 ILP::ILP(bool keepIn) : global(), solver(global), obj({}, {}, {}, 0), keepInput(keepIn) {
   global.stats.startTime = std::chrono::steady_clock::now();
+  setObjective({}, {}, {});
 }
+
+const IntConstraint& ILP::getObjective() const { return obj; }
+Solver& ILP::getSolver() { return solver; }
+void ILP::setMaxSatVars() { maxSatVars = solver.getNbVars(); }
+int ILP::getMaxSatVars() const { return maxSatVars; }
 
 IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound,
                     const std::string& encoding, bool nameAsId) {
@@ -331,9 +337,11 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   if (coefs.size() != vars.size() || (!negated.empty() && negated.size() != vars.size()))
     throw std::invalid_argument("Coefficient, variable, or negated lists differ in size.");
   obj = IntConstraint(coefs, vars, negated, -offset);
+
   CeArb o = global.cePools.takeArb();
   obj.toConstrExp(o, true);
   solver.setObjective(o);
+  optim = OptimizationSuper::make(o, solver, global);
 }
 
 void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
@@ -576,22 +584,9 @@ void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs) {
   solver.invalidateLastSol(vars);
 }
 
-bool ILP::initialized() const { return optim != nullptr; }
-
-void ILP::init() {
-  if (initialized()) throw std::invalid_argument("Solver already initialized.");
-  aux::rng::seed = global.options.randomSeed.get();
-
-  CeArb o = global.cePools.takeArb();
-  obj.toConstrExp(o, true);
-  solver.setObjective(o);
-  optim = OptimizationSuper::make(o, solver, global);
-}
-
 bool ILP::reachedTimeout(double timeout) const { return timeout != 0 && global.stats.getRunTime() > timeout; }
 
 SolveState ILP::runOnce(bool optimize) {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
-  if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   global.options.boundUpper.set(optimize);
   try {
     return optim->optimize(assumptions.getKeys());
@@ -601,7 +596,6 @@ SolveState ILP::runOnce(bool optimize) {  // NOTE: also throws AsynchronousInter
 }
 
 SolveState ILP::runFull(bool optimize, double timeout) {
-  if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
   if (global.options.verbosity.get() > 0) {
@@ -686,17 +680,10 @@ bigint ILP::getSolSpaceSize() const {
   return total;
 };
 
-ratio ILP::getLowerBound() const {
-  if (!initialized()) throw std::invalid_argument("Objective not yet initialized.");
-  return static_cast<ratio>(optim->getLowerBound());
-}
-ratio ILP::getUpperBound() const {
-  if (!initialized()) throw std::invalid_argument("Objective not yet initialized.");
-  return static_cast<ratio>(optim->getUpperBound());
-}
+ratio ILP::getLowerBound() const { return static_cast<ratio>(optim->getLowerBound()); }
+ratio ILP::getUpperBound() const { return static_cast<ratio>(optim->getUpperBound()); }
 
 bool ILP::hasSolution() const {
-  if (!initialized()) return false;
   assert(optim->solutionsFound == 0 || solver.foundSolution());
   return optim->solutionsFound > 0;
 }
@@ -979,7 +966,6 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
 }
 
 int64_t ILP::count(const std::vector<IntVar*>& ivs, double timeout) {
-  if (!initialized()) throw std::invalid_argument("Solver not yet initialized.");
   global.options.pureLits.set(false);
   global.options.domBreakLim.set(0);
   global.stats.runStartTime = std::chrono::steady_clock::now();
@@ -1024,8 +1010,6 @@ void ILP::runInternal(int argc, char** argv) {
     std::cout << "c " << getSolver().getNbVars() << " vars " << getSolver().getNbConstraints() << " constrs"
               << std::endl;
   }
-
-  init();
 
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState res = SolveState::INPROCESSED;

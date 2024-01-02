@@ -57,7 +57,12 @@ std::vector<bigint> getCoefs(const std::vector<std::string>& cs) {
   return aux::comprehension(cs, [](const std::string& x) { return getCoef(x); });
 }
 
-Exact::Exact() : ilp(true), unsatState(false) {
+Exact::Exact(const std::vector<std::pair<std::string, std::string>>& options) : ilp(true), unsatState(false) {
+  for (auto pr : options) {
+    ilp.global.options.parseOption(pr.first, pr.second);
+  }
+  ilp.global.logger.activate(ilp.global.options.proofLog.get(), (bool)ilp.global.options.proofZip);
+
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE
@@ -258,24 +263,18 @@ void Exact::printVariables() const { ilp.printVars(std::cout); }
 void Exact::printInput() const { ilp.printInput(std::cout); }
 void Exact::printFormula() { ilp.printFormula(std::cout); }
 
-void Exact::init(const std::vector<long long>& coefs, const std::vector<std::string>& vars, long long offset) {
+void Exact::setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars, long long offset) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
   if (unsatState) return;
-
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, offset);
-  ilp.global.logger.activate(ilp.global.options.proofLog.get(), (bool)ilp.global.options.proofZip);
-  ilp.init();
 }
-void Exact::init(const std::vector<std::string>& coefs, const std::vector<std::string>& vars,
-                 const std::string& offset) {
+void Exact::setObjective(const std::vector<std::string>& coefs, const std::vector<std::string>& vars,
+                         const std::string& offset) {
   if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
   if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
   if (unsatState) return;
-
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, getCoef(offset));
-  ilp.global.logger.activate(ilp.global.options.proofLog.get(), (bool)ilp.global.options.proofZip);
-  ilp.init();
 }
 
 SolveState Exact::runOnce() {
@@ -372,9 +371,4 @@ long long Exact::count(const std::vector<std::string>& vars, double timeout) {
     unsatState = true;
     return 0;
   }
-}
-
-void Exact::setOption(const std::string& option, const std::string& value) {
-  // NOTE: internally, it is better to just set options directly via ilp.global.options.<someoption>.set(<somevalue>)
-  ilp.global.options.parseOption(option, value);
 }
