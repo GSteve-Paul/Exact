@@ -76,7 +76,7 @@ Solver::Solver(Global& g)
       equalities(*this),
       implications(*this),
       nconfl_to_reduce(1000),
-      nconfl_to_restart(100),
+      nconfl_to_restart(global.options.lubyMult.get()),
       nextToSort(0) {
   ca.capacity(1024 * 1024);  // 4MB
   position.resize(1, INF);
@@ -1049,19 +1049,14 @@ void Solver::presolve() {
   firstRun = false;
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
-  aux::rng::seed = global.options.randomSeed.get();
-  nconfl_to_restart = global.options.lubyMult.get();
   aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);
-  aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
-
 #if WITHSOPLEX
   if (global.options.lpTimeRatio.get() > 0) {
     lpSolver = std::make_shared<LpSolver>(*this);
     lpSolver->setObjective(objective);
-    CeSuper bound = aux::timeCall<CeSuper>([&] { return lpSolver->inProcess(); }, global.stats.LPTOTALTIME);
-    if (bound) lastGlobalDual = bound;
   }
 #endif
+  aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
 }
 
 void Solver::removeSatisfiedNonImpliedsAtRoot() {

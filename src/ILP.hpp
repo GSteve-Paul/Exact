@@ -126,7 +126,7 @@ class ILP {
   bool reachedTimeout(double timeout) const;
 
  public:
-  ILP(bool keepIn = false);
+  ILP(const Options& opts, bool keepIn = false);
 
   const IntConstraint& getObjective() const;
   Solver& getSolver();

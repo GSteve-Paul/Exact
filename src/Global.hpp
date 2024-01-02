@@ -34,7 +34,7 @@ struct Global {
   Logger logger;
   ConstrExpPools cePools;
   IntSetPool isPool;
-  Global() : logger(stats), cePools(*this) {}
+  Global(const Options& opts) : options(opts), logger(stats), cePools(*this) {}
 };
 
 }  // namespace xct

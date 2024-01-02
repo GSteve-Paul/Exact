@@ -57,12 +57,18 @@ std::vector<bigint> getCoefs(const std::vector<std::string>& cs) {
   return aux::comprehension(cs, [](const std::string& x) { return getCoef(x); });
 }
 
-Exact::Exact(const std::vector<std::pair<std::string, std::string>>& options) : ilp(true), unsatState(false) {
+Options getOptions(const std::vector<std::pair<std::string, std::string>>& options) {
+  Options opts;
+  opts.pureLits.set(false);
+  opts.domBreakLim.set(0);
   for (auto pr : options) {
-    ilp.global.options.parseOption(pr.first, pr.second);
+    opts.parseOption(pr.first, pr.second);
   }
-  ilp.global.logger.activate(ilp.global.options.proofLog.get(), (bool)ilp.global.options.proofZip);
+  return opts;
+}
 
+Exact::Exact(const std::vector<std::pair<std::string, std::string>>& options)
+    : ilp(getOptions(options), true), unsatState(false) {
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE

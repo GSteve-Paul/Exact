@@ -31,7 +31,10 @@ int main(int argc, char** argv) {
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 
-  ILP ilp;
+  Options opts;
+  opts.parseCommandLine(argc, argv);
+
+  ILP ilp(opts);
   try {
     ilp.runInternal(argc, argv);
   } catch (const AsynchronousInterrupt& ai) {
