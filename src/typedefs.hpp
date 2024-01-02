@@ -386,4 +386,11 @@ class UnsatEncounter : public std::exception {
   }
 };
 
+class InvalidArgument : public std::invalid_argument {
+ public:
+  InvalidArgument(const std::string& what_arg) : invalid_argument(what_arg) {
+    std::cerr << "Invalid argument error: " << what_arg << std::endl;
+  }
+};
+
 }  // namespace xct

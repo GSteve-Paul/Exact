@@ -309,9 +309,9 @@ IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const big
                     const std::string& encoding, bool nameAsId) {
   assert(!getVarFor(name));
   if (upperbound < lowerbound) {
-    std::stringstream ss;
-    ss << "Upper bound " << upperbound << " of " << name << " is smaller than lower bound " << lowerbound;
-    throw std::invalid_argument(ss.str());
+    throw InvalidArgument((std::stringstream() << "Upper bound " << upperbound << " of " << name
+                                               << " is smaller than lower bound " << lowerbound)
+                              .str());
   }
   vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound,
                                           opt2enc(encoding == "" ? solver.getOptions().ilpEncoding.get() : encoding)));
@@ -336,8 +336,10 @@ std::pair<bigint, bigint> ILP::getBounds(IntVar* iv) const { return {iv->getLowe
 
 void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                        const std::vector<bool>& negated, const bigint& offset) {
-  if (coefs.size() != vars.size() || (!negated.empty() && negated.size() != vars.size()))
-    throw std::invalid_argument("Coefficient, variable, or negated lists differ in size.");
+  if (coefs.size() != vars.size() || (!negated.empty() && negated.size() != vars.size())) {
+    throw InvalidArgument("Coefficient, variable, or negated lists differ in size.");
+  }
+
   obj = IntConstraint(coefs, vars, negated, -offset);
 
   CeArb o = global.cePools.takeArb();
@@ -349,12 +351,12 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
 void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
   assert(iv);
   if (dom.empty()) {
-    throw std::invalid_argument("No possible values given when setting assumptions for " + iv->getName() + ".");
+    throw InvalidArgument("No possible values given when setting assumptions for " + iv->getName() + ".");
   }
   for (const bigint& vals_i : dom) {
     if (vals_i < iv->getLowerBound() || vals_i > iv->getUpperBound())
-      throw std::invalid_argument("Assumption value " + aux::str(vals_i) + " for " + iv->getName() +
-                                  " exceeds variable bounds.");
+      throw InvalidArgument("Assumption value " + aux::str(vals_i) + " for " + iv->getName() +
+                            " exceeds variable bounds.");
   }
   for (Var v : iv->getEncodingVars()) {
     assumptions.remove(v);
@@ -383,9 +385,9 @@ void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
   unordered_set<bigint> toCheck(dom.begin(), dom.end());
   if (toCheck.size() == iv->getUpperBound() - iv->getLowerBound() + 1) return;
   if (iv->getEncoding() != Encoding::ONEHOT) {
-    throw std::invalid_argument("Variable " + iv->getName() + " is not one-hot encoded but has " +
-                                std::to_string(toCheck.size()) +
-                                " (more than one and less than its range) values to assume.");
+    throw InvalidArgument("Variable " + iv->getName() + " is not one-hot encoded but has " +
+                          std::to_string(toCheck.size()) +
+                          " (more than one and less than its range) values to assume.");
   }
   bigint val = iv->getLowerBound();
   for (Var v : iv->getEncodingVars()) {
@@ -478,8 +480,8 @@ void ILP::clearSolutionHints(const std::vector<IntVar*>& ivs) {
 void ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                         const std::vector<bool>& negated, const std::optional<bigint>& lb,
                         const std::optional<bigint>& ub) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   IntConstraint ic(coefs, vars, negated, lb, ub);
   if (keepInput) constraints.push_back(ic);
   if (ic.getLB().has_value()) {
@@ -497,9 +499,9 @@ void ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntV
 // head <=> rhs -- head iff rhs
 void ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                          const std::vector<bool>& negated, const bigint& lb) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw std::invalid_argument("Reification has more than 1e9 terms.");
-  if (!head->isBoolean()) throw std::invalid_argument("Head of reification is not Boolean.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
+  if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
   IntConstraint ic(coefs, vars, negated, lb);
   if (keepInput) reifications.push_back({head, ic});
@@ -522,9 +524,9 @@ void ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const s
 // head => rhs -- head implies rhs
 void ILP::addRightReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                               const std::vector<bool>& negated, const bigint& lb) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw std::invalid_argument("Reification has more than 1e9 terms.");
-  if (!head->isBoolean()) throw std::invalid_argument("Head of reification is not Boolean.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
+  if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
   IntConstraint ic(coefs, vars, negated, lb);
   if (keepInput) reifications.push_back({head, ic});
@@ -540,9 +542,9 @@ void ILP::addRightReification(IntVar* head, const std::vector<bigint>& coefs, co
 // head <= rhs -- rhs implies head
 void ILP::addLeftReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                              const std::vector<bool>& negated, const bigint& lb) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw std::invalid_argument("Reification has more than 1e9 terms.");
-  if (!head->isBoolean()) throw std::invalid_argument("Head of reification is not Boolean.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
+  if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
   IntConstraint ic(coefs, vars, negated, lb);
   if (keepInput) reifications.push_back({head, ic});
@@ -560,12 +562,12 @@ void ILP::addLeftReification(IntVar* head, const std::vector<bigint>& coefs, con
 void ILP::fix(IntVar* iv, const bigint& val) { addConstraint({1}, {iv}, {false}, val, val); }
 
 void ILP::boundObjByLastSol() {
-  if (!hasSolution()) throw std::invalid_argument("No solution to add objective bound.");
+  if (!hasSolution()) throw InvalidArgument("No solution to add objective bound.");
   optim->handleNewSolution(solver.getLastSolution());
 }
 
 void ILP::invalidateLastSol() {
-  if (!hasSolution()) throw std::invalid_argument("No solution to add objective bound.");
+  if (!hasSolution()) throw InvalidArgument("No solution to add objective bound.");
 
   std::vector<Var> vars;
   vars.reserve(name2var.size());
@@ -576,7 +578,7 @@ void ILP::invalidateLastSol() {
 }
 
 void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs) {
-  if (!hasSolution()) throw std::invalid_argument("No solution to add objective bound.");
+  if (!hasSolution()) throw InvalidArgument("No solution to add objective bound.");
 
   std::vector<Var> vars;
   vars.reserve(ivs.size());
@@ -693,19 +695,19 @@ bool ILP::hasSolution() const {
 void ILP::clearSolution() { optim->solutionsFound = 0; }
 
 bigint ILP::getLastSolutionFor(IntVar* iv) const {
-  if (!hasSolution()) throw std::invalid_argument("No solution to return.");
+  if (!hasSolution()) throw InvalidArgument("No solution to return.");
   return iv->getValue(solver.getLastSolution());
 }
 
 std::vector<bigint> ILP::getLastSolutionFor(const std::vector<IntVar*>& vars) const {
-  if (!hasSolution()) throw std::invalid_argument("No solution to return.");
+  if (!hasSolution()) throw InvalidArgument("No solution to return.");
   return aux::comprehension(vars, [&](IntVar* iv) { return getLastSolutionFor(iv); });
 }
 
 bool ILP::hasCore() const { return solver.lastCore || solver.assumptionsClashWithUnits(); }
 
 unordered_set<IntVar*> ILP::getLastCore() {
-  if (!hasCore()) throw std::invalid_argument("No unsat core to return.");
+  if (!hasCore()) throw InvalidArgument("No unsat core to return.");
 
   unordered_set<IntVar*> core;
   if (solver.assumptionsClashWithUnits()) {
@@ -728,7 +730,7 @@ unordered_set<IntVar*> ILP::getLastCore() {
 void ILP::clearCore() { solver.lastCore.reset(); }
 
 void ILP::printOrigSol() const {
-  if (!hasSolution()) throw std::invalid_argument("No solution to return.");
+  if (!hasSolution()) throw InvalidArgument("No solution to return.");
   for (const std::unique_ptr<IntVar>& iv : vars) {
     bigint val = iv->getValue(solver.getLastSolution());
     if (val != 0) {
@@ -923,8 +925,8 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
 const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, double timeout) {
   for (IntVar* iv : ivs) {
     if (iv->getEncodingVars().size() != 1 && iv->getEncoding() != Encoding::ONEHOT) {
-      throw std::invalid_argument("Non-Boolean variable " + iv->getName() +
-                                  " is passed to pruneDomains but is not one-hot encoded.");
+      throw InvalidArgument("Non-Boolean variable " + iv->getName() +
+                            " is passed to pruneDomains but is not one-hot encoded.");
     }
   }
   auto [state, invalidator] = getSolIntersection(ivs, timeout);

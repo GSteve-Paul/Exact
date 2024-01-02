@@ -37,7 +37,7 @@ using namespace xct;
 
 IntVar* Exact::getVariable(const std::string& name) const {
   IntVar* res = ilp.getVarFor(name);
-  if (!res) throw std::invalid_argument("No variable " + name + " found.");
+  if (!res) throw InvalidArgument("No variable " + name + " found.");
   return res;
 }
 
@@ -77,10 +77,10 @@ Exact::Exact(const std::vector<std::pair<std::string, std::string>>& options)
 }
 
 void Exact::addVariable(const std::string& name, long long lb, long long ub, const std::string& encoding) {
-  if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
+  if (ilp.getVarFor(name)) throw InvalidArgument("Variable " + name + " already exists.");
   if (encoding != "" && encoding != "order" && encoding != "log" && encoding != "onehot") {
-    throw std::invalid_argument("Unknown encoding " + encoding +
-                                ". Should be \"log\", \"order\" or \"onehot\", or left unspecified.");
+    throw InvalidArgument("Unknown encoding " + encoding +
+                          ". Should be \"log\", \"order\" or \"onehot\", or left unspecified.");
   }
   if (unsatState) return;
   try {
@@ -92,10 +92,10 @@ void Exact::addVariable(const std::string& name, long long lb, long long ub, con
 
 void Exact::addVariable(const std::string& name, const std::string& lb, const std::string& ub,
                         const std::string& encoding) {
-  if (ilp.getVarFor(name)) throw std::invalid_argument("Variable " + name + " already exists.");
+  if (ilp.getVarFor(name)) throw InvalidArgument("Variable " + name + " already exists.");
   if (encoding != "" && encoding != "order" && encoding != "log" && encoding != "onehot") {
-    throw std::invalid_argument("Unknown encoding " + encoding +
-                                ". Should be \"log\", \"order\" or \"onehot\", or left unspecified.");
+    throw InvalidArgument("Unknown encoding " + encoding +
+                          ". Should be \"log\", \"order\" or \"onehot\", or left unspecified.");
   }
   if (unsatState) return;
   try {
@@ -111,8 +111,8 @@ std::vector<std::string> Exact::getVariables() const {
 
 void Exact::addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
                           long long lb, bool useUB, long long ub) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
@@ -124,8 +124,8 @@ void Exact::addConstraint(const std::vector<long long>& coefs, const std::vector
 }
 void Exact::addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
                           const std::string& lb, bool useUB, const std::string& ub) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() > 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
@@ -138,8 +138,8 @@ void Exact::addConstraint(const std::vector<std::string>& coefs, const std::vect
 
 void Exact::addReification(const std::string& head, const std::vector<long long>& coefs,
                            const std::vector<std::string>& vars, long long lb) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
@@ -150,8 +150,8 @@ void Exact::addReification(const std::string& head, const std::vector<long long>
 }
 void Exact::addReification(const std::string& head, const std::vector<std::string>& coefs,
                            const std::vector<std::string>& vars, const std::string& lb) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
@@ -162,8 +162,8 @@ void Exact::addReification(const std::string& head, const std::vector<std::strin
 }
 void Exact::addRightReification(const std::string& head, const std::vector<long long>& coefs,
                                 const std::vector<std::string>& vars, long long lb) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
@@ -174,8 +174,8 @@ void Exact::addRightReification(const std::string& head, const std::vector<long 
 }
 void Exact::addRightReification(const std::string& head, const std::vector<std::string>& coefs,
                                 const std::vector<std::string>& vars, const std::string& lb) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
@@ -186,8 +186,8 @@ void Exact::addRightReification(const std::string& head, const std::vector<std::
 }
 void Exact::addLeftReification(const std::string& head, const std::vector<long long>& coefs,
                                const std::vector<std::string>& vars, long long lb) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
@@ -198,8 +198,8 @@ void Exact::addLeftReification(const std::string& head, const std::vector<long l
 }
 void Exact::addLeftReification(const std::string& head, const std::vector<std::string>& coefs,
                                const std::vector<std::string>& vars, const std::string& lb) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw std::invalid_argument("Constraint has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   if (unsatState) return;
 
   try {
@@ -270,15 +270,16 @@ void Exact::printInput() const { ilp.printInput(std::cout); }
 void Exact::printFormula() { ilp.printFormula(std::cout); }
 
 void Exact::setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars, long long offset) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (vars.size() > 1e9) throw InvalidArgument("Objective has more than 1e9 terms.");
   if (unsatState) return;
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, offset);
 }
+
 void Exact::setObjective(const std::vector<std::string>& coefs, const std::vector<std::string>& vars,
                          const std::string& offset) {
-  if (coefs.size() != vars.size()) throw std::invalid_argument("Coefficient and variable lists differ in size.");
-  if (vars.size() > 1e9) throw std::invalid_argument("Objective has more than 1e9 terms.");
+  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
+  if (vars.size() > 1e9) throw InvalidArgument("Objective has more than 1e9 terms.");
   if (unsatState) return;
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, getCoef(offset));
 }
@@ -305,7 +306,7 @@ std::pair<std::string, std::string> Exact::getObjectiveBounds_arb() const {
 bool Exact::hasSolution() const { return ilp.hasSolution(); }
 
 std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
-  if (!ilp.hasSolution()) throw std::invalid_argument("No solution can be returned if no solution has been found.");
+  if (!ilp.hasSolution()) throw InvalidArgument("No solution can be returned if no solution has been found.");
   return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)),
                             [](const bigint& i) { return static_cast<long long>(i); });
 }

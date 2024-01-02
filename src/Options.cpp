@@ -93,10 +93,10 @@ void BoolOption::parse(const std::string& v) {
     if (x == 0 || x == 1) {
       val = x;
     } else {
-      throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
+      throw InvalidArgument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
   } catch (const std::invalid_argument& ia) {
-    throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
+    throw InvalidArgument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
   }
 }
 
@@ -123,7 +123,7 @@ bool EnumOption::valid(const std::string& v) const {
 
 void EnumOption::parse(const std::string& v) {
   if (!valid(v)) {
-    throw std::invalid_argument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
+    throw InvalidArgument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
   }
   val = v;
 }
@@ -141,7 +141,7 @@ Options::Options() {
 
 void Options::parseOption(const std::string& option, const std::string& value) {
   if (name2opt.count(option) == 0) {
-    throw std::invalid_argument("Unknown option: " + option + ".\nCheck usage with --help");
+    throw InvalidArgument("Unknown option: " + option + ".\nCheck usage with --help");
   } else {
     name2opt[option]->parse(value);
   }

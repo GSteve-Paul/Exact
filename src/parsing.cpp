@@ -128,7 +128,7 @@ void file_read(ILP& ilp) {
     } else {
       std::ifstream fin(ilp.global.options.formulaName);
       if (!fin) {
-        throw std::invalid_argument("Could not open " + ilp.global.options.formulaName);
+        throw InvalidArgument("Could not open " + ilp.global.options.formulaName);
       }
       if (ilp.global.options.fileFormat.is("opb")) {
         opb_read(fin, ilp);
@@ -176,7 +176,7 @@ void opb_read(std::istream& in, ILP& ilp) {
     } else {
       size_t eqpos = line.find('=');
       if (eqpos == std::string::npos || eqpos == 0) {
-        throw std::invalid_argument("Incorrect constraint at line " + std::to_string(lineNr) + ":\n" + line);
+        throw InvalidArgument("Incorrect constraint at line " + std::to_string(lineNr) + ":\n" + line);
       }
       lb += read_bigint(line, eqpos + 1);
       isInequality = line[eqpos - 1] == '>';
@@ -189,11 +189,11 @@ void opb_read(std::istream& in, ILP& ilp) {
     std::string tmp;
     while (is >> tmp) tokens.push_back(tmp);
     if (tokens.size() % 2 != 0) {
-      throw std::invalid_argument("No support for non-linear constraint at line " + std::to_string(lineNr));
+      throw InvalidArgument("No support for non-linear constraint at line " + std::to_string(lineNr));
     }
     for (int i = 0; i < (long long)tokens.size(); i += 2) {
       if (find(tokens[i].cbegin(), tokens[i].cend(), 'x') != tokens[i].cend()) {
-        throw std::invalid_argument("No support for non-linear constraint at line " + std::to_string(lineNr));
+        throw InvalidArgument("No support for non-linear constraint at line " + std::to_string(lineNr));
       }
     }
 
@@ -203,7 +203,7 @@ void opb_read(std::istream& in, ILP& ilp) {
     for (int i = 0; i < (long long)tokens.size(); i += 2) {
       const std::string& var = tokens[i + 1];
       if (var.empty()) {
-        throw std::invalid_argument("Invalid literal token " + var + " at line " + std::to_string(lineNr));
+        throw InvalidArgument("Invalid literal token " + var + " at line " + std::to_string(lineNr));
       } else if (var[0] != '~' && var[0] != 'x') {
         lb -= read_bigint(tokens[i], 0) * read_bigint(var, 0);
       } else {
@@ -238,7 +238,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       is >> weight;
       if (weight == 0) continue;
       if (weight < 0) {
-        throw std::invalid_argument("Negative clause weight: " + line);
+        throw InvalidArgument("Negative clause weight: " + line);
       }
     }
     inputs.emplace_back();
@@ -330,7 +330,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
       if (ilp.global.options.ilpContinuous) {
         std::cout << "c WARNING continuous variable " << varname << " treated as integer" << std::endl;
       } else {
-        throw std::invalid_argument("No support for continuous variables: " + varname);
+        throw InvalidArgument("No support for continuous variables: " + varname);
       }
     }
     double lower = coinutils.getColLower()[c];
@@ -339,7 +339,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
         lower = -ilp.global.options.ilpDefaultBound.get();
         std::cout << "c WARNING default lower bound " << lower << " for unbounded variable " << varname << std::endl;
       } else {
-        throw std::invalid_argument("No support for unbounded variables: " + varname);
+        throw InvalidArgument("No support for unbounded variables: " + varname);
       }
     }
     double upper = coinutils.getColUpper()[c];
@@ -348,7 +348,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
         upper = ilp.global.options.ilpDefaultBound.get();
         std::cout << "c WARNING default upper bound " << upper << " for unbounded variable " << varname << std::endl;
       } else {
-        throw std::invalid_argument("No support for unbounded variables: " + varname);
+        throw InvalidArgument("No support for unbounded variables: " + varname);
       }
     }
     if (std::ceil(upper) < std::floor(upper)) {
@@ -385,7 +385,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
 
   // Constraints
   const CoinPackedMatrix* cpm = coinutils.getMatrixByRow();
-  if (cpm == nullptr) throw std::invalid_argument("CoinUtils parsing failed.");
+  if (cpm == nullptr) throw InvalidArgument("CoinUtils parsing failed.");
   for (int r = 0; r < coinutils.getNumRows(); ++r) {
     quit::checkInterrupt(ilp.global);
     char rowSense = coinutils.getRowSense()[r];
@@ -443,11 +443,11 @@ void lp_read(const std::string& filename, ILP& ilp) {
 
 #else
 void mps_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] ILP& ilp) {
-  throw std::invalid_argument("Please compile with CoinUtils to parse MPS format.");
+  throw InvalidArgument("Please compile with CoinUtils to parse MPS format.");
 }
 
 void lp_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] ILP& ilp) {
-  throw std::invalid_argument("Please compile with CoinUtils to parse LP format.");
+  throw InvalidArgument("Please compile with CoinUtils to parse LP format.");
 }
 #endif
 
