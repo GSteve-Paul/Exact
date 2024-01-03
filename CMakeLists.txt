@@ -208,6 +208,8 @@ endif()
 
 if(coinutils)
     find_package(CoinUtils REQUIRED)
+    find_package(ZLIB REQUIRED)
+    find_package(BZip2 REQUIRED)
     target_include_directories(Exact PUBLIC ${CoinUtils_INCLUDE_DIR})
     target_link_libraries(Exact CoinUtils z bz2)
     target_compile_definitions(Exact PUBLIC WITHCOINUTILS=1)
@@ -215,7 +217,8 @@ endif()
 
 if(zlib)
     find_package(ZLIB REQUIRED)
-    target_link_libraries(Exact ${ZLIB_LIBRARY})
+    target_include_directories(Exact PUBLIC ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(Exact z)
     target_compile_definitions(Exact PUBLIC WITHZLIB=1)
 endif()
 

@@ -67,6 +67,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "typedefs.hpp"
 #if WITHZLIB
 #include "external/gzstream/gzstream.h"
+// To reduce dependencies, we could also switch to the Boost version:
+// https://stackoverflow.com/questions/624250/how-do-i-read-write-gzipped-files-in-c
 #endif  // WITHZLIB
 
 namespace xct {
@@ -76,6 +78,7 @@ class Logger {
   std::ofstream proof_out;
 #if WITHZLIB
   ogzstream proof_out_zip;
+  ogzstream formula_out_zip;
   bool proof_is_zip = false;
 #endif  // WITHZLIB
 
@@ -84,6 +87,7 @@ class Logger {
   bool active;
 
   std::ostream& proofStream();
+  std::ostream& formulaStream();
 
  public:
   ID last_formID;

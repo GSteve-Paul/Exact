@@ -75,20 +75,35 @@ std::ostream& Logger::proofStream() {
     return proof_out;
 }
 
+std::ostream& Logger::formulaStream() {
+#if WITHZLIB
+  if (proof_is_zip)
+    return formula_out_zip;
+  else
+#endif  // WITHZLIB
+    return formula_out;
+}
+
 void Logger::activate(const std::string& proof_log_name, [[maybe_unused]] const bool zip) {
   if (proof_log_name == "") return;
   flush();
-  formula_out = std::ofstream(proof_log_name + ".formula");
-  formula_out << "* #variable= 0 #constraint= 0\n";
-  formula_out << " >= 0 ;\n";
 
+  if (zip) {
 #if WITHZLIB
-  proof_is_zip = zip;
-  if (proof_is_zip)
+    proof_is_zip = zip;
     proof_out_zip.open((proof_log_name + ".proof.zip").c_str());
-  else
-#endif  // WITHZLIB
+    formula_out_zip.open((proof_log_name + ".formula.zip").c_str());
+#else
+    std::cout << "c WARNING not compiled with ZLIB, emitting unzipped proof" << std::endl;
     proof_out.open(proof_log_name + ".proof");
+    formula_out.open(proof_log_name + ".formula");
+#endif  // WITHZLIB
+  } else {
+    proof_out.open(proof_log_name + ".proof");
+    formula_out.open(proof_log_name + ".formula");
+  }
+  formulaStream() << "* #variable= 0 #constraint= 0\n";
+  formulaStream() << " >= 0 ;\n";
 
   proofStream() << "pseudo-Boolean proof version 1.1\n";
   proofStream() << "l 1\n";
@@ -104,8 +119,8 @@ bool Logger::isActive() { return active; }
 
 void Logger::flush() {
   if (!active) return;
-  formula_out.flush();
-  proof_out.flush();
+  formulaStream().flush();
+  proofStream().flush();
 }
 
 void Logger::logComment([[maybe_unused]] const std::string& comment) {
@@ -117,7 +132,7 @@ void Logger::logComment([[maybe_unused]] const std::string& comment) {
 
 ID Logger::logInput(const CeSuper& ce) {
   if (!active) return ++last_proofID;
-  formula_out << *ce << "\n";
+  formulaStream() << *ce << "\n";
   proofStream() << "l " << ++last_formID << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
@@ -243,7 +258,7 @@ ID Logger::logAtMostOne(const ConstrSimple32& c, const CeSuper& ce) {
   }
 #if !NDEBUG
   proofStream() << "e " << last_proofID << " ";
-  c.toStreamAsOPB(proof_out);
+  c.toStreamAsOPB(proofStream());
   proofStream() << "\n";
 #endif
   ce->resetBuffer(last_proofID);
