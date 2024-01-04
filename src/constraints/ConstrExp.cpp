@@ -1127,7 +1127,7 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweeping(const LARGE& div) {
       if (coefs[v] == 0 || saturatedVar(v)) continue;
       SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);  // same partial weakening as above
       if (r <= rem && r <= j && r != 0) {
-        std::cout << "weaken " << r << std::endl;
+        // std::cout << "weaken " << r << std::endl;
         rem -= r;
         weaken(coefs[v] < 0 ? r : -r, v);
         if (rem < j) break;
@@ -1146,17 +1146,18 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousSweepingCanceling(const LARGE& di
   LARGE rem = (degree - 1) % div;
 
   // TODO: store the remainders so they can just be looked up
-  int shift = 1;  // global.options.shiftOpt.get();
+  long long blockdiv = global.options.blockDivision.get();
+  LARGE shift = rem / blockdiv;
   if (shift == 0) shift = 1;
-  int j = shift;
+  LARGE j = shift;
   while (j <= rem) {
-    std::cout << "j " << j << " rem " << rem << std::endl;
+    // std::cout << "j " << j << " rem " << rem << std::endl;
     for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
       Var v = vars[i];
       if (pos[v] == INF || coefs[v] == 0 || saturatedVar(v)) continue;
       SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);  // same partial weakening as above
       if (r <= rem && r <= j && r != 0) {
-        std::cout << "weaken " << r << std::endl;
+        // std::cout << "weaken " << r << std::endl;
         rem -= r;
         weaken(coefs[v] < 0 ? r : -r, v);
         if (rem < j) break;
