@@ -78,6 +78,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_set>
 #include <vector>
 #include "external/ankerl/unordered_dense.h"
+#include "external/plf/plf_reorderase.h"
 
 #if UNIXLIKE
 namespace xct {
@@ -156,12 +157,6 @@ inline double sto(const std::string& s) {
 template <>
 inline std::string sto(const std::string& s) {
   return s;
-}
-
-template <typename T>
-void swapErase(T& indexable, size_t index) {
-  indexable[index] = std::move(indexable.back());
-  indexable.pop_back();
 }
 
 template <typename T, typename S>

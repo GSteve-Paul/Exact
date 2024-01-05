@@ -120,7 +120,7 @@ void IntSet::remove(int key) {
   if (!has(key)) return;
   int idx = index[key];
   index[keys.back()] = idx;
-  aux::swapErase(keys, idx);
+  plf::single_reorderase(keys, keys.begin() + idx);
   index[key] = _unused_();
   assert(!has(key));
 }

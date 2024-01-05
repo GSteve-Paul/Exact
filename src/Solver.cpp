@@ -272,7 +272,8 @@ CeSuper Solver::runDatabasePropagation() {
       CRef cr = ws[it_ws].cref;
       WatchStatus wstat = checkForPropagation(cr, ws[it_ws].idx, -p);
       if (wstat == WatchStatus::DROPWATCH) {
-        aux::swapErase(ws, it_ws--);
+        plf::single_reorderase(ws, ws.begin() + it_ws);
+        --it_ws;
       } else if (wstat == WatchStatus::CONFLICTING) {  // clean up current level and stop propagation
         ++global.stats.NTRAILPOPS;
         for (int i = 0; i <= it_ws; ++i) {
@@ -951,11 +952,8 @@ void Solver::reduceDB() {
   }
 
   for (Lit l = -n; l <= n; ++l) {
-    for (int i = 0; i < (int)adj[l].size(); ++i) {
-      if (ca[adj[l][i].cref].isMarkedForDelete()) {
-        aux::swapErase(adj[l], i--);
-      }
-    }
+    plf::reorderase_all_if(adj[l], adj[l].begin(), adj[l].end(),
+                           [&](const Watch& w) { return ca[w.cref].isMarkedForDelete(); });
   }
 
   std::vector<int> cardPoints;
@@ -1440,11 +1438,7 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
     }
   }
   global.isPool.release(trailSet);
-  for (int i = 0; i < (int)cardLits.size(); ++i) {
-    if (isUnit(getLevel(), -cardLits[i])) {
-      aux::swapErase(cardLits, i--);
-    }
-  }
+  plf::reorderase_all_if(cardLits, cardLits.begin(), cardLits.end(), [&](Lit l) { return isUnit(getLevel(), -l); });
   for (Lit l : cardLits) {
     considered.insert(l);
   }
