@@ -217,8 +217,9 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
       if (lv.remainingVars() == 0 ||
           isUnit(solver.getLevel(), -lv.currentVar)) {  // binary constraints make all new auxiliary variables unit
         lv.addFinalAtMost();
-        aux::swapErase(lazyVars, i--);  // fully expanded, no need to keep in memory
-      } else {                          // add auxiliary variable
+        plf::single_reorderase(lazyVars, lazyVars.begin() + i);  // fully expanded, no need to keep in memory
+        --i;
+      } else {  // add auxiliary variable
         int newN = solver.getNbVars() + 1;
         solver.setNbVars(newN, false);
         Var oldvar = lv.currentVar;
@@ -230,7 +231,8 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
         lv.addAtMostConstraint();
         lv.addSymBreakingConstraint(oldvar);
         if (lv.remainingVars() == 0) {
-          aux::swapErase(lazyVars, i--);  // fully expanded, no need to keep in memory
+          plf::single_reorderase(lazyVars, lazyVars.begin() + i);  // fully expanded, no need to keep in memory
+          --i;
         }
       }
     }
