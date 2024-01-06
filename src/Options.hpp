@@ -266,7 +266,6 @@ struct Options {
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
-  EnumOption cgReform{"cg-reform", "When the objective is reformulated", "always", {"always", "depletion", "never"}};
   EnumOption ilpEncoding{"ilp-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
   BoolOption ilpContinuous{"ilp-continuous",
                            "Accept continuous variables by treating them as integer variables. This restricts the "
@@ -340,7 +339,6 @@ struct Options {
       &cgMaxCoef,
       &cgResolveProp,
       &cgStrat,
-      &cgReform,
       &ilpEncoding,
       &ilpContinuous,
       &ilpUnbounded,

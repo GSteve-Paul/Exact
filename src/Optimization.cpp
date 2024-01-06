@@ -66,6 +66,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+constexpr int stratFactor = 1000;
+
 template <typename SMALL, typename LARGE>
 LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& esum,
                                const LARGE& normUpBnd)
@@ -184,7 +186,11 @@ Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, Global& g) {
 
 template <typename SMALL, typename LARGE>
 Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, Global& g)
-    : OptimizationSuper(s, g), origObj(obj), somethingHappened(false) {
+    : OptimizationSuper(s, g),
+      origObj(obj),
+      reply(SolveState::INPROCESSED),
+      stratDiv(stratFactor * global.options.cgStrat.get()),
+      coreguided(global.options.cgHybrid.get() >= 1) {
   // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
   lower_bound = -origObj->getDegree();
   upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
@@ -193,15 +199,8 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
   origObj->copyTo(reformObj);
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   reformObj->removeEqualities(solver.getEqualities(), false);
-  if (global.stats.DEPLTIME.z == -1 &&
-      std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(), [&](Var v) { return solver.isOrig(v); })) {
-    global.stats.DEPLTIME.z = global.stats.getTime();
-  }
 
-  reply = SolveState::INPROCESSED;
-  stratDiv = global.options.cgStrat.get();
-  stratLim = stratDiv == 1 ? 1 : aux::toDouble(reformObj->getLargestCoef());
-  coreguided = global.options.cgHybrid.get() >= 1;
+  stratLim = global.options.cgStrat.get() == 1 ? 1 : reformObj->getLargestCoef();
 };
 
 template <typename SMALL, typename LARGE>
@@ -411,10 +410,6 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
     ++global.stats.NCGCOREREUSES;
     result = reformObjective(core);
   }
-  if (global.stats.DEPLTIME.z == -1 &&
-      std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(), [&](Var v) { return solver.isOrig(v); })) {
-    global.stats.DEPLTIME.z = global.stats.getTime();
-  }
 
   checkLazyVariables();
   printObjBounds();
@@ -474,8 +469,20 @@ void Optimization<SMALL, LARGE>::harden() {
   }
 }
 
+void decreaseStratLim(bigint& stratLim, const bigint& stratDiv) {
+  bigint smaller = (stratFactor * stratLim) / stratDiv;
+  if (smaller < 1) {
+    stratLim = 1;
+  } else if (smaller >= stratLim) {
+    --stratLim;
+  } else {
+    stratLim = smaller;
+  }
+  assert(stratLim >= 1);
+}
+
 template <typename SMALL, typename LARGE>
-SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumptions) {
+SolveState Optimization<SMALL, LARGE>::optimize(const IntSet& assumptions) {
   solver.presolve();  // will run only once
   while (true) {
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
@@ -489,51 +496,46 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
       throw UnsatEncounter();  // optimality is proven
     }
 
-    if (assumptions.empty() && coreguided) {
-      while (!solver.hasAssumptions()) {
-        reformObj->removeEqualities(solver.getEqualities(), false);
-        reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-        if (global.stats.DEPLTIME.z == -1 && std::none_of(reformObj->getVars().begin(), reformObj->getVars().end(),
-                                                          [&](Var v) { return solver.isOrig(v); })) {
-          global.stats.DEPLTIME.z = global.stats.getTime();
-        }
-        std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
-        litcoefs.reserve(reformObj->nVars());
-        if (!global.options.cgReform.is("always")) {
-          for (Var v : reformObj->getVars()) {
-            assert(reformObj->getLit(v) != 0);
-            if (!solver.isOrig(v)) continue;
-            double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));
-            if (cf >= stratLim) {
-              litcoefs.emplace_back(cf, v);
-            }
+    // There are three possibilities:
+    // - no assumptions are set (because something happened during previous core-guided step)
+    // - only the given assumptions are set (because the previous step was not core-guided)
+    // - more than only the given assumptions are set (because the previous core-guided step did not finish)
+    // NOTE: what if no coreguided possible because all variables of the objective are assumed?
+
+    if (coreguided &&
+        solver.getAssumptions().size() <= assumptions.size()) {  // figure out and set new coreguided assumptions
+      reformObj->removeEqualities(solver.getEqualities(), false);
+      reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+      std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
+      litcoefs.reserve(reformObj->nVars());
+      while (true) {
+        for (Var v : reformObj->getVars()) {
+          assert(reformObj->getLit(v) != 0);
+          if (!assumptions.has(v) && !assumptions.has(-v) &&
+              (stratLim <= reformObj->coefs[v] || stratLim <= -reformObj->coefs[v])) {
+            litcoefs.emplace_back(aux::toDouble(aux::abs(reformObj->coefs[v])), v);
           }
         }
-        if ((global.options.cgReform.is("depletion") && litcoefs.empty()) || global.options.cgReform.is("always")) {
-          for (Var v : reformObj->getVars()) {
-            assert(reformObj->getLit(v) != 0);
-            double cf = aux::abs(aux::toDouble(reformObj->coefs[v]));
-            if (cf >= stratLim) {
-              litcoefs.emplace_back(cf, v);
-            }
-          }
-        }
-        std::sort(litcoefs.begin(), litcoefs.end(), [](const Term<double>& t1, const Term<double>& t2) {
-          return t1.c > t2.c || (t1.l < t2.l && t1.c == t2.c);
-        });
-        std::vector<Lit> assumps;
-        assumps.reserve(litcoefs.size());
-        for (const Term<double>& t : litcoefs) assumps.push_back(-reformObj->getLit(toVar(t.l)));
-        solver.setAssumptions(assumps);
-        if (assumps.size() == 0) break;
-        if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
-          handleInconsistency(solver.lastGlobalDual);
-          solver.clearAssumptions();
-        }
+        if (!litcoefs.empty() || stratLim == 1) break;
+        decreaseStratLim(stratLim, stratDiv);
       }
-    } else {
-      solver.setAssumptions(assumptions);
+      std::sort(litcoefs.begin(), litcoefs.end(), [](const Term<double>& t1, const Term<double>& t2) {
+        return t1.c > t2.c || (t1.c == t2.c && t1.l < t2.l);
+      });
+      std::vector<Lit> assumps = assumptions.getKeys();
+      assumps.reserve(assumps.size() + litcoefs.size());
+      for (const Term<double>& t : litcoefs) assumps.push_back(-reformObj->getLit(t.l));
+      solver.setAssumptions(assumps);
+    } else if (!coreguided) {  // set regular assumptions
+      solver.setAssumptions(assumptions.getKeys());
     }
+
+    // TODO: fix below
+    //    if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
+    //      handleInconsistency(solver.lastGlobalDual);
+    //      solver.clearAssumptions();
+    //      continue;
+    //    }
 
     reply =
         aux::timeCall<SolveState>([&] { return solver.solve(); },
@@ -552,28 +554,28 @@ SolveState Optimization<SMALL, LARGE>::optimize(const std::vector<Lit>& assumpti
         handleNewSolution(solver.getLastSolution());
       }
       if (coreguided) {
+        decreaseStratLim(stratLim, stratDiv);
         solver.clearAssumptions();
-        stratLim = std::max<double>(stratLim / stratDiv, 1);
       }
-      somethingHappened = true;
       return SolveState::SAT;
     } else if (reply == SolveState::INCONSISTENT) {
+      assert(!solver.getAssumptions().isEmpty());
       ++global.stats.NCORES;
-      somethingHappened = true;
-      if (!assumptions.empty()) return SolveState::INCONSISTENT;
-      assert(coreguided);  // else: core from core-guided search
+      if (solver.getAssumptions().size() == assumptions.size()) {  // no coreguided assumptions
+        return SolveState::INCONSISTENT;
+      }
+      assert(coreguided);
       handleInconsistency(solver.lastCore);
       solver.clearAssumptions();
     } else if (reply == SolveState::INPROCESSED) {
-      // NOTE: returning when inprocessing avoids long non-terminating solve calls
-      if (!somethingHappened && coreguided) {
-        solver.clearAssumptions();
-        stratLim = std::max<double>(stratLim / stratDiv, 1);
-      }
-      somethingHappened = false;
+      bool oldcoreguided = coreguided;
       coreguided = global.options.cgHybrid.get() >= 1 ||
                    global.stats.DETTIMEASSUMP <
                        global.options.cgHybrid.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP);
+      if (oldcoreguided && !coreguided && stratLim > 1) {
+        // next time, use more assumption lits
+        decreaseStratLim(stratLim, stratDiv);
+      }
       return SolveState::INPROCESSED;
     } else {
       assert(false);  // should not happen

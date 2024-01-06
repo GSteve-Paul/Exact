@@ -62,6 +62,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "constraints/ConstrSimple.hpp"
+#include "datastructures/IntSet.hpp"
 #include "typedefs.hpp"
 
 namespace xct {
@@ -117,7 +118,7 @@ class OptimizationSuper {
 
   static Optim make(const CeArb& obj, Solver& solver, Global& g);
 
-  [[nodiscard]] virtual SolveState optimize(const std::vector<Lit>& assumptions) = 0;
+  [[nodiscard]] virtual SolveState optimize(const IntSet& assumptions) = 0;
   virtual void handleNewSolution(const std::vector<Lit>& sol) = 0;
 
   OptimizationSuper(Solver& s, Global& g);
@@ -140,10 +141,9 @@ class Optimization final : public OptimizationSuper {
 
   // State variables during solve loop:
   SolveState reply;
-  double stratDiv;
-  double stratLim;
+  const bigint stratDiv;
+  bigint stratLim;
   bool coreguided;
-  bool somethingHappened;
 
  public:
   explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, Global& g);
@@ -167,7 +167,7 @@ class Optimization final : public OptimizationSuper {
   void logProof();
   void harden();
 
-  [[nodiscard]] SolveState optimize(const std::vector<Lit>& assumptions);
+  [[nodiscard]] SolveState optimize(const IntSet& assumptions);
 };
 
 }  // namespace xct

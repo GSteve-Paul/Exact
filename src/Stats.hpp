@@ -316,7 +316,6 @@ struct Stats {
 
   Stat LASTLB{std::numeric_limits<StatNum>::quiet_NaN(), "best lower bound"};
   Stat LASTUB{std::numeric_limits<StatNum>::quiet_NaN(), "best upper bound"};
-  Stat DEPLTIME{-1, "depletion time"};
 
   std::chrono::steady_clock::time_point startTime;
   std::chrono::steady_clock::time_point runStartTime;
@@ -445,7 +444,6 @@ struct Stats {
       &NCGCOREREUSES,
       &LASTUB,
       &LASTLB,
-      &DEPLTIME,
 #if WITHSOPLEX
       &LPOBJ,
       &NLPADDEDROWS,
