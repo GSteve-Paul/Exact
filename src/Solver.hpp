@@ -75,6 +75,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+class IntConstraint;
+
 class Solver {
   friend class LpSolver;
   friend struct Constr;
@@ -150,7 +152,7 @@ class Solver {
  public:
   Solver(Global& g);
   ~Solver();
-  void setObjective(const CeArb& obj);
+  void setObjective(const IntConstraint& obj);
 
   int getNbVars() const { return n; }
   void setNbVars(int nvars, bool orig);

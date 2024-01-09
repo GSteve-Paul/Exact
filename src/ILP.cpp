@@ -300,7 +300,6 @@ ILP::ILP(const Options& opts, bool keepIn) : global(opts), solver(global), obj({
   setObjective({}, {}, {});
 }
 
-const IntConstraint& ILP::getObjective() const { return obj; }
 Solver& ILP::getSolver() { return solver; }
 void ILP::setMaxSatVars() { maxSatVars = solver.getNbVars(); }
 int ILP::getMaxSatVars() const { return maxSatVars; }
@@ -341,11 +340,8 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   }
 
   obj = IntConstraint(coefs, vars, negated, -offset);
-
-  CeArb o = global.cePools.takeArb();
-  obj.toConstrExp(o, true);
-  solver.setObjective(o);
-  optim = OptimizationSuper::make(o, solver, global);
+  solver.setObjective(obj);
+  optim = OptimizationSuper::make(solver.objective, solver, global);
 }
 
 void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {

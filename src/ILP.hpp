@@ -108,7 +108,7 @@ class ILP {
   Optim optim;
 
   std::vector<std::unique_ptr<IntVar>> vars;
-  IntConstraint obj;
+  IntConstraint obj;  // NOTE: we could erase this, but then we would not store the untransformed input objective
   unordered_map<std::string, IntVar*> name2var;
   unordered_map<Var, IntVar*> var2var;
 
@@ -128,7 +128,6 @@ class ILP {
  public:
   ILP(const Options& opts, bool keepIn = false);
 
-  const IntConstraint& getObjective() const;
   Solver& getSolver();
   void setMaxSatVars();
   int getMaxSatVars() const;

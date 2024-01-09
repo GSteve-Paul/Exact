@@ -60,6 +60,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Solver.hpp"
+#include "ILP.hpp"
 #include "auxiliary.hpp"
 #include "constraints/Constr.hpp"
 
@@ -123,11 +124,11 @@ void Solver::setNbVars(int nvars, bool orig) {
   n = nvars;
 }
 
-void Solver::setObjective(const CeArb& obj) {
-  obj->removeUnitsAndZeroes(getLevel(), getPos());
-  obj->removeEqualities(getEqualities(), false);
+void Solver::setObjective(const IntConstraint& obj) {
   objective->reset(true);
-  obj->copyTo(objective);
+  obj.toConstrExp(objective, true);
+  objective->removeUnitsAndZeroes(getLevel(), getPos());
+  objective->removeEqualities(getEqualities(), false);
   if (lpSolver) lpSolver->setObjective(objective);
 }
 
