@@ -598,7 +598,7 @@ bool ILP::reachedTimeout(double timeout) const { return timeout != 0 && global.s
 SolveState ILP::runOnce(bool optimize) {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
   global.options.boundUpper.set(optimize);
   try {
-    return optim->optimize(assumptions);
+    return optim->optimize();
   } catch (const UnsatEncounter& ue) {
     return SolveState::UNSAT;
   }
@@ -1022,7 +1022,7 @@ void ILP::runInternal(int argc, char** argv) {
   SolveState res = SolveState::INPROCESSED;
   while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
     global.options.boundUpper.set(bool(global.options.boundUpper));
-    res = optim->optimize(assumptions);
+    res = optim->optimize();
   }
 }
 

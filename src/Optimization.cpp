@@ -484,7 +484,7 @@ void decreaseStratLim(bigint& stratLim, const bigint& stratDiv) {
 }
 
 template <typename SMALL, typename LARGE>
-SolveState Optimization<SMALL, LARGE>::optimize(const IntSet& assumptions) {
+SolveState Optimization<SMALL, LARGE>::optimize() {
   solver.presolve();  // will run only once
   while (true) {
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
