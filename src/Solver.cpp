@@ -124,12 +124,16 @@ void Solver::setNbVars(int nvars, bool orig) {
   n = nvars;
 }
 
-void Solver::setObjective(const IntConstraint& obj) {
+bigint Solver::setObjective(const IntConstraint& obj) {
   objective->reset(true);
   obj.toConstrExp(objective, true);
   objective->removeUnitsAndZeroes(getLevel(), getPos());
   objective->removeEqualities(getEqualities(), false);
+  bigint res = -objective->getDegree();
+  objective->addRhs(res);
+  assert(objective->getDegree() == 0);
   if (lpSolver) lpSolver->setObjective(objective);
+  return res;
 }
 
 Options& Solver::getOptions() { return global.options; }

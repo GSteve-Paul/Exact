@@ -109,6 +109,8 @@ class OptimizationSuper {
  protected:
   Solver& solver;
   Global& global;
+  const bigint offset;
+  const IntSet& assumptions;
 
  public:
   int solutionsFound = 0;
@@ -116,12 +118,12 @@ class OptimizationSuper {
   virtual bigint getLowerBound() const = 0;
   virtual CeSuper getReformObj() const = 0;
 
-  static Optim make(const CeArb& obj, Solver& solver, Global& g);
+  static Optim make(const CeArb& obj, Solver& solver, const bigint& offs, const IntSet& assumps);
 
   [[nodiscard]] virtual SolveState optimize(const IntSet& assumptions) = 0;
   virtual void handleNewSolution(const std::vector<Lit>& sol) = 0;
 
-  OptimizationSuper(Solver& s, Global& g);
+  OptimizationSuper(Solver& s, const bigint& offs, const IntSet& assumps);
   virtual ~OptimizationSuper() = default;
 };
 
@@ -146,12 +148,10 @@ class Optimization final : public OptimizationSuper {
   bool coreguided;
 
  public:
-  explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, Global& g);
+  explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& offset, const IntSet& assumps);
 
-  LARGE normalizedLowerBound() const { return lower_bound + origObj->getDegree(); }
-  LARGE normalizedUpperBound() const { return upper_bound + origObj->getDegree(); }
-  bigint getUpperBound() const { return bigint(upper_bound); }
-  bigint getLowerBound() const { return bigint(lower_bound); }
+  bigint getUpperBound() const { return offset + upper_bound; }
+  bigint getLowerBound() const { return offset + lower_bound; }
   CeSuper getReformObj() const;
 
   void printObjBounds();

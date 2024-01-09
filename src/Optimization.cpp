@@ -142,9 +142,10 @@ void LazyVar<SMALL, LARGE>::addFinalAtMost() {
   solver.addConstraint(atMost, Origin::COREGUIDED);
 }
 
-OptimizationSuper::OptimizationSuper(Solver& s, Global& g) : solver(s), global(g) {}
+OptimizationSuper::OptimizationSuper(Solver& s, const bigint& os, const IntSet& assumps)
+    : solver(s), global(s.global), offset(os), assumptions(assumps) {}
 
-Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, Global& g) {
+Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, const bigint& offset, const IntSet& assumps) {
   bigint maxVal = obj->absCoeffSum();
   // The argument that maxVal is a safe upper bound is that we may *increase* the coefficient of assumption literals
   // during core-based reformulation, but never higher than the original coefficient sum.
@@ -162,38 +163,39 @@ Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, Global& g) {
   // TODO: get a more rigorous proof from this argument?
 
   if (maxVal <= static_cast<bigint>(limitAbs<int, long long>())) {  // TODO: try to internalize this check in ConstrExp
-    Ce32 o = g.cePools.take32();
+    Ce32 o = solver.global.cePools.take32();
     obj->copyTo(o);
-    return std::make_unique<Optimization<int, long long>>(o, solver, g);
+    return std::make_unique<Optimization<int, long long>>(o, solver, offset, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<long long, int128>())) {
-    Ce64 o = g.cePools.take64();
+    Ce64 o = solver.global.cePools.take64();
     obj->copyTo(o);
-    return std::make_unique<Optimization<long long, int128>>(o, solver, g);
+    return std::make_unique<Optimization<long long, int128>>(o, solver, offset, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
-    Ce96 o = g.cePools.take96();
+    Ce96 o = solver.global.cePools.take96();
     obj->copyTo(o);
-    return std::make_unique<Optimization<int128, int128>>(o, solver, g);
+    return std::make_unique<Optimization<int128, int128>>(o, solver, offset, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
-    Ce128 o = g.cePools.take128();
+    Ce128 o = solver.global.cePools.take128();
     obj->copyTo(o);
-    return std::make_unique<Optimization<int128, int256>>(o, solver, g);
+    return std::make_unique<Optimization<int128, int256>>(o, solver, offset, assumps);
   } else {
-    CeArb o = g.cePools.takeArb();
+    CeArb o = solver.global.cePools.takeArb();
     obj->copyTo(o);
-    return std::make_unique<Optimization<bigint, bigint>>(o, solver, g);
+    return std::make_unique<Optimization<bigint, bigint>>(o, solver, offset, assumps);
   }
 }
 
 template <typename SMALL, typename LARGE>
-Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, Global& g)
-    : OptimizationSuper(s, g),
+Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& os,
+                                         const IntSet& assumps)
+    : OptimizationSuper(s, os, assumps),
       origObj(obj),
       reply(SolveState::INPROCESSED),
       stratDiv(stratFactor * global.options.cgStrat.get()),
       coreguided(global.options.cgHybrid.get() >= 1) {
-  // NOTE: -origObj->getDegree() keeps track of the offset of the reformulated objective (or after removing unit lits)
-  lower_bound = -origObj->getDegree();
-  upper_bound = origObj->absCoeffSum() - origObj->getRhs() + 1;
+  assert(origObj->getDegree() == 0);
+  lower_bound = 0;
+  upper_bound = origObj->absCoeffSum() + 1;
 
   reformObj = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(reformObj);
@@ -213,11 +215,11 @@ void Optimization<SMALL, LARGE>::printObjBounds() {
   if (global.options.verbosity.get() == 0) return;
   std::cout << "c     bounds ";
   if (solver.foundSolution()) {
-    std::cout << upper_bound;
+    std::cout << getUpperBound();
   } else {
     std::cout << "-";
   }
-  std::cout << " >= " << lower_bound << " @ " << global.stats.getTime() << "\n";
+  std::cout << " >= " << getLowerBound() << " @ " << global.stats.getTime() << "\n";
 }
 
 template <typename SMALL, typename LARGE>
@@ -227,7 +229,7 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
   for (int i = 0; i < (int)lazyVars.size(); ++i) {
     LazyVar<SMALL, LARGE>& lv = *lazyVars[i];
     if (reformObj->getLit(lv.currentVar) == 0) {
-      lv.setUpperBound(normalizedUpperBound());
+      lv.setUpperBound(upper_bound);
       if (lv.remainingVars() == 0 ||
           isUnit(solver.getLevel(), -lv.currentVar)) {  // binary constraints make all new auxiliary variables unit
         lv.addFinalAtMost();
@@ -377,7 +379,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   reformObj->addLhs(mult, newN);  // add only one variable for now
   assert(lower_bound == -reformObj->getDegree());
   // add first lazy constraint
-  lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, 0, normalizedUpperBound()));
+  lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, 0, upper_bound));
   lazyVars.back()->addAtLeastConstraint();
   lazyVars.back()->addAtMostConstraint();
   addLowerBound();

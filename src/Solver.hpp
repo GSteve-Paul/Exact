@@ -103,9 +103,9 @@ class Solver {
   CeSuper lastCore;
   CeSuper lastGlobalDual;
   CeArb objective;
+  Global& global;
 
  private:
-  Global& global;
   int n;
   std::vector<bool> isorig;
   bool firstRun;
@@ -152,7 +152,7 @@ class Solver {
  public:
   Solver(Global& g);
   ~Solver();
-  void setObjective(const IntConstraint& obj);
+  bigint setObjective(const IntConstraint& obj);
 
   int getNbVars() const { return n; }
   void setNbVars(int nvars, bool orig);

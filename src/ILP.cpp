@@ -241,6 +241,10 @@ IntConstraint::IntConstraint(const std::vector<bigint>& coefs, const std::vector
   normalize();
 }
 
+const std::vector<IntTerm>& IntConstraint::getLhs() const { return lhs; }
+const std::optional<bigint>& IntConstraint::getLB() const { return lowerBound; }
+const std::optional<bigint>& IntConstraint::getUB() const { return upperBound; }
+
 void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (useLowerBound) {
     assert(lowerBound.has_value());
@@ -340,8 +344,8 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   }
 
   obj = IntConstraint(coefs, vars, negated, -offset);
-  solver.setObjective(obj);
-  optim = OptimizationSuper::make(solver.objective, solver, global);
+  offs = solver.setObjective(obj);
+  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
 }
 
 void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
@@ -376,22 +380,23 @@ void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
         assumptions.add(iv->getEncodingVars()[val_int]);
       }
     }
-    return;
-  }
-  unordered_set<bigint> toCheck(dom.begin(), dom.end());
-  if (toCheck.size() == iv->getUpperBound() - iv->getLowerBound() + 1) return;
-  if (iv->getEncoding() != Encoding::ONEHOT) {
-    throw InvalidArgument("Variable " + iv->getName() + " is not one-hot encoded but has " +
-                          std::to_string(toCheck.size()) +
-                          " (more than one and less than its range) values to assume.");
-  }
-  bigint val = iv->getLowerBound();
-  for (Var v : iv->getEncodingVars()) {
-    if (!toCheck.count(val)) {
-      assumptions.add(-v);
+  } else {
+    unordered_set<bigint> toCheck(dom.begin(), dom.end());
+    if (toCheck.size() == iv->getUpperBound() - iv->getLowerBound() + 1) return;
+    if (iv->getEncoding() != Encoding::ONEHOT) {
+      throw InvalidArgument("Variable " + iv->getName() + " is not one-hot encoded but has " +
+                            std::to_string(toCheck.size()) +
+                            " (more than one and less than its range) values to assume.");
     }
-    ++val;
+    bigint val = iv->getLowerBound();
+    for (Var v : iv->getEncodingVars()) {
+      if (!toCheck.count(val)) {
+        assumptions.add(-v);
+      }
+      ++val;
+    }
   }
+  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
 }
 
 bool ILP::hasAssumption(const IntVar* iv) const {
@@ -439,12 +444,16 @@ std::vector<bigint> ILP::getAssumption(const IntVar* iv) const {
   return res;
 }
 
-void ILP::clearAssumptions() { assumptions.clear(); }
+void ILP::clearAssumptions() {
+  assumptions.clear();
+  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
+}
 void ILP::clearAssumption(const IntVar* iv) {
   for (Var v : iv->getEncodingVars()) {
     assumptions.remove(v);
     assumptions.remove(-v);
   }
+  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
 }
 
 void ILP::setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals) {

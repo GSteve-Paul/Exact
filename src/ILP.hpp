@@ -91,9 +91,9 @@ class IntConstraint {
   IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars, const std::vector<bool>& negated,
                 const std::optional<bigint>& lb = std::nullopt, const std::optional<bigint>& ub = std::nullopt);
 
-  const std::vector<IntTerm>& getLhs() const { return lhs; }
-  const std::optional<bigint>& getLB() const { return lowerBound; }
-  const std::optional<bigint>& getUB() const { return upperBound; }
+  const std::vector<IntTerm>& getLhs() const;
+  const std::optional<bigint>& getLB() const;
+  const std::optional<bigint>& getUB() const;
 
   void toConstrExp(CeArb&, bool useLowerBound) const;
 };
@@ -109,6 +109,7 @@ class ILP {
 
   std::vector<std::unique_ptr<IntVar>> vars;
   IntConstraint obj;  // NOTE: we could erase this, but then we would not store the untransformed input objective
+  bigint offs;
   unordered_map<std::string, IntVar*> name2var;
   unordered_map<Var, IntVar*> var2var;
 
