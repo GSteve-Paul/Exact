@@ -349,7 +349,7 @@ Lit Optimization<SMALL, LARGE>::getKnapsackLit(const CePtr<SMALL, LARGE>& core) 
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // modifies core
   assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
-  core->weaken([&](Lit l) { return !solver.getAssumptions().has(-l) || !reformObj->hasLit(l); });
+  core->weaken([&](Lit l) { return !solver.getAssumptions().has(-l); });
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   core->saturate(true, false);
   if (!core->hasNegativeSlack(solver.getAssumptions().getIndex())) {
@@ -364,7 +364,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   assert(cardCore->nVars() > 0);
   SMALL mult = 0;
   for (Var v : cardCore->getVars()) {
-    assert(reformObj->getLit(v) != 0);
+    if (!reformObj->hasVar(v)) continue;  // in case of user assumption
     if (mult == 0) {
       mult = aux::abs(reformObj->coefs[v]);
     } else if (mult == 1) {
@@ -374,7 +374,6 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
     }
   }
   assert(mult > 0);
-  lower_bound += cardCore->getDegree() * static_cast<LARGE>(mult);
 
   // add auxiliary variable
   int newN = solver.getNbVars() + 1;
@@ -384,7 +383,9 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   reformObj->addUp(cardCore, mult);
   cardCore->invert();
   reformObj->addLhs(mult, newN);  // add only one variable for now
-  assert(lower_bound == -reformObj->getDegree());
+  simplifyAssumps(reformObj, assumptions);
+  lower_bound = -reformObj->getDegree();
+
   // add first lazy constraint
   lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, 0, upper_bound));
   lazyVars.back()->addAtLeastConstraint();
@@ -394,7 +395,9 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
 }
 
 template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // modifies core
+bool Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
+  // modifies core
+  // returns true iff the inconsistency is due to user assumptions
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   lower_bound = -reformObj->getDegree();
 
@@ -408,18 +411,25 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
     ++global.stats.NCGUNITCORES;
     addLowerBound();
     checkLazyVariables();
-    return;
+    return std::any_of(assumptions.getKeys().begin(), assumptions.getKeys().end(),
+                       [&](Lit l) { return isUnit(solver.getLevel(), -l); });
   }
-  assert(!core->hasNegativeSlack(solver.getLevel()));  // Would be handled by solver's learnConstraint
+  assert(!core->hasNegativeSlack(solver.getLevel()));  // root inconsistency was handled by solver's learnConstraint
+  if (core->falsifiedBy(assumptions)) return true;
+
   --global.stats.NCGCOREREUSES;
   State result = State::SUCCESS;
   while (result == State::SUCCESS) {
     ++global.stats.NCGCOREREUSES;
     result = reformObjective(core);
   }
+  assert(std::all_of(assumptions.getKeys().begin(), assumptions.getKeys().end(), [&](Lit l) {
+    return !reformObj->hasVar(toVar(l));
+  }));  // should have been removed by reformObjective
 
   checkLazyVariables();
   printObjBounds();
+  return false;
 }
 
 template <typename SMALL, typename LARGE>
@@ -567,12 +577,19 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
     } else if (reply == SolveState::INCONSISTENT) {
       assert(!solver.getAssumptions().isEmpty());
       ++global.stats.NCORES;
-      if (solver.getAssumptions().size() == assumptions.size()) {  // no coreguided assumptions
+      if (coreguided) {
+        assert(solver.getAssumptions().size() > assumptions.size());
+        if (handleInconsistency(solver.lastCore)) {
+          solver.clearAssumptions();
+          return SolveState::INCONSISTENT;
+        } else {
+          solver.clearAssumptions();
+        }
+      } else {
+        assert(solver.getAssumptions().size() == assumptions.size());  // no coreguided assumptions
         return SolveState::INCONSISTENT;
       }
-      assert(coreguided);
-      handleInconsistency(solver.lastCore);
-      solver.clearAssumptions();
+
     } else if (reply == SolveState::INPROCESSED) {
       bool oldcoreguided = coreguided;
       coreguided = global.options.cgHybrid.get() >= 1 ||

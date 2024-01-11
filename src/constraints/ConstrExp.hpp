@@ -165,6 +165,7 @@ struct ConstrExpSuper {
   virtual AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const = 0;
   virtual std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
                                                   std::vector<Lit>& litsByPos) const = 0;
+  virtual bool falsifiedBy(const IntSet& assumptions) const = 0;
   virtual void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos) = 0;
 
   virtual bool simplifyToCardinality(bool equivalencePreserving, int cardDegree) = 0;
@@ -354,6 +355,7 @@ struct ConstrExp final : public ConstrExpSuper {
   // @return: whether or not the constraint is asserting at that level
   std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
                                           std::vector<Lit>& litsByPos) const;
+  bool falsifiedBy(const IntSet& assumptions) const;
   // @post: preserves order after removeZeroes()
   void weakenNonImplied(const IntMap<int>& level, const LARGE& slack);
   // @post: preserves order after removeZeroes()

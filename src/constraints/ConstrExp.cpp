@@ -1219,6 +1219,20 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<in
   }
 }
 
+template <typename SMALL, typename LARGE>
+bool ConstrExp<SMALL, LARGE>::falsifiedBy(const IntSet& assumptions) const {
+  if (degree <= 0) return false;
+  // weaken all literals that are not falsified assumptions
+  LARGE weakenedDegree = degree;
+  for (Var v : vars) {
+    if (!assumptions.has(-getLit(v))) {
+      weakenedDegree -= aux::abs(coefs[v]);
+      if (weakenedDegree <= 0) return false;
+    }
+  }
+  return weakenedDegree > 0;
+}
+
 // @post: preserves order after removeZeroes()
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenNonImplied(const IntMap<int>& level, const LARGE& slack) {
