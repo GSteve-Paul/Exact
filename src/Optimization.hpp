@@ -116,12 +116,11 @@ class OptimizationSuper {
   int solutionsFound = 0;
   virtual bigint getUpperBound() const = 0;
   virtual bigint getLowerBound() const = 0;
-  virtual CeSuper getReformObj() const = 0;
 
   static Optim make(const CeArb& obj, Solver& solver, const bigint& offs, const IntSet& assumps);
 
   [[nodiscard]] virtual SolveState optimize() = 0;
-  virtual void handleNewSolution(const std::vector<Lit>& sol) = 0;
+  virtual void handleNewSolution(const std::vector<Lit>& sol, bool addUpper) = 0;
 
   OptimizationSuper(Solver& s, const bigint& offs, const IntSet& assumps);
   virtual ~OptimizationSuper() = default;
@@ -152,7 +151,6 @@ class Optimization final : public OptimizationSuper {
 
   bigint getUpperBound() const { return offset + upper_bound; }
   bigint getLowerBound() const { return offset + lower_bound; }
-  CeSuper getReformObj() const;
 
   void printObjBounds();
   void checkLazyVariables();
@@ -162,7 +160,7 @@ class Optimization final : public OptimizationSuper {
   [[nodiscard]] State reformObjective(const CeSuper& core);                 // modifies core
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
   void handleInconsistency(const CeSuper& core);                            // modifies core
-  void handleNewSolution(const std::vector<Lit>& sol);
+  void handleNewSolution(const std::vector<Lit>& sol, bool addUpper);
 
   void logProof();
   void harden();

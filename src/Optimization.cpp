@@ -186,6 +186,17 @@ Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, const bigint& of
 }
 
 template <typename SMALL, typename LARGE>
+void simplifyAssumps(CePtr<SMALL, LARGE>& c, const IntSet& assumps) {
+  for (const Lit l : assumps.getKeys()) {  // remove assumptions from objective
+    const Var v = toVar(l);
+    if (c->hasVar(v)) {
+      if (c->hasLit(l)) c->addRhs(c->getCoef(-l));
+      c->vars[v] = 0;
+    }
+  }
+}
+
+template <typename SMALL, typename LARGE>
 Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& os,
                                          const IntSet& assumps)
     : OptimizationSuper(s, os, assumps),
@@ -194,21 +205,16 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
       stratDiv(stratFactor * global.options.cgStrat.get()),
       coreguided(global.options.cgHybrid.get() >= 1) {
   assert(origObj->getDegree() == 0);
-  lower_bound = 0;
-  upper_bound = origObj->absCoeffSum() + 1;
-
   reformObj = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(reformObj);
+  simplifyAssumps(reformObj, assumptions);
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   reformObj->removeEqualities(solver.getEqualities(), false);
 
+  lower_bound = -reformObj->getDegree();
+  upper_bound = origObj->absCoeffSum() + 1;
   stratLim = global.options.cgStrat.get() == 1 ? 1 : reformObj->getLargestCoef();
-};
-
-template <typename SMALL, typename LARGE>
-CeSuper Optimization<SMALL, LARGE>::getReformObj() const {
-  return reformObj;
-};
+}
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::printObjBounds() {
@@ -257,6 +263,7 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::addLowerBound() {
+  if (assumptions.isEmpty()) return;  // otherwise the lower_bound is not globally valid
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->addRhs(lower_bound);
@@ -264,7 +271,7 @@ void Optimization<SMALL, LARGE>::addLowerBound() {
   std::pair<ID, ID> res = solver.addConstraint(aux, Origin::LOWERBOUND);
   lastLowerBoundUnprocessed = res.first;
   lastLowerBound = res.second;
-  harden();
+  if (global.options.boundUpper) harden();
 }
 
 template <typename SMALL, typename LARGE>
@@ -389,7 +396,6 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // modifies core
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  [[maybe_unused]] LARGE prev_lower = lower_bound;
   lower_bound = -reformObj->getDegree();
 
   if (core) {
@@ -400,7 +406,6 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
     // only violated unit assumptions were derived
     assert(solver.assumptionsClashWithUnits());
     ++global.stats.NCGUNITCORES;
-    assert(lower_bound > prev_lower);
     addLowerBound();
     checkLazyVariables();
     return;
@@ -418,25 +423,23 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
 }
 
 template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol) {
+void Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol, bool addUpper) {
   assert(solver.checkSAT(sol));
-  [[maybe_unused]] LARGE prev_val = upper_bound;
   upper_bound = -origObj->getRhs();
-  for (Var v : origObj->getVars()) upper_bound += origObj->coefs[v] * (int)(sol[v] > 0);
-  assert(upper_bound <= prev_val);
-  assert(upper_bound < prev_val || !global.options.boundUpper);
-
-  CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
-  origObj->copyTo(aux);
-  aux->invert();
-  aux->addRhs(-upper_bound + 1);
-  solver.dropExternal(lastUpperBound, true, true);
-  std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
-  lastUpperBoundUnprocessed = res.first;
-  lastUpperBound = res.second;
-  harden();
-
+  for (Var v : origObj->getVars()) upper_bound += sol[v] > 0 ? origObj->coefs[v] : 0;
   printObjBounds();
+
+  if (addUpper) {
+    CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
+    origObj->copyTo(aux);
+    aux->invert();
+    aux->addRhs(-upper_bound + 1);
+    solver.dropExternal(lastUpperBound, true, true);
+    std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
+    lastUpperBoundUnprocessed = res.first;
+    lastUpperBound = res.second;
+    if (assumptions.isEmpty()) harden();
+  }
 }
 
 template <typename SMALL, typename LARGE>
@@ -463,6 +466,9 @@ void Optimization<SMALL, LARGE>::logProof() {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::harden() {
+  // NOTE: this does not play nice with assumptions which impact the upper and lower bounds
+  assert(assumptions.isEmpty());
+  assert(global.options.boundUpper);
   LARGE diff = upper_bound - lower_bound;
   for (Var v : reformObj->getVars()) {
     if (aux::abs(reformObj->coefs[v]) > diff) {
@@ -552,9 +558,7 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
       assert(solver.foundSolution());
       ++global.stats.NSOLS;
       ++solutionsFound;
-      if (global.options.boundUpper) {
-        handleNewSolution(solver.getLastSolution());
-      }
+      handleNewSolution(solver.getLastSolution(), bool(global.options.boundUpper));
       if (coreguided) {
         decreaseStratLim(stratLim, stratDiv);
         solver.clearAssumptions();

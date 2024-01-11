@@ -568,7 +568,7 @@ void ILP::fix(IntVar* iv, const bigint& val) { addConstraint({1}, {iv}, {false},
 
 void ILP::boundObjByLastSol() {
   if (!hasSolution()) throw InvalidArgument("No solution to add objective bound.");
-  optim->handleNewSolution(solver.getLastSolution());
+  optim->handleNewSolution(solver.getLastSolution(), true);
 }
 
 void ILP::invalidateLastSol() {
@@ -625,9 +625,9 @@ std::ostream& ILP::printFormula(std::ostream& out) {
     nbConstraints += isNonImplied(c.getOrigin());
   }
   out << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
-  if (optim && optim->getReformObj()->nVars() > 0) {
+  if (solver.objective->nVars() > 0) {
     out << "min: ";
-    optim->getReformObj()->toStreamAsOPBlhs(out, true);
+    solver.objective->toStreamAsOPBlhs(out, true);
     out << ";\n";
   }
   for (Lit l : solver.getUnits()) {
