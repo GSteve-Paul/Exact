@@ -134,9 +134,7 @@ class Optimization final : public OptimizationSuper {
   LARGE lower_bound;
   LARGE upper_bound;
   ID lastUpperBound = ID_Undef;
-  ID lastUpperBoundUnprocessed = ID_Undef;
   ID lastLowerBound = ID_Undef;
-  ID lastLowerBoundUnprocessed = ID_Undef;
 
   std::vector<std::unique_ptr<LazyVar<SMALL, LARGE>>> lazyVars;
 
@@ -163,7 +161,6 @@ class Optimization final : public OptimizationSuper {
   // returns true iff the inconsistency is due to user assumptions
   void handleNewSolution(const std::vector<Lit>& sol, bool addUpper);
 
-  void logProof();
   void harden();
 
   [[nodiscard]] SolveState optimize();

@@ -263,62 +263,32 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::addLowerBound() {
-  if (assumptions.isEmpty()) return;  // otherwise the lower_bound is not globally valid
+  if (!assumptions.isEmpty()) return;  // otherwise the lower_bound is not globally valid
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->addRhs(lower_bound);
   solver.dropExternal(lastLowerBound, true, true);
   std::pair<ID, ID> res = solver.addConstraint(aux, Origin::LOWERBOUND);
-  lastLowerBoundUnprocessed = res.first;
   lastLowerBound = res.second;
   if (global.options.boundUpper) harden();
 }
 
 template <typename SMALL, typename LARGE>
 Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {  // does not modify core
+  assert(core->hasNoZeroes());
+  assert(core->hasNoUnits(solver.getLevel()));
+  if (core->isClause()) {
+    Ce32 result = global.cePools.take32();
+    core->copyTo(result);
+    return result;
+  }
+
   CeSuper card = core->clone(global.cePools);
-  CeSuper cloneCoefOrder = card->clone(global.cePools);
-  const std::vector<ActNode>& actList = solver.getHeuristic().getActList();
-  cloneCoefOrder->sortInDecreasingCoefOrder(
-      [&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
-  cloneCoefOrder->reverseOrder();  // *IN*creasing coef order
-  card->sortWithCoefTiebreaker(
-      [&](Var v1, Var v2) { return aux::sgn(aux::abs(reformObj->coefs[v1]) - aux::abs(reformObj->coefs[v2])); });
-
-  CeSuper clone = card->clone(global.cePools);
-  assert(clone->nVars() > 0);
-  LARGE bestLowerBound = 0;
-  int bestNbVars = clone->nVars();
-  int bestCardDegree = 0;
-
-  // find the optimum number of variables to weaken to
-  while (!clone->isTautology()) {
-    int carddegree = cloneCoefOrder->getCardinalityDegreeWithZeroes();
-    SMALL currentObjCoef = aux::abs(reformObj->coefs[clone->getVars().back()]);
-    LARGE lb = currentObjCoef * carddegree;
-    if (bestLowerBound < lb) {
-      bestLowerBound = lb;
-      bestNbVars = clone->nVars();
-      bestCardDegree = carddegree;
-    }
-    // weaken all lowest objective coefficient literals
-    while (clone->nVars() > 0 && currentObjCoef == aux::abs(reformObj->coefs[clone->getVars().back()])) {
-      cloneCoefOrder->weaken(clone->getVars().back());
-      clone->weakenLast();
-    }
-  }
-
-  // weaken to the optimum number of variables and generate cardinality constraint
-  while ((int)card->nVars() > bestNbVars) {
-    card->weakenLast();
-  }
-  // sort in decreasing coef order to minimize number of auxiliary variables, but break ties so that *large*
-  // objective coefficient literals are removed first, as the smallest objective coefficients are the ones that
-  // will be eliminated from the objective function. Thanks Stephan!
+  // sort in decreasing coef order to minimize number of auxiliary variables, but break ties so that *small*
+  // objective coefficient literals are removed first, to maximize the chances of a strong lower bound.
   card->sortInDecreasingCoefOrder(
-      [&](Var v1, Var v2) { return aux::abs(reformObj->coefs[v1]) < aux::abs(reformObj->coefs[v2]); });
-  assert(bestCardDegree == card->getCardinalityDegree());
-  card->simplifyToCardinality(false, bestCardDegree);
+      [&](Var v1, Var v2) { return reformObj->getCoef(card->getLit(v1)) > reformObj->getCoef(card->getLit(v2)); });
+  card->simplifyToCardinality(false, card->getCardinalityDegree());
 
   Ce32 result = global.cePools.take32();
   card->copyTo(result);
@@ -349,31 +319,24 @@ Lit Optimization<SMALL, LARGE>::getKnapsackLit(const CePtr<SMALL, LARGE>& core) 
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // modifies core
   assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
-  core->weaken([&](Lit l) { return !solver.getAssumptions().has(-l); });
+  core->weaken([&](Lit l) { return !assumptions.has(-l) && !reformObj->hasLit(l); });
+  if (core->isTautology()) return State::FAIL;
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   core->saturate(true, false);
-  if (!core->hasNegativeSlack(solver.getAssumptions().getIndex())) {
-    return State::FAIL;
-  }
   Ce32 cardCore = reduceToCardinality(core);
-  assert(cardCore->hasNegativeSlack(solver.getAssumptions().getIndex()));
   assert(cardCore->hasNoZeroes());
-  global.stats.NCGNONCLAUSALCORES += !cardCore->isClause();
 
   // adjust the lower bound
   assert(cardCore->nVars() > 0);
   SMALL mult = 0;
   for (Var v : cardCore->getVars()) {
-    if (!reformObj->hasVar(v)) continue;  // in case of user assumption
-    if (mult == 0) {
-      mult = aux::abs(reformObj->coefs[v]);
-    } else if (mult == 1) {
-      break;
-    } else {
-      mult = std::min(mult, aux::abs(reformObj->coefs[v]));
-    }
+    if (mult == 1) break;
+    if (!reformObj->hasLit(cardCore->getLit(v))) continue;  // in case of user assumption
+    mult = (mult == 0) ? aux::abs(reformObj->coefs[v]) : std::min(mult, aux::abs(reformObj->coefs[v]));
   }
-  assert(mult > 0);
+  if (mult == 0) return State::FAIL;  // no further literals of the objective remain
+
+  global.stats.NCGNONCLAUSALCORES += !cardCore->isClause();
 
   // add auxiliary variable
   int newN = solver.getNbVars() + 1;
@@ -446,32 +409,9 @@ void Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol, 
     aux->addRhs(-upper_bound + 1);
     solver.dropExternal(lastUpperBound, true, true);
     std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
-    lastUpperBoundUnprocessed = res.first;
     lastUpperBound = res.second;
     if (assumptions.isEmpty()) harden();
   }
-}
-
-template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::logProof() {
-  if (!global.logger.isActive()) return;
-  assert(lastUpperBound != ID_Undef);
-  assert(lastLowerBound != ID_Undef);
-  CePtr<SMALL, LARGE> coreAggregate = global.cePools.take<SMALL, LARGE>();
-  CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
-  origObj->copyTo(aux);
-  aux->invert();
-  aux->addRhs(1 - upper_bound);
-  aux->resetBuffer(lastUpperBoundUnprocessed);
-  coreAggregate->addUp(aux);
-  aux->reset(false);
-  origObj->copyTo(aux);
-  aux->addRhs(lower_bound);
-  aux->resetBuffer(lastLowerBoundUnprocessed);
-  coreAggregate->addUp(aux);
-  assert(coreAggregate->hasNegativeSlack(solver.getLevel()));
-  assert(solver.decisionLevel() == 0);
-  global.logger.logInconsistency(coreAggregate, solver.getLevel(), solver.getPos());
 }
 
 template <typename SMALL, typename LARGE>
@@ -508,10 +448,6 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
     StatNum current_time = global.stats.getDetTime();
     if (reply == SolveState::INPROCESSED && global.options.printCsvData) {
       global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
-    }
-    if (lower_bound >= upper_bound && global.options.boundUpper) {
-      logProof();
-      throw UnsatEncounter();  // optimality is proven
     }
 
     // There are three possibilities:
@@ -592,9 +528,12 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
 
     } else if (reply == SolveState::INPROCESSED) {
       bool oldcoreguided = coreguided;
-      coreguided = global.options.cgHybrid.get() >= 1 ||
-                   global.stats.DETTIMEASSUMP <
-                       global.options.cgHybrid.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP);
+      coreguided = lower_bound < upper_bound &&
+                   (global.options.cgHybrid.get() >= 1 ||
+                    global.stats.DETTIMEASSUMP <
+                        global.options.cgHybrid.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP));
+      // NOTE: no need to do coreguided search once we know the lower bound is at least the upper bound
+      // in that case, let the solver figure out the inconsistency on its own
       if (oldcoreguided && !coreguided && stratLim > 1) {
         // next time, use more assumption lits
         decreaseStratLim(stratLim, stratDiv);
