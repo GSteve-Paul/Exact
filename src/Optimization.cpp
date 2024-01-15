@@ -318,10 +318,10 @@ Lit Optimization<SMALL, LARGE>::getKnapsackLit(const CePtr<SMALL, LARGE>& core) 
 
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // modifies core
-  assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
   core->weaken([&](Lit l) { return !assumptions.has(-l) && !reformObj->hasLit(l); });
   if (core->isTautology()) return State::FAIL;
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  if (!core->hasNegativeSlack(solver.getAssumptions().getIndex())) return State::FAIL;
   core->saturate(true, false);
   Ce32 cardCore = reduceToCardinality(core);
   assert(cardCore->hasNoZeroes());
@@ -379,6 +379,7 @@ bool Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
   }
   assert(!core->hasNegativeSlack(solver.getLevel()));  // root inconsistency was handled by solver's learnConstraint
   if (core->falsifiedBy(assumptions)) return true;
+  assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
 
   --global.stats.NCGCOREREUSES;
   State result = State::SUCCESS;
@@ -386,9 +387,7 @@ bool Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
     ++global.stats.NCGCOREREUSES;
     result = reformObjective(core);
   }
-  assert(std::all_of(assumptions.getKeys().begin(), assumptions.getKeys().end(), [&](Lit l) {
-    return !reformObj->hasVar(toVar(l));
-  }));  // should have been removed by reformObjective
+  simplifyAssumps(reformObj, assumptions);
 
   checkLazyVariables();
   printObjBounds();

@@ -157,7 +157,7 @@ class Optimization final : public OptimizationSuper {
   Ce32 reduceToCardinality(const CeSuper& core);                            // does not modify core
   [[nodiscard]] State reformObjective(const CeSuper& core);                 // modifies core
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
-  bool handleInconsistency(const CeSuper& core);                            // modifies core
+  [[nodiscard]] bool handleInconsistency(const CeSuper& core);              // modifies core
   // returns true iff the inconsistency is due to user assumptions
   void handleNewSolution(const std::vector<Lit>& sol, bool addUpper);
 
