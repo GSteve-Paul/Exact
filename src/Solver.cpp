@@ -1063,13 +1063,17 @@ void Solver::presolve() {
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);
+  aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
+
 #if WITHSOPLEX
   if (global.options.lpTimeRatio.get() > 0) {
     lpSolver = std::make_shared<LpSolver>(*this);
     lpSolver->setObjective(objective);
+    CeSuper bound = aux::timeCall<CeSuper>([&] { return lpSolver->inProcess(true); }, global.stats.LPTOTALTIME);
+    // NOTE: calling LP solver here ensures it gets run once before the actual search begins
+    if (bound) lastGlobalDual = bound;
   }
 #endif
-  aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
 }
 
 void Solver::removeSatisfiedNonImpliedsAtRoot() {

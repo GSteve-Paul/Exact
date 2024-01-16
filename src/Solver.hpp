@@ -101,7 +101,7 @@ class Solver {
   std::vector<Lit> lastSol = {0};
   bool foundSolution() const;
   CeSuper lastCore;
-  CeSuper lastGlobalDual;
+  CeSuper lastGlobalDual;  // TODO: no longer used?
   CeArb objective;
   Global& global;
 

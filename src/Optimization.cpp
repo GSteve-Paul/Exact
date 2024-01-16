@@ -483,11 +483,22 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
       solver.setAssumptions(assumptions.getKeys());
     }
 
-    // TODO: fix below
+    // TODO: decide if below code is still needed
     //    if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
-    //      handleInconsistency(solver.lastGlobalDual);
-    //      solver.clearAssumptions();
-    //      continue;
+    //      ++global.stats.NCORES;
+    //      if (coreguided) {
+    //        assert(solver.getAssumptions().size() > assumptions.size());
+    //        if (handleInconsistency(solver.lastGlobalDual)) {
+    //          solver.clearAssumptions();
+    //          return SolveState::INCONSISTENT;
+    //        } else {
+    //          solver.clearAssumptions();
+    //          continue;
+    //        }
+    //      } else {
+    //        assert(solver.getAssumptions().size() == assumptions.size());  // no coreguided assumptions
+    //        return SolveState::INCONSISTENT;
+    //      }
     //    }
 
     reply =
@@ -524,7 +535,6 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
         assert(solver.getAssumptions().size() == assumptions.size());  // no coreguided assumptions
         return SolveState::INCONSISTENT;
       }
-
     } else if (reply == SolveState::INPROCESSED) {
       bool oldcoreguided = coreguided;
       coreguided = lower_bound < upper_bound &&
