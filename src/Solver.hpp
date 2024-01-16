@@ -251,6 +251,7 @@ class Solver {
   void learnConstraint(const CeSuper& c, Origin orig);
   void learnUnitConstraint(Lit l, Origin orig, ID id);
   void learnClause(const std::vector<Lit>& lits, Origin orig, ID id);
+  void learnClause(Lit l1, Lit l2, Origin orig, ID id);
   std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
 
   // ---------------------------------------------------------------------

@@ -59,12 +59,13 @@ State Implications::propagate() {
     assert(isTrue(solver.getLevel(), a));
     bool added = false;
     for (Lit b : implieds[a]) {
-      if (!isTrue(solver.getLevel(), b)) {
+      if (!isTrue(solver.getLevel(), b) || solver.getLevel()[a] < solver.getLevel()[b]) {
         ++solver.getStats().NPROBINGIMPLS;
         ID id = solver.getLogger().logRUP(-a, b);
-        solver.learnClause({-a, b}, Origin::IMPLICATION, id);
+        solver.learnClause(-a, b, Origin::IMPLICATION, id);
         added = true;
       }
+      assert(solver.getLevel()[a] >= solver.getLevel()[b]);
     }
     if (added) return State::FAIL;
   }

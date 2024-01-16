@@ -123,17 +123,17 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
     }
     if (encoding == Encoding::LOG) {  // upper bound constraint
       assert(!encodingVars.empty());
-      std::vector<Term<bigint>> lhs;
-      lhs.reserve(encodingVars.size());
+      ConstrSimpleArb csa({}, -range);
+      csa.terms.reserve(encodingVars.size());
       bigint base = -1;
       for (const Var v : encodingVars) {
-        lhs.emplace_back(base, v);
+        csa.terms.emplace_back(base, v);
         base *= 2;
       }
       // NOTE: last variable could have a smaller coefficient if the range is not a nice power of two - 1
       // This would actually increase the number of solutions to the constraint. It would also not guarantee that each
       // value for an integer variable had a unique Boolean representation. Bad idea probably.
-      solver.addConstraint(ConstrSimpleArb({lhs}, -range), Origin::FORMULA);
+      solver.addConstraint(csa, Origin::FORMULA);
     } else if (encoding == Encoding::ORDER) {
       assert(!encodingVars.empty() || range == 0);
       for (Var var = oldvars + 1; var < solver.getNbVars(); ++var) {
@@ -142,16 +142,16 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
     } else {
       assert(!encodingVars.empty());
       assert(encoding == Encoding::ONEHOT);
-      std::vector<Term<int>> lhs1;
-      lhs1.reserve(encodingVars.size());
-      std::vector<Term<int>> lhs2;
-      lhs2.reserve(encodingVars.size());
+      ConstrSimple32 cs1({}, 1);
+      cs1.terms.reserve(encodingVars.size());
+      ConstrSimple32 cs2({}, -1);
+      cs2.terms.reserve(encodingVars.size());
       for (int var = oldvars + 1; var <= solver.getNbVars(); ++var) {
-        lhs1.emplace_back(1, var);
-        lhs2.emplace_back(-1, var);
+        cs1.terms.emplace_back(1, var);
+        cs2.terms.emplace_back(-1, var);
       }
-      solver.addConstraint(ConstrSimple32(lhs1, 1), Origin::FORMULA);
-      solver.addConstraint(ConstrSimple32(lhs2, -1), Origin::FORMULA);
+      solver.addConstraint(cs1, Origin::FORMULA);
+      solver.addConstraint(cs2, Origin::FORMULA);
     }
   }
 }

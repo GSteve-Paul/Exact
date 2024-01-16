@@ -108,18 +108,18 @@ State Equalities::propagate() {
     assert(isTrue(solver.getLevel(), l));
     const Repr& repr = getRepr(l);
     bool added = false;
-    if (!isTrue(solver.getLevel(), repr.l)) {
-      solver.learnClause({-l, repr.l}, Origin::EQUALITY, repr.id);
+    if (!isTrue(solver.getLevel(), repr.l) || solver.getLevel()[l] < solver.getLevel()[repr.l]) {
+      solver.learnClause(-l, repr.l, Origin::EQUALITY, repr.id);
       added = true;
     }
-    assert(solver.getLevel()[l] == solver.getLevel()[repr.l]);
+    assert(solver.getLevel()[l] >= solver.getLevel()[repr.l]);
     for (Lit ll : repr.equals) {
-      if (!isTrue(solver.getLevel(), ll)) {
+      if (!isTrue(solver.getLevel(), ll) || solver.getLevel()[l] < solver.getLevel()[ll]) {
         assert(getRepr(ll).l == l);
-        solver.learnClause({-l, ll}, Origin::EQUALITY, getRepr(-ll).id);
+        solver.learnClause(-l, ll, Origin::EQUALITY, getRepr(-ll).id);
         added = true;
       }
-      assert(solver.getLevel()[l] == solver.getLevel()[ll]);
+      assert(solver.getLevel()[l] >= solver.getLevel()[ll]);
     }
     if (added) return State::FAIL;
   }

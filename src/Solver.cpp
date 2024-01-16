@@ -682,12 +682,22 @@ void Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
 }
 
 void Solver::learnClause(const std::vector<Lit>& lits, Origin orig, ID id) {
-  ConstrSimple32 clause{{}, 1, orig, std::to_string(id) + " "};
-  clause.terms.reserve(lits.size());
-  for (Lit l : lits) {
-    clause.terms.push_back({1, l});
-  }
-  aux::timeCallVoid([&] { learnConstraint(clause.toExpanded(global.cePools), orig); }, global.stats.LEARNTIME);
+  Ce32 ce = global.cePools.take32();
+  ce->addRhs(1);
+  for (Lit l : lits) ce->addLhs(1, l);
+  ce->orig = orig;
+  ce->resetBuffer(std::to_string(id) + " ");
+  aux::timeCallVoid([&] { learnConstraint(ce, orig); }, global.stats.LEARNTIME);
+}
+
+void Solver::learnClause(Lit l1, Lit l2, Origin orig, ID id) {
+  Ce32 ce = global.cePools.take32();
+  ce->addRhs(1);
+  ce->addLhs(1, l1);
+  ce->addLhs(1, l2);
+  ce->orig = orig;
+  ce->resetBuffer(std::to_string(id) + " ");
+  aux::timeCallVoid([&] { learnConstraint(ce, orig); }, global.stats.LEARNTIME);
 }
 
 std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
