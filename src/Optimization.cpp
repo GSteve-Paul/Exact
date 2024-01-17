@@ -483,33 +483,22 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
       solver.setAssumptions(assumptions.getKeys());
     }
 
-    // TODO: decide if below code is still needed
-    //    if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
-    //      ++global.stats.NCORES;
-    //      if (coreguided) {
-    //        assert(solver.getAssumptions().size() > assumptions.size());
-    //        if (handleInconsistency(solver.lastGlobalDual)) {
-    //          solver.clearAssumptions();
-    //          return SolveState::INCONSISTENT;
-    //        } else {
-    //          solver.clearAssumptions();
-    //          continue;
-    //        }
-    //      } else {
-    //        assert(solver.getAssumptions().size() == assumptions.size());  // no coreguided assumptions
-    //        return SolveState::INCONSISTENT;
-    //      }
-    //    }
-
-    reply =
-        aux::timeCall<SolveState>([&] { return solver.solve(); },
-                                  solver.hasAssumptions() ? global.stats.SOLVETIMEASSUMP : global.stats.SOLVETIMEFREE);
-
-    if (solver.hasAssumptions()) {
-      global.stats.DETTIMEASSUMP += global.stats.getDetTime() - current_time;
+    if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
+      // NOTE: this optimization really helps with knapsack instances, because it immediately fixes a bunch of variables
+      // TODO: generalize this: reformulate the *original* objective with the new bound after an inconsistency?
+      reply = SolveState::INCONSISTENT;
+      solver.lastCore = solver.lastGlobalDual;
     } else {
-      global.stats.DETTIMEFREE += global.stats.getDetTime() - current_time;
+      reply = aux::timeCall<SolveState>([&] { return solver.solve(); }, solver.hasAssumptions()
+                                                                            ? global.stats.SOLVETIMEASSUMP
+                                                                            : global.stats.SOLVETIMEFREE);
+      if (solver.hasAssumptions()) {
+        global.stats.DETTIMEASSUMP += global.stats.getDetTime() - current_time;
+      } else {
+        global.stats.DETTIMEFREE += global.stats.getDetTime() - current_time;
+      }
     }
+
     if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
       ++global.stats.NSOLS;
