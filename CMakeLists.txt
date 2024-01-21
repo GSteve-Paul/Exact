@@ -19,8 +19,8 @@ endif()
 set(build_result "Executable"
     CACHE STRING "Result of make command: Executable, SharedLib or StaticLib.")
 
-if(NOT (build_result STREQUAL "Executable" OR build_result STREQUAL "SharedLib" OR build_result STREQUAL "StaticLib"))
-    message(WARNING "Please use -Dbuild_result=[Executable | SharedLib | StaticLib]")
+if(NOT (build_result STREQUAL "Executable" OR build_result STREQUAL "SharedLib" OR build_result STREQUAL "StaticLib" OR build_result STREQUAL "UnitTests"))
+    message(WARNING "Please use -Dbuild_result=[Executable | SharedLib | StaticLib | UnitTests]")
 endif()
 
 set(build_static "OFF"
@@ -94,6 +94,10 @@ add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wno-attributes")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
 
+set(test_files
+    src/tests/interface.cpp
+)
+
 set(source_files
     src/constraints/Constr.cpp
     src/constraints/ConstrExp.cpp
@@ -165,7 +169,7 @@ set(main_files
     src/main.cpp
 )
 
-set(files_to_format ${main_files} ${source_files} ${header_files})
+set(files_to_format ${main_files} ${source_files} ${test_files} ${header_files})
 set(files_to_compile ${source_files})
 
 if(build_result STREQUAL "Executable")
@@ -188,6 +192,15 @@ if(build_result STREQUAL "StaticLib")
     add_library(Exact STATIC ${files_to_compile})
     set_target_properties(Exact PROPERTIES PUBLIC_HEADER src/Exact.hpp)
     set(Boost_USE_STATIC_LIBS ON)
+endif()
+
+if(build_result STREQUAL "UnitTests")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf-4") # fixes clang valgrind issue
+    find_package(doctest REQUIRED)
+    add_executable(Exact src/external/doctest/main.cpp ${files_to_compile} ${test_files})
+    target_link_libraries(Exact doctest::doctest)
+else()
+    target_compile_definitions(Exact PUBLIC DOCTEST_CONFIG_DISABLE=1)
 endif()
 
 target_include_directories(Exact PUBLIC ${PROJECT_SOURCE_DIR}/src/)
