@@ -59,8 +59,6 @@ std::vector<bigint> getCoefs(const std::vector<std::string>& cs) {
 
 Options getOptions(const std::vector<std::pair<std::string, std::string>>& options) {
   Options opts;
-  opts.pureLits.set(false);
-  opts.domBreakLim.set(0);
   for (auto pr : options) {
     opts.parseOption(pr.first, pr.second);
   }
@@ -84,7 +82,8 @@ void Exact::addVariable(const std::string& name, long long lb, long long ub, con
   }
   if (unsatState) return;
   try {
-    ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
+    ilp.addVar(name, getCoef(lb), getCoef(ub),
+               opt2enc(encoding == "" ? ilp.global.options.ilpEncoding.get() : encoding));
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -99,7 +98,8 @@ void Exact::addVariable(const std::string& name, const std::string& lb, const st
   }
   if (unsatState) return;
   try {
-    ilp.addVar(name, getCoef(lb), getCoef(ub), encoding);
+    ilp.addVar(name, getCoef(lb), getCoef(ub),
+               opt2enc(encoding == "" ? ilp.global.options.ilpEncoding.get() : encoding));
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -377,5 +377,15 @@ long long Exact::count(const std::vector<std::string>& vars, double timeout) {
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
     return 0;
+  }
+}
+
+std::pair<SolveState, bigint> Exact::toOptimum(bool enforce, double timeout) {
+  if (unsatState) return {SolveState::UNSAT, 0};
+  try {
+    return ilp.toOptimum(enforce, timeout);
+  } catch (const UnsatEncounter& ue) {
+    unsatState = true;
+    return {SolveState::UNSAT, 0};
   }
 }

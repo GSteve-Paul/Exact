@@ -402,6 +402,7 @@ bool ConstrExp<SMALL, LARGE>::hasLit(Lit l) const {
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::hasVar(Var v) const {
   assert(v > 0);
+  assert(v < (Var)coefs.size());
   return coefs[v] != 0;
 }
 

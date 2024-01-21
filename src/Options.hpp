@@ -278,11 +278,11 @@ struct Options {
   ValOption<double> ilpDefaultBound{"ilp-defbound", "Default bound used for unbounded integer variables",
                                     limitAbs<int, long long>(), "0 < double",
                                     [](const double& x) -> bool { return x > 0; }};
-  BoolOption pureLits{"inp-purelits", "Propagate pure literals", true};
+  BoolOption pureLits{"inp-purelits", "Propagate pure literals", false};
   ValOption<long long> domBreakLim{
       "inp-dombreaklim",
-      "Maximum limit of queried constraints for dominance breaking (0 means no dominance breaking, -1 is unlimited)",
-      -1, "-1 =< int", [](const int& x) -> bool { return x >= -1; }};
+      "Maximum limit of queried constraints for dominance breaking (0 means no dominance breaking, -1 is unlimited)", 0,
+      "-1 =< int", [](const int& x) -> bool { return x >= -1; }};
   BoolOption inpProbing{"inp-probing", "Perform probing", true};
   ValOption<double> inpAMO{"inp-atmostone",
                            "Ratio of time spent detecting at-most-ones (0 means none, 1 means unlimited)", 0.1,

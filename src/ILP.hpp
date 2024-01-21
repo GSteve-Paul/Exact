@@ -40,6 +40,7 @@ See the file LICENSE or run with the flag --license=MIT.
 namespace xct {
 
 enum class Encoding { ORDER, LOG, ONEHOT };
+Encoding opt2enc(const std::string& opt);
 
 struct IntVar {
   explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e);
@@ -80,7 +81,10 @@ struct IntTerm {
 };
 std::ostream& operator<<(std::ostream& o, const IntTerm& x);
 
+class ILP;
+
 class IntConstraint {
+  friend class ILP;
   std::vector<IntTerm> lhs;
   std::optional<bigint> lowerBound;
   std::optional<bigint> upperBound;
@@ -94,6 +98,7 @@ class IntConstraint {
   const std::vector<IntTerm>& getLhs() const;
   const std::optional<bigint>& getLB() const;
   const std::optional<bigint>& getUB() const;
+  const bigint getRange() const;
 
   void toConstrExp(CeArb&, bool useLowerBound) const;
 };
@@ -127,14 +132,16 @@ class ILP {
   bool reachedTimeout(double timeout) const;
 
  public:
+  std::pair<SolveState, bigint> toOptimum(bool enforce, double timeout = 0);
+
   ILP(const Options& opts, bool keepIn = false);
 
   Solver& getSolver();
   void setMaxSatVars();
   int getMaxSatVars() const;
 
-  IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound,
-                 const std::string& encoding = "", bool nameAsId = false);
+  IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, Encoding encoding,
+                 bool nameAsId = false);
   IntVar* getVarFor(const std::string& name) const;  // returns nullptr if it does not exist
   std::vector<IntVar*> getVariables() const;
   std::pair<bigint, bigint> getBounds(IntVar* iv) const;

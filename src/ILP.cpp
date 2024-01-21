@@ -34,6 +34,11 @@ See the file LICENSE or run with the flag --license=MIT.
 
 namespace xct {
 
+Encoding opt2enc(const std::string& opt) {
+  assert(opt == "order" || opt == "log" || opt == "onehot");
+  return opt == "order" ? Encoding::ORDER : opt == ("log") ? Encoding::LOG : Encoding::ONEHOT;
+}
+
 std::ostream& operator<<(std::ostream& o, const IntVar& x) {
   return o << x.getName() << "[" << x.getLowerBound() << "," << x.getUpperBound() << "]";
 }
@@ -96,10 +101,6 @@ void log2assumptions(const std::vector<Var>& encoding, const bigint& value, cons
   assert(val == 0);
 }
 
-Encoding opt2enc(const std::string& opt) {
-  assert(opt == "order" || opt == "log" || opt == "onehot");
-  return opt == "order" ? Encoding::ORDER : opt == ("log") ? Encoding::LOG : Encoding::ONEHOT;
-}
 IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e)
     : name(n), lowerBound(lb), upperBound(ub), encoding(getRange() <= 1 ? Encoding::ORDER : e), propVars(), propVar(0) {
   assert(lb <= ub);
@@ -111,7 +112,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
     encodingVars.emplace_back(next);
   } else {
     const bigint range = getRange();
-    assert(range != 0 || encoding == Encoding::ORDER);
+    assert(range > 1 || encoding == Encoding::ORDER);
     int oldvars = solver.getNbVars();
     int newvars = oldvars + (encoding == Encoding::LOG
                                  ? aux::msb(range) + 1  // TODO: correct?
@@ -245,6 +246,15 @@ const std::vector<IntTerm>& IntConstraint::getLhs() const { return lhs; }
 const std::optional<bigint>& IntConstraint::getLB() const { return lowerBound; }
 const std::optional<bigint>& IntConstraint::getUB() const { return upperBound; }
 
+const bigint IntConstraint::getRange() const {
+  bigint res = 0;
+  for (const IntTerm& t : lhs) {
+    assert(t.v->getRange() >= 0);
+    res += aux::abs(t.c) * t.v->getRange();
+  }
+  return res;
+}
+
 void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (useLowerBound) {
     assert(lowerBound.has_value());
@@ -308,16 +318,15 @@ Solver& ILP::getSolver() { return solver; }
 void ILP::setMaxSatVars() { maxSatVars = solver.getNbVars(); }
 int ILP::getMaxSatVars() const { return maxSatVars; }
 
-IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound,
-                    const std::string& encoding, bool nameAsId) {
+IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, Encoding encoding,
+                    bool nameAsId) {
   assert(!getVarFor(name));
   if (upperbound < lowerbound) {
     throw InvalidArgument((std::stringstream() << "Upper bound " << upperbound << " of " << name
                                                << " is smaller than lower bound " << lowerbound)
                               .str());
   }
-  vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound,
-                                          opt2enc(encoding == "" ? solver.getOptions().ilpEncoding.get() : encoding)));
+  vars.push_back(std::make_unique<IntVar>(name, solver, nameAsId, lowerbound, upperbound, encoding));
   IntVar* iv = vars.back().get();
   name2var.insert({name, iv});
   for (Var v : iv->getEncodingVars()) {
@@ -745,8 +754,6 @@ void ILP::printOrigSol() const {
 }
 
 std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& ivs, double timeout) {
-  global.options.pureLits.set(false);
-  global.options.domBreakLim.set(0);
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
   while (result == SolveState::INPROCESSED) {
@@ -802,6 +809,27 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
   invalidator->removeZeroes();
   assert(invalidator->getDegree() == 0);
   return {SolveState::SAT, invalidator};
+}
+
+std::pair<SolveState, bigint> ILP::toOptimum(bool enforce, double timeout) {
+  Optim old = std::move(optim);
+  IntVar* flag = addVar("__flag" + std::to_string(solver.getNbVars() + 1), 0, 1,
+                        Encoding::ORDER);  // TODO: ensure unique variable names
+  assert(flag->getEncodingVars().size() == 1);
+  Var flag_v = flag->getEncodingVars()[0];
+  assumptions.add(flag_v);
+  bigint cf = enforce ? 1 : obj.getRange();
+  obj.lhs.emplace_back(cf, flag, false);
+  offs = solver.setObjective(obj);
+  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
+  SolveState res = runFull(true, timeout);
+  bigint bound = optim->getUpperBound() - cf;
+  assert(obj.lhs.back().v == flag);
+  obj.lhs.pop_back();
+  assumptions.remove(flag_v);
+  optim = std::move(old);
+  solver.addUnitConstraint(-flag_v, Origin::FORMULA);
+  return {res, bound};
 }
 
 // TODO: fix optimization with assumption variable
@@ -975,8 +1003,6 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
 }
 
 int64_t ILP::count(const std::vector<IntVar*>& ivs, double timeout) {
-  global.options.pureLits.set(false);
-  global.options.domBreakLim.set(0);
   global.stats.runStartTime = std::chrono::steady_clock::now();
   if (global.options.verbosity.get() > 0) {
     std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;

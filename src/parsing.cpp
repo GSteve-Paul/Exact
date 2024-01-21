@@ -147,7 +147,7 @@ void file_read(ILP& ilp) {
 
 IntVar* indexedBoolVar(ILP& ilp, const std::string& name) {
   if (IntVar* res = ilp.getVarFor(name); res) return res;
-  return ilp.addVar(name, 0, 1, "", true);
+  return ilp.addVar(name, 0, 1, Encoding::ORDER, true);
 }
 
 void opb_read(std::istream& in, ILP& ilp) {
@@ -356,7 +356,8 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
       throw UnsatEncounter();
     }
     [[maybe_unused]] IntVar* iv =
-        ilp.addVar(varname, static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)));
+        ilp.addVar(varname, static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)),
+                   opt2enc(ilp.global.options.ilpEncoding.get()));
   }
 
   std::vector<ratio> ratcoefs;

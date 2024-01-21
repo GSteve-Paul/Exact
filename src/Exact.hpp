@@ -414,5 +414,9 @@ class Exact {
    */
   long long count(const std::vector<std::string>& vars, double timeout = 0);
 
+  // *** BELOW ARE FOR TESTING PURPOSES ***
+
+  std::pair<SolveState, bigint> toOptimum(bool enforce, double timeout = 0);
+
   // TODO: void getStat()
 };

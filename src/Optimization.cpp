@@ -190,8 +190,8 @@ void simplifyAssumps(CePtr<SMALL, LARGE>& c, const IntSet& assumps) {
   for (const Lit l : assumps.getKeys()) {  // remove assumptions from objective
     const Var v = toVar(l);
     if (c->hasVar(v)) {
-      if (c->hasLit(l)) c->addRhs(c->getCoef(-l));
-      c->vars[v] = 0;
+      if (c->hasLit(l)) c->addRhs(aux::abs(c->coefs[v]));
+      c->coefs[v] = 0;
     }
   }
 }

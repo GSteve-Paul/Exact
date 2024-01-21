@@ -154,13 +154,9 @@ class Solver {
   ~Solver();
   bigint setObjective(const IntConstraint& obj);
 
-  int getNbVars() const { return n; }
+  int getNbVars() const;
   void setNbVars(int nvars, bool orig);
-  bool isOrig(Var v) const {
-    assert(v >= 0);
-    assert(v <= getNbVars());
-    return isorig[v];
-  }
+  bool isOrig(Var v) const;
 
   Options& getOptions();
   Stats& getStats();

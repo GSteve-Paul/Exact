@@ -96,6 +96,8 @@ Solver::~Solver() {
 
 bool Solver::foundSolution() const { return global.stats.NORIGVARS.z == 0 || lastSol.size() > 1; }
 
+int Solver::getNbVars() const { return n; }
+
 void Solver::setNbVars(int nvars, bool orig) {
   assert(nvars >= 0);
   assert(nvars < INF);
@@ -122,6 +124,12 @@ void Solver::setNbVars(int nvars, bool orig) {
     global.stats.NAUXVARS.z += nvars - n;
   }
   n = nvars;
+}
+
+bool Solver::isOrig(Var v) const {
+  assert(v >= 0);
+  assert(v <= getNbVars());
+  return isorig[v];
 }
 
 bigint Solver::setObjective(const IntConstraint& obj) {
