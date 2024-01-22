@@ -149,6 +149,7 @@ class ILP {
   void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& offset = 0);
   void setAssumption(const IntVar* iv, const std::vector<bigint>& vals);
+  void setAssumption(const IntVar* iv, bool val);
   bool hasAssumption(const IntVar* iv) const;
   std::vector<bigint> getAssumption(const IntVar* iv) const;
   void clearAssumptions();

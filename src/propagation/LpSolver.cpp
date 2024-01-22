@@ -184,6 +184,7 @@ void LpSolver::setNbVariables(int n) {
 
 void LpSolver::setObjective(const CeArb& o) {
   assert(o);
+  setNbVariables(solver.getNbVars() + 1);
   soplex::DVectorReal objective;
   objective.reDim(getNbCols());  // NOTE: automatically set to zero
   if (o->nVars() == 0) {

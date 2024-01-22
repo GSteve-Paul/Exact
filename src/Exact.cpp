@@ -379,13 +379,3 @@ long long Exact::count(const std::vector<std::string>& vars, double timeout) {
     return 0;
   }
 }
-
-std::pair<SolveState, bigint> Exact::toOptimum(bool enforce, double timeout) {
-  if (unsatState) return {SolveState::UNSAT, 0};
-  try {
-    return ilp.toOptimum(enforce, timeout);
-  } catch (const UnsatEncounter& ue) {
-    unsatState = true;
-    return {SolveState::UNSAT, 0};
-  }
-}

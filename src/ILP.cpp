@@ -408,6 +408,24 @@ void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
   optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
 }
 
+void ILP::setAssumption(const IntVar* iv, bool val) {
+  assert(iv);
+  assert(iv->isBoolean());
+  for (Var v : iv->getEncodingVars()) {
+    assumptions.remove(v);
+    assumptions.remove(-v);
+  }
+  Var v = iv->getEncodingVars()[0];
+  if (val) {
+    assumptions.remove(-v);
+    assumptions.add(v);
+  } else {
+    assumptions.remove(v);
+    assumptions.add(-v);
+  }
+  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
+}
+
 bool ILP::hasAssumption(const IntVar* iv) const {
   return std::any_of(iv->getEncodingVars().begin(), iv->getEncodingVars().end(),
                      [&](Var v) { return assumptions.has(v) || assumptions.has(-v); });
