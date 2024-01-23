@@ -34,7 +34,7 @@ TEST_CASE("simple Expression ostream check") {
   for (const auto& s : {"a", "b", "c", "d", "e"}) {
     vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
   }
-  ilp.addConstraint({1, 2, 3, 4, 5}, vars, {}, 6);
+  ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, 6});
   ilp.setObjective({1, 1, 2, 3, 5}, vars, {});
   auto [state, obj] = ilp.toOptimum(false);
   CHECK(state == SolveState::INCONSISTENT);

@@ -99,6 +99,7 @@ class IntConstraint {
   const std::optional<bigint>& getLB() const;
   const std::optional<bigint>& getUB() const;
   const bigint getRange() const;
+  int64_t size() const;
 
   void toConstrExp(CeArb&, bool useLowerBound) const;
 };
@@ -130,6 +131,7 @@ class ILP {
   std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, double timeout = 0);
   std::pair<SolveState, bigint> optimizeVar(IntVar* iv, const bigint& startbound, bool minimize, double timeout = 0);
   bool reachedTimeout(double timeout) const;
+  IntVar* addFlag();
 
  public:
   std::pair<SolveState, bigint> toOptimum(bool enforce, double timeout = 0);
@@ -162,19 +164,14 @@ class ILP {
   SolveState runFull(bool optimize, double timeout = 0);
   void runInternal(int argc, char** argv);
 
-  void addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                     const std::vector<bool>& negated, const std::optional<bigint>& lb = std::nullopt,
-                     const std::optional<bigint>& ub = std::nullopt);
-  void addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                      const std::vector<bool>& negated, const bigint& lb);
-  void addRightReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                           const std::vector<bool>& negated, const bigint& lb);
-  void addLeftReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                          const std::vector<bool>& negated, const bigint& lb);
+  void addConstraint(const IntConstraint& ic);
+  void addReification(IntVar* head, const IntConstraint& ic);
+  void addRightReification(IntVar* head, const IntConstraint& ic);
+  void addLeftReification(IntVar* head, const IntConstraint& ic);
   void fix(IntVar* iv, const bigint& val);
   void boundObjByLastSol();
   void invalidateLastSol();
-  void invalidateLastSol(const std::vector<IntVar*>& ivs);
+  void invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag = 0);
 
   ratio getLowerBound() const;
   ratio getUpperBound() const;
@@ -199,7 +196,7 @@ class ILP {
 
   const std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs, double timeout = 0);
   const std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, double timeout = 0);
-  int64_t count(const std::vector<IntVar*>& ivs, double timeout = 0);
+  int64_t count(const std::vector<IntVar*>& ivs, bool keepstate, double timeout = 0);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 

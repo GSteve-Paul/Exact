@@ -216,7 +216,7 @@ void opb_read(std::istream& in, ILP& ilp) {
     if (opt_line) {
       ilp.setObjective(coefs, vars, negated, -lb);
     } else {
-      ilp.addConstraint(coefs, vars, negated, lb, aux::option(!isInequality, lb));
+      ilp.addConstraint(IntConstraint{coefs, vars, negated, lb, aux::option(!isInequality, lb)});
     }
   }
 }
@@ -413,7 +413,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     coefs.pop_back();
     bigint lb = coefs.back();
     coefs.pop_back();
-    ilp.addConstraint(coefs, vars, {}, aux::option(useLB, lb), aux::option(useUB, ub));
+    ilp.addConstraint(IntConstraint{coefs, vars, {}, aux::option(useLB, lb), aux::option(useUB, ub)});
   }
 }
 

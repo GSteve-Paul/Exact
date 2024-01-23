@@ -255,6 +255,8 @@ const bigint IntConstraint::getRange() const {
   return res;
 }
 
+int64_t IntConstraint::size() const { return lhs.size(); }
+
 void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (useLowerBound) {
     assert(lowerBound.has_value());
@@ -509,12 +511,8 @@ void ILP::clearSolutionHints(const std::vector<IntVar*>& ivs) {
   solver.fixPhase(hints);
 }
 
-void ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                        const std::vector<bool>& negated, const std::optional<bigint>& lb,
-                        const std::optional<bigint>& ub) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
-  IntConstraint ic(coefs, vars, negated, lb, ub);
+void ILP::addConstraint(const IntConstraint& ic) {
+  if (ic.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   if (keepInput) constraints.push_back(ic);
   if (ic.getLB().has_value()) {
     CeArb input = global.cePools.takeArb();
@@ -529,69 +527,54 @@ void ILP::addConstraint(const std::vector<bigint>& coefs, const std::vector<IntV
 }
 
 // head <=> rhs -- head iff rhs
-void ILP::addReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                         const std::vector<bool>& negated, const bigint& lb) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
-  if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
-
-  IntConstraint ic(coefs, vars, negated, lb);
-  if (keepInput) reifications.push_back({head, ic});
-  CeArb leq = global.cePools.takeArb();
-  ic.toConstrExp(leq, true);
-  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
-  CeArb geq = global.cePools.takeArb();
-  leq->copyTo(geq);
-  Var h = head->getEncodingVars()[0];
-
-  leq->addLhs(leq->degree, -h);
-  solver.addConstraint(leq, Origin::FORMULA);
-
-  geq->addRhs(-1);
-  geq->invert();
-  geq->addLhs(geq->degree, h);
-  solver.addConstraint(geq, Origin::FORMULA);
+void ILP::addReification(IntVar* head, const IntConstraint& ic) {
+  addLeftReification(head, ic);
+  addRightReification(head, ic);
 }
 
 // head => rhs -- head implies rhs
-void ILP::addRightReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                              const std::vector<bool>& negated, const bigint& lb) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
+void ILP::addRightReification(IntVar* head, const IntConstraint& ic) {
+  if (ic.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
-  IntConstraint ic(coefs, vars, negated, lb);
   if (keepInput) reifications.push_back({head, ic});
-  CeArb leq = global.cePools.takeArb();
-  ic.toConstrExp(leq, true);
-  leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
 
-  Var h = head->getEncodingVars()[0];
-  leq->addLhs(leq->degree, -h);
-  solver.addConstraint(leq, Origin::FORMULA);
+  bool run[2] = {ic.getUB().has_value(), ic.getLB().has_value()};
+  for (int i = 0; i < 2; ++i) {
+    if (!run[i]) continue;
+    CeArb leq = global.cePools.takeArb();
+    ic.toConstrExp(leq, i);
+    leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
+
+    Var h = head->getEncodingVars()[0];
+    leq->addLhs(leq->degree, -h);
+    solver.addConstraint(leq, Origin::FORMULA);
+  }
 }
 
 // head <= rhs -- rhs implies head
-void ILP::addLeftReification(IntVar* head, const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                             const std::vector<bool>& negated, const bigint& lb) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
+void ILP::addLeftReification(IntVar* head, const IntConstraint& ic) {
+  if (ic.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
-  IntConstraint ic(coefs, vars, negated, lb);
   if (keepInput) reifications.push_back({head, ic});
-  CeArb geq = global.cePools.takeArb();
-  ic.toConstrExp(geq, true);
-  geq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
 
-  Var h = head->getEncodingVars()[0];
-  geq->addRhs(-1);
-  geq->invert();
-  geq->addLhs(geq->degree, h);
-  solver.addConstraint(geq, Origin::FORMULA);
+  bool run[2] = {ic.getUB().has_value(), ic.getLB().has_value()};
+  for (int i = 0; i < 2; ++i) {
+    if (!run[i]) continue;
+    CeArb geq = global.cePools.takeArb();
+    ic.toConstrExp(geq, i);
+    geq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
+
+    Var h = head->getEncodingVars()[0];
+    geq->addRhs(-1);
+    geq->invert();
+    geq->addLhs(geq->degree, h);
+    solver.addConstraint(geq, Origin::FORMULA);
+  }
 }
 
-void ILP::fix(IntVar* iv, const bigint& val) { addConstraint({1}, {iv}, {false}, val, val); }
+void ILP::fix(IntVar* iv, const bigint& val) { addConstraint(IntConstraint{{1}, {iv}, {false}, val, val}); }
 
 void ILP::boundObjByLastSol() {
   if (!hasSolution()) throw InvalidArgument("No solution to add objective bound.");
@@ -609,13 +592,16 @@ void ILP::invalidateLastSol() {
   solver.invalidateLastSol(vars);
 }
 
-void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs) {
+void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag) {
   if (!hasSolution()) throw InvalidArgument("No solution to add objective bound.");
 
   std::vector<Var> vars;
-  vars.reserve(ivs.size());
+  vars.reserve(ivs.size() + (flag != 0));
   for (IntVar* iv : ivs) {
     aux::appendTo(vars, iv->getEncodingVars());
+  }
+  if (flag != 0) {
+    vars.push_back(flag);
   }
   solver.invalidateLastSol(vars);
 }
@@ -829,10 +815,14 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
   return {SolveState::SAT, invalidator};
 }
 
+IntVar* ILP::addFlag() {
+  // TODO: ensure unique variable names
+  return addVar("__flag" + std::to_string(solver.getNbVars() + 1), 0, 1, Encoding::ORDER);
+}
+
 std::pair<SolveState, bigint> ILP::toOptimum(bool enforce, double timeout) {
   Optim old = std::move(optim);
-  IntVar* flag = addVar("__flag" + std::to_string(solver.getNbVars() + 1), 0, 1,
-                        Encoding::ORDER);  // TODO: ensure unique variable names
+  IntVar* flag = addFlag();
   assert(flag->getEncodingVars().size() == 1);
   Var flag_v = flag->getEncodingVars()[0];
   assumptions.add(flag_v);
@@ -1020,30 +1010,66 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
   return doms;
 }
 
-int64_t ILP::count(const std::vector<IntVar*>& ivs, double timeout) {
+int64_t ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, double timeout) {
   global.stats.runStartTime = std::chrono::steady_clock::now();
   if (global.options.verbosity.get() > 0) {
     std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
   }
+  SolveState result = SolveState::INCONSISTENT;
+  bigint optval = 0;
+  if (solver.objective->nVars() > 0) {
+    auto tmp = toOptimum(!keepstate, timeout);
+    result = tmp.first;
+    optval = tmp.second;
+    assert(result != SolveState::INPROCESSED);
+    if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) {
+      return 0;
+    } else if (result == SolveState::TIMEOUT) {
+      return -1;
+    }
+  }
+  Optim old;
+  Var flag_v = 0;
+  if (keepstate) {
+    old = std::move(optim);
+    IntVar* flag = addFlag();
+    flag_v = flag->getEncodingVars()[0];
+    IntConstraint ic = obj;
+    assert(ic.getLB().has_value());
+    ic.upperBound = optval + ic.getLB().value();
+    ic.lowerBound.reset();
+    addRightReification(flag, ic);
+    assumptions.add(flag_v);
+    optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);  // TODO: no need for an objective...
+  }
   int64_t res = 0;
-  SolveState result;
   while (true) {
-    if (reachedTimeout(timeout)) return -(res + 1);
+    if (reachedTimeout(timeout)) {
+      res = -res - 1;
+      break;
+    }
     result = runOnce(false);
     if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) {
-      return res;
+      break;
     }
     if (result == SolveState::SAT) {
       ++res;
       try {
-        invalidateLastSol(ivs);
+        invalidateLastSol(ivs, flag_v);
       } catch (const UnsatEncounter& ue) {
-        return res;
+        break;
       }
     } else {
       assert(result == SolveState::INPROCESSED);
     }
   }
+
+  if (keepstate) {
+    assumptions.remove(flag_v);
+    optim = std::move(old);
+  }
+
+  return res;
 }
 
 void ILP::runInternal(int argc, char** argv) {

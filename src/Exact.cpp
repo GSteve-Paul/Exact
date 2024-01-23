@@ -116,8 +116,8 @@ void Exact::addConstraint(const std::vector<long long>& coefs, const std::vector
   if (unsatState) return;
 
   try {
-    ilp.addConstraint(getCoefs(coefs), getVariables(vars), {}, aux::option(useLB, getCoef(lb)),
-                      aux::option(useUB, getCoef(ub)));
+    ilp.addConstraint(IntConstraint{
+        getCoefs(coefs), getVariables(vars), {}, aux::option(useLB, getCoef(lb)), aux::option(useUB, getCoef(ub))});
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -129,8 +129,8 @@ void Exact::addConstraint(const std::vector<std::string>& coefs, const std::vect
   if (unsatState) return;
 
   try {
-    ilp.addConstraint(getCoefs(coefs), getVariables(vars), {}, aux::option(useLB, getCoef(lb)),
-                      aux::option(useUB, getCoef(ub)));
+    ilp.addConstraint(IntConstraint{
+        getCoefs(coefs), getVariables(vars), {}, aux::option(useLB, getCoef(lb)), aux::option(useUB, getCoef(ub))});
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -143,7 +143,7 @@ void Exact::addReification(const std::string& head, const std::vector<long long>
   if (unsatState) return;
 
   try {
-    ilp.addReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+    ilp.addReification(getVariable(head), IntConstraint{getCoefs(coefs), getVariables(vars), {}, bigint(lb)});
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -155,7 +155,7 @@ void Exact::addReification(const std::string& head, const std::vector<std::strin
   if (unsatState) return;
 
   try {
-    ilp.addReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+    ilp.addReification(getVariable(head), IntConstraint{getCoefs(coefs), getVariables(vars), {}, bigint(lb)});
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -167,7 +167,7 @@ void Exact::addRightReification(const std::string& head, const std::vector<long 
   if (unsatState) return;
 
   try {
-    ilp.addRightReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+    ilp.addRightReification(getVariable(head), IntConstraint{getCoefs(coefs), getVariables(vars), {}, bigint(lb)});
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -179,7 +179,7 @@ void Exact::addRightReification(const std::string& head, const std::vector<std::
   if (unsatState) return;
 
   try {
-    ilp.addRightReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+    ilp.addRightReification(getVariable(head), IntConstraint{getCoefs(coefs), getVariables(vars), {}, bigint(lb)});
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -191,7 +191,7 @@ void Exact::addLeftReification(const std::string& head, const std::vector<long l
   if (unsatState) return;
 
   try {
-    ilp.addLeftReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+    ilp.addLeftReification(getVariable(head), IntConstraint{getCoefs(coefs), getVariables(vars), {}, bigint(lb)});
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
@@ -203,7 +203,7 @@ void Exact::addLeftReification(const std::string& head, const std::vector<std::s
   if (unsatState) return;
 
   try {
-    ilp.addLeftReification(getVariable(head), getCoefs(coefs), getVariables(vars), {}, bigint(lb));
+    ilp.addLeftReification(getVariable(head), IntConstraint{getCoefs(coefs), getVariables(vars), {}, bigint(lb)});
   } catch (const UnsatEncounter& ue) {
     unsatState = true;
   }
