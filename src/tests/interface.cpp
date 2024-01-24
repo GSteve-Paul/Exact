@@ -24,25 +24,58 @@ or run with the flag --license=AGPLv3. If not, see
 using namespace xct;
 
 TEST_SUITE_BEGIN("ILP interface tests");
+//
+// TEST_CASE("toOptimum") {
+//  Options opts;
+//  opts.verbosity.set(0);
+//  for(double x: {0.0,0.5,1.0}){
+//    opts.cgHybrid.set(x);
+//    ILP ilp(opts);
+//    std::vector<IntVar*> vars;
+//    vars.reserve(5);
+//    for (const auto& s : {"a", "b", "c", "d", "e"}) {
+//      vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+//    }
+//    ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, 6});
+//    ilp.setObjective({1, 1, 2, 3, 5}, vars, {});
+//    auto [state, obj] = ilp.toOptimum(false);
+//    CHECK(state == SolveState::INCONSISTENT);
+//    CHECK(obj == 4);
+//    ilp.setAssumption(vars[4], true);
+//    auto [state2, obj2] = ilp.toOptimum(true);
+//    CHECK(state2 == SolveState::INCONSISTENT);
+//    CHECK(obj2 == 6);
+//    ilp.fix(vars[4],1);
+//    try {
+//      ilp.addConstraint(IntConstraint{{1, 1, 2, 3, 5}, vars, {}, std::nullopt, 5});
+//      state = ilp.runFull(false);
+//    } catch (const UnsatEncounter& ue) {
+//      state = SolveState::UNSAT;
+//    }
+//    CHECK(state==SolveState::UNSAT);
+//  }
+//}
 
-TEST_CASE("simple Expression ostream check") {
+TEST_CASE("count") {
   Options opts;
-  opts.cgHybrid.set(1);
-  ILP ilp(opts);
-  std::vector<IntVar*> vars;
-  vars.reserve(5);
-  for (const auto& s : {"a", "b", "c", "d", "e"}) {
-    vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+  opts.verbosity.set(1);
+  for (double x : {1.0}) {
+    opts.cgHybrid.set(x);
+    ILP ilp(opts);
+    std::vector<IntVar*> vars;
+    vars.reserve(5);
+    for (const auto& s : {"a", "b", "c", "d", "e"}) {
+      vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+    }
+    ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, 6});
+    ilp.setObjective({1, 1, 2, 3, 5}, vars, {});
+    int64_t n = ilp.count(vars, true);
+    CHECK(n == 2);
+    n = ilp.count(vars, false);
+    CHECK(n == 2);
+    n = ilp.count(vars, false);
+    CHECK(n == 0);
   }
-  ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, 6});
-  ilp.setObjective({1, 1, 2, 3, 5}, vars, {});
-  auto [state, obj] = ilp.toOptimum(false);
-  CHECK(state == SolveState::INCONSISTENT);
-  CHECK(obj == 4);
-  ilp.setAssumption(vars[4], true);
-  auto [state2, obj2] = ilp.toOptimum(false);
-  CHECK(state2 == SolveState::INCONSISTENT);
-  CHECK(obj2 == 6);
 }
 
 TEST_SUITE_END();
