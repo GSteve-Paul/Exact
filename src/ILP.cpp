@@ -1022,7 +1022,7 @@ int64_t ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, double timeo
     result = tmp.first;
     optval = tmp.second;
     assert(result != SolveState::INPROCESSED);
-    if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) {
+    if (result == SolveState::UNSAT) {  // NOTE: SolveState::INCONSISTENT may be due to objective bound assumption
       return 0;
     } else if (result == SolveState::TIMEOUT) {
       return -1;
@@ -1051,8 +1051,7 @@ int64_t ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, double timeo
     result = runOnce(false);
     if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) {
       break;
-    }
-    if (result == SolveState::SAT) {
+    } else if (result == SolveState::SAT) {
       ++res;
       try {
         invalidateLastSol(ivs, flag_v);
@@ -1065,7 +1064,9 @@ int64_t ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, double timeo
   }
 
   if (keepstate) {
+    assert(assumptions.has(flag_v));
     assumptions.remove(flag_v);
+    solver.addUnitConstraint(-flag_v, Origin::FORMULA);
     optim = std::move(old);
   }
 

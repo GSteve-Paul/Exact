@@ -74,4 +74,15 @@ class IntMap {
   size_t reserved() const { return _int2type.size(); }
 };
 
+template <typename T>
+std::ostream& operator<<(std::ostream& o, const IntMap<T>& im) {
+  if (im.reserved() > 0) {
+    o << "0:" << im[0] << ", ";
+  }
+  for (int64_t i = 1; i <= im.reserved() / 2; ++i) {
+    o << -i << ":" << im[-i] << "|" << i << ":" << im[i] << ", ";
+  }
+  return o;
+}
+
 }  // namespace xct

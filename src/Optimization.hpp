@@ -82,9 +82,8 @@ struct LazyVar {
   ConstrSimple32 atMost;   // k + y1 + ... + yi-1 + (1+n-k-i)yi >= X
 
   SMALL mult;
-  LARGE exceedSum;
 
-  LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& esum, const LARGE& normUpBnd);
+  LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, int upperBnd);
   ~LazyVar();
 
   void addVar(Var v);

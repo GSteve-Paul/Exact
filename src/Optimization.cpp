@@ -69,15 +69,14 @@ namespace xct {
 constexpr int stratFactor = 1000;
 
 template <typename SMALL, typename LARGE>
-LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& esum,
-                               const LARGE& normUpBnd)
-    : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(cardCore->absCoeffSum()), mult(m), exceedSum(esum) {
-  setUpperBound(normUpBnd);
+LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, int upperBnd)
+    : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(upperBnd), mult(m) {
+  assert(remainingVars() > 0);
   cardCore->toSimple()->copyTo(atLeast);
   atLeast.toNormalFormLit();
   assert(atLeast.rhs == cardCore->getDegree());
   atMost.rhs = -atLeast.rhs;
-  atMost.terms.reserve(atLeast.size());
+  atMost.terms.reserve(atLeast.size() + 1);
   for (auto& t : atLeast.terms) {
     atMost.terms.emplace_back(-t.c, t.l);
   }
@@ -100,7 +99,7 @@ int LazyVar<SMALL, LARGE>::remainingVars() const {
 
 template <typename SMALL, typename LARGE>
 void LazyVar<SMALL, LARGE>::setUpperBound(const LARGE& normalizedUpperBound) {
-  upperBound = static_cast<int>(std::min<LARGE>(upperBound, (normalizedUpperBound + exceedSum) / mult));
+  upperBound = std::min(upperBound, static_cast<int>(normalizedUpperBound / mult));
 }
 
 template <typename SMALL, typename LARGE>
@@ -207,9 +206,9 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
   assert(origObj->getDegree() == 0);
   reformObj = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(reformObj);
+  reformObj->removeEqualities(solver.getEqualities(), false);
   simplifyAssumps(reformObj, assumptions);
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  reformObj->removeEqualities(solver.getEqualities(), false);
 
   lower_bound = -reformObj->getDegree();
   upper_bound = origObj->absCoeffSum() + 1;
@@ -338,21 +337,32 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
 
   global.stats.NCGNONCLAUSALCORES += !cardCore->isClause();
 
-  // add auxiliary variable
-  int newN = solver.getNbVars() + 1;
-  solver.setNbVars(newN, false);
+  int cardUpperBound = static_cast<int>(upper_bound / mult);
+  bool needAuxiliary = cardUpperBound > cardCore->getDegree();
+  if (needAuxiliary) {
+    // add auxiliary variable
+    int newN = solver.getNbVars() + 1;
+    solver.setNbVars(newN, false);
+    reformObj->addLhs(mult, newN);  // add only one variable for now
+
+    // add first lazy constraint
+    lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, cardUpperBound));
+    lazyVars.back()->addAtLeastConstraint();
+    lazyVars.back()->addAtMostConstraint();
+  }
+  // else the cardinality is actually an equality, and no auxiliary variables are needed.
+
   // reformulate the objective
   cardCore->invert();
   reformObj->addUp(cardCore, mult);
-  cardCore->invert();
-  reformObj->addLhs(mult, newN);  // add only one variable for now
   simplifyAssumps(reformObj, assumptions);
-  lower_bound = -reformObj->getDegree();
 
-  // add first lazy constraint
-  lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, 0, upper_bound));
-  lazyVars.back()->addAtLeastConstraint();
-  lazyVars.back()->addAtMostConstraint();
+  if (!needAuxiliary) {
+    // since the cardinality is actually an equality, we can add its inverted form to the solver
+    solver.addConstraint(cardCore, Origin::COREGUIDED);
+  }
+
+  lower_bound = -reformObj->getDegree();
   addLowerBound();
   return State::SUCCESS;
 }
@@ -458,27 +468,34 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
     if (coreguided &&
         solver.getAssumptions().size() <= assumptions.size()) {  // figure out and set new coreguided assumptions
       reformObj->removeEqualities(solver.getEqualities(), false);
+      simplifyAssumps(reformObj, assumptions);
       reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-      std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
-      litcoefs.reserve(reformObj->nVars());
-      while (true) {
-        for (Var v : reformObj->getVars()) {
-          assert(reformObj->getLit(v) != 0);
-          if (!assumptions.has(v) && !assumptions.has(-v) &&
-              (stratLim <= reformObj->coefs[v] || stratLim <= -reformObj->coefs[v])) {
-            litcoefs.emplace_back(aux::toDouble(aux::abs(reformObj->coefs[v])), v);
+      if (reformObj->nVars() == 0) {
+        solver.setAssumptions(assumptions.getKeys());
+      } else {
+        std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
+        litcoefs.reserve(reformObj->nVars());
+        while (true) {
+          for (Var v : reformObj->getVars()) {
+            assert(reformObj->getLit(v) != 0);
+            assert(!assumptions.has(v));
+            assert(!assumptions.has(-v));
+            if (stratLim <= reformObj->coefs[v] || stratLim <= -reformObj->coefs[v]) {
+              litcoefs.emplace_back(aux::toDouble(aux::abs(reformObj->coefs[v])), v);
+            }
           }
+          if (!litcoefs.empty() || stratLim == 1) break;
+          decreaseStratLim(stratLim, stratDiv);
         }
-        if (!litcoefs.empty() || stratLim == 1) break;
-        decreaseStratLim(stratLim, stratDiv);
+        std::sort(litcoefs.begin(), litcoefs.end(), [](const Term<double>& t1, const Term<double>& t2) {
+          return t1.c > t2.c || (t1.c == t2.c && t1.l < t2.l);
+        });
+        std::vector<Lit> assumps = assumptions.getKeys();
+        assumps.reserve(assumps.size() + litcoefs.size());
+        for (const Term<double>& t : litcoefs) assumps.push_back(-reformObj->getLit(t.l));
+        solver.setAssumptions(assumps);
+        assert(solver.getAssumptions().size() > assumptions.size());
       }
-      std::sort(litcoefs.begin(), litcoefs.end(), [](const Term<double>& t1, const Term<double>& t2) {
-        return t1.c > t2.c || (t1.c == t2.c && t1.l < t2.l);
-      });
-      std::vector<Lit> assumps = assumptions.getKeys();
-      assumps.reserve(assumps.size() + litcoefs.size());
-      for (const Term<double>& t : litcoefs) assumps.push_back(-reformObj->getLit(t.l));
-      solver.setAssumptions(assumps);
     } else if (!coreguided) {  // set regular assumptions
       solver.setAssumptions(assumptions.getKeys());
     }
@@ -512,8 +529,8 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
     } else if (reply == SolveState::INCONSISTENT) {
       assert(!solver.getAssumptions().isEmpty());
       ++global.stats.NCORES;
-      if (coreguided) {
-        assert(solver.getAssumptions().size() > assumptions.size());
+      if (solver.getAssumptions().size() > assumptions.size()) {
+        assert(coreguided);
         if (handleInconsistency(solver.lastCore)) {
           solver.clearAssumptions();
           return SolveState::INCONSISTENT;
