@@ -55,6 +55,17 @@ def min_vars_to_satisfy(constraint):
 def norm_min_sat(constraint):
     return min_vars_to_satisfy(constraint) / (len(constraint) - 1)
 
+def max_sat(constraint):
+    sum = 0
+    i = 1
+    while sum < constraint[0]:
+        i += 1
+        sum += constraint[-i]
+    return i - 1
+
+def norm_max_sat(constraint):
+    return max_sat(constraint) / (len(constraint) - 1)
+
 def get_stddev(constraint):
     return np.std(np.array(constraint[1:])/constraint[0])
 
@@ -62,6 +73,11 @@ def get_stddev_with_min_sat(constraint):
     min_sat = min_vars_to_satisfy(constraint)
     constraint = constraint[:min_sat+1]
     return get_stddev(constraint) 
+
+def get_stddev_with_length(constraint):
+    length = const_len(constraint)
+    constraint = constraint[:length+1]
+    return get_stddev(constraint)
 
 def get_slack(constraint, truth_table):
     table_copy = copy.deepcopy(truth_table)
@@ -115,17 +131,17 @@ def sols_cut(const):
 if __name__ == '__main__':
 
     # # print(generate_constraint(10))
-    # # const0 = [3, 3, 0, 0]
-    # # const1 = [3, 2, 1, 0]
-    # # const2 = [3, 2, 1, 1]
-    # # const3 = [3, 1, 1, 1]
-    # # const4 = [3, 2, 2, 0]
-    # # const5 = [3, 2, 2, 1]
-    # # const6 = [3, 2, 2, 2]
-    # # const7 = [3, 3, 3, 0]
-    # # const8 = [3, 3, 3, 3]
+    # const0 = [3, 3, 0, 0]
+    # const1 = [3, 2, 1, 0]
+    # const2 = [3, 2, 1, 1] # 5 sols cut
+    # const3 = [3, 1, 1, 1]
+    # const4 = [3, 2, 2, 0] # 6 sols cut
+    # const5 = [3, 2, 2, 1]
+    # const6 = [3, 2, 2, 2]
+    # const7 = [3, 3, 3, 0]
+    # const8 = [3, 3, 3, 3]
 
-    # # consts = [const0, const1, const2, const3, const4, const5, const6, const7, const8]
+    # consts = [const0, const1, const2, const3, const4, const5, const6, const7, const8]
 
     # # const0 = np.array([12, 6, 3, 3, 1, 0, 0, 0, 0, 0, 0])
     # # const1 = np.array([12, 4, 3, 3, 1, 1, 1, 0, 0, 0, 0])
@@ -138,18 +154,26 @@ if __name__ == '__main__':
     # const0 = np.array([15, 10, 8, 7, 7, 5, 3, 0, 0, 0, 0])
     # const1 = np.array([15, 8, 7, 7, 5, 5, 3, 3, 2, 0, 0])
     # const2 = np.array([15, 8, 7, 7, 5, 5, 5, 3, 0, 0, 0])
-    # const3 = np.array([15, 10, 5, 5, 5, 5, 3, 3, 2, 2])
+    # const3 = np.array([15, 10, 5, 5, 5, 5, 3, 3, 2, 2, 0])
 
     # consts = [const0, const1, const2, const3]
 
-    # functions = [sols_cut, heuristic, get_stddev, lambda x: len(np.nonzero(x)[0]) - 1, lambda x: x[1]/x[0], min_vars_to_satisfy, get_stddev_with_min_sat]
+    const0 =  [5] + [1 for _ in range(10)] # Sum i Cr 10 {i elm 5..10}
+    const1 = [9, 9] + [1 for _ in range(9)] 
+    const2 = [6, 8] + [1 for _ in range(9)]
+    consts = [const0, const1, const2]
+
+    functions = [sols_cut, heuristic, get_stddev, lambda x: len(np.nonzero(x)[0]) - 1, lambda x: x[1]/x[0], min_vars_to_satisfy, get_stddev_with_min_sat, get_stddev_with_length]
 
     
 
-    # for const in consts:
-    #     print(const)
-    #     for function in functions:
-    #         print(f'{function.__name__}: {function(const)}')
+    for const in consts:
+        print(const)
+        for function in functions:
+            print(f'{function.__name__}: {function(const)}')
+
+
+    # print(sols_cut(const))
 
 
     # # a + b >= 1
@@ -171,9 +195,9 @@ if __name__ == '__main__':
     # print(f'nb_cut_sols: {nb_cut_sols}')
     # print(2**30)
     # print(1073741824 - 1073733269)
-    shuffled = np.arange(1000)
-    np.random.shuffle(shuffled)
+    # shuffled = np.arange(1000)
+    # np.random.shuffle(shuffled)
 
-    print(np.corrcoef(np.arange(1000), shuffled))
+    # print(np.corrcoef(np.arange(1000), shuffled))
 
    

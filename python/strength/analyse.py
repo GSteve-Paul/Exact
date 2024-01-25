@@ -1,6 +1,7 @@
 import csv
 import matplotlib.pyplot as plt
 import numpy as np
+import constraint_logic as cl
 
 
 
@@ -40,7 +41,7 @@ def plot_rows(rows, lb=10, ub=200, stepsize=5):
     plt.plot(rows.T)
 
     # plt.legend(['nb_cut_sols', 'heur'] + [f'heur_len{i}' for i in range(lb, ub, stepsize)] + [f'heur_size{i}' for i in range(lb, ub, stepsize)] + [f'heur_size_len{i}' for i in range(lb, ub, stepsize)] + ['length', 'norm_size', 'min_sat', 'stddev', 'stddev_with_min_sat'])
-    plt.legend(['nb_cut_sols', 'heur', 'length', 'norm_size', 'min_sat', 'stddev', 'stddev_with_min_sat'])
+    plt.legend(['nb_cut_sols', 'gen-slack', 'heur', 'length', 'norm_size', 'min_sat', 'stddev', 'stddev_with_min_sat', 'max_sat', 'stddev_with_length'])
     plt.show()
 
 def correlation(rows):
@@ -49,6 +50,10 @@ def correlation(rows):
 def remove_second(rows):
     # remove second row
     return np.delete(rows, 1, 0)
+
+def norm_second(rows):
+    rows[1] = rows[1] / np.max(rows[1])
+    return rows
 
 def plot_cors(cors, lb, ub, stepsize):
     heurs = [cors[2] for _ in range(len(range(lb, ub, stepsize)))]
@@ -68,23 +73,46 @@ def plot_cors(cors, lb, ub, stepsize):
     plt.xticks(range(len(range(lb, ub, stepsize))), [f'{i}' for i in range(lb, ub, stepsize)], rotation=90)
     plt.show()
 
+def add_max_sat_std_dev_without_zeros(rows, max_vars):
+    # add max sat and std dev without zeros
+
+    for i, row in enumerate(rows):
+        # print(row)
+        row = row[:max_vars+1]
+        const = convert_to_constraint(row)
+        rows[i].append(str(cl.norm_max_sat(const)))
+        rows[i].append(str(cl.get_stddev_with_length(const)))
+    return rows
+
+def add_w_average(rows):
+    # add weighted average
+    for i, row in enumerate(rows):
+        heur, size, minsat, stddev, maxsat = float(row[33]), float(row[35]), float(row[36]), float(row[37]), float(row[38])
+        rows[i].append(str((heur + size*0.7 + minsat*0.8 + stddev*0.7 + maxsat*0.8) / 4))
+    return rows
+
+def add_avg(rows):
+    # add average
+    for i, row in enumerate(rows):
+        heur, size, minsat, stddev, maxsat = float(row[33]), float(row[35]), float(row[36]), float(row[37]), float(row[38])
+        rows[i].append(str((heur + size + minsat + stddev + maxsat) / 5))
+    return rows
+
+def convert_to_constraint(row):
+    # convert all the strings to floats
+    constraint = []
+    for i in range(len(row)):
+        constraint.append(float(row[i]))
+    return constraint
+
 
 if __name__ == '__main__':
-    print('reading csv')
-    rows = read_csv('/home/orestis/school/exact/python/strength/small_strength_analysis.csv')
-    print('read csv')
-    # rows = log_first(sort_first(transpose_rows(transform_rows(rows))))
-    rows = normalise_first(sort_first(transpose_rows(transform_rows(rows))), 10)
+    np.array([[1, 2, 3], [4, 5, 6]])
 
+    appendable = np.array([9, 9])
 
-    cors = correlation(rows)
-    print(cors)
+    np.append(np.array([[1, 2, 3], [4, 5, 6]]), np.array([[9, 9]]).T, axis=1)
 
-    # get 1 in 10 values for each row
-    rows = rows[:, ::10]
-
-    rows = remove_second(rows)
-    plot_rows(rows)
 
     
 
