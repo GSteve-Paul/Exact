@@ -1,0 +1,140 @@
+7,7,5,1,1
+solutions,9
+generalised slack,7
+heuristic,0.5
+heuristic with length,0.75
+heuristic with size,0.15000000000000002
+heuristic with size and length,0.4
+2,3,1,1
+solutions,5
+generalised slack,3
+heuristic,0.4
+heuristic with length,0.6000000000000001
+heuristic with size,0.25
+heuristic with size and length,0.45
+14,6,4,4,1
+solutions,2
+generalised slack,1
+heuristic,0.9333333333333333
+heuristic with length,1.1833333333333333
+heuristic with size,0.6333333333333333
+heuristic with size and length,0.8833333333333333
+19,7,6,6,5,3
+solutions,7
+generalised slack,8
+heuristic,0.7037037037037037
+heuristic with length,1.0037037037037038
+heuristic with size,0.35370370370370374
+heuristic with size and length,0.6537037037037037
+19,7,6,4,4,3,2,2,2,1
+solutions,161
+generalised slack,12
+heuristic,0.6129032258064516
+heuristic with length,1.1129032258064515
+heuristic with size,0.26290322580645165
+heuristic with size and length,0.7629032258064516
+19,7,6,5,4,3,3,2,2
+solutions,89
+generalised slack,13
+heuristic,0.59375
+heuristic with length,1.04375
+heuristic with size,0.24375000000000002
+heuristic with size and length,0.6937500000000001
+8,5,4,3,2,1,1
+solutions,35
+generalised slack,8
+heuristic,0.5
+heuristic with length,0.85
+heuristic with size,0.25
+heuristic with size and length,0.6
+18,7,6,5,3
+solutions,2
+generalised slack,3
+heuristic,0.8571428571428571
+heuristic with length,1.1071428571428572
+heuristic with size,0.5071428571428571
+heuristic with size and length,0.7571428571428571
+46,9,7,6,6,5,5,3,3,3
+solutions,1
+generalised slack,1
+heuristic,0.9787234042553191
+heuristic with length,1.478723404255319
+heuristic with size,0.528723404255319
+heuristic with size and length,1.028723404255319
+12,7,4,4,4
+solutions,5
+generalised slack,7
+heuristic,0.631578947368421
+heuristic with length,0.881578947368421
+heuristic with size,0.28157894736842104
+heuristic with size and length,0.531578947368421
+29,7,7,5,4,4,2,1,1
+solutions,5
+generalised slack,2
+heuristic,0.9354838709677419
+heuristic with length,1.385483870967742
+heuristic with size,0.5854838709677419
+heuristic with size and length,1.0354838709677419
+25,8,8,7,6,5,4,2,2,1
+solutions,185
+generalised slack,18
+heuristic,0.5813953488372093
+heuristic with length,1.0813953488372094
+heuristic with size,0.1813953488372093
+heuristic with size and length,0.6813953488372093
+9,6,2,2
+solutions,1
+generalised slack,1
+heuristic,0.9
+heuristic with length,1.1
+heuristic with size,0.6000000000000001
+heuristic with size and length,0.8
+11,5,4,4,4,2
+solutions,13
+generalised slack,8
+heuristic,0.5789473684210527
+heuristic with length,0.8789473684210527
+heuristic with size,0.32894736842105265
+heuristic with size and length,0.6289473684210527
+30,9,9,8,5,4,4,2,1
+solutions,42
+generalised slack,12
+heuristic,0.7142857142857143
+heuristic with length,1.1642857142857144
+heuristic with size,0.2642857142857143
+heuristic with size and length,0.7142857142857143
+12,5,5,4
+solutions,1
+generalised slack,2
+heuristic,0.8571428571428571
+heuristic with length,1.0571428571428572
+heuristic with size,0.6071428571428571
+heuristic with size and length,0.8071428571428572
+25,7,7,7,7,5,3,1,1,1
+solutions,130
+generalised slack,14
+heuristic,0.6410256410256411
+heuristic with length,1.141025641025641
+heuristic with size,0.2910256410256411
+heuristic with size and length,0.7910256410256411
+34,9,6,6,6,4,3,2,1,1
+solutions,12
+generalised slack,4
+heuristic,0.8947368421052632
+heuristic with length,1.3947368421052633
+heuristic with size,0.44473684210526315
+heuristic with size and length,0.9447368421052631
+35,6,6,6,5,4,4,3,3,1
+solutions,4
+generalised slack,3
+heuristic,0.9210526315789473
+heuristic with length,1.4210526315789473
+heuristic with size,0.6210526315789473
+heuristic with size and length,1.1210526315789473
+12,9,5,4,2,1
+solutions,14
+generalised slack,9
+heuristic,0.5714285714285714
+heuristic with length,0.8714285714285714
+heuristic with size,0.12142857142857139
+heuristic with size and length,0.4214285714285714
