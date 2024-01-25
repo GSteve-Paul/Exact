@@ -118,8 +118,8 @@ class OptimizationSuper {
 
   static Optim make(const CeArb& obj, Solver& solver, const bigint& offs, const IntSet& assumps);
 
-  [[nodiscard]] virtual SolveState optimize() = 0;
-  virtual void handleNewSolution(const std::vector<Lit>& sol, bool addUpper) = 0;
+  [[nodiscard]] virtual SolveState run(bool optimize) = 0;
+  virtual void boundObjectiveBySolution(const std::vector<Lit>& sol) = 0;
 
   OptimizationSuper(Solver& s, const bigint& offs, const IntSet& assumps);
   virtual ~OptimizationSuper() = default;
@@ -158,11 +158,11 @@ class Optimization final : public OptimizationSuper {
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
   [[nodiscard]] bool handleInconsistency(const CeSuper& core);              // modifies core
   // returns true iff the inconsistency is due to user assumptions
-  void handleNewSolution(const std::vector<Lit>& sol, bool addUpper);
+  void boundObjectiveBySolution(const std::vector<Lit>& sol);
 
   void harden();
 
-  [[nodiscard]] SolveState optimize();
+  [[nodiscard]] SolveState run(bool optimize);
 };
 
 }  // namespace xct

@@ -192,8 +192,6 @@ struct Options {
                             [](double x) -> bool { return 0 <= x; }};
   ValOption<long long> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
                                   [](long long x) -> bool { return 0 <= x; }};
-  BoolOption boundUpper{"opt-boundupper", "Add objective upper bound constraints when a feasible solution is found.",
-                        true};
   ValOption<double> lubyBase{"luby-base", "Base of the Luby restart sequence", 2, "1 =< float",
                              [](double x) -> bool { return 1 <= x; }};
   ValOption<int> lubyMult{"luby-mult", "Multiplier of the Luby restart sequence", 100, "1 =< int",
@@ -307,7 +305,6 @@ struct Options {
       &timeoutDet,
       &proofLog,
       &proofZip,
-      &boundUpper,
       &lubyBase,
       &lubyMult,
       &varWeight,

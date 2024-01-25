@@ -109,6 +109,7 @@ class Solver {
   int n;
   std::vector<bool> isorig;
   bool firstRun;
+  bool unsatReached;
 
   ConstraintAllocator ca;
   Heuristic heur;
@@ -153,6 +154,7 @@ class Solver {
   Solver(Global& g);
   ~Solver();
   bigint setObjective(const IntConstraint& obj);
+  void reportUnsat();
 
   int getNbVars() const;
   void setNbVars(int nvars, bool orig);

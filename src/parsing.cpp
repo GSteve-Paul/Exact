@@ -353,7 +353,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     }
     if (std::ceil(upper) < std::floor(upper)) {
       std::cout << "c Conflicting bound on integer variable" << std::endl;
-      throw UnsatEncounter();
+      ilp.addConstraint(IntConstraint{{}, {}, {}, 1});  // 0>=1 should trigger UNSAT
     }
     [[maybe_unused]] IntVar* iv =
         ilp.addVar(varname, static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)),

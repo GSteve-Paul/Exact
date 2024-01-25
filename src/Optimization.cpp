@@ -269,7 +269,7 @@ void Optimization<SMALL, LARGE>::addLowerBound() {
   solver.dropExternal(lastLowerBound, true, true);
   std::pair<ID, ID> res = solver.addConstraint(aux, Origin::LOWERBOUND);
   lastLowerBound = res.second;
-  if (global.options.boundUpper) harden();
+  harden();
 }
 
 template <typename SMALL, typename LARGE>
@@ -405,29 +405,26 @@ bool Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
 }
 
 template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::handleNewSolution(const std::vector<Lit>& sol, bool addUpper) {
+void Optimization<SMALL, LARGE>::boundObjectiveBySolution(const std::vector<Lit>& sol) {
   assert(solver.checkSAT(sol));
   upper_bound = -origObj->getRhs();
   for (Var v : origObj->getVars()) upper_bound += sol[v] > 0 ? origObj->coefs[v] : 0;
   printObjBounds();
 
-  if (addUpper) {
-    CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
-    origObj->copyTo(aux);
-    aux->invert();
-    aux->addRhs(-upper_bound + 1);
-    solver.dropExternal(lastUpperBound, true, true);
-    std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
-    lastUpperBound = res.second;
-    if (assumptions.isEmpty()) harden();
-  }
+  CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
+  origObj->copyTo(aux);
+  aux->invert();
+  aux->addRhs(-upper_bound + 1);
+  solver.dropExternal(lastUpperBound, true, true);
+  std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
+  lastUpperBound = res.second;
+  if (assumptions.isEmpty()) harden();
 }
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::harden() {
   // NOTE: this does not play nice with assumptions which impact the upper and lower bounds
   assert(assumptions.isEmpty());
-  assert(global.options.boundUpper);
   LARGE diff = upper_bound - lower_bound;
   for (Var v : reformObj->getVars()) {
     if (aux::abs(reformObj->coefs[v]) > diff) {
@@ -449,8 +446,9 @@ void decreaseStratLim(bigint& stratLim, const bigint& stratDiv) {
 }
 
 template <typename SMALL, typename LARGE>
-SolveState Optimization<SMALL, LARGE>::optimize() {
+SolveState Optimization<SMALL, LARGE>::run(bool optimize) {
   solver.presolve();  // will run only once
+  coreguided = coreguided && optimize;
   while (true) {
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
     // constraint yields UNSAT, at which case core-guided search can derive any constraint.
@@ -465,6 +463,7 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
     // - more than only the given assumptions are set (because the previous core-guided step did not finish)
     // NOTE: what if no coreguided possible because all variables of the objective are assumed?
 
+    assert(!coreguided || optimize);
     if (coreguided &&
         solver.getAssumptions().size() <= assumptions.size()) {  // figure out and set new coreguided assumptions
       reformObj->removeEqualities(solver.getEqualities(), false);
@@ -520,7 +519,9 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
       assert(solver.foundSolution());
       ++global.stats.NSOLS;
       ++solutionsFound;
-      handleNewSolution(solver.getLastSolution(), bool(global.options.boundUpper));
+      if (optimize) {
+        boundObjectiveBySolution(solver.getLastSolution());
+      }
       if (coreguided) {
         decreaseStratLim(stratLim, stratDiv);
         solver.clearAssumptions();
@@ -543,7 +544,7 @@ SolveState Optimization<SMALL, LARGE>::optimize() {
       }
     } else if (reply == SolveState::INPROCESSED) {
       bool oldcoreguided = coreguided;
-      coreguided = lower_bound < upper_bound &&
+      coreguided = optimize && lower_bound < upper_bound &&
                    (global.options.cgHybrid.get() >= 1 ||
                     global.stats.DETTIMEASSUMP <
                         global.options.cgHybrid.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP));

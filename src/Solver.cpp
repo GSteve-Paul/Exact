@@ -73,6 +73,7 @@ Solver::Solver(Global& g)
     : global(g),
       n(0),
       firstRun(true),
+      unsatReached(false),
       assumptions_lim({0}),
       equalities(*this),
       implications(*this),
@@ -142,6 +143,11 @@ bigint Solver::setObjective(const IntConstraint& obj) {
   assert(objective->getDegree() == 0);
   if (lpSolver) lpSolver->setObjective(objective);
   return res;
+}
+
+void Solver::reportUnsat() {
+  unsatReached = true;
+  throw UnsatEncounter();
 }
 
 Options& Solver::getOptions() { return global.options; }
@@ -625,7 +631,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
     if (confl) {
       assert(confl->hasNegativeSlack(getLevel()));
       global.logger.logInconsistency(confl, getLevel(), getPos());
-      throw UnsatEncounter();
+      reportUnsat();  // throws UnsatEncounter
     }
   }
 
@@ -637,6 +643,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
  * Backjumps to the level where c is no longer conflicting, as otherwise we might miss propagations.
  */
 void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
+  assert(!unsatReached);  // may work, but should not happen, as solve() and presolve() both guard for this
   assert(ce);
   assert(isLearned(orig));
   CeSuper learned = ce->clone(global.cePools);
@@ -655,7 +662,7 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
     backjumpTo(0);
     assert(learned->isInconsistency());
     global.logger.logInconsistency(learned, getLevel(), getPos());
-    throw UnsatEncounter();
+    reportUnsat();  // throws  UnsatEncounter
   }
   assert(learned->hasNegativeSlack(level) == ce->hasNegativeSlack(level));
   backjumpTo(assertionLevel);
@@ -708,7 +715,10 @@ void Solver::learnClause(Lit l1, Lit l2, Origin orig, ID id) {
   aux::timeCallVoid([&] { learnConstraint(ce, orig); }, global.stats.LEARNTIME);
 }
 
-std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
+std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: should not throw UnsatEncounter
+  if (unsatReached) return {ID_Undef, ID_Undef};
+  //  std::cout << "ADD INPUT CONSTRAINT " << ce->orig << " " << ce << std::endl;
+
   assert(isInput(ce->orig));
   assert(decisionLevel() == 0);
   ID input = ID_Undef;
@@ -739,20 +749,26 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {
       std::cout << "c Conflicting input constraint" << std::endl;
     }
     global.logger.logInconsistency(ce, getLevel(), getPos());
-    throw UnsatEncounter();
+    unsatReached = true;
+    return {ID_Undef, ID_Undef};
   }
 
-  CRef cr = attachConstraint(ce, true);
-  assert(cr != CRef_Undef);
-  ID id = ca[cr].id;
-  Origin orig = ca[cr].getOrigin();
-  if (isExternal(orig)) {
-    external[id] = cr;
+  try {
+    CRef cr = attachConstraint(ce, true);
+    assert(cr != CRef_Undef);
+    ID id = ca[cr].id;
+    Origin orig = ca[cr].getOrigin();
+    if (isExternal(orig)) {
+      external[id] = cr;
+    }
+    if (lpSolver && (orig == Origin::FORMULA || isBound(orig))) {
+      lpSolver->addConstraint(cr, false, orig == Origin::UPPERBOUND, orig == Origin::LOWERBOUND);
+    }
+
+    return {input, id};
+  } catch (const UnsatEncounter& ue) {
+    return {ID_Undef, ID_Undef};
   }
-  if (lpSolver && (orig == Origin::FORMULA || isBound(orig))) {
-    lpSolver->addConstraint(cr, false, orig == Origin::UPPERBOUND, orig == Origin::LOWERBOUND);
-  }
-  return {input, id};
 }
 
 std::pair<ID, ID> Solver::addConstraint(const CeSuper& c, Origin orig) {
@@ -967,7 +983,7 @@ void Solver::reduceDB() {
     if (ce->nVars() == 0) {
       assert(ce->isInconsistency());  // it's not a tautology ;)
       global.logger.logInconsistency(ce, getLevel(), getPos());
-      throw UnsatEncounter();
+      reportUnsat();  // throws  UnsatEncounter
     }
     CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates ce!
     if (crnew == CRef_Undef) continue;
@@ -1068,6 +1084,7 @@ void Solver::sortWatchlists() {
 void Solver::presolve() {
   if (!firstRun) return;
   firstRun = false;
+  if (unsatReached) throw UnsatEncounter();
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);
@@ -1210,6 +1227,7 @@ void Solver::dominanceBreaking() {
 }
 
 SolveState Solver::solve() {
+  if (unsatReached) throw UnsatEncounter();
   StatNum lastPropTime = global.stats.PROPTIME.z;
   StatNum lastCATime = global.stats.CATIME.z;
   StatNum lastNProp = global.stats.NPROP.z;
@@ -1244,7 +1262,7 @@ SolveState Solver::solve() {
       }
       if (decisionLevel() == 0) {
         global.logger.logInconsistency(confl, getLevel(), getPos());
-        throw UnsatEncounter();
+        reportUnsat();  // throws  UnsatEncounter
       } else if (decisionLevel() > assumptionLevel()) {
         CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, global.stats.CATIME);
         assert(analyzed);

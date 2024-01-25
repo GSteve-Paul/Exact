@@ -578,7 +578,7 @@ void ILP::fix(IntVar* iv, const bigint& val) { addConstraint(IntConstraint{{1}, 
 
 void ILP::boundObjByLastSol() {
   if (!hasSolution()) throw InvalidArgument("No solution to add objective bound.");
-  optim->handleNewSolution(solver.getLastSolution(), true);
+  optim->boundObjectiveBySolution(solver.getLastSolution());
 }
 
 void ILP::invalidateLastSol() {
@@ -609,9 +609,8 @@ void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag) {
 bool ILP::reachedTimeout(double timeout) const { return timeout != 0 && global.stats.getRunTime() > timeout; }
 
 SolveState ILP::runOnce(bool optimize) {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
-  global.options.boundUpper.set(optimize);
   try {
-    return optim->optimize();
+    return optim->run(optimize);
   } catch (const UnsatEncounter& ue) {
     return SolveState::UNSAT;
   }
@@ -1092,8 +1091,7 @@ void ILP::runInternal(int argc, char** argv) {
   global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState res = SolveState::INPROCESSED;
   while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
-    global.options.boundUpper.set(bool(global.options.boundUpper));
-    res = optim->optimize();
+    res = optim->run(true);
   }
 }
 
