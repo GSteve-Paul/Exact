@@ -120,7 +120,7 @@ class ILP {
   std::vector<IntConstraint> constraints;
   std::vector<std::pair<IntVar*, IntConstraint>> reifications;
 
-  std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, double timeout = 0);
+  std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, double timeout = 0);
   std::pair<SolveState, bigint> optimizeVar(IntVar* iv, const bigint& startbound, bool minimize, double timeout = 0);
   bool reachedTimeout(double timeout) const;
 

@@ -752,17 +752,16 @@ void ILP::printOrigSol() const {
   }
 }
 
-std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& ivs, double timeout) {
-  global.stats.runStartTime = std::chrono::steady_clock::now();
-  SolveState result = SolveState::INPROCESSED;
-  while (result == SolveState::INPROCESSED) {
-    if (reachedTimeout(timeout)) return {SolveState::TIMEOUT, CeNull()};
-    result = runOnce(false);
-  }
-  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) {
+std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, double timeout) {
+  SolveState result = runFull(false, timeout);
+  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
     return {result, CeNull()};
   }
   assert(result == SolveState::SAT);
+  auto [result2, opt] = toOptimum(keepstate, timeout);
+  if (result2 == SolveState::TIMEOUT) {
+    return {SolveState::TIMEOUT, CeNull()};
+  }
 
   Ce32 invalidator = global.cePools.take32();
   invalidator->addRhs(1);
@@ -772,42 +771,50 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
     }
   }
   // NOTE: assumptions and input can overlap, and that is ok
-  Var marker = solver.getNbVars() + 1;
-  solver.setNbVars(marker, true);
-  assumptions.add(-marker);
-  invalidator->addLhs(1, marker);
-  invalidator->removeZeroes();
+
+  Var marker = 0;
+  Optim old;
+  if (keepstate) {
+    IntVar* flag = fixObjective(opt);
+    marker = flag->getEncodingVars()[0];
+    invalidator->addLhs(1, -marker);
+    assert(invalidator->isClause());
+    old = std::move(optim);
+    optim = OptimizationSuper::make(global.cePools.takeArb(), solver, 0, assumptions);
+  }
+
+  result = runFull(false, timeout);
+  assert(result == SolveState::SAT || result == SolveState::TIMEOUT);
+  if (result == SolveState::SAT) {
+    while (true) {
+      solver.addConstraint(invalidator, Origin::INVALIDATOR);
+      result = runFull(false, timeout);
+      if (result != SolveState::SAT) break;
+      for (Var v : invalidator->getVars()) {
+        Lit invallit = invalidator->getLit(v);
+        if (solver.getLastSolution()[v] == invallit) {  // solution matches invalidator
+          invalidator->addLhs(-1, invallit);
+        }
+      }
+      invalidator->removeZeroes();
+    }
+  }
+
+  if (keepstate) {
+    assert(marker != 0);
+    invalidator->addLhs(-1, -marker);
+    invalidator->removeZeroes();
+    assumptions.remove(marker);
+    solver.addUnitConstraint(-marker, Origin::INVALIDATOR);
+    optim = std::move(old);
+  }
   assert(invalidator->isClause());
 
-  while (true) {
-    solver.addConstraint(invalidator, Origin::INVALIDATOR);
-    result = SolveState::INPROCESSED;
-    while (result == SolveState::INPROCESSED) {
-      if (reachedTimeout(timeout)) {
-        assumptions.remove(-marker);
-        solver.addUnitConstraint(marker, Origin::INVALIDATOR);
-        return {SolveState::TIMEOUT, CeNull()};
-      }
-      result = runOnce(false);
-    }
-    if (result != SolveState::SAT) break;
-    for (Var v : invalidator->getVars()) {
-      Lit invallit = invalidator->getLit(v);
-      if (solver.getLastSolution()[v] == invallit) {  // solution matches invalidator
-        invalidator->addLhs(-1, invallit);
-      }
-    }
-    assert(!invalidator->hasNoZeroes());
-    invalidator->removeZeroes();
-  }
-  assert(result == SolveState::INCONSISTENT);
-  assumptions.remove(-marker);
-  solver.addUnitConstraint(marker, Origin::INVALIDATOR);
-  assert(invalidator->isClause());
-  invalidator->weaken(marker);
-  invalidator->removeZeroes();
-  assert(invalidator->getDegree() == 0);
-  return {SolveState::SAT, invalidator};
+  assert(result != SolveState::INPROCESSED);
+  assert(result != SolveState::SAT);
+  if (result == SolveState::TIMEOUT) return {SolveState::TIMEOUT, CeNull()};
+  assert(result == SolveState::INCONSISTENT || result == SolveState::UNSAT);
+  return {result, invalidator};
 }
 
 IntVar* ILP::addFlag() {
@@ -815,13 +822,13 @@ IntVar* ILP::addFlag() {
   return addVar("__flag" + std::to_string(solver.getNbVars() + 1), 0, 1, Encoding::ORDER);
 }
 
-std::pair<SolveState, bigint> ILP::toOptimum(bool enforce, double timeout) {
+std::pair<SolveState, bigint> ILP::toOptimum(bool keepstate, double timeout) {
   Optim old = std::move(optim);
   IntVar* flag = addFlag();
   assert(flag->getEncodingVars().size() == 1);
   Var flag_v = flag->getEncodingVars()[0];
   assumptions.add(flag_v);
-  bigint cf = enforce ? 1 : obj.getRange();
+  bigint cf = keepstate ? obj.getRange() : 1;
   obj.lhs.emplace_back(cf, flag, false);
   offs = solver.setObjective(obj);
   optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
@@ -874,8 +881,9 @@ std::pair<SolveState, bigint> ILP::optimizeVar(IntVar* iv, const bigint& startbo
 }
 
 // NOTE: also throws AsynchronousInterrupt
-const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, double timeout) {
-  auto [state, invalidator] = getSolIntersection(ivs, timeout);
+const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                            double timeout) {
+  auto [state, invalidator] = getSolIntersection(ivs, keepstate, timeout);
   if (state == SolveState::TIMEOUT || state == SolveState::UNSAT || state == SolveState::INCONSISTENT) {
     assert(!invalidator);
     return {};
@@ -958,14 +966,15 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
 }
 
 // NOTE: also throws AsynchronousInterrupt
-const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, double timeout) {
+const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                         double timeout) {
   for (IntVar* iv : ivs) {
     if (iv->getEncodingVars().size() != 1 && iv->getEncoding() != Encoding::ONEHOT) {
       throw InvalidArgument("Non-Boolean variable " + iv->getName() +
                             " is passed to pruneDomains but is not one-hot encoded.");
     }
   }
-  auto [state, invalidator] = getSolIntersection(ivs, timeout);
+  auto [state, invalidator] = getSolIntersection(ivs, keepstate, timeout);
   if (state == SolveState::TIMEOUT) {
     return {};
   }
@@ -1005,53 +1014,42 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
   return doms;
 }
 
-int64_t ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, double timeout) {
-  global.stats.runStartTime = std::chrono::steady_clock::now();
+IntVar* ILP::fixObjective(const bigint& optval) {
+  IntVar* flag = addFlag();
+  IntConstraint ic = obj;
+  assert(ic.getLB().has_value());
+  ic.upperBound = optval + ic.getLB().value();
+  ic.lowerBound.reset();
+  addRightReification(flag, ic);
+  assumptions.add(flag->getEncodingVars()[0]);
+  return flag;
+}
+
+std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, double timeout) {
   if (global.options.verbosity.get() > 0) {
     std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
   }
-  SolveState result = SolveState::INCONSISTENT;
   bigint optval = 0;
   if (solver.objective->nVars() > 0) {
-    auto tmp = toOptimum(!keepstate, timeout);
-    result = tmp.first;
+    std::pair<SolveState, bigint> tmp = toOptimum(keepstate, timeout);
     optval = tmp.second;
-    assert(result != SolveState::INPROCESSED);
-    if (result == SolveState::UNSAT) {  // NOTE: SolveState::INCONSISTENT may be due to objective bound assumption
-      return 0;
-    } else if (result == SolveState::TIMEOUT) {
-      return -1;
-    }
   }
+
   Optim old;
   Var flag_v = 0;
   if (keepstate) {
     old = std::move(optim);
-    IntVar* flag = addFlag();
+    IntVar* flag = fixObjective(optval);
     flag_v = flag->getEncodingVars()[0];
-    IntConstraint ic = obj;
-    assert(ic.getLB().has_value());
-    ic.upperBound = optval + ic.getLB().value();
-    ic.lowerBound.reset();
-    addRightReification(flag, ic);
-    assumptions.add(flag_v);
     optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);  // TODO: no need for an objective...
   }
-  int64_t res = 0;
+  int64_t n = 0;
+  SolveState result = SolveState::SAT;
   while (true) {
-    if (reachedTimeout(timeout)) {
-      res = -res - 1;
-      break;
-    }
-    result = runOnce(false);
-    if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) {
-      break;
-    } else if (result == SolveState::SAT) {
-      ++res;
-      invalidateLastSol(ivs, flag_v);
-    } else {
-      assert(result == SolveState::INPROCESSED);
-    }
+    result = runFull(false, timeout);
+    if (result != SolveState::SAT) break;
+    ++n;
+    invalidateLastSol(ivs, flag_v);
   }
 
   if (keepstate) {
@@ -1061,7 +1059,11 @@ int64_t ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, double timeo
     optim = std::move(old);
   }
 
-  return res;
+  if (result == SolveState::TIMEOUT) {
+    return {SolveState::TIMEOUT, -1 - n};
+  } else {
+    return {result, n};
+  }
 }
 
 void ILP::runInternal(int argc, char** argv) {

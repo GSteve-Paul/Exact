@@ -239,28 +239,28 @@ std::vector<std::string> Exact::getLastCore() {
 void Exact::printStats() { quit::printFinalStats(ilp); }
 
 std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.propagate(getVariables(vars), timeout), [](const std::pair<bigint, bigint>& x) {
+  return aux::comprehension(ilp.propagate(getVariables(vars), true, timeout), [](const std::pair<bigint, bigint>& x) {
     return std::pair<long long, long long>(static_cast<long long>(x.first), static_cast<long long>(x.second));
   });
 }
 std::vector<std::pair<std::string, std::string>> Exact::propagate_arb(const std::vector<std::string>& vars,
                                                                       double timeout) {
-  return aux::comprehension(ilp.propagate(getVariables(vars), timeout), [](const std::pair<bigint, bigint>& x) {
+  return aux::comprehension(ilp.propagate(getVariables(vars), true, timeout), [](const std::pair<bigint, bigint>& x) {
     return std::pair<std::string, std::string>(aux::str(x.first), aux::str(x.second));
   });
 }
 
 std::vector<std::vector<long long>> Exact::pruneDomains(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.pruneDomains(getVariables(vars), timeout), [](const std::vector<bigint>& x) {
+  return aux::comprehension(ilp.pruneDomains(getVariables(vars), true, timeout), [](const std::vector<bigint>& x) {
     return aux::comprehension(x, [](const bigint& y) { return static_cast<long long>(y); });
   });
 }
 std::vector<std::vector<std::string>> Exact::pruneDomains_arb(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.pruneDomains(getVariables(vars), timeout), [](const std::vector<bigint>& x) {
+  return aux::comprehension(ilp.pruneDomains(getVariables(vars), true, timeout), [](const std::vector<bigint>& x) {
     return aux::comprehension(x, [](const bigint& y) { return aux::str(y); });
   });
 }
 
 long long Exact::count(const std::vector<std::string>& vars, double timeout) {
-  return ilp.count(getVariables(vars), timeout);
+  return ilp.count(getVariables(vars), true, timeout).second;
 }

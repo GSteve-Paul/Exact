@@ -128,13 +128,13 @@ class ILP {
   std::vector<IntConstraint> constraints;
   std::vector<std::pair<IntVar*, IntConstraint>> reifications;
 
-  std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, double timeout = 0);
   std::pair<SolveState, bigint> optimizeVar(IntVar* iv, const bigint& startbound, bool minimize, double timeout = 0);
   bool reachedTimeout(double timeout) const;
   IntVar* addFlag();
+  IntVar* fixObjective(const bigint& opt);
 
  public:
-  std::pair<SolveState, bigint> toOptimum(bool enforce, double timeout = 0);
+  std::pair<SolveState, bigint> toOptimum(bool keepstate, double timeout = 0);
 
   ILP(const Options& opts, bool keepIn = false);
 
@@ -194,9 +194,12 @@ class ILP {
   long long getNbConstraints() const;
   bigint getSolSpaceSize() const;  // in bits
 
-  const std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs, double timeout = 0);
-  const std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, double timeout = 0);
-  int64_t count(const std::vector<IntVar*>& ivs, bool keepstate, double timeout = 0);
+  std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, double timeout = 0);
+  const std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                         double timeout = 0);
+  const std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                      double timeout = 0);
+  std::pair<SolveState, int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, double timeout = 0);
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 
