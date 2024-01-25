@@ -609,11 +609,7 @@ void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag) {
 bool ILP::reachedTimeout(double timeout) const { return timeout != 0 && global.stats.getRunTime() > timeout; }
 
 SolveState ILP::runOnce(bool optimize) {  // NOTE: also throws AsynchronousInterrupt and UnsatEncounter
-  try {
-    return optim->run(optimize);
-  } catch (const UnsatEncounter& ue) {
-    return SolveState::UNSAT;
-  }
+  return optim->run(optimize);
 }
 
 SolveState ILP::runFull(bool optimize, double timeout) {
@@ -731,6 +727,7 @@ unordered_set<IntVar*> ILP::getLastCore() {
     for (Lit l : assumptions.getKeys()) {
       if (isUnit(solver.getLevel(), -l)) core.insert(var2var.at(toVar(l)));
     }
+    assert(!core.empty());
   } else {
     CeSuper clone = solver.lastCore->clone(global.cePools);
     clone->weaken([&](Lit l) { return !assumptions.has(-l); });
@@ -740,7 +737,6 @@ unordered_set<IntVar*> ILP::getLastCore() {
       core.insert(var2var.at(v));
     }
   }
-  assert(!core.empty());
   return core;
 }
 
@@ -1052,11 +1048,7 @@ int64_t ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, double timeo
       break;
     } else if (result == SolveState::SAT) {
       ++res;
-      try {
-        invalidateLastSol(ivs, flag_v);
-      } catch (const UnsatEncounter& ue) {
-        break;
-      }
+      invalidateLastSol(ivs, flag_v);
     } else {
       assert(result == SolveState::INPROCESSED);
     }

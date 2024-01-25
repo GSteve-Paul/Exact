@@ -37,7 +37,6 @@ See the file LICENSE or run with the flag --license=MIT.
 
 class Exact {
   xct::ILP ilp;
-  bool unsatState;
 
   xct::IntVar* getVariable(const std::string& name) const;
   std::vector<xct::IntVar*> getVariables(const std::vector<std::string>& names) const;

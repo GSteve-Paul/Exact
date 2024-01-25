@@ -27,7 +27,6 @@ TEST_SUITE_BEGIN("ILP interface tests");
 
 TEST_CASE("toOptimum") {
   Options opts;
-  opts.verbosity.set(0);
   for (double x : {0.0, 0.5, 1.0}) {
     opts.cgHybrid.set(x);
     ILP ilp(opts);
@@ -46,19 +45,14 @@ TEST_CASE("toOptimum") {
     CHECK(state2 == SolveState::INCONSISTENT);
     CHECK(obj2 == 6);
     ilp.fix(vars[4], 1);
-    try {
-      ilp.addConstraint(IntConstraint{{1, 1, 2, 3, 5}, vars, {}, std::nullopt, 5});
-      state = ilp.runFull(false);
-    } catch (const UnsatEncounter& ue) {
-      state = SolveState::UNSAT;
-    }
+    ilp.addConstraint(IntConstraint{{1, 1, 2, 3, 5}, vars, {}, std::nullopt, 5});
+    state = ilp.runFull(false);
     CHECK(state == SolveState::UNSAT);
   }
 }
 
 TEST_CASE("count") {
   Options opts;
-  opts.verbosity.set(0);
   for (double x : {0.0, 0.5, 1.0}) {
     opts.cgHybrid.set(x);
     ILP ilp(opts);

@@ -34,6 +34,7 @@ int main(int argc, char** argv) {
   Options opts;
   opts.pureLits.set(true);
   opts.domBreakLim.set(-1);
+  opts.verbosity.set(1);
   opts.parseCommandLine(argc, argv);
 
   ILP ilp(opts);

@@ -182,7 +182,7 @@ struct Options {
   VoidOption printSol{"print-sol", "Print the solution if found"};
   VoidOption printUnits{"print-units", "Print unit literals"};
   VoidOption printCsvData{"print-csv", "Print statistics in a comma-separated value format"};
-  ValOption<int> verbosity{"verbosity", "Verbosity of the output", 1, "0 =< int",
+  ValOption<int> verbosity{"verbosity", "Verbosity of the output", 0, "0 =< int",
                            [](const int& x) -> bool { return x >= 0; }};
   ValOption<std::string> proofLog{"proof-log", "Filename for the proof logs, left unspecified disables proof logging",
                                   "", "/path/to/file", [](const std::string&) -> bool { return true; }};

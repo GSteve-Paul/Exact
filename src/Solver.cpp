@@ -146,7 +146,9 @@ bigint Solver::setObjective(const IntConstraint& obj) {
 }
 
 void Solver::reportUnsat() {
+  assert(!unsatReached);  // not a problem, but should not occur
   unsatReached = true;
+  lastCore = global.cePools.take32();
   throw UnsatEncounter();
 }
 
@@ -749,7 +751,11 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
       std::cout << "c Conflicting input constraint" << std::endl;
     }
     global.logger.logInconsistency(ce, getLevel(), getPos());
-    unsatReached = true;
+    try {
+      reportUnsat();
+    } catch (const UnsatEncounter& ue) {
+      // expected, do not rethrow
+    }
     return {ID_Undef, ID_Undef};
   }
 
@@ -1082,9 +1088,9 @@ void Solver::sortWatchlists() {
 }
 
 void Solver::presolve() {
+  if (unsatReached) throw UnsatEncounter();
   if (!firstRun) return;
   firstRun = false;
-  if (unsatReached) throw UnsatEncounter();
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);

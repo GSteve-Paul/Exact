@@ -447,7 +447,11 @@ void decreaseStratLim(bigint& stratLim, const bigint& stratDiv) {
 
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::run(bool optimize) {
-  solver.presolve();  // will run only once
+  try {
+    solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
+  } catch (const UnsatEncounter& ue) {
+    return SolveState::UNSAT;
+  }
   coreguided = coreguided && optimize;
   while (true) {
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
@@ -505,9 +509,13 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize) {
       reply = SolveState::INCONSISTENT;
       solver.lastCore = solver.lastGlobalDual;
     } else {
-      reply = aux::timeCall<SolveState>([&] { return solver.solve(); }, solver.hasAssumptions()
-                                                                            ? global.stats.SOLVETIMEASSUMP
-                                                                            : global.stats.SOLVETIMEFREE);
+      try {
+        reply = aux::timeCall<SolveState>([&] { return solver.solve(); }, solver.hasAssumptions()
+                                                                              ? global.stats.SOLVETIMEASSUMP
+                                                                              : global.stats.SOLVETIMEFREE);
+      } catch (const UnsatEncounter& ue) {
+        reply = SolveState::UNSAT;
+      }
       if (solver.hasAssumptions()) {
         global.stats.DETTIMEASSUMP += global.stats.getDetTime() - current_time;
       } else {
@@ -515,7 +523,9 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize) {
       }
     }
 
-    if (reply == SolveState::SAT) {
+    if (reply == SolveState::UNSAT) {
+      return SolveState::UNSAT;
+    } else if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
       ++global.stats.NSOLS;
       ++solutionsFound;
