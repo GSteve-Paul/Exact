@@ -29,12 +29,13 @@ if __name__ == '__main__':
     rows = an.sort_first(rows)
     # print(rows)
     rows = an.norm_second(rows)
+    rows[4] = 1 - rows[4]
+    rows[6] = 1 - rows[6]
     for i in range(1, len(rows)):
+        rows[i] -= np.min(rows[i])
         rows[i] = rows[i] / np.max(rows[i])
     # rows[4] = rows[4] / np.max(rows[4])
-    rows[4] = 1 - rows[4]
     # rows[6] = rows[6] / np.max(rows[6])
-    rows[6] = 1 - rows[6]
     # rows = an.normalise_first(rows, max_vars)
     cors = an.correlation(rows)
     print(cors)

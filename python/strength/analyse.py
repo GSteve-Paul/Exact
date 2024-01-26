@@ -88,7 +88,7 @@ def add_w_average(rows):
     # add weighted average
     for i, row in enumerate(rows):
         heur, size, minsat, stddev, maxsat = float(row[33]), float(row[35]), float(row[36]), float(row[37]), float(row[38])
-        rows[i].append(str((heur + size*0.7 + minsat*0.8 + stddev*0.7 + maxsat*0.8) / 4))
+        rows[i].append(str((heur*2 + size + minsat + stddev + maxsat)))
     return rows
 
 def add_avg(rows):
