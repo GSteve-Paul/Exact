@@ -174,23 +174,23 @@ Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver, const In
   if (maxVal <= static_cast<bigint>(limitAbs<int, long long>())) {  // TODO: try to internalize this check in ConstrExp
     Ce32 o = solver.global.cePools.take32();
     obj->copyTo(o);
-    return std::make_unique<Optimization<int, long long>>(o, solver, offs, assumps);
+    return std::make_shared<Optimization<int, long long>>(o, solver, offs, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<long long, int128>())) {
     Ce64 o = solver.global.cePools.take64();
     obj->copyTo(o);
-    return std::make_unique<Optimization<long long, int128>>(o, solver, offs, assumps);
+    return std::make_shared<Optimization<long long, int128>>(o, solver, offs, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
     Ce96 o = solver.global.cePools.take96();
     obj->copyTo(o);
-    return std::make_unique<Optimization<int128, int128>>(o, solver, offs, assumps);
+    return std::make_shared<Optimization<int128, int128>>(o, solver, offs, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
     Ce128 o = solver.global.cePools.take128();
     obj->copyTo(o);
-    return std::make_unique<Optimization<int128, int256>>(o, solver, offs, assumps);
+    return std::make_shared<Optimization<int128, int256>>(o, solver, offs, assumps);
   } else {
     CeArb o = solver.global.cePools.takeArb();
     obj->copyTo(o);
-    return std::make_unique<Optimization<bigint, bigint>>(o, solver, offs, assumps);
+    return std::make_shared<Optimization<bigint, bigint>>(o, solver, offs, assumps);
   }
 }
 
@@ -428,8 +428,10 @@ bool Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
 }
 
 template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::boundObjectiveBySolution(const std::vector<Lit>& sol) {
-  assert(solver.checkSAT(sol));
+void Optimization<SMALL, LARGE>::boundObjByLastSol() {
+  if (!solver.foundSolution()) throw InvalidArgument("No solution to add objective bound.");
+  const std::vector<Lit>& sol = solver.getLastSolution();
+
   upper_bound = -origObj->getRhs();
   for (Var v : origObj->getVars()) upper_bound += sol[v] > 0 ? origObj->coefs[v] : 0;
   printObjBounds();
@@ -469,7 +471,7 @@ void decreaseStratLim(bigint& stratLim, const bigint& stratDiv) {
 }
 
 template <typename SMALL, typename LARGE>
-SolveState Optimization<SMALL, LARGE>::run(bool optimize) {
+SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   try {
     solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
   } catch (const UnsatEncounter& ue) {
@@ -477,6 +479,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize) {
   }
   coreguided = coreguided && optimize;
   while (true) {
+    if (timeout != 0 && global.stats.getRunTime() > timeout) return SolveState::TIMEOUT;
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
     // constraint yields UNSAT, at which case core-guided search can derive any constraint.
     StatNum current_time = global.stats.getDetTime();
@@ -551,9 +554,8 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize) {
     } else if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
       ++global.stats.NSOLS;
-      ++solutionsFound;
       if (optimize) {
-        boundObjectiveBySolution(solver.getLastSolution());
+        boundObjByLastSol();
       }
       if (coreguided) {
         decreaseStratLim(stratLim, stratDiv);
@@ -592,6 +594,19 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize) {
       assert(false);  // should not happen
     }
   }
+}
+
+template <typename SMALL, typename LARGE>
+SolveState Optimization<SMALL, LARGE>::runFull(bool optimize, double timeout) {
+  global.stats.runStartTime = std::chrono::steady_clock::now();
+  SolveState result = SolveState::INPROCESSED;
+  if (global.options.verbosity.get() > 0) {
+    std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
+  }
+  while (result == SolveState::INPROCESSED || (result == SolveState::SAT && optimize)) {
+    result = run(optimize, timeout);
+  }
+  return result;
 }
 
 template class Optimization<int, long long>;

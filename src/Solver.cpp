@@ -1041,10 +1041,10 @@ double Solver::luby(double y, int i) {
   return std::pow(y, seq);
 }
 
-bool Solver::checkSAT(const std::vector<Lit>& assignment) {
+bool Solver::checkSAT() const {
   return std::all_of(constraints.cbegin(), constraints.cend(), [&](CRef cr) {
     const Constr& c = ca[cr];
-    return c.getOrigin() != Origin::FORMULA || c.toExpanded(global.cePools)->isSatisfied(assignment);
+    return c.getOrigin() != Origin::FORMULA || c.toExpanded(global.cePools)->isSatisfied(lastSol);
   });
 }
 
@@ -1337,6 +1337,7 @@ SolveState Solver::solve() {
         lastSol.resize(getNbVars() + 1);
         lastSol[0] = 0;
         for (Var v = 1; v <= getNbVars(); ++v) lastSol[v] = isOrig(v) ? (isTrue(level, v) ? v : -v) : 0;
+        assert(checkSAT());
         backjumpTo(0);
         return SolveState::SAT;
       }

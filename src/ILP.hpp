@@ -129,7 +129,6 @@ class ILP {
   std::vector<std::pair<IntVar*, IntConstraint>> reifications;
 
   std::pair<SolveState, bigint> optimizeVar(IntVar* iv, const bigint& startbound, bool minimize, double timeout = 0);
-  bool reachedTimeout(double timeout) const;
   IntVar* addFlag();
   IntVar* fixObjective(const IntConstraint& ico, const bigint& opt);
 
@@ -138,7 +137,9 @@ class ILP {
 
   ILP(const Options& opts, bool keepIn = false);
 
+  const Solver& getSolver() const;
   Solver& getSolver();
+  const Optim& getOptim() const;
   void setMaxSatVars();
   int getMaxSatVars() const;
 
@@ -160,30 +161,24 @@ class ILP {
   void setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals);
   void clearSolutionHints(const std::vector<IntVar*>& ivs);
 
-  SolveState runOnce(bool optimize);
-  SolveState runFull(bool optimize, double timeout = 0);
-  void runInternal(int argc, char** argv);
+  void runFromCmdLine(int argc, char** argv);
 
   void addConstraint(const IntConstraint& ic);
   void addReification(IntVar* head, const IntConstraint& ic);
   void addRightReification(IntVar* head, const IntConstraint& ic);
   void addLeftReification(IntVar* head, const IntConstraint& ic);
   void fix(IntVar* iv, const bigint& val);
-  void boundObjByLastSol();
   void invalidateLastSol();
   void invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag = 0);
 
   ratio getLowerBound() const;
   ratio getUpperBound() const;
 
-  bool hasSolution() const;
   bigint getLastSolutionFor(IntVar* iv) const;
   std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;
-  void clearSolution();
 
   bool hasCore() const;
   unordered_set<IntVar*> getLastCore();
-  void clearCore();
 
   void printOrigSol() const;
   void printFormula();

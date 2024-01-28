@@ -252,10 +252,11 @@ class Exact {
    * - SolveState::INCONSISTENT (2): no solutions consistent with the assumptions exist and a core has been constructed.
    * The search process can be continued, but to avoid finding the same core over and over again, change the set of
    * assumptions.
-   * - SolveState::INPROCESSED (3): the search process just finished an inprocessing phase. The search process should
+   * - SolveState::TIMEOUT (3): the timeout was reached. Solving can be resumed with a later call.
+   * - SolveState::INPROCESSED (4): the search process just finished an inprocessing phase. The search process should
    * simply be continued, but control is passed to the caller to, e.g., change assumptions or add constraints.
    */
-  SolveState runOnce();
+  SolveState runOnce(double timeout = 0);
 
   /**
    * Start / continue the search until an optimal solution or inconsistency is found.

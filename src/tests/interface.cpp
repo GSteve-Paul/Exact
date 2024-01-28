@@ -46,7 +46,7 @@ TEST_CASE("toOptimum") {
     CHECK(obj2 == 6);
     ilp.fix(vars[4], 1);
     ilp.addConstraint(IntConstraint{{1, 1, 2, 3, 5}, vars, {}, std::nullopt, 5});
-    state = ilp.runFull(false);
+    state = ilp.getOptim()->runFull(false, 0);
     CHECK(state == SolveState::UNSAT);
   }
 }

@@ -187,7 +187,7 @@ void Exact::setSolutionHints(const std::vector<std::string>& vars, const std::ve
 
 void Exact::clearSolutionHints(const std::vector<std::string>& vars) { ilp.clearSolutionHints(getVariables(vars)); }
 
-void Exact::boundObjByLastSol() { ilp.boundObjByLastSol(); }
+void Exact::boundObjByLastSol() { ilp.getOptim()->boundObjByLastSol(); }
 void Exact::invalidateLastSol() { ilp.invalidateLastSol(); }
 void Exact::invalidateLastSol(const std::vector<std::string>& vars) { ilp.invalidateLastSol(getVariables(vars)); }
 
@@ -208,9 +208,9 @@ void Exact::setObjective(const std::vector<std::string>& coefs, const std::vecto
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, getCoef(offset));
 }
 
-SolveState Exact::runOnce() { return ilp.runOnce(false); }
+SolveState Exact::runOnce(double timeout) { return ilp.getOptim()->run(false, timeout); }
 
-SolveState Exact::runFull(bool optimize, double timeout) { return ilp.runFull(optimize, timeout); }
+SolveState Exact::runFull(bool optimize, double timeout) { return ilp.getOptim()->runFull(optimize, timeout); }
 
 std::pair<long long, long long> Exact::getObjectiveBounds() const {
   return {static_cast<long long>(ilp.getLowerBound()), static_cast<long long>(ilp.getUpperBound())};
@@ -219,10 +219,10 @@ std::pair<std::string, std::string> Exact::getObjectiveBounds_arb() const {
   return {aux::str(ilp.getLowerBound()), aux::str(ilp.getUpperBound())};
 }
 
-bool Exact::hasSolution() const { return ilp.hasSolution(); }
+bool Exact::hasSolution() const { return ilp.getSolver().foundSolution(); }
 
 std::vector<long long> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
-  if (!ilp.hasSolution()) throw InvalidArgument("No solution can be returned if no solution has been found.");
+  if (!hasSolution()) throw InvalidArgument("No solution can be returned if no solution has been found.");
   return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)),
                             [](const bigint& i) { return static_cast<long long>(i); });
 }

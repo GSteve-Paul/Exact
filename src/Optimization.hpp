@@ -103,7 +103,7 @@ std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
 
 class IntConstraint;
 class OptimizationSuper;
-using Optim = std::unique_ptr<OptimizationSuper>;
+using Optim = std::shared_ptr<OptimizationSuper>;
 
 class OptimizationSuper {
  protected:
@@ -113,15 +113,16 @@ class OptimizationSuper {
   const IntSet& assumptions;
 
  public:
-  int solutionsFound = 0;
   virtual bigint getUpperBound() const = 0;
   virtual bigint getLowerBound() const = 0;
   virtual CeSuper getOrigObj() const = 0;
 
   static Optim make(const IntConstraint& obj, Solver& solver, const IntSet& assumps);
 
-  [[nodiscard]] virtual SolveState run(bool optimize) = 0;
-  virtual void boundObjectiveBySolution(const std::vector<Lit>& sol) = 0;
+  [[nodiscard]] virtual SolveState run(bool optimize, double timeout) = 0;
+  [[nodiscard]] virtual SolveState runFull(bool optimize, double timeout) = 0;
+
+  virtual void boundObjByLastSol() = 0;
 
   OptimizationSuper(Solver& s, const bigint& offs, const IntSet& assumps);
   virtual ~OptimizationSuper() = default;
@@ -164,11 +165,12 @@ class Optimization final : public OptimizationSuper {
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
   [[nodiscard]] bool handleInconsistency(const CeSuper& core);              // modifies core
   // returns true iff the inconsistency is due to user assumptions
-  void boundObjectiveBySolution(const std::vector<Lit>& sol);
+  void boundObjByLastSol();
 
   void harden();
 
-  [[nodiscard]] SolveState run(bool optimize);
+  [[nodiscard]] SolveState run(bool optimize, double timeout);
+  [[nodiscard]] SolveState runFull(bool optimize, double timeout);
 };
 
 }  // namespace xct

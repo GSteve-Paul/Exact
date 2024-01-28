@@ -208,9 +208,9 @@ class Solver {
   // TODO: use a coroutine / yield instead of a SolveAnswer return value
   [[nodiscard]] SolveState solve();
 
-  bool checkSAT(const std::vector<Lit>& assignment);
-
  private:
+  bool checkSAT() const;
+
   // ---------------------------------------------------------------------
   // Trail manipulation
 
