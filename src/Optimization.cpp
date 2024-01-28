@@ -61,6 +61,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Optimization.hpp"
 #include "Global.hpp"
+#include "ILP.hpp"
 #include "Solver.hpp"
 #include "constraints/ConstrExp.hpp"
 
@@ -144,7 +145,16 @@ void LazyVar<SMALL, LARGE>::addFinalAtMost() {
 OptimizationSuper::OptimizationSuper(Solver& s, const bigint& os, const IntSet& assumps)
     : solver(s), global(s.global), offset(os), assumptions(assumps) {}
 
-Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, const bigint& offset, const IntSet& assumps) {
+Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver, const IntSet& assumps) {
+  CeArb obj = solver.global.cePools.takeArb();
+  ico.toConstrExp(obj, true);
+  obj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  obj->removeEqualities(solver.getEqualities(), false);
+  bigint offs = -obj->getDegree();
+  obj->addRhs(offs);
+  assert(obj->getDegree() == 0);
+  solver.setObjective(obj);
+
   bigint maxVal = obj->absCoeffSum();
   // The argument that maxVal is a safe upper bound is that we may *increase* the coefficient of assumption literals
   // during core-based reformulation, but never higher than the original coefficient sum.
@@ -164,23 +174,23 @@ Optim OptimizationSuper::make(const CeArb& obj, Solver& solver, const bigint& of
   if (maxVal <= static_cast<bigint>(limitAbs<int, long long>())) {  // TODO: try to internalize this check in ConstrExp
     Ce32 o = solver.global.cePools.take32();
     obj->copyTo(o);
-    return std::make_unique<Optimization<int, long long>>(o, solver, offset, assumps);
+    return std::make_unique<Optimization<int, long long>>(o, solver, offs, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<long long, int128>())) {
     Ce64 o = solver.global.cePools.take64();
     obj->copyTo(o);
-    return std::make_unique<Optimization<long long, int128>>(o, solver, offset, assumps);
+    return std::make_unique<Optimization<long long, int128>>(o, solver, offs, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
     Ce96 o = solver.global.cePools.take96();
     obj->copyTo(o);
-    return std::make_unique<Optimization<int128, int128>>(o, solver, offset, assumps);
+    return std::make_unique<Optimization<int128, int128>>(o, solver, offs, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
     Ce128 o = solver.global.cePools.take128();
     obj->copyTo(o);
-    return std::make_unique<Optimization<int128, int256>>(o, solver, offset, assumps);
+    return std::make_unique<Optimization<int128, int256>>(o, solver, offs, assumps);
   } else {
     CeArb o = solver.global.cePools.takeArb();
     obj->copyTo(o);
-    return std::make_unique<Optimization<bigint, bigint>>(o, solver, offset, assumps);
+    return std::make_unique<Optimization<bigint, bigint>>(o, solver, offs, assumps);
   }
 }
 
@@ -213,6 +223,19 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
   lower_bound = -reformObj->getDegree();
   upper_bound = origObj->absCoeffSum() + 1;
   stratLim = global.options.cgStrat.get() == 1 ? 1 : reformObj->getLargestCoef();
+}
+
+template <typename SMALL, typename LARGE>
+bigint Optimization<SMALL, LARGE>::getUpperBound() const {
+  return offset + upper_bound;
+}
+template <typename SMALL, typename LARGE>
+bigint Optimization<SMALL, LARGE>::getLowerBound() const {
+  return offset + lower_bound;
+}
+template <typename SMALL, typename LARGE>
+CeSuper Optimization<SMALL, LARGE>::getOrigObj() const {
+  return origObj;
 }
 
 template <typename SMALL, typename LARGE>

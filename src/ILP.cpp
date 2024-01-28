@@ -229,6 +229,8 @@ const std::vector<Var>& IntVar::getPropVars(Solver& solver) {
   return propVars;
 }
 
+IntConstraint::IntConstraint() : lowerBound(0) {}
+
 IntConstraint::IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                              const std::vector<bool>& negated, const std::optional<bigint>& lb,
                              const std::optional<bigint>& ub)
@@ -355,8 +357,7 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   }
 
   obj = IntConstraint(coefs, vars, negated, -offset);
-  offs = solver.setObjective(obj);
-  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
+  optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
 void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
@@ -407,7 +408,7 @@ void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
       ++val;
     }
   }
-  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
+  optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
 void ILP::setAssumption(const IntVar* iv, bool val) {
@@ -425,7 +426,7 @@ void ILP::setAssumption(const IntVar* iv, bool val) {
     assumptions.remove(v);
     assumptions.add(-v);
   }
-  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
+  optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
 bool ILP::hasAssumption(const IntVar* iv) const {
@@ -475,14 +476,14 @@ std::vector<bigint> ILP::getAssumption(const IntVar* iv) const {
 
 void ILP::clearAssumptions() {
   assumptions.clear();
-  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
+  optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 void ILP::clearAssumption(const IntVar* iv) {
   for (Var v : iv->getEncodingVars()) {
     assumptions.remove(v);
     assumptions.remove(-v);
   }
-  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
+  optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
 void ILP::setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals) {
@@ -633,9 +634,9 @@ std::ostream& ILP::printFormula(std::ostream& out) {
     nbConstraints += isNonImplied(c.getOrigin());
   }
   out << "* #variable= " << solver.getNbVars() << " #constraint= " << nbConstraints << "\n";
-  if (solver.objective->nVars() > 0) {
+  if (optim->getOrigObj()->nVars() > 0) {
     out << "min: ";
-    solver.objective->toStreamAsOPBlhs(out, true);
+    optim->getOrigObj()->toStreamAsOPBlhs(out, true);
     out << ";\n";
   }
   for (Lit l : solver.getUnits()) {
@@ -775,12 +776,12 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
   Var marker = 0;
   Optim old;
   if (keepstate) {
-    IntVar* flag = fixObjective(opt);
+    IntVar* flag = fixObjective(obj, opt);
     marker = flag->getEncodingVars()[0];
     invalidator->addLhs(1, -marker);
     assert(invalidator->isClause());
     old = std::move(optim);
-    optim = OptimizationSuper::make(global.cePools.takeArb(), solver, 0, assumptions);
+    optim = OptimizationSuper::make(IntConstraint(), solver, assumptions);
   }
 
   result = runFull(false, timeout);
@@ -830,8 +831,7 @@ std::pair<SolveState, bigint> ILP::toOptimum(bool keepstate, double timeout) {
   assumptions.add(flag_v);
   bigint cf = keepstate ? obj.getRange() : 1;
   obj.lhs.emplace_back(cf, flag, false);
-  offs = solver.setObjective(obj);
-  optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);
+  optim = OptimizationSuper::make(obj, solver, assumptions);
   SolveState res = runFull(true, timeout);
   bigint bound = optim->getUpperBound() - cf;
   assert(obj.lhs.back().v == flag);
@@ -1014,11 +1014,11 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
   return doms;
 }
 
-IntVar* ILP::fixObjective(const bigint& optval) {
+IntVar* ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
   IntVar* flag = addFlag();
-  IntConstraint ic = obj;
-  assert(ic.getLB().has_value());
-  ic.upperBound = optval + ic.getLB().value();
+  IntConstraint ic = ico;
+  assert(ico.getLB().has_value());
+  ic.upperBound = optval + ico.getLB().value();
   ic.lowerBound.reset();
   addRightReification(flag, ic);
   assumptions.add(flag->getEncodingVars()[0]);
@@ -1030,7 +1030,7 @@ std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool 
     std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
   }
   bigint optval = 0;
-  if (solver.objective->nVars() > 0) {
+  if (obj.size() > 0) {
     std::pair<SolveState, bigint> tmp = toOptimum(keepstate, timeout);
     optval = tmp.second;
   }
@@ -1039,9 +1039,9 @@ std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool 
   Var flag_v = 0;
   if (keepstate) {
     old = std::move(optim);
-    IntVar* flag = fixObjective(optval);
+    IntVar* flag = fixObjective(obj, optval);
     flag_v = flag->getEncodingVars()[0];
-    optim = OptimizationSuper::make(solver.objective, solver, offs, assumptions);  // TODO: no need for an objective...
+    optim = OptimizationSuper::make(IntConstraint(), solver, assumptions);
   }
   int64_t n = 0;
   SolveState result = SolveState::SAT;

@@ -75,8 +75,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-class IntConstraint;
-
 class Solver {
   friend class LpSolver;
   friend struct Constr;
@@ -101,7 +99,7 @@ class Solver {
   std::vector<Lit> lastSol = {0};
   bool foundSolution() const;
   CeSuper lastCore;
-  CeSuper lastGlobalDual;  // TODO: no longer used?
+  CeSuper lastGlobalDual;
   CeArb objective;
   Global& global;
 
@@ -153,7 +151,7 @@ class Solver {
  public:
   Solver(Global& g);
   ~Solver();
-  bigint setObjective(const IntConstraint& obj);
+  void setObjective(const CeArb& obj);
   void reportUnsat();
 
   int getNbVars() const;

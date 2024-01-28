@@ -92,6 +92,7 @@ class IntConstraint {
   void normalize();
 
  public:
+  IntConstraint();
   IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars, const std::vector<bool>& negated,
                 const std::optional<bigint>& lb = std::nullopt, const std::optional<bigint>& ub = std::nullopt);
 
@@ -115,7 +116,6 @@ class ILP {
 
   std::vector<std::unique_ptr<IntVar>> vars;
   IntConstraint obj;  // NOTE: we could erase this, but then we would not store the untransformed input objective
-  bigint offs;
   unordered_map<std::string, IntVar*> name2var;
   unordered_map<Var, IntVar*> var2var;
 
@@ -131,7 +131,7 @@ class ILP {
   std::pair<SolveState, bigint> optimizeVar(IntVar* iv, const bigint& startbound, bool minimize, double timeout = 0);
   bool reachedTimeout(double timeout) const;
   IntVar* addFlag();
-  IntVar* fixObjective(const bigint& opt);
+  IntVar* fixObjective(const IntConstraint& ico, const bigint& opt);
 
  public:
   std::pair<SolveState, bigint> toOptimum(bool keepstate, double timeout = 0);

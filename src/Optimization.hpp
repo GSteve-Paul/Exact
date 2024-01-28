@@ -101,6 +101,7 @@ std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
   return o;
 }
 
+class IntConstraint;
 class OptimizationSuper;
 using Optim = std::unique_ptr<OptimizationSuper>;
 
@@ -115,8 +116,9 @@ class OptimizationSuper {
   int solutionsFound = 0;
   virtual bigint getUpperBound() const = 0;
   virtual bigint getLowerBound() const = 0;
+  virtual CeSuper getOrigObj() const = 0;
 
-  static Optim make(const CeArb& obj, Solver& solver, const bigint& offs, const IntSet& assumps);
+  static Optim make(const IntConstraint& obj, Solver& solver, const IntSet& assumps);
 
   [[nodiscard]] virtual SolveState run(bool optimize) = 0;
   virtual void boundObjectiveBySolution(const std::vector<Lit>& sol) = 0;
@@ -127,7 +129,10 @@ class OptimizationSuper {
 
 template <typename SMALL, typename LARGE>
 class Optimization final : public OptimizationSuper {
+ public:
   const CePtr<SMALL, LARGE> origObj;
+
+ private:
   CePtr<SMALL, LARGE> reformObj;
 
   LARGE lower_bound;
@@ -146,8 +151,9 @@ class Optimization final : public OptimizationSuper {
  public:
   explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& offset, const IntSet& assumps);
 
-  bigint getUpperBound() const { return offset + upper_bound; }
-  bigint getLowerBound() const { return offset + lower_bound; }
+  bigint getUpperBound() const;
+  bigint getLowerBound() const;
+  CeSuper getOrigObj() const;
 
   void printObjBounds();
   void checkLazyVariables();

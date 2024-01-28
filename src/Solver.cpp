@@ -112,7 +112,6 @@ void Solver::setNbVars(int nvars, bool orig) {
   reason.resize(nvars + 1, CRef_Undef);
   heur.resize(nvars + 1);
   global.cePools.resize(nvars + 1);
-  objective->resize(nvars + 1);
   equalities.setNbVars(nvars);
   implications.setNbVars(nvars);
   isorig.resize(nvars + 1, orig);
@@ -133,16 +132,9 @@ bool Solver::isOrig(Var v) const {
   return isorig[v];
 }
 
-bigint Solver::setObjective(const IntConstraint& obj) {
-  objective->reset(true);
-  obj.toConstrExp(objective, true);
-  objective->removeUnitsAndZeroes(getLevel(), getPos());
-  objective->removeEqualities(getEqualities(), false);
-  bigint res = -objective->getDegree();
-  objective->addRhs(res);
-  assert(objective->getDegree() == 0);
-  if (lpSolver) lpSolver->setObjective(objective);
-  return res;
+void Solver::setObjective(const CeArb& obj) {
+  objective = obj;
+  if (lpSolver) lpSolver->setObjective(obj);
 }
 
 void Solver::reportUnsat() {
