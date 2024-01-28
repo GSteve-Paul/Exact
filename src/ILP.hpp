@@ -128,12 +128,11 @@ class ILP {
   std::vector<IntConstraint> constraints;
   std::vector<std::pair<IntVar*, IntConstraint>> reifications;
 
-  std::pair<SolveState, bigint> optimizeVar(IntVar* iv, const bigint& startbound, bool minimize, double timeout = 0);
   IntVar* addFlag();
-  IntVar* fixObjective(const IntConstraint& ico, const bigint& opt);
+  Var fixObjective(const IntConstraint& ico, const bigint& opt);
 
  public:
-  std::pair<SolveState, bigint> toOptimum(bool keepstate, double timeout = 0);
+  std::pair<SolveState, bigint> toOptimum(IntConstraint& objective, bool keepstate, double timeout);
 
   ILP(const Options& opts, bool keepIn = false);
 
@@ -151,6 +150,8 @@ class ILP {
 
   void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
                     const std::vector<bool>& negated, const bigint& offset = 0);
+  IntConstraint& getObjective();
+  const IntConstraint& getObjective() const;
   void setAssumption(const IntVar* iv, const std::vector<bigint>& vals);
   void setAssumption(const IntVar* iv, bool val);
   bool hasAssumption(const IntVar* iv) const;

@@ -361,6 +361,8 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
   obj = IntConstraint(coefs, vars, negated, -offset);
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
+IntConstraint& ILP::getObjective() { return obj; }
+const IntConstraint& ILP::getObjective() const { return obj; }
 
 void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
   assert(iv);
@@ -729,10 +731,8 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
     return {result, CeNull()};
   }
   assert(result == SolveState::SAT);
-  auto [result2, optval] = toOptimum(keepstate, timeout);
-  if (result2 == SolveState::TIMEOUT) {
-    return {SolveState::TIMEOUT, CeNull()};
-  }
+  auto [result2, optval] = toOptimum(obj, keepstate, timeout);
+  if (result2 == SolveState::TIMEOUT) return {SolveState::TIMEOUT, CeNull()};
 
   Ce32 invalidator = global.cePools.take32();
   invalidator->addRhs(1);
@@ -746,8 +746,7 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
   Var marker = 0;
   Optim opt = optim;
   if (keepstate) {
-    IntVar* flag = fixObjective(obj, optval);
-    marker = flag->getEncodingVars()[0];
+    marker = fixObjective(obj, optval);
     invalidator->addLhs(1, -marker);
     assert(invalidator->isClause());
     opt = OptimizationSuper::make(IntConstraint(), solver, assumptions);
@@ -791,143 +790,88 @@ IntVar* ILP::addFlag() {
   return addVar("__flag" + std::to_string(solver.getNbVars() + 1), 0, 1, Encoding::ORDER);
 }
 
-std::pair<SolveState, bigint> ILP::toOptimum(bool keepstate, double timeout) {
+std::pair<SolveState, bigint> ILP::toOptimum(IntConstraint& objective, bool keepstate, double timeout) {
+  if (objective.size() == 0) return {SolveState::SAT, 0};
   IntVar* flag = addFlag();
   assert(flag->getEncodingVars().size() == 1);
   Var flag_v = flag->getEncodingVars()[0];
   assumptions.add(flag_v);
   bigint cf = keepstate ? obj.getRange() : 1;
-  obj.lhs.emplace_back(cf, flag, false);
-  Optim opt = OptimizationSuper::make(obj, solver, assumptions);
+  objective.lhs.emplace_back(cf, flag, false);
+  Optim opt = OptimizationSuper::make(objective, solver, assumptions);
   SolveState res = opt->runFull(true, timeout);
   bigint bound = opt->getUpperBound() - cf;
-  assert(obj.lhs.back().v == flag);
-  obj.lhs.pop_back();
+  assert(objective.lhs.back().v == flag);
+  objective.lhs.pop_back();
   assumptions.remove(flag_v);
   solver.addUnitConstraint(-flag_v, Origin::FORMULA);
   return {res, bound};
 }
 
-// TODO: fix optimization with assumption variable
-// TODO: refactor this when optimization works well with user-given assumptions
-std::pair<SolveState, bigint> ILP::optimizeVar(IntVar* iv, const bigint& startbound, bool minimize, double timeout) {
-  bigint currentbound = startbound;
-  int offset = minimize ? -1 : 1;
-  while (true) {
-    currentbound += offset;
-    log2assumptions(iv->getPropVars(solver), currentbound, iv->getLowerBound(), assumptions);
-    assumptions.add(minimize ? iv->getPropVar() : -iv->getPropVar());
-    SolveState state = SolveState::INPROCESSED;
-    while (state == SolveState::INPROCESSED) {
-      state = optim->run(false, timeout);
-    }
-    if (state == SolveState::TIMEOUT) return {SolveState::TIMEOUT, currentbound - offset};
-    assert(state != SolveState::INPROCESSED);
-    assert(state != SolveState::UNSAT);  // should have been caught previously
-    for (Var v : iv->getPropVars(solver)) {
-      assumptions.remove(v);
-      assumptions.remove(-v);
-      assumptions.remove(iv->getPropVar());
-      assumptions.remove(-iv->getPropVar());
-    }
-    if (state == SolveState::TIMEOUT) {
-      return {SolveState::TIMEOUT, currentbound - offset};
-    }
-    if (state == SolveState::INCONSISTENT) {
-      return {SolveState::SAT, currentbound - offset};
-    }
-    assert(state == SolveState::SAT);
-    bigint newVal = iv->getValue(solver.getLastSolution());
-    assert(!minimize || newVal <= currentbound);
-    assert(minimize || newVal >= currentbound);
-    currentbound = newVal;
-    if (minimize && currentbound == iv->getLowerBound()) return {SolveState::SAT, currentbound};
-    if (!minimize && currentbound == iv->getUpperBound()) return {SolveState::SAT, currentbound};
-  }
-}
-
 // NOTE: also throws AsynchronousInterrupt
 const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, bool keepstate,
                                                             double timeout) {
-  auto [state, invalidator] = getSolIntersection(ivs, keepstate, timeout);
-  if (state == SolveState::TIMEOUT || state == SolveState::UNSAT || state == SolveState::INCONSISTENT) {
-    assert(!invalidator);
+  SolveState result = optim->runFull(false, timeout);
+  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
     return {};
   }
-  std::vector<std::pair<bigint, bigint>> consequences;
-  consequences.reserve(ivs.size());
+  assert(result == SolveState::SAT);
+  auto [result2, optval] = toOptimum(obj, keepstate, timeout);
+  if (result2 == SolveState::TIMEOUT) return {};
+
+  Var marker = 0;
+  if (keepstate) {  // still need to fix the objective, since toOptimum has not done this with keepState==true
+    marker = fixObjective(obj, optval);
+  }
+
+  std::vector<std::pair<bigint, bigint>> consequences(ivs.size());
+  std::vector<IntVar*> bools;
+  bools.reserve(ivs.size());
+  int64_t i = 0;
   for (IntVar* iv : ivs) {
-    bigint lb = iv->getLowerBound();
-    bigint ub = iv->getUpperBound();
-    if (iv->getEncoding() == Encoding::LOG) {
-      bigint ub2 = lb;
-      // NOTE: upper bound is not a nice power of two difference with lower bound, so we cannot easily use it
-      bigint coef = 1;
-      for (Var v : iv->getEncodingVars()) {
-        if (invalidator->hasLit(-v)) {
-          lb += coef;
-        }
-        if (!invalidator->hasLit(v)) {
-          ub2 += coef;
-        }
-        coef *= 2;
-      }
-      ub = aux::min(ub, ub2);
-      if (ub != lb) {
-        // we probably only have an approximate propagation, let's get the real one
-        auto [state, newlb] = optimizeVar(iv, ub, true, timeout);
-        if (state == SolveState::TIMEOUT) {
-          return {};
-        } else {
-          lb = newlb;
-        }
-        auto [state2, newub] = optimizeVar(iv, lb, false, timeout);
-        if (state2 == SolveState::TIMEOUT) {
-          return {};
-        } else {
-          ub = newub;
-        }
-      }
-    } else if (iv->getEncoding() == Encoding::ORDER) {
-      int lbi = 0;
-      int ubi = 0;
-      for (Var v : iv->getEncodingVars()) {
-        lbi += invalidator->hasLit(-v);
-        ubi -= invalidator->hasLit(v);
-      }
-      lb += lbi;
-      ub += ubi;
+    if (iv->getEncodingVars().empty()) {
+      consequences[i] = {iv->getLowerBound(), iv->getUpperBound()};
+    } else if (iv->isBoolean()) {
+      bools.push_back(iv);
+      consequences[i] = {0, 1};
     } else {
-      assert(iv->getEncoding() == Encoding::ONEHOT);
-      int ith = 0;
-      for (Var v : iv->getEncodingVars()) {
-        if (invalidator->hasLit(-v)) {
-          lb = iv->getLowerBound() + ith;
-          ub = lb;
-          break;
-        }
-        ++ith;
+      IntConstraint varObjPos = IntConstraint({1}, {iv}, {}, 0);
+      auto [lowerstate, lowerbound] = toOptimum(varObjPos, true, timeout);
+      if (lowerstate == SolveState::TIMEOUT) {
+        if (keepstate) assumptions.remove(marker);
+        return {};
       }
-      if (ub != lb) {
-        for (Var v : iv->getEncodingVars()) {
-          if (invalidator->hasLit(v)) {
-            ++lb;
-          } else {
-            break;
-          }
-        }
-        for (int j = iv->getEncodingVars().size() - 1; j >= 0; --j) {
-          if (invalidator->hasLit(iv->getEncodingVars()[j])) {
-            --ub;
-          } else {
-            break;
-          }
-        }
+      IntConstraint varObjNeg = IntConstraint({-1}, {iv}, {}, 0);
+      auto [upperstate, upperbound] = toOptimum(varObjNeg, true, timeout);
+      if (upperstate == SolveState::TIMEOUT) {
+        if (keepstate) assumptions.remove(marker);
+        return {};
+      }
+      consequences[i] = {lowerbound, -upperbound};
+      if (!keepstate && (consequences[i].first > iv->getLowerBound() || consequences[i].second < iv->getUpperBound())) {
+        addConstraint(IntConstraint({1}, {iv}, {}, consequences[i].first, consequences[i].second));
       }
     }
-    assert(lb <= ub);
-    consequences.push_back({lb, ub});
+    assert(consequences[i].first <= consequences[i].second);
+    ++i;
   }
+  if (keepstate) assumptions.remove(marker);
+
+  auto [intersectstate, invalidator] = getSolIntersection(bools, keepstate, timeout);
+  // TODO: getSolIntersection will do double work (e.g., use its own marker literal)
+  if (intersectstate == SolveState::TIMEOUT) return {};
+
+  i = -1;
+  for (IntVar* iv : ivs) {
+    ++i;
+    if (iv->getEncodingVars().empty() || !iv->isBoolean()) continue;
+    assert(iv->getEncodingVars().size() == 1);
+    Lit l = iv->getEncodingVars()[0];
+    if (invalidator->hasLit(l)) consequences[i].second = 0;
+    if (invalidator->hasLit(-l)) consequences[i].first = 1;
+    assert(consequences[i].first <= consequences[i].second);
+  }
+
   return consequences;
 }
 
@@ -980,36 +924,32 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
   return doms;
 }
 
-IntVar* ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
+Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
   IntVar* flag = addFlag();
   IntConstraint ic = ico;
   assert(ico.getLB().has_value());
   ic.upperBound = optval + ico.getLB().value();
   ic.lowerBound.reset();
   addRightReification(flag, ic);
-  assumptions.add(flag->getEncodingVars()[0]);
-  return flag;
+  Var flag_v = flag->getEncodingVars()[0];
+  assumptions.add(flag_v);
+  return flag_v;
 }
 
 std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, double timeout) {
   if (global.options.verbosity.get() > 0) {
     std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
   }
-  bigint optval = 0;
-  if (obj.size() > 0) {
-    std::pair<SolveState, bigint> tmp = toOptimum(keepstate, timeout);
-    optval = tmp.second;
-  }
+  auto [result, optval] = toOptimum(obj, keepstate, timeout);
 
   Optim opt = optim;
   Var flag_v = 0;
   if (keepstate) {
-    IntVar* flag = fixObjective(obj, optval);
-    flag_v = flag->getEncodingVars()[0];
+    flag_v = fixObjective(obj, optval);
     opt = OptimizationSuper::make(IntConstraint(), solver, assumptions);
   }
   int64_t n = 0;
-  SolveState result = SolveState::SAT;
+  result = SolveState::SAT;
   while (true) {
     result = opt->runFull(false, timeout);
     if (result != SolveState::SAT) break;

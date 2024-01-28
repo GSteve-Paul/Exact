@@ -37,11 +37,11 @@ TEST_CASE("toOptimum") {
     }
     ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, 6});
     ilp.setObjective({1, 1, 2, 3, 5}, vars, {});
-    auto [state, obj] = ilp.toOptimum(true);
+    auto [state, obj] = ilp.toOptimum(ilp.getObjective(), true, 0);
     CHECK(state == SolveState::INCONSISTENT);
     CHECK(obj == 4);
     ilp.setAssumption(vars[4], true);
-    auto [state2, obj2] = ilp.toOptimum(false);
+    auto [state2, obj2] = ilp.toOptimum(ilp.getObjective(), false, 0);
     CHECK(state2 == SolveState::INCONSISTENT);
     CHECK(obj2 == 6);
     ilp.fix(vars[4], 1);
