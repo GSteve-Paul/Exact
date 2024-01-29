@@ -489,7 +489,7 @@ struct ConstrExp final : public ConstrExpSuper {
       reason->multiply(conflCoef);
       assert(reason->getSlack(level) <= 0);
     } else {
-      if (global.options.multBeforeDiv) {
+      if (global.options.multiply.is("multiplyDivide")) {
         reason->multiply(conflCoef);
       }
       const SMALL reasonCoef = reason->getCoef(asserting);
@@ -509,8 +509,8 @@ struct ConstrExp final : public ConstrExpSuper {
         } else {
           assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
                  reasonCoef / (reasonSlack + 1) >= conflCoef);
-          assert(!global.options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
-          SMALL gcd = global.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
+          assert(!global.options.multiply.is("multiply-divide") || conflCoef == aux::gcd(conflCoef, reasonCoef));
+          SMALL gcd = global.options.multiply.is("multiply-divide") ? conflCoef : aux::gcd(conflCoef, reasonCoef);
           const SMALL minDiv = reasonCoef / gcd;
           SMALL bestDiv = minDiv;
           if (bestDiv <= reasonSlack) {

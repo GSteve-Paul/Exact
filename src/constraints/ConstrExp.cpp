@@ -906,6 +906,10 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
     popLast();
   }
   assert(hasNoZeroes());
+  
+  std::cout << "in weakenDivideRoundOrdered: " << std::endl;
+  toStreamPure(std::cout);
+  std::cout << "\n" << std::endl;
   if (div >= degree) {
     simplifyToClause();
   } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
