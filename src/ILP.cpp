@@ -884,15 +884,17 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
                             " is passed to pruneDomains but is not one-hot encoded.");
     }
   }
+  SolveState result = optim->runFull(false, timeout);
+  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
+    std::vector<std::vector<bigint>> doms(ivs.size());
+    return doms;
+  }
   auto [state, invalidator] = getSolIntersection(ivs, keepstate, timeout);
   if (state == SolveState::TIMEOUT) {
     return {};
   }
+  assert(state != SolveState::INPROCESSED);
   std::vector<std::vector<bigint>> doms(ivs.size());
-  if (state == SolveState::UNSAT || state == SolveState::INCONSISTENT) {
-    assert(!invalidator);
-    return doms;
-  }
 
   for (int i = 0; i < (int)ivs.size(); ++i) {
     IntVar* iv = ivs[i];
@@ -954,6 +956,7 @@ std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool 
     result = opt->runFull(false, timeout);
     if (result != SolveState::SAT) break;
     ++n;
+    //    std::cout << "SOLUTION " << solver.getLastSolution() << std::endl;
     invalidateLastSol(ivs, flag_v);
   }
 

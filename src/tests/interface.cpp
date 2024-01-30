@@ -90,4 +90,66 @@ TEST_CASE("intersect") {
   }
 }
 
+TEST_CASE("propagate") {
+  Options opts;
+  for (double x : {0.5}) {
+    opts.cgHybrid.set(x);
+    ILP ilp(opts);
+    std::vector<IntVar*> vars;
+    vars.reserve(10);
+    for (const auto& s : {"a", "b", "c", "d", "e"}) {
+      vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+    }
+    for (const auto& s : {"k", "l", "m", "n", "o"}) {
+      vars.push_back(ilp.addVar(s, -1, 2, Encoding::LOG));
+    }
+    ilp.addConstraint(IntConstraint{{1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars, {}, 7});
+    ilp.setObjective({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars, {});
+    auto propres = ilp.propagate(vars, true);
+    CHECK(propres == std::vector<std::pair<bigint, bigint>>{
+                         {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+    propres = ilp.propagate(vars, false);
+    CHECK(propres == std::vector<std::pair<bigint, bigint>>{
+                         {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+    propres = ilp.propagate(vars, true);
+    CHECK(propres == std::vector<std::pair<bigint, bigint>>{});
+  }
+}
+
+TEST_CASE("pruneDomains") {
+  Options opts;
+  for (double x : {0.5}) {
+    opts.cgHybrid.set(x);
+    ILP ilp(opts);
+    std::vector<IntVar*> vars;
+    vars.reserve(10);
+    for (const auto& s : {"a", "b", "c", "d", "e"}) {
+      vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+    }
+    for (const auto& s : {"k", "l", "m", "n", "o"}) {
+      vars.push_back(ilp.addVar(s, -1, 2, Encoding::ONEHOT));
+    }
+    ilp.addConstraint(IntConstraint{{1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars, {}, 7});
+    ilp.setObjective({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars, {});
+    auto propres = ilp.pruneDomains(vars, true);
+    std::cout << propres << std::endl;
+    CHECK(propres ==
+          std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+    propres = ilp.pruneDomains(vars, false);
+    CHECK(propres ==
+          std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+    propres = ilp.pruneDomains(vars, true);
+    CHECK(propres == std::vector<std::vector<bigint>>{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}});
+  }
+}
+
 TEST_SUITE_END();
+
+/*
+declare a,b,c,d,e: -> {0..1}.
+declare k,l,m,n,o: -> {-1..2}.
+
+1*a()-2*b()+3*c()-1*d()+2*e()-3*k()+1*l()-2*m()+3*n()+3*o() >= 8.
+
+minimize 3*a()-4*b()+1*c()-2*d()+3*e()-4*k()+1*l()-2*m()+3*n()+3*o().
+*/
