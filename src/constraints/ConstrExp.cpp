@@ -900,6 +900,9 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(div, level);
+  std::cout << "weakened non divisible" << std::endl;
+  toStreamPure(std::cout);
+  std::cout << "\n" << std::endl;
   weakenSuperfluous(div);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
@@ -1254,6 +1257,24 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntMap<int>& level, const 
   }
   global.stats.NWEAKENEDNONIMPLYING += weakenings;
   return weakenings != 0;
+}
+
+// @post: preserves order after removeZeroes()
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const SMALL& amount) {
+  SMALL am = amount;
+  for (int i = vars.size() - 1; i >= 0 && am > 0; --i) {
+    Var v = vars[i];
+    if (coefs[v] != 0 && !falsified(level, v)) {
+      if (coefs[v] < am) { 
+        am -= coefs[v]; 
+        weaken(v); 
+      } else { 
+        weaken(-am, v);
+        am = 0;
+      }
+    }
+  }
 }
 
 // @post: preserves order after removeZeroes()

@@ -27,208 +27,262 @@ using namespace xct;
 
 int main(int argc, char** argv) {
 
-  Global global;
-  ConstrExp32 ce32(global);
+  // Global global;
+  // ConstrExp32 ce32(global);
 
-  global.cePools.resize(6);
+  // global.cePools.resize(6);
 
-  Ce32 reason = global.cePools.take32();
+  // Ce32 reason = global.cePools.take32();
 
-  reason->addLhs(5, 1);
-  reason->addLhs(5, 2);
-  reason->addLhs(3, 3);
-  reason->addLhs(2, 4);
-  reason->addLhs(1, 5);
-  reason->addRhs(6);
+  // reason->addLhs(5, 1);
+  // reason->addLhs(5, 2);
+  // reason->addLhs(3, 3);
+  // reason->addLhs(2, 4);
+  // reason->addLhs(1, 5);
+  // reason->addRhs(6);
 
-  Ce32 confl = global.cePools.take32();
 
-  confl->addLhs(3, -2);
-  confl->addLhs(2, 1);
-  confl->addLhs(2, 4);
-  confl->addLhs(1, -5);
+  // Ce32 confl = global.cePools.take32();
 
-  confl->addRhs(5);
+  // confl->addLhs(3, -2);
+  // confl->addLhs(2, 1);
+  // confl->addLhs(2, 4);
+  // confl->addLhs(1, -5);
 
-  reason->toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
-  confl->toStreamPure(std::cout);
+  // confl->addRhs(5);
 
-  IntMap<int> level;
-  level.resize(6, 0);
-  level[-1] = 1;
-  level[1] = INF;
-  level[-4] = 1;
-  level[4] = INF;
-  level[5] = 2;
-  level[-5] = INF;
-  level[2] = INF;
-  level[-2] = INF;
-  level[3] = INF;
-  level[-3] = INF;
 
-  std::vector<Lit> trail = {0, 0, 1};
-  std::vector<int> pos = {0, INF, INF, 1, 2};
 
-  Lit asserting = 2;
+  // reason->toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
+  // confl->toStreamPure(std::cout);
 
-  std::cout << "\n" << std::endl;
-  std::cout << "slack confl: " << confl->getSlack(level) << std::endl;
-  std::cout << "slack reason: " << reason->getSlack(level) << std::endl;
+  // IntMap<int> level;
+  // level.resize(6, 0);
+  // level[1] = INF;
+  // level[-1] = INF;
+  // level[2] = INF;
+  // level[-2] = INF;
+  // level[3] = INF;
+  // level[-3] = INF;
+  // level[4] = INF;
+  // level[-4] = INF;
+  // level[5] = INF;
+  // level[-5] = INF;
 
-  // for (int i = 1; i < 6; i++) {
-  //   std::cout << "var is true: " << isTrue(level, i) << "\n" << std::endl;
-  //   std::cout << "var is false: " << isFalse(level, i) << "\n" << std::endl;
-  //   std::cout << "var is unknown: " << isUnknown(pos, i) << "\n" << std::endl;
+  // level[-1] = 1;
+  // level[-4] = 1;
+  // level[5] = 2;
+  // level[2] = 3;
+
+  // std::vector<Lit> trail = {0, 0, 1, 1};
+  // std::vector<int> pos = {0, 3, INF, 1, 2};
+
+  // // std::vector<Lit> trail = {0, 0, 0, 1, 1};
+  // // std::vector<int> pos = {0, 1, 2, 3, 4};
+
+  // Lit asserting = 2;
+
+  // std::cout << "\n" << std::endl;
+  // std::cout << "slack confl: " << confl->getSlack(level) << std::endl;
+  // std::cout << "slack reason: " << reason->getSlack(level) << std::endl;
+
+  // // for (int i = 1; i < 6; i++) {
+  // //   std::cout << "var is true: " << isTrue(level, i) << "\n" << std::endl;
+  // //   std::cout << "var is false: " << isFalse(level, i) << "\n" << std::endl;
+  // //   std::cout << "var is unknown: " << isUnknown(pos, i) << "\n" << std::endl;
+  // // }
+
+  // const int conflCoef = confl->getCoef(-asserting);
+
+  // std::cout << "confl coeff: " << conflCoef << std::endl;
+  // // std::cout << "reason coeff: " << reasonCoef << std::endl;
+
+
+  // // if (strcmp(argv[1], "mult") == 0) std::cout << "multiplied reason: " << std::endl;
+
+  // // std::cout << argc << std::endl;
+
+  // // for (int i = 0; i < argc; i++) {
+  // //   std::cout << argv[i] << std::endl;
+  // // }
+
+
+  // const int reasonCoef = reason->getCoef(asserting);
+  // std::cout << "reason coeff: " << reasonCoef << "\n" << std::endl;
+
+  // int mu = 1;
+  // int nu = 1;
+  // if (reasonCoef > conflCoef) {
+  //   mu = reasonCoef / conflCoef;
+  // } else {
+  //   nu = aux::ceildiv(conflCoef, reasonCoef);
   // }
 
-  level[2] = 3;
+  // std::cout << "mu: " << mu << "\n" << std::endl;
+  // std::cout << "nu: " << nu << "\n" << std::endl;
 
-  trail.push_back(1);
-  pos[1] = 3;
+  // int reasonSlack = reason->getSlack(level);
+  // std::cout << "reason slack: " << reasonSlack << "\n" << std::endl;
+  
+  // int conflSlack = confl->getSlack(level);
+  // std::cout << "confl slack: " << conflSlack << "\n" << std::endl;
 
-  const int conflCoef = confl->getCoef(-asserting);
+  // int reasonDeg = reason->getDegree();
+  // std::cout << "reason deg: " << reasonDeg << "\n" << std::endl;
 
-  std::cout << "confl coeff: " << conflCoef << std::endl;
-  // std::cout << "reason coeff: " << reasonCoef << std::endl;
+  // if (nu*reasonSlack-nu*(reasonDeg-conflCoef)+mu*conflSlack < 0) {
+  //   std::cout << "going with mult and weaken" << std::endl;
+  //   reason->multiply(nu);
+  //   confl->multiply(mu);
 
-  if (strcmp(argv[1], "mult") == 0) reason->multiply(conflCoef);
-  reason->toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
-  // if (strcmp(argv[1], "mult") == 0) std::cout << "multiplied reason: " << std::endl;
+  //   std::cout << "multiplied reason with nu and conflict with mu: " << std::endl;
+  //   reason->toStreamPure(std::cout);
+  //   std::cout << "\n" << std::endl;
+  //   confl->toStreamPure(std::cout);
+  //   std::cout << "\n" << std::endl;
 
-  // std::cout << argc << std::endl;
+  //   int amount = reasonDeg - confl->getCoef(-asserting);
+  //   std::cout << "amount: " << amount << "\n" << std::endl;
 
-  // for (int i = 0; i < argc; i++) {
-  //   std::cout << argv[i] << std::endl;
-  // }
+  //   reason->weakenNonFalsified(level, amount);
+  //   reason->saturate(true, false);
+  //   std::cout << "weakened and saturated reason: " << std::endl;
+  //   reason->toStreamPure(std::cout);
+  //   std::cout << "\n" << std::endl;
 
+  // } else {
+  //   std::cout << "div options" << std::endl;
+  //   if (strcmp(argv[1], "mult") == 0) reason->multiply(conflCoef);
+  //   reason->toStreamPure(std::cout);
+  //   std::cout << "\n" << std::endl;
 
-  const int reasonCoef = reason->getCoef(asserting);
-  if (strcmp(argv[2], "rto") == 0) {
+  //   if (strcmp(argv[2], "rto") == 0) {
 
-    reason->weakenDivideRoundOrdered(reasonCoef, level);
+  //     reason->weakenDivideRoundOrdered(reasonCoef, level);
 
-    reason->toStreamPure(std::cout);
-    std::cout << "\n" << std::endl;
+  //     reason->toStreamPure(std::cout);
+  //     std::cout << "\n" << std::endl;
 
-    reason->multiply(conflCoef);
+  //     reason->multiply(conflCoef);
 
-    reason->toStreamPure(std::cout);
-    std::cout << "\n" << std::endl;
-  } else {
-    int reasonSlack = reason->getSlack(level);
-    std::cout << "reason slack+1: " << reasonSlack + 1 << "\n" << std::endl;
-    if (strcmp(argv[2], "slack+1") == 0 && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
-      reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
-      std::cout << "weakened reason: " << std::endl;
-      reason->toStreamPure(std::cout);
-      std::cout << "\n" << std::endl;
-      reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
-      std::cout << "multiplied reason: " << std::endl;
-      reason->toStreamPure(std::cout);
-      std::cout << "\n" << std::endl;
-    } else {
-      int gcd = strcmp(argv[1], "mult") == 0 ? conflCoef : aux::gcd(conflCoef, reasonCoef);
-      std::cout << "gcd: " << gcd << "\n" << std::endl;
-      const int minDiv = reasonCoef / gcd;
-      std::cout << "minDiv: " << minDiv << "\n" << std::endl;
-      int bestDiv = minDiv;
-      if (bestDiv <= reasonSlack) {
-        // quick heuristic search for small divisor larger than slack
-        bestDiv = reasonCoef;
-        int tmp;
-        int pp;
-        for (int p : {5, 3, 2}) {
-          pp = 1;
-          while ((gcd % p) == 0) {
-            gcd /= p;
-            tmp = reasonCoef / gcd;
-            if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-            tmp = minDiv * gcd;
-            if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-            pp *= p;
-            tmp = reasonCoef / pp;
-            if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-            tmp = minDiv * pp;
-            if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-          }
-        }
-      }
-      std::cout << "bestDiv: " << bestDiv << "\n" << std::endl;
-      const int mult = conflCoef / (reasonCoef / bestDiv);
-      std::cout << "mult: " << mult << "\n" << std::endl;
-      if (strcmp(argv[3], "cancel") == 0) {
-        reason->weakenDivideRoundOrderedCanceling(bestDiv, level, pos, mult, *confl);
-        reason->multiply(mult);
-        // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
-      } else {
-        std::cout << "reason: " << std::endl;
-        reason->toStreamPure(std::cout);
-        std::cout << "\n" << std::endl;
-        reason->weakenDivideRoundOrdered(bestDiv, level);
-        reason->multiply(mult);
-        std::cout << "weakened reason: " << std::endl;
-        reason->toStreamPure(std::cout);
-        std::cout << "\n" << std::endl;
-      }
-    }
-  }
-
-
-
-  // for (Var v : reason->vars) {
-  //   Lit ll = reason->getLit(v);
-  //   if (isFalse(level, ll)) {
-  //     actSet.add(v);
+  //     reason->toStreamPure(std::cout);
+  //     std::cout << "\n" << std::endl;
+  //   } else {
+  //     int reasonSlack = reason->getSlack(level);
+  //     std::cout << "reason slack+1: " << reasonSlack + 1 << "\n" << std::endl;
+  //     std::cout << "reasonCoef / (reasonSlack + 1): " << reasonCoef / (reasonSlack + 1) << "\n" << std::endl;
+  //     if (strcmp(argv[2], "slack+1") == 0 && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
+  //       reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
+  //       std::cout << "weakened reason: " << std::endl;
+  //       reason->toStreamPure(std::cout);
+  //       std::cout << "\n" << std::endl;
+  //       reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
+  //       std::cout << "multiplied reason: " << std::endl;
+  //       reason->toStreamPure(std::cout);
+  //       std::cout << "\n" << std::endl;
+  //     } else {
+  //       int gcd = strcmp(argv[1], "mult") == 0 ? conflCoef : aux::gcd(conflCoef, reasonCoef);
+  //       std::cout << "gcd: " << gcd << "\n" << std::endl;
+  //       const int minDiv = reasonCoef / gcd;
+  //       std::cout << "minDiv: " << minDiv << "\n" << std::endl;
+  //       int bestDiv = minDiv;
+  //       if (bestDiv <= reasonSlack) {
+  //         // quick heuristic search for small divisor larger than slack
+  //         bestDiv = reasonCoef;
+  //         int tmp;
+  //         int pp;
+  //         for (int p : {5, 3, 2}) {
+  //           pp = 1;
+  //           while ((gcd % p) == 0) {
+  //             gcd /= p;
+  //             tmp = reasonCoef / gcd;
+  //             if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+  //             tmp = minDiv * gcd;
+  //             if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+  //             pp *= p;
+  //             tmp = reasonCoef / pp;
+  //             if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+  //             tmp = minDiv * pp;
+  //             if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+  //           }
+  //         }
+  //       }
+  //       std::cout << "bestDiv: " << bestDiv << "\n" << std::endl;
+  //       const int mult = conflCoef / (reasonCoef / bestDiv);
+  //       std::cout << "mult: " << mult << "\n" << std::endl;
+  //       if (strcmp(argv[3], "cancel") == 0) {
+  //         reason->weakenDivideRoundOrderedCanceling(bestDiv, level, pos, mult, *confl);
+  //         reason->multiply(mult);
+  //         // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
+  //       } else {
+  //         std::cout << "reason: " << std::endl;
+  //         reason->toStreamPure(std::cout);
+  //         std::cout << "\n" << std::endl;
+  //         reason->weakenDivideRoundOrdered(bestDiv, level);
+  //         reason->multiply(mult);
+  //         std::cout << "weakened reason: " << std::endl;
+  //         reason->toStreamPure(std::cout);
+  //         std::cout << "\n" << std::endl;
+  //       }
+  //     }
   //   }
   // }
 
-  int oldDegree = confl->getDegree();
-  // add reason to conflict
-  confl->addUp(reason);
 
-  std::cout << "added reason to confl: " << std::endl;
-  confl->toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
 
-  std::vector<Var>& varsToCheck = oldDegree <= confl->getDegree() ? reason->vars : confl->vars;
-  int largestCF = confl->getLargestCoef(varsToCheck);
-  if (largestCF > confl->getDegree()) {
-    confl->saturate(varsToCheck, false, false);
-    largestCF = static_cast<int>(confl->getDegree());
-  }
+  // // for (Var v : reason->vars) {
+  // //   Lit ll = reason->getLit(v);
+  // //   if (isFalse(level, ll)) {
+  // //     actSet.add(v);
+  // //   }
+  // // }
 
-  std::cout << "saturated confl: " << std::endl;
-  confl->toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
-  // std::cout << "\n weaken first lit: " << std::endl;
+  // int oldDegree = confl->getDegree();
+  // // add reason to conflict
+  // confl->addUp(reason);
 
-  // constr->weaken(1);
-
-  // constr->toStreamPure(std::cout);
-  // std::cout << "\n restore: " << std::endl;
-
-  // constr->addLhs(2, 1);
-  // constr->addRhs(2);
-
-  // constr->toStreamPure(std::cout);
-  // std::cout << "\n weaken superfluous: " << std::endl;
-
-  // // decide(1);
-
-  // constr->weakenSuperfluous(2, false, []([[maybe_unused]] Var v) { return true; });
-  // std::cout << "\n divide by 2 and round up: " << std::endl;
-
-  // constr->divideRoundUp(2);
-
-  // constr->toStreamPure(std::cout);
+  // std::cout << "added reason to confl: " << std::endl;
+  // confl->toStreamPure(std::cout);
   // std::cout << "\n" << std::endl;
 
-  // for (int i = 5; i > 0; i--) {
-  //   std::cout << i << " ";
+  // std::vector<Var>& varsToCheck = oldDegree <= confl->getDegree() ? reason->vars : confl->vars;
+  // int largestCF = confl->getLargestCoef(varsToCheck);
+  // if (largestCF > confl->getDegree()) {
+  //   confl->saturate(varsToCheck, false, false);
+  //   largestCF = static_cast<int>(confl->getDegree());
   // }
-  return 0;
+
+  // std::cout << "saturated confl: " << std::endl;
+  // confl->toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
+  // // std::cout << "\n weaken first lit: " << std::endl;
+
+  // // constr->weaken(1);
+
+  // // constr->toStreamPure(std::cout);
+  // // std::cout << "\n restore: " << std::endl;
+
+  // // constr->addLhs(2, 1);
+  // // constr->addRhs(2);
+
+  // // constr->toStreamPure(std::cout);
+  // // std::cout << "\n weaken superfluous: " << std::endl;
+
+  // // // decide(1);
+
+  // // constr->weakenSuperfluous(2, false, []([[maybe_unused]] Var v) { return true; });
+  // // std::cout << "\n divide by 2 and round up: " << std::endl;
+
+  // // constr->divideRoundUp(2);
+
+  // // constr->toStreamPure(std::cout);
+  // // std::cout << "\n" << std::endl;
+
+  // // for (int i = 5; i > 0; i--) {
+  // //   std::cout << i << " ";
+  // // }
+  // return 0;
 
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);

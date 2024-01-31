@@ -359,6 +359,8 @@ struct ConstrExp final : public ConstrExpSuper {
   // @post: preserves order after removeZeroes()
   bool weakenNonImplying(const IntMap<int>& level, const SMALL& propCoef, const LARGE& slack);
   // @post: preserves order after removeZeroes()
+  void weakenNonFalsified(const IntMap<int>& level, const SMALL& amount);
+  // @post: preserves order after removeZeroes()
   void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos);
 
   // @post: preserves order
@@ -504,7 +506,30 @@ struct ConstrExp final : public ConstrExpSuper {
       if (global.options.multiply.is("multiply-divide")) {
         reason->multiply(conflCoef);
       } else if (global.options.multiply.is("multiply-weaken")) {
+        SMALL reasonCoef = reason->getCoef(asserting);
 
+        SMALL mu = 1;
+        SMALL nu = 1;
+        if (reasonCoef > conflCoef) {
+          mu = reasonCoef /conflCoef;
+        } else if (reasonCoef < conflCoef) {
+          nu = aux::ceildiv(conflCoef, reasonCoef);
+        }
+
+        LARGE reasonSlack = reason->getSlack(level);
+        LARGE conflSlack = getSlack(level);
+
+        LARGE reasonDeg = reason->getDegree();
+
+        if (nu*reasonSlack-nu*(reasonDeg-conflCoef)+mu*conflSlack < 0 && nu*reasonDeg-mu*conflCoef < mu*getLargestCoef()) {
+          reason->multiply(nu);
+          multiply(mu);
+
+          SMALL amount = reasonDeg - getCoef(-asserting);
+
+          reason->weakenNonFalsified(level, amount);
+          reason->saturate(true, false);
+        }
       }
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
