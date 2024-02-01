@@ -359,7 +359,7 @@ struct ConstrExp final : public ConstrExpSuper {
   // @post: preserves order after removeZeroes()
   bool weakenNonImplying(const IntMap<int>& level, const SMALL& propCoef, const LARGE& slack);
   // @post: preserves order after removeZeroes()
-  void weakenNonFalsified(const IntMap<int>& level, const SMALL& amount);
+  void weakenNonFalsified(const IntMap<int>& level, const SMALL& amount, const Lit& asserting);
   // @post: preserves order after removeZeroes()
   void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos);
 
@@ -390,6 +390,8 @@ struct ConstrExp final : public ConstrExpSuper {
   bool isSortedInDecreasingCoefOrder() const;
   void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);
   void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
+
+  void fixOrderAtIndex(const int index);
 
   void toStreamAsOPBlhs(std::ostream& o, bool withConstant) const;
   void toStreamAsOPB(std::ostream& o) const;
@@ -505,12 +507,19 @@ struct ConstrExp final : public ConstrExpSuper {
     } else {
       bool cond = true;
       if (global.options.multWeaken) {
+        std::cout << "reason start: " << std::endl;
+        reason->toStreamWithAssignment(std::cout, level, pos);
+        std::cout << "\n" << std::endl;
+        std::cout << "conflict start: " << std::endl;
+        toStreamWithAssignment(std::cout, level, pos);
+        std::cout << "\n" << std::endl;
+
         SMALL reasonCoef = reason->getCoef(asserting);
 
         SMALL mu = 1;
         SMALL nu = 1;
         if (reasonCoef > conflCoef) {
-          mu = reasonCoef /conflCoef;
+          mu = aux::floordiv(reasonCoef, conflCoef);
         } else if (reasonCoef < conflCoef) {
           nu = aux::ceildiv(conflCoef, reasonCoef);
         }
@@ -518,20 +527,56 @@ struct ConstrExp final : public ConstrExpSuper {
         LARGE reasonSlack = reason->getSlack(level);
         LARGE conflSlack = getSlack(level);
 
-        LARGE reasonDeg = reason->getDegree();
+        // LARGE reasonDeg = reason->getDegree();
 
-        cond = nu*reasonSlack-nu*(reasonDeg-conflCoef)+mu*conflSlack < 0 && nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
+        cond = nu*(reasonSlack-reasonCoef)+mu*(conflCoef+conflSlack) < 0; //&& nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
         if (cond) {
           ++global.stats.NMULTWEAKEN;
+          if (static_cast<int>(global.stats.NMULTWEAKEN.z) % 1 == 0) {
+            std::cout << "multWeaken: " << global.stats.NMULTWEAKEN << std::endl;
+            std::cout << "aborted: " << global.stats.NNONMULTWEAKEN << std::endl;
+          }
           reason->multiply(nu);
           multiply(mu);
 
-          SMALL amount = static_cast<SMALL>(reasonDeg) - getCoef(-asserting);
 
-          reason->weakenNonFalsified(level, amount);
-          reason->saturate(true, false);
+          std::cout << "reason middle: " << std::endl;
+          reason->toStreamWithAssignment(std::cout, level, pos);
+          std::cout << "\n" << std::endl;
+          std::cout << "degree: " << reason->getDegree() << std::endl;
+
+          std::cout << "conflict middle: " << std::endl;
+          toStreamWithAssignment(std::cout, level, pos);
+          std::cout << "\n" << std::endl;
+          std::cout << "coef: " << getCoef(-asserting) << std::endl;
+
+          if (reason->getCoef(asserting) != getCoef(-asserting)) {
+
+            SMALL amount = static_cast<SMALL>(reason->getDegree() - getCoef(-asserting));
+            std::cout << "amount: " << amount << std::endl;
+            reason->weakenNonFalsified(level, amount, asserting);
+            reason->saturate(true, false);
+          }
+
+          std::cout << "reason end: " << std::endl;
+          reason->toStreamWithAssignment(std::cout, level, pos);
+          std::cout << "\n" << std::endl;
+          std::cout << "conflict end: " << std::endl;
+          toStreamWithAssignment(std::cout, level, pos);
+          std::cout << "\n" << std::endl;
+         
+          assert(reason->getSlack(level) + getSlack(level) <= 0);
+
         }
-      } else if (!cond || !global.options.multWeaken) {
+      } 
+      if (!cond || !global.options.multWeaken) {
+        // std::cout << "reason after abort: " << std::endl;
+        // reason->toStreamPure(std::cout);
+        // std::cout << "\n" << std::endl;
+        // std::cout << "conflict after abort: " << std::endl;
+        // toStreamPure(std::cout);
+        // std::cout << "\n" << std::endl;
+
         if (global.options.multWeaken) {
           ++global.stats.NNONMULTWEAKEN;
         }
@@ -601,10 +646,22 @@ struct ConstrExp final : public ConstrExpSuper {
       }
     }
 
-    assert(reason->getCoef(asserting) >= conflCoef);
-    assert(global.options.multBeforeDiv || reason->getCoef(asserting) < 2 * conflCoef);
-    assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
+    std::cout << "reason out: " << std::endl;
+    reason->toStreamPure(std::cout);
+    std::cout << "\n" << std::endl;
+    std::cout << "conflict out: " << std::endl;
+    toStreamPure(std::cout);
+    std::cout << "\n" << std::endl;
 
+    std::cout << "Asserting: " << asserting << std::endl;
+
+    // assert(reason->getCoef(asserting) >= conflCoef);
+    // assert(reason->getCoef(asserting) < 2 * conflCoef);
+    // assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
+
+    assert(reason->getCoef(asserting) >= getCoef(-asserting));
+    assert(reason->getCoef(asserting) < 2 * getCoef(-asserting));
+    assert(global.options.division.is("slack+1") || getCoef(-asserting) == reason->getCoef(asserting));
     // In most cases, at this point, the reason coefficient is equal to the conflict coefficient
     // and the reason slack is at most zero, so we can safely add the reason to the conflict.
 

@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
   // reason->addLhs(3, 3);
   // reason->addLhs(2, 4);
   // reason->addLhs(1, 5);
-  // reason->addRhs(6);
+  // reason->addRhs(6); // reason = 5a+5b+3c+2d+e>=6
 
 
   // Ce32 confl = global.cePools.take32();
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
 
   // confl->addRhs(5);
 
-
+  // // confl = 3~b+2a+2d+~e>=5
 
   // reason->toStreamPure(std::cout);
   // std::cout << "\n" << std::endl;
@@ -75,6 +75,8 @@ int main(int argc, char** argv) {
   // level[5] = 2;
   // level[2] = 3;
 
+  // // a=d=0, e=1, c=/ => prop b=1
+
   // std::vector<Lit> trail = {0, 0, 1, 1};
   // std::vector<int> pos = {0, 3, INF, 1, 2};
 
@@ -93,7 +95,7 @@ int main(int argc, char** argv) {
   // //   std::cout << "var is unknown: " << isUnknown(pos, i) << "\n" << std::endl;
   // // }
 
-  // const int conflCoef = confl->getCoef(-asserting);
+  // const int conflCoef = confl->getCoef(-asserting); // 3
 
   // std::cout << "confl coeff: " << conflCoef << std::endl;
   // // std::cout << "reason coeff: " << reasonCoef << std::endl;
@@ -108,30 +110,37 @@ int main(int argc, char** argv) {
   // // }
 
 
-  // const int reasonCoef = reason->getCoef(asserting);
+  // const int reasonCoef = reason->getCoef(asserting); // 5
   // std::cout << "reason coeff: " << reasonCoef << "\n" << std::endl;
 
   // int mu = 1;
   // int nu = 1;
   // if (reasonCoef > conflCoef) {
-  //   mu = reasonCoef / conflCoef;
+  //   mu = aux::floordiv(reasonCoef, conflCoef); // 1
   // } else {
-  //   nu = aux::ceildiv(conflCoef, reasonCoef);
+  //   nu = aux::ceildiv(conflCoef, reasonCoef); // 1
   // }
 
   // std::cout << "mu: " << mu << "\n" << std::endl;
   // std::cout << "nu: " << nu << "\n" << std::endl;
 
-  // int reasonSlack = reason->getSlack(level);
+  // int reasonSlack = reason->getSlack(level); // rslack=3
   // std::cout << "reason slack: " << reasonSlack << "\n" << std::endl;
   
-  // int conflSlack = confl->getSlack(level);
+  // int conflSlack = confl->getSlack(level); // cslack=-5
   // std::cout << "confl slack: " << conflSlack << "\n" << std::endl;
 
-  // int reasonDeg = reason->getDegree();
+  // int reasonDeg = reason->getDegree(); // rdeg=6
   // std::cout << "reason deg: " << reasonDeg << "\n" << std::endl;
 
-  // if (nu*reasonSlack-nu*(reasonDeg-conflCoef)+mu*conflSlack < 0) {
+  // // new_slack = nu*reasonslack + mu*conflictslack 
+  // // weakenen = nu*reasondeg - mu*conflictcoef
+  // // saturate = nu*rcoef - mu*ccoef
+
+  // // rcoef > ccoef => rdeg > ccoef
+  // // rcoef < ccoef => ccoef/rcoef*rdeg > ccoef
+
+  // if (nu*(reasonSlack-reasonCoef)+mu*(conflCoef+conflSlack) < 0) { // 3 - 5 + (3 + -5) < -4
   //   std::cout << "going with mult and weaken" << std::endl;
   //   reason->multiply(nu);
   //   confl->multiply(mu);
@@ -145,8 +154,8 @@ int main(int argc, char** argv) {
   //   int amount = reasonDeg - confl->getCoef(-asserting);
   //   std::cout << "amount: " << amount << "\n" << std::endl;
 
-  //   reason->weakenNonFalsified(level, amount);
-  //   reason->saturate(true, false);
+  //   reason->weakenNonFalsified(level, amount); // r = 3a+3b+c+2d>= 3
+  //   reason->saturate(false, false);
   //   std::cout << "weakened and saturated reason: " << std::endl;
   //   reason->toStreamPure(std::cout);
   //   std::cout << "\n" << std::endl;
@@ -240,7 +249,8 @@ int main(int argc, char** argv) {
 
   // int oldDegree = confl->getDegree();
   // // add reason to conflict
-  // confl->addUp(reason);
+  // confl->addUp(reason); // 5a+4d+c+~e>= 5
+  // // mindiv: 5a+5d+~e>=5
 
   // std::cout << "added reason to confl: " << std::endl;
   // confl->toStreamPure(std::cout);

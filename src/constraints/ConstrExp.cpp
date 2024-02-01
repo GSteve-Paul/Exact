@@ -1261,22 +1261,39 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntMap<int>& level, const 
 
 // @post: preserves order after removeZeroes()
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const SMALL& amount) {
+void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const SMALL& amount, const Lit& asserting) {
   SMALL am = amount;
+  std::cout << "in weakenNonFalsified: " << std::endl;
+  std::cout << "amount: " << amount << std::endl;
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
+  // assert(getSlack(level) >= 0);
   for (int i = vars.size() - 1; i >= 0 && am > 0; --i) {
     Var v = vars[i];
-    if (coefs[v] != 0 && !falsified(level, v) && !saturatedVar(v)) {
+    if (coefs[v] != 0 && !falsified(level, v) && getLit(v) != asserting) {
       if (aux::abs(coefs[v]) < am) { 
-        am -= coefs[v]; 
+        am -= aux::abs(coefs[v]);
+        std::cout << "weakened: " << v << std::endl;
+        std::cout << "coefs[v]: " << coefs[v] << std::endl;
+        std::cout << "am: " << am << std::endl;
         weaken(v); 
       } else { 
+        std::cout << "weakened partially: " << v << std::endl;
+        std::cout << "coefs[v]: " << coefs[v] << std::endl;
+        std::cout << "am: " << am << std::endl;
         weaken(coefs[v] < 0 ? am : -am, v);
         am = 0;
+        removeZeroes();
+        fixOrderAtIndex(i); 
       }
     }
   }
+  std::cout << "asserting in weakenNonFalsified: " << asserting << std::endl;
+  std::cout << "after weakening: " << std::endl;
+  toStreamPure(std::cout);
+  std::cout << "\n" << std::endl;
+  assert(am == 0);
+  assert(isSortedInDecreasingCoefOrder());
 }
 
 // @post: preserves order after removeZeroes()
@@ -1525,6 +1542,17 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
     return res > 0 || (res == 0 && aux::abs(coefs[v1]) > aux::abs(coefs[v2]));
   });
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::fixOrderAtIndex(const int index) {
+  assert(index >= 0 && index < (int)vars.size());
+  Var checking = vars[index];
+  SMALL checkingCoef = absCoef(checking);
+  for (int i = index; i < vars.size() - 1 && absCoef(vars[i+1]) > checkingCoef; i++) {
+    std::swap(vars[i], vars[i + 1]);
+  }
+  assert(isSortedInDecreasingCoefOrder());
 }
 
 int ConstrExpSuper::nNonZeroVars() const {
