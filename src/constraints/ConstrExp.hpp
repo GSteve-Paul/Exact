@@ -503,9 +503,8 @@ struct ConstrExp final : public ConstrExpSuper {
       reason->multiply(conflCoef);
       assert(reason->getSlack(level) <= 0);
     } else {
-      if (global.options.multiply.is("multiply-divide")) {
-        reason->multiply(conflCoef);
-      } else if (global.options.multiply.is("multiply-weaken")) {
+      bool cond = true;
+      if (global.options.multWeaken) {
         SMALL reasonCoef = reason->getCoef(asserting);
 
         SMALL mu = 1;
@@ -521,80 +520,89 @@ struct ConstrExp final : public ConstrExpSuper {
 
         LARGE reasonDeg = reason->getDegree();
 
-        if (nu*reasonSlack-nu*(reasonDeg-conflCoef)+mu*conflSlack < 0 && nu*reasonDeg-mu*conflCoef < mu*getLargestCoef()) {
+        cond = nu*reasonSlack-nu*(reasonDeg-conflCoef)+mu*conflSlack < 0 && nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
+        if (cond) {
+          ++global.stats.NMULTWEAKEN;
           reason->multiply(nu);
           multiply(mu);
 
-          SMALL amount = reasonDeg - getCoef(-asserting);
+          SMALL amount = static_cast<SMALL>(reasonDeg) - getCoef(-asserting);
 
           reason->weakenNonFalsified(level, amount);
           reason->saturate(true, false);
         }
-      }
-      const SMALL reasonCoef = reason->getCoef(asserting);
-      assert(reasonCoef > 0);
-      if (global.options.division.is("rto")) {
-        reason->weakenDivideRoundOrdered(reasonCoef, level);
-        reason->multiply(conflCoef);
-        assert(reason->getSlack(level) <= 0);
-      } else {
-        const LARGE reasonSlack = reason->getSlack(level);
-        if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
-          reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
-          reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
+      } else if (!cond || !global.options.multWeaken) {
+        if (global.options.multWeaken) {
+          ++global.stats.NNONMULTWEAKEN;
+        }
+        if (global.options.multBeforeDiv) {
+          reason->multiply(conflCoef);
+        } 
+        const SMALL reasonCoef = reason->getCoef(asserting);
+        assert(reasonCoef > 0);
+        if (global.options.division.is("rto")) {
+          reason->weakenDivideRoundOrdered(reasonCoef, level);
+          reason->multiply(conflCoef);
           assert(reason->getSlack(level) <= 0);
         } else {
-          assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
-                 reasonCoef / (reasonSlack + 1) >= conflCoef);
-          assert(!global.options.multiply.is("multiply-divide") || conflCoef == aux::gcd(conflCoef, reasonCoef));
-          SMALL gcd = global.options.multiply.is("multiply-divide") ? conflCoef : aux::gcd(conflCoef, reasonCoef);
-          const SMALL minDiv = reasonCoef / gcd;
-          SMALL bestDiv = minDiv;
-          if (bestDiv <= reasonSlack) {
-            // quick heuristic search for small divisor larger than slack
-            bestDiv = reasonCoef;
-            SMALL tmp;
-            SMALL pp;
-            for (int p : {5, 3, 2}) {
-              pp = 1;
-              while ((gcd % p) == 0) {
-                gcd /= p;
-                tmp = reasonCoef / gcd;
-                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                tmp = minDiv * gcd;
-                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                pp *= p;
-                tmp = reasonCoef / pp;
-                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                tmp = minDiv * pp;
-                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+          const LARGE reasonSlack = reason->getSlack(level);
+          if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
+            reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
+            reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
+            assert(reason->getSlack(level) <= 0);
+          } else {
+            assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
+                  reasonCoef / (reasonSlack + 1) >= conflCoef);
+            assert(!global.options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
+            SMALL gcd = global.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
+            const SMALL minDiv = reasonCoef / gcd;
+            SMALL bestDiv = minDiv;
+            if (bestDiv <= reasonSlack) {
+              // quick heuristic search for small divisor larger than slack
+              bestDiv = reasonCoef;
+              SMALL tmp;
+              SMALL pp;
+              for (int p : {5, 3, 2}) {
+                pp = 1;
+                while ((gcd % p) == 0) {
+                  gcd /= p;
+                  tmp = reasonCoef / gcd;
+                  if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                  tmp = minDiv * gcd;
+                  if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                  pp *= p;
+                  tmp = reasonCoef / pp;
+                  if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                  tmp = minDiv * pp;
+                  if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                }
               }
             }
-          }
 
-          assert(bestDiv > reasonSlack);
-          assert(reasonCoef % bestDiv == 0);
-          assert(conflCoef % (reasonCoef / bestDiv) == 0);
-          const SMALL mult = conflCoef / (reasonCoef / bestDiv);
-          if (global.options.caCancelingUnkns) {
-            for (Var v : reason->vars) {
-              Lit l = reason->getLit(v);
-              global.stats.NUNKNOWNROUNDEDUP += isUnknown(pos, v) && getCoef(-l) >= mult;
+            assert(bestDiv > reasonSlack);
+            assert(reasonCoef % bestDiv == 0);
+            assert(conflCoef % (reasonCoef / bestDiv) == 0);
+            const SMALL mult = conflCoef / (reasonCoef / bestDiv);
+            if (global.options.caCancelingUnkns) {
+              for (Var v : reason->vars) {
+                Lit l = reason->getLit(v);
+                global.stats.NUNKNOWNROUNDEDUP += isUnknown(pos, v) && getCoef(-l) >= mult;
+              }
+              reason->weakenDivideRoundOrderedCanceling(bestDiv, level, pos, mult, *this);
+              reason->multiply(mult);
+              // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
+            } else {
+              reason->weakenDivideRoundOrdered(bestDiv, level);
+              reason->multiply(mult);
+              assert(reason->getSlack(level) <= 0);
             }
-            reason->weakenDivideRoundOrderedCanceling(bestDiv, level, pos, mult, *this);
-            reason->multiply(mult);
-            // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
-          } else {
-            reason->weakenDivideRoundOrdered(bestDiv, level);
-            reason->multiply(mult);
-            assert(reason->getSlack(level) <= 0);
           }
         }
       }
     }
 
     assert(reason->getCoef(asserting) >= conflCoef);
-    assert(reason->getCoef(asserting) < 2 * conflCoef);
+    assert(global.options.multBeforeDiv || reason->getCoef(asserting) < 2 * conflCoef);
     assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
     // In most cases, at this point, the reason coefficient is equal to the conflict coefficient

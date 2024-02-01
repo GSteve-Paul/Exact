@@ -1263,14 +1263,16 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntMap<int>& level, const 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const SMALL& amount) {
   SMALL am = amount;
+  assert(hasNoZeroes());
+  assert(isSortedInDecreasingCoefOrder());
   for (int i = vars.size() - 1; i >= 0 && am > 0; --i) {
     Var v = vars[i];
-    if (coefs[v] != 0 && !falsified(level, v)) {
-      if (coefs[v] < am) { 
+    if (coefs[v] != 0 && !falsified(level, v) && !saturatedVar(v)) {
+      if (aux::abs(coefs[v]) < am) { 
         am -= coefs[v]; 
         weaken(v); 
       } else { 
-        weaken(-am, v);
+        weaken(coefs[v] < 0 ? am : -am, v);
         am = 0;
       }
     }

@@ -313,6 +313,9 @@ struct Stats {
   Stat LEARNEDSTRENGTHAVG{0, "learned strength average"};
   Stat LEARNEDLBDAVG{0, "learned LBD average"};
 
+  Stat NMULTWEAKEN{0, "nb times done multweaken"};
+  Stat NNONMULTWEAKEN{0, "nb times multweaken exited"};
+
   Stat LASTLB{std::numeric_limits<StatNum>::quiet_NaN(), "best lower bound"};
   Stat LASTUB{std::numeric_limits<StatNum>::quiet_NaN(), "best upper bound"};
   Stat DEPLTIME{-1, "depletion time"};
@@ -442,6 +445,8 @@ struct Stats {
       &LASTUB,
       &LASTLB,
       &DEPLTIME,
+      &NMULTWEAKEN,
+      &NNONMULTWEAKEN,
 #if WITHSOPLEX
       &LPOBJ,
       &NLPADDEDROWS,
