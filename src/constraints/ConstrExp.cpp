@@ -1509,6 +1509,15 @@ void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntMap<int>& level, const std
   assert(isUnitConstraint());
 }
 
+template <typename SMALL, typename LARGE>
+LARGE ConstrExp<SMALL, LARGE>::getNonFalsified(const IntMap<int>& level, const Lit& asserting) const {
+  LARGE result = 0;
+  for (Var v : getVars()) {
+    if (!falsified(level, v) && getLit(v) != asserting) result += aux::abs(getCoef(v));
+  }
+  return result;
+}
+
 bool ConstrExpSuper::isUnitConstraint() const { return isClause() && nVars() == 1 && !isInconsistency(); }
 
 template <typename SMALL, typename LARGE>

@@ -386,6 +386,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void simplifyToClause();
   bool isClause() const;
   void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit);
+  LARGE getNonFalsified(const IntMap<int>& level, const Lit& asserting) const;
 
   bool isSortedInDecreasingCoefOrder() const;
   void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);
@@ -527,9 +528,13 @@ struct ConstrExp final : public ConstrExpSuper {
         LARGE reasonSlack = reason->getSlack(level);
         LARGE conflSlack = getSlack(level);
 
-        // LARGE reasonDeg = reason->getDegree();
+        LARGE reasonDeg = reason->getDegree();
 
-        cond = nu*(reasonSlack-reasonCoef)+mu*(conflCoef+conflSlack) < 0; //&& nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
+        LARGE nonFalsified = reason->getNonFalsified(level, asserting);
+
+        std::cout << "nonFalsified: " << nonFalsified << std::endl;
+
+        cond = nu*(reasonSlack-reasonCoef)+mu*(conflCoef+conflSlack) < 0 && (nu*nonFalsified >= nu*reasonDeg - mu*conflCoef || nu*reasonCoef == mu*conflCoef); //&& nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
         if (cond) {
           ++global.stats.NMULTWEAKEN;
           if (static_cast<int>(global.stats.NMULTWEAKEN.z) % 1 == 0) {

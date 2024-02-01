@@ -377,6 +377,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void simplifyToClause();
   bool isClause() const;
   void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit);
+  LARGE getNonFalsified(const IntMap<int>& level) const;
 
   bool isSortedInDecreasingCoefOrder() const;
   void sortInDecreasingCoefOrder(const Heuristic& heur);
