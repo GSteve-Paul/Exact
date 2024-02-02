@@ -900,9 +900,9 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(div, level);
-  std::cout << "weakened non divisible" << std::endl;
-  toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
+  // std::cout << "weakened non divisible" << std::endl;
+  // toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
   weakenSuperfluous(div);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
@@ -910,9 +910,9 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   }
   assert(hasNoZeroes());
   
-  std::cout << "in weakenDivideRoundOrdered: " << std::endl;
-  toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
+  // std::cout << "in weakenDivideRoundOrdered: " << std::endl;
+  // toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
   if (div >= degree) {
     simplifyToClause();
   } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
@@ -1263,8 +1263,8 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntMap<int>& level, const 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const SMALL& amount, const Lit& asserting) {
   SMALL am = amount;
-  std::cout << "in weakenNonFalsified: " << std::endl;
-  std::cout << "amount: " << amount << std::endl;
+  // std::cout << "in weakenNonFalsified: " << std::endl;
+  // std::cout << "amount: " << amount << std::endl;
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
   // assert(getSlack(level) >= 0);
@@ -1273,14 +1273,14 @@ void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const
     if (coefs[v] != 0 && !falsified(level, v) && getLit(v) != asserting) {
       if (aux::abs(coefs[v]) < am) { 
         am -= aux::abs(coefs[v]);
-        std::cout << "weakened: " << v << std::endl;
-        std::cout << "coefs[v]: " << coefs[v] << std::endl;
-        std::cout << "am: " << am << std::endl;
+        // std::cout << "weakened: " << v << std::endl;
+        // std::cout << "coefs[v]: " << coefs[v] << std::endl;
+        // std::cout << "am: " << am << std::endl;
         weaken(v); 
       } else { 
-        std::cout << "weakened partially: " << v << std::endl;
-        std::cout << "coefs[v]: " << coefs[v] << std::endl;
-        std::cout << "am: " << am << std::endl;
+        // std::cout << "weakened partially: " << v << std::endl;
+        // std::cout << "coefs[v]: " << coefs[v] << std::endl;
+        // std::cout << "am: " << am << std::endl;
         weaken(coefs[v] < 0 ? am : -am, v);
         am = 0;
         removeZeroes();
@@ -1288,10 +1288,10 @@ void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const
       }
     }
   }
-  std::cout << "asserting in weakenNonFalsified: " << asserting << std::endl;
-  std::cout << "after weakening: " << std::endl;
-  toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
+  // std::cout << "asserting in weakenNonFalsified: " << asserting << std::endl;
+  // std::cout << "after weakening: " << std::endl;
+  // toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
   assert(am == 0);
   assert(isSortedInDecreasingCoefOrder());
 }
