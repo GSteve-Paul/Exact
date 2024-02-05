@@ -393,6 +393,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp);
 
   void fixOrderAtIndex(const int index);
+  void fixOrderOfVar(const Var v);
 
   void toStreamAsOPBlhs(std::ostream& o, bool withConstant) const;
   void toStreamAsOPB(std::ostream& o) const;
@@ -500,7 +501,7 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(reason->getCoef(asserting) > reason->getSlack(level));
 
     // negation of asserting literal has positive coefficient in conflict
-    const SMALL conflCoef = getCoef(-asserting);
+    SMALL conflCoef = getCoef(-asserting);
     assert(conflCoef > 0);
     if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0 if it wasn't then it the literal wouldn't propagate
       reason->multiply(conflCoef);
@@ -534,13 +535,13 @@ struct ConstrExp final : public ConstrExpSuper {
 
         // std::cout << "nonFalsified: " << nonFalsified << std::endl;
 
-        cond = nu*(reasonSlack-reasonCoef)+mu*(conflCoef+conflSlack) < 0 && (nu*(reasonSlack-reasonCoef) + mu*conflCoef >= 0 || nu*reasonCoef == mu*conflCoef); //&& nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
+        cond = nu*(reasonSlack-reasonCoef)+mu*(conflCoef+conflSlack) < 0 && (nu*(reasonSlack-reasonCoef) + mu*conflCoef >= 0 || ((mu*conflCoef >= nu*reasonSlack+1) && (nu*reasonSlack + mu*conflSlack < 0))); //&& nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
         if (cond) {
           ++global.stats.NMULTWEAKEN;
-          if (static_cast<int>(global.stats.NMULTWEAKEN.z) % 100 == 0) {
-            std::cout << "multWeaken: " << global.stats.NMULTWEAKEN << std::endl;
-            std::cout << "aborted: " << global.stats.NNONMULTWEAKEN << std::endl;
-          }
+          // if (static_cast<int>(global.stats.NMULTWEAKEN.z) % 100 == 0) {
+          //   std::cout << "multWeaken: " << global.stats.NMULTWEAKEN << std::endl;
+          //   std::cout << "aborted: " << global.stats.NNONMULTWEAKEN << std::endl;
+          // }
           reason->multiply(nu);
           multiply(mu);
 
@@ -555,13 +556,28 @@ struct ConstrExp final : public ConstrExpSuper {
           // std::cout << "\n" << std::endl;
           // std::cout << "coef: " << getCoef(-asserting) << std::endl;
 
-          if (reason->getCoef(asserting) != getCoef(-asserting)) {
+          reasonCoef = reason->getCoef(asserting);
+          conflCoef = getCoef(-asserting);
+          reasonSlack = reason->getSlack(level);
+          conflSlack = getSlack(level);
 
-            SMALL amount = static_cast<SMALL>(reason->getDegree() - getCoef(-asserting));
+          if ((conflCoef < reasonSlack + 1) || (reasonSlack + conflSlack >= 0)) {
+            SMALL amount = static_cast<SMALL>(reason->getDegree() - conflCoef);
             // std::cout << "amount: " << amount << std::endl;
             reason->weakenNonFalsified(level, amount, asserting);
-            reason->saturate(true, false);
+          } else {
+            SMALL amount = reasonCoef - conflCoef;
+            // std::cout << "pre weaken" << std::endl;
+            // std::cout << "asserting: " << toVar(asserting) << std::endl;
+            // reason->toStreamPure(std::cout);
+            // std::cout << "\n" << std::endl;
+            reason->weaken(reason->getCoef(toVar(asserting)) < 0 ? amount : -amount, toVar(asserting));
+            reason->fixOrderOfVar(toVar(asserting));
+            // std::cout << "post weaken" << std::endl;
+            // reason->toStreamPure(std::cout);
+            // std::cout << "\n" << std::endl;
           }
+          reason->saturate(true, false);
 
           // std::cout << "reason end: " << std::endl;
           // reason->toStreamWithAssignment(std::cout, level, pos);
@@ -570,7 +586,7 @@ struct ConstrExp final : public ConstrExpSuper {
           // toStreamWithAssignment(std::cout, level, pos);
           // std::cout << "\n" << std::endl;
          
-          assert(reason->getSlack(level) + getSlack(level) <= 0);
+          assert(reason->getSlack(level) + getSlack(level) < 0);
 
         }
       } 

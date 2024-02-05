@@ -1564,6 +1564,14 @@ void ConstrExp<SMALL, LARGE>::fixOrderAtIndex(const int index) {
   assert(isSortedInDecreasingCoefOrder());
 }
 
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::fixOrderOfVar(Var v) {
+  assert(hasVar(v));
+  int i = index[v];
+  fixOrderAtIndex(i);
+  assert(isSortedInDecreasingCoefOrder());
+}
+
 int ConstrExpSuper::nNonZeroVars() const {
   int result = 0;
   for (Var v : vars) {
