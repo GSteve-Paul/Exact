@@ -51,6 +51,35 @@ TEST_CASE("toOptimum") {
   }
 }
 
+TEST_CASE("toOptimum advanced") {
+  Options opts;
+  for (double x : {0.0, 0.5, 1.0}) {
+    opts.cgHybrid.set(x);
+    ILP ilp(opts);
+    std::vector<IntVar*> vars;
+    vars.reserve(5);
+    for (const auto& s : {"a", "b", "c", "d", "e", "x"}) {
+      vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+    }
+    ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5, 10}, vars, {}, 6});
+    ilp.setObjective({1, 1, 2, 3, 5, -10}, vars, {});
+    ilp.setAssumption(vars.back(), 0);
+    auto [state, obj] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    CHECK(state == SolveState::INCONSISTENT);
+    CHECK(obj == 4);
+    ilp.setAssumption(vars[4], true);
+    auto [state2, obj2] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    CHECK(state2 == SolveState::INCONSISTENT);
+    CHECK(obj2 == 6);
+    ilp.setObjective({-1, -1, -1, -1, -1, -1}, vars, {});
+    auto [state3, obj3] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    CHECK(obj3 == -5);
+    ilp.clearAssumptions();
+    auto [state4, obj4] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    CHECK(obj4 == -6);
+  }
+}
+
 TEST_CASE("count") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
@@ -92,7 +121,7 @@ TEST_CASE("intersect") {
 
 TEST_CASE("propagate") {
   Options opts;
-  for (double x : {0.5}) {
+  for (double x : {0.0, 0.5, 1.0}) {
     opts.cgHybrid.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
@@ -118,7 +147,7 @@ TEST_CASE("propagate") {
 
 TEST_CASE("pruneDomains") {
   Options opts;
-  for (double x : {0.5}) {
+  for (double x : {0.0, 0.5, 1.0}) {
     opts.cgHybrid.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
@@ -132,7 +161,6 @@ TEST_CASE("pruneDomains") {
     ilp.addConstraint(IntConstraint{{1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars, {}, 7});
     ilp.setObjective({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars, {});
     auto propres = ilp.pruneDomains(vars, true);
-    std::cout << propres << std::endl;
     CHECK(propres ==
           std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {1, 2}});
     propres = ilp.pruneDomains(vars, false);

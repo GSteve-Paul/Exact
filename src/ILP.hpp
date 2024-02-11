@@ -178,8 +178,7 @@ class ILP {
   bigint getLastSolutionFor(IntVar* iv) const;
   std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;
 
-  bool hasCore() const;
-  unordered_set<IntVar*> getLastCore();
+  std::optional<std::vector<IntVar*>> getLastCore();
 
   void printOrigSol() const;
   void printFormula();

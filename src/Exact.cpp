@@ -230,10 +230,13 @@ std::vector<std::string> Exact::getLastSolutionFor_arb(const std::vector<std::st
   return aux::comprehension(ilp.getLastSolutionFor(getVariables(vars)), [](const bigint& i) { return aux::str(i); });
 }
 
-bool Exact::hasCore() const { return ilp.hasCore(); }
-
 std::vector<std::string> Exact::getLastCore() {
-  return aux::comprehension(ilp.getLastCore(), [](IntVar* iv) { return iv->getName(); });
+  std::optional<std::vector<IntVar*>> core = ilp.getLastCore();
+  if (core) {
+    return aux::comprehension(core.value(), [](IntVar* iv) { return iv->getName(); });
+  } else {
+    return {};
+  }
 }
 
 void Exact::printStats() { quit::printFinalStats(ilp); }

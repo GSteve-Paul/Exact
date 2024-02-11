@@ -279,7 +279,7 @@ class Exact {
    * or add a constraint invalidating this solution. This answer will not be returned if optimize is true.
    * - SolveState::INCONSISTENT (2): no solutions consistent with the assumptions exist and a core has been constructed.
    * The search process can be continued, but to avoid finding the same core over and over again, change the set of
-   * assumptions. A core can be retrieved via hasCore() and getLastCore().
+   * assumptions. A core can be retrieved via getLastCore().
    * - SolveState::TIMEOUT (3): the timeout was reached. Solving can be resumed with a later call.
    */
   SolveState runFull(bool optimize, double timeout = 0);
@@ -301,13 +301,6 @@ class Exact {
    */
   std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
   std::vector<std::string> getLastSolutionFor_arb(const std::vector<std::string>& vars) const;
-
-  /**
-   * Check whether a core -- a subset of the assumptions which cannot be extended to a solution -- has been found.
-   *
-   * @return: whether a core has been found.
-   */
-  bool hasCore() const;
 
   /**
    * The subset of assumption variables in the core. Their assumed values imply inconsistency under the constraints.

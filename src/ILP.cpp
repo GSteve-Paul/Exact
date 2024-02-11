@@ -692,25 +692,23 @@ std::vector<bigint> ILP::getLastSolutionFor(const std::vector<IntVar*>& vars) co
   return aux::comprehension(vars, [&](IntVar* iv) { return getLastSolutionFor(iv); });
 }
 
-bool ILP::hasCore() const { return solver.lastCore || solver.assumptionsClashWithUnits(); }
-
-unordered_set<IntVar*> ILP::getLastCore() {
-  if (!hasCore()) throw InvalidArgument("No unsat core to return.");
-
-  unordered_set<IntVar*> core;
+std::optional<std::vector<IntVar*>> ILP::getLastCore() {
   if (solver.assumptionsClashWithUnits()) {
     for (Lit l : assumptions.getKeys()) {
-      if (isUnit(solver.getLevel(), -l)) core.insert(var2var.at(toVar(l)));
+      if (isUnit(solver.getLevel(), -l)) {
+        return std::vector<IntVar*>{var2var.at(toVar(l))};
+      }
     }
-    assert(!core.empty());
-  } else {
-    CeSuper clone = solver.lastCore->clone(global.cePools);
-    clone->weaken([&](Lit l) { return !assumptions.has(-l); });
-    clone->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-    clone->simplifyToClause();
-    for (Var v : clone->vars) {
-      core.insert(var2var.at(v));
-    }
+  }
+  if (!solver.lastCore) return std::nullopt;
+  std::vector<IntVar*> core;
+  CeSuper clone = solver.lastCore->clone(global.cePools);
+  clone->weaken([&](Lit l) { return !assumptions.has(-l); });
+  clone->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  if (clone->isTautology()) return std::nullopt;
+  clone->simplifyToClause();
+  for (Var v : clone->vars) {
+    core.push_back(var2var.at(v));
   }
   return core;
 }
