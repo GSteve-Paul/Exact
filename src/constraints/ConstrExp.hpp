@@ -506,6 +506,7 @@ struct ConstrExp final : public ConstrExpSuper {
     if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0 if it wasn't then it the literal wouldn't propagate
       reason->multiply(conflCoef);
       assert(reason->getSlack(level) <= 0);
+      ++global.stats.NNONMULTWEAKEN;
     } else {
       bool cond = true;
       if (global.options.multWeaken) {
@@ -535,7 +536,12 @@ struct ConstrExp final : public ConstrExpSuper {
 
         // std::cout << "nonFalsified: " << nonFalsified << std::endl;
 
-        cond = nu*(reasonSlack-reasonCoef)+mu*(conflCoef+conflSlack) < 0 && (nu*(reasonSlack-reasonCoef) + mu*conflCoef >= 0 || ((mu*conflCoef >= nu*reasonSlack+1) && (nu*reasonSlack + mu*conflSlack < 0))); //&& nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
+        bool cond1 = nu*(reasonSlack-reasonCoef)+mu*(conflCoef+conflSlack) < 0; // relaxed slack 
+        bool cond2 = nu*(reasonSlack-reasonCoef) + mu*conflCoef >= 0; // enough non falsified
+        bool cond3 = (mu*conflCoef > nu*reasonSlack); // enough asserting
+        bool cond4 = (nu*reasonSlack + mu*conflSlack < 0); // normal slack
+        //&& nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
+        cond = (cond1 && cond2) || (cond3 && cond4);
         if (cond) {
           ++global.stats.NMULTWEAKEN;
           // if (static_cast<int>(global.stats.NMULTWEAKEN.z) % 100 == 0) {
@@ -558,24 +564,31 @@ struct ConstrExp final : public ConstrExpSuper {
 
           reasonCoef = reason->getCoef(asserting);
           conflCoef = getCoef(-asserting);
-          reasonSlack = reason->getSlack(level);
-          conflSlack = getSlack(level);
+          // reasonSlack = reason->getSlack(level);
+          // conflSlack = getSlack(level);
+          LARGE reasonDeg = reason->getDegree();
+          LARGE reasonSum = reason->absCoeffSum();
 
-          if ((conflCoef < reasonSlack + 1) || (reasonSlack + conflSlack >= 0)) {
-            SMALL amount = static_cast<SMALL>(reason->getDegree() - conflCoef);
+          SMALL amount1 = static_cast<SMALL>(reasonDeg - conflCoef);
+          SMALL amount2 = reasonCoef - conflCoef;
+          if (cond1 && cond2 && cond3 && cond4) {
+            if ((reasonDeg - amount1)/(reasonSum - amount1 - amount2) >= (reasonDeg - amount2)/(reasonSum - amount2)) {
+              reason->weakenNonFalsified(level, amount1, asserting);
+            } else {
+              Var asserting_var = toVar(asserting);
+              reason->weaken(reason->getCoef(asserting_var) < 0 ? amount2 : -amount2, asserting_var);
+              reason->fixOrderOfVar(asserting_var);
+              // std::cout << "amount: " << amount << std::endl;
+            }
             // std::cout << "amount: " << amount << std::endl;
-            reason->weakenNonFalsified(level, amount, asserting);
-          } else {
-            SMALL amount = reasonCoef - conflCoef;
-            // std::cout << "pre weaken" << std::endl;
-            // std::cout << "asserting: " << toVar(asserting) << std::endl;
-            // reason->toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            reason->weaken(reason->getCoef(toVar(asserting)) < 0 ? amount : -amount, toVar(asserting));
-            reason->fixOrderOfVar(toVar(asserting));
-            // std::cout << "post weaken" << std::endl;
-            // reason->toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
+          } else if (cond1 && cond2) {
+            reason->weakenNonFalsified(level, amount1, asserting);
+            // std::cout << "amount: " << amount << std::endl;
+          } else if (cond3 && cond4) {
+            Var asserting_var = toVar(asserting);
+            reason->weaken(reason->getCoef(asserting_var) < 0 ? amount2 : -amount2, asserting_var);
+            reason->fixOrderOfVar(asserting_var);
+            // std::cout << "amount: " << amount << std::endl;
           }
           reason->saturate(true, false);
 
@@ -598,9 +611,8 @@ struct ConstrExp final : public ConstrExpSuper {
         // toStreamPure(std::cout);
         // std::cout << "\n" << std::endl;
 
-        if (global.options.multWeaken) {
-          ++global.stats.NNONMULTWEAKEN;
-        }
+        ++global.stats.NNONMULTWEAKEN;
+
         if (global.options.multBeforeDiv) {
           reason->multiply(conflCoef);
         } 
