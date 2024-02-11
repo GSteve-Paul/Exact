@@ -143,6 +143,15 @@ std::ostream& operator<<(std::ostream& o, const std::list<T>& m) {
   for (const auto& e : m) o << e << " ";
   return o;
 }
+template <typename T>
+std::ostream& operator<<(std::ostream& o, const std::optional<T>& m) {
+  if (m) {
+    o << m.value();
+  } else {
+    o << "null";
+  }
+  return o;
+}
 
 namespace aux {
 

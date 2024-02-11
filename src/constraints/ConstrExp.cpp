@@ -1452,6 +1452,7 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::simplifyToClause() {
   assert(isSortedInDecreasingCoefOrder());
   assert(hasNoZeroes());
+  assert(!isTautology());
   while (!vars.empty() && aux::abs(coefs[vars.back()]) < degree) {
     weakenLast();
   }
