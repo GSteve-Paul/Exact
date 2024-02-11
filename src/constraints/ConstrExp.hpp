@@ -567,7 +567,9 @@ struct ConstrExp final : public ConstrExpSuper {
           // reasonSlack = reason->getSlack(level);
           // conflSlack = getSlack(level);
           LARGE reasonDeg = reason->getDegree();
-          LARGE reasonSum = reason->absCoeffSum();
+          LARGE reasonSum = reasonDeg + reasonSlack;
+
+          assert(reasonSum - reasonDeg == reasonSlack); 
 
           SMALL amount1 = static_cast<SMALL>(reasonDeg - conflCoef);
           SMALL amount2 = reasonCoef - conflCoef;
