@@ -576,28 +576,38 @@ struct ConstrExp final : public ConstrExpSuper {
 
           SMALL amount1 = static_cast<SMALL>(reasonDeg - conflCoef);
           SMALL amount2 = reasonCoef - conflCoef;
-          // if (cond1 && cond2 && cond3 && cond4) {
-            // if ((reasonDeg - amount1)/(reasonSum - amount1 - amount2) >= (reasonDeg - amount2)/(reasonSum - amount2)) {
-            //   reason->weakenNonFalsified(level, amount1, asserting);
-            // } else {
-            //   Var asserting_var = toVar(asserting);
-            //   reason->weaken(reason->getCoef(asserting_var) < 0 ? amount2 : -amount2, asserting_var);
-            //   reason->fixOrderOfVar(asserting_var);
-            //   // std::cout << "amount: " << amount << std::endl;
-            // }
+          double strength = 0;
+          const LARGE num1 = reasonDeg - amount1;
+          const LARGE num2 = reasonDeg - amount2;
+          const LARGE den1 = reasonSum - amount1 - amount2;
+          const LARGE den2 = reasonSum - amount2;
+          double strength1 = aux::divToDouble(num1, den1);
+          double strength2 = aux::divToDouble(num2, den2);
+          if (cond1 && cond2 && cond3 && cond4) {
+            if (strength1 >= strength2) {
+              reason->weakenNonFalsified(level, amount1, asserting);
+              strength = strength1;
+            } else {
+              Var asserting_var = toVar(asserting);
+              reason->weaken(reason->getCoef(asserting_var) < 0 ? amount2 : -amount2, asserting_var);
+              reason->fixOrderOfVar(asserting_var);
+              strength = strength2;
+              // std::cout << "amount: " << amount << std::endl;
+            }
             // std::cout << "amount: " << amount << std::endl;
-          // } else if (cond1 && cond2) {
-          if (cond1 && cond2) {
+          } else if (cond1 && cond2) {
             reason->weakenNonFalsified(level, amount1, asserting);
+            strength = strength1;
             // std::cout << "amount: " << amount << std::endl;
           } else if (cond3 && cond4) {
             Var asserting_var = toVar(asserting);
             reason->weaken(reason->getCoef(asserting_var) < 0 ? amount2 : -amount2, asserting_var);
             reason->fixOrderOfVar(asserting_var);
+            strength = strength2;
             // std::cout << "amount: " << amount << std::endl;
           }
           reason->saturate(true, false);
-
+          assert(reason->getStrength() >= strength);
           // std::cout << "reason end: " << std::endl;
           // reason->toStreamWithAssignment(std::cout, level, pos);
           // std::cout << "\n" << std::endl;
