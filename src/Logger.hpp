@@ -97,7 +97,7 @@ class Logger {
 
   void activate(const std::string& proof_log_name, const bool zip);
   void deactivate();
-  bool isActive();
+  bool isActive() const;
   void flush();
   void logComment([[maybe_unused]] const std::string& comment);
 
@@ -105,7 +105,7 @@ class Logger {
   ID logAssumption(const CeSuper& ce);
   ID logProofLine(const CeSuper& ce);
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
-  void logInconsistency(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position);
+  ID logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position);
   void logUnit(const CeSuper& ce);
   ID logRUP(Lit l, Lit ll);
   ID logImpliedUnit(Lit implying, Lit implied);
@@ -116,8 +116,8 @@ class Logger {
   std::pair<ID, ID> logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB, Lit reprA,
                                 Lit reprB);
 
-  ID getUnitID(int trailIdx) { return unitIDs[trailIdx]; }
-  int getNbUnitIDs() { return unitIDs.size(); }
+  ID getUnitID(Lit l, const std::vector<int>& pos) const;
+  int getNbUnitIDs() const;
 
  public:
   template <typename T>

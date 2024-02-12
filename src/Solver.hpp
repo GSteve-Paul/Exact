@@ -152,7 +152,7 @@ class Solver {
   Solver(Global& g);
   ~Solver();
   void setObjective(const CeArb& obj);
-  void reportUnsat();
+  void reportUnsat(const CeSuper& confl);
 
   int getNbVars() const;
   void setNbVars(int nvars, bool orig);
@@ -200,9 +200,7 @@ class Solver {
    * 	SAT if satisfying assignment found
    * 	    this->lastSol contains the satisfying assignment
    * 	INCONSISTENT if no solution extending assumptions exists
-   * 	    this->lastCore is an implied constraint falsified by the assumptions,
-   * 	    unless this->lastCore is a CeNull, which implies assumptionsClashWithUnits.
-   * 	    Note that assumptionsClashWithUnits may still hold when this->lastCore is not a CeNull.
+   * 	    this->lastCore is an implied constraint falsified by the assumptions.
    * 	INPROCESSING if solver just finished a cleanup phase
    */
   // TODO: use a coroutine / yield instead of a SolveAnswer return value
@@ -237,7 +235,8 @@ class Solver {
 
   [[nodiscard]] CeSuper analyze(const CeSuper& confl);
   void minimize(CeSuper& conflict);
-  void extractCore(const CeSuper& confl, Lit l_assump = 0);
+  [[nodiscard]] Ce32 getUnitClause(Lit l) const;
+  [[nodiscard]] CeSuper extractCore(const CeSuper& confl, Lit l_assump = 0);
 
   // ---------------------------------------------------------------------
   // Constraint management

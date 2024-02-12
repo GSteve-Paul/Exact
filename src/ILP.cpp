@@ -698,7 +698,7 @@ std::optional<std::vector<IntVar*>> ILP::getLastCore() {
       return std::vector<IntVar*>{var2var.at(toVar(l))};
     }
   }
-  if (!solver.lastCore) return std::nullopt;
+  if (solver.lastCore->isTautology()) return std::nullopt;
   std::vector<IntVar*> core;
   CeSuper clone = solver.lastCore->clone(global.cePools);
   clone->weaken([&](Lit l) { return !assumptions.has(-l); });

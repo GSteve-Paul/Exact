@@ -391,40 +391,35 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
 }
 
 template <typename SMALL, typename LARGE>
-bool Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
-  // modifies core
-  // returns true iff the inconsistency is due to user assumptions
-  reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  lower_bound = -reformObj->getDegree();
-
-  if (core) {
-    core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-    core->saturate(true, false);
-  }
-  if (!core || core->isTautology()) {
-    // only violated unit assumptions were derived
-    assert(solver.assumptionsClashWithUnits());
-    ++global.stats.NCGUNITCORES;
-    addLowerBound();
-    checkLazyVariables();
-    return std::any_of(assumptions.getKeys().begin(), assumptions.getKeys().end(),
-                       [&](Lit l) { return isUnit(solver.getLevel(), -l); });
-  }
+void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // modifies core
   assert(!core->hasNegativeSlack(solver.getLevel()));  // root inconsistency was handled by solver's learnConstraint
-  if (core->falsifiedBy(assumptions)) return true;
-  assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
 
-  --global.stats.NCGCOREREUSES;
-  State result = State::SUCCESS;
-  while (result == State::SUCCESS) {
-    ++global.stats.NCGCOREREUSES;
-    result = reformObjective(core);
+  reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  assert(lower_bound <= -reformObj->getDegree());
+  if (lower_bound < -reformObj->getDegree()) {
+    ++global.stats.NCGUNITCORES;
+    lower_bound = -reformObj->getDegree();
   }
-  simplifyAssumps(reformObj, assumptions);
+
+  core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  core->saturate(true, false);
+
+  if (core->isTautology()) {
+    // only violated unit assumptions were derived
+    addLowerBound();
+  } else {
+    assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
+    --global.stats.NCGCOREREUSES;
+    State result = State::SUCCESS;
+    while (result == State::SUCCESS) {
+      ++global.stats.NCGCOREREUSES;
+      result = reformObjective(core);
+    }
+    simplifyAssumps(reformObj, assumptions);
+  }
 
   checkLazyVariables();
   printObjBounds();
-  return false;
 }
 
 template <typename SMALL, typename LARGE>
@@ -567,14 +562,16 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       ++global.stats.NCORES;
       if (solver.getAssumptions().size() > assumptions.size()) {
         assert(coreguided);
-        if (handleInconsistency(solver.lastCore)) {
+        if (solver.lastCore->falsifiedBy(assumptions)) {
           solver.clearAssumptions();
           return SolveState::INCONSISTENT;
         } else {
+          handleInconsistency(solver.lastCore);
           solver.clearAssumptions();
         }
       } else {
         assert(solver.getAssumptions().size() == assumptions.size());  // no coreguided assumptions
+        assert(solver.lastCore->falsifiedBy(assumptions));
         return SolveState::INCONSISTENT;
       }
     } else if (reply == SolveState::INPROCESSED) {

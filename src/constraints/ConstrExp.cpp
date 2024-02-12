@@ -563,7 +563,7 @@ void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntMap<int>& level, con
         if (isUnit(level, l)) {
           Logger::proofWeaken(proofBuffer, l, -getCoef(l));
         } else if (isUnit(level, -l)) {
-          Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(pos[toVar(l)]), -getCoef(l));
+          Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(l, pos), -getCoef(l));
         }
       }
     }
@@ -1600,7 +1600,7 @@ int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int size, uns
       if (isUnit(level, ll)) {
         Logger::proofWeaken(proofBuffer, ll, -cmult);
       } else if (isUnit(level, -ll)) {
-        Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(pos[toVar(ll)]), -cmult);
+        Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(ll, pos), -cmult);
       }
     }
   }
@@ -1693,7 +1693,7 @@ int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* data, unsigned int size, uns
       if (isUnit(level, l)) {
         Logger::proofWeaken(proofBuffer, l, -1);
       } else if (isUnit(level, -l)) {
-        Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(pos[toVar(l)]), -1);
+        Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(l, pos), -1);
       }
     }
     for (int i = 0; i < (int)size; ++i) {

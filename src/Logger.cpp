@@ -115,7 +115,7 @@ void Logger::deactivate() {
   active = false;
 }
 
-bool Logger::isActive() { return active; }
+bool Logger::isActive() const { return active; }
 
 void Logger::flush() {
   if (!active) return;
@@ -178,12 +178,13 @@ ID Logger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::s
   return logProofLine(ce);
 }
 
-void Logger::logInconsistency(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position) {
-  if (!active) return;
+ID Logger::logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position) {
+  if (!active) return ID_Undef;
   ce->removeUnitsAndZeroes(level, position);
   assert(ce->isInconsistency());
   ID id = logProofLineWithInfo(ce, "Inconsistency");
   proofStream() << "c " << id << "" << std::endl;
+  return id;
 }
 
 void Logger::logUnit(const CeSuper& ce) {
@@ -303,4 +304,13 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
 #endif
   return {reprAImpReprB, reprBImpReprA};
 }
+
+ID Logger::getUnitID(Lit l, const std::vector<int>& pos) const {
+  if (!active) return ID_Undef;
+  assert(pos[toVar(l)] < unitIDs.size());
+  return unitIDs[pos[toVar(l)]];
+}
+
+int Logger::getNbUnitIDs() const { return unitIDs.size(); }
+
 }  // namespace xct

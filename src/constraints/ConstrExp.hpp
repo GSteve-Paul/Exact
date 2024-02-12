@@ -633,7 +633,7 @@ struct ConstrExp final : public ConstrExpSuper {
         Lit l = terms[i].l;
         if (isUnit(level, -l)) {
           assert(l != toSubsume);
-          Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(pos[toVar(l)]), -aux::abs(terms[i].c));
+          Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(l, pos), -aux::abs(terms[i].c));
         } else if (l != toSubsume && !saturatedLits.has(l) && !isUnit(level, -l)) {
           Logger::proofWeaken(proofBuffer, l, -aux::abs(terms[i].c));
         }

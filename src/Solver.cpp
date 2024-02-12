@@ -70,7 +70,8 @@ namespace xct {
 // Initialization
 
 Solver::Solver(Global& g)
-    : global(g),
+    : lastCore(g.cePools.take32()),
+      global(g),
       n(0),
       firstRun(true),
       unsatReached(false),
@@ -84,7 +85,6 @@ Solver::Solver(Global& g)
   position.resize(1, INF);
   isorig.resize(1, true);
   objective = std::make_shared<ConstrExpArb>(global);
-  assert(!lastCore);
   assert(!lastGlobalDual);
 }
 
@@ -137,10 +137,15 @@ void Solver::setObjective(const CeArb& obj) {
   if (lpSolver) lpSolver->setObjective(obj);
 }
 
-void Solver::reportUnsat() {
+void Solver::reportUnsat(const CeSuper& confl) {
   assert(!unsatReached);  // not a problem, but should not occur
+  assert(confl->hasNegativeSlack(getLevel()));
+  ID id = global.logger.logUnsat(confl, getLevel(), getPos());
   unsatReached = true;
-  lastCore = global.cePools.take32();
+  Ce32 tmp = global.cePools.take32();
+  tmp->addRhs(1);
+  tmp->resetBuffer(id);
+  lastCore = tmp;
   throw UnsatEncounter();
 }
 
@@ -476,10 +481,20 @@ void Solver::minimize(CeSuper& conflict) {
   litsToSubsumeMem.clear();
 }
 
-void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
+Ce32 Solver::getUnitClause(Lit l) const {
+  assert(isUnit(level, l));
+  Ce32 core = global.cePools.take32();
+  core->addRhs(1);
+  core->addLhs(1, l);
+  core->resetBuffer(global.logger.getUnitID(l, position));
+  return core;
+}
+
+CeSuper Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   if (l_assump != 0) {  // l_assump is an assumption propagated to the opposite value
     assert(assumptions.has(l_assump));
     assert(isFalse(level, l_assump));
+    assert(!isUnit(level, -l_assump));
     int pos = position[toVar(l_assump)];
     while ((int)trail.size() > pos) undoOne();
     assert(isUnknown(position, l_assump));
@@ -511,7 +526,7 @@ void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   conflict->removeUnitsAndZeroes(level, position);
   conflict->saturateAndFixOverflow(getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0);
   assert(conflict->hasNegativeSlack(level));
-  lastCore = getAnalysisCE(conflict);
+  CeSuper core = getAnalysisCE(conflict);
   conflict->reset(false);
 
   // analyze conflict to the point where we have a decision core
@@ -519,11 +534,11 @@ void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   while (decisionLevel() > 0 && isPropagated(reason, trail.back())) {
     quit::checkInterrupt(global);
     Lit l = trail.back();
-    if (lastCore->hasLit(-l)) {
+    if (core->hasLit(-l)) {
       assert(isPropagated(reason, l));
       Constr& reasonC = ca[reason[toVar(l)]];
 
-      int lbd = reasonC.resolveWith(lastCore, l, *this, actSet);
+      int lbd = reasonC.resolveWith(core, l, *this, actSet);
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered(global.stats);
     }
@@ -538,17 +553,17 @@ void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   global.isPool.release(actSet);
 
   // weaken non-falsifieds
-  assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
-  assert(!lastCore->isTautology());
-  assert(lastCore->isSaturated());
-  aux::timeCallVoid([&] { learnConstraint(lastCore, Origin::LEARNED); },
-                    global.stats.LEARNTIME);  // NOTE: takes care of inconsistency
+  assert(core->hasNegativeSlack(assumptions.getIndex()));
+  assert(!core->isTautology());
+  assert(core->isSaturated());
+  aux::timeCallVoid([&] { learnConstraint(core, Origin::LEARNED); }, global.stats.LEARNTIME);
+  // NOTE: takes care of inconsistency
   backjumpTo(0);
-  lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true, global.stats);
-  if (!lastCore->hasNegativeSlack(assumptions.getIndex())) {
-    // apparently unit clauses were propagated during learnConstraint
-    lastCore.reset();
+  for (Lit l : assumptions.getKeys()) {
+    if (isUnit(level, -l)) return getUnitClause(-l);
   }
+  core->postProcess(getLevel(), getPos(), getHeuristic(), true, global.stats);
+  return core;
 }
 
 // ---------------------------------------------------------------------
@@ -623,9 +638,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   if (decisionLevel() == 0) {
     CeSuper confl = aux::timeCall<CeSuper>([&] { return runDatabasePropagation(); }, global.stats.PROPTIME);
     if (confl) {
-      assert(confl->hasNegativeSlack(getLevel()));
-      global.logger.logInconsistency(confl, getLevel(), getPos());
-      reportUnsat();  // throws UnsatEncounter
+      reportUnsat(confl);  // throws UnsatEncounter
     }
   }
 
@@ -655,8 +668,7 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   if (assertionLevel < 0) {
     backjumpTo(0);
     assert(learned->isInconsistency());
-    global.logger.logInconsistency(learned, getLevel(), getPos());
-    reportUnsat();  // throws  UnsatEncounter
+    reportUnsat(learned);  // throws  UnsatEncounter
   }
   assert(learned->hasNegativeSlack(level) == ce->hasNegativeSlack(level));
   backjumpTo(assertionLevel);
@@ -742,9 +754,8 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
     if (global.options.verbosity.get() > 0) {
       std::cout << "c Conflicting input constraint" << std::endl;
     }
-    global.logger.logInconsistency(ce, getLevel(), getPos());
     try {
-      reportUnsat();
+      reportUnsat(ce);
     } catch (const UnsatEncounter& ue) {
       // expected, do not rethrow
     }
@@ -980,8 +991,7 @@ void Solver::reduceDB() {
     if (ce->isTautology()) continue;
     if (ce->nVars() == 0) {
       assert(ce->isInconsistency());  // it's not a tautology ;)
-      global.logger.logInconsistency(ce, getLevel(), getPos());
-      reportUnsat();  // throws  UnsatEncounter
+      reportUnsat(ce);                // throws  UnsatEncounter
     }
     CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates ce!
     if (crnew == CRef_Undef) continue;
@@ -1259,8 +1269,7 @@ SolveState Solver::solve() {
         }
       }
       if (decisionLevel() == 0) {
-        global.logger.logInconsistency(confl, getLevel(), getPos());
-        reportUnsat();  // throws  UnsatEncounter
+        reportUnsat(confl);  // throws  UnsatEncounter
       } else if (decisionLevel() > assumptionLevel()) {
         CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, global.stats.CATIME);
         assert(analyzed);
@@ -1268,8 +1277,9 @@ SolveState Solver::solve() {
         assert(analyzed->isSaturated());
         aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
       } else {
-        aux::timeCallVoid([&] { extractCore(confl); }, global.stats.CATIME);
-        assert(!lastCore || lastCore->hasNegativeSlack(assumptions.getIndex()));
+        lastCore = aux::timeCall<CeSuper>([&] { return extractCore(confl); }, global.stats.CATIME);
+        assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
+        assert(decisionLevel() == 0);
         return SolveState::INCONSISTENT;
       }
     } else {  // no conflict
@@ -1304,16 +1314,17 @@ SolveState Solver::solve() {
         for (int i = (decisionLevel() == 0 ? 0 : trail_lim.back()); i < (int)trail.size(); ++i) {
           Lit l = trail[i];
           if (assumptions.has(-l)) {  // found conflicting assumption
-            if (isUnit(level, l)) {   // negated assumption is unit
+            if (isUnit(level, l)) {
               backjumpTo(0);
-              lastCore.reset();
-              return SolveState::INCONSISTENT;
+              lastCore = getUnitClause(l);
             } else {
-              aux::timeCallVoid([&] { extractCore(ca[reason[toVar(l)]].toExpanded(global.cePools), -l); },
-                                global.stats.CATIME);
-              assert(!lastCore || lastCore->hasNegativeSlack(assumptions.getIndex()));
-              return SolveState::INCONSISTENT;
+              lastCore = aux::timeCall<CeSuper>(
+                  [&] { return extractCore(ca[reason[toVar(l)]].toExpanded(global.cePools), -l); },
+                  global.stats.CATIME);
             }
+            assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
+            assert(decisionLevel() == 0);
+            return SolveState::INCONSISTENT;
           }
         }
       }
