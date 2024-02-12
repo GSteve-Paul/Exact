@@ -693,11 +693,9 @@ std::vector<bigint> ILP::getLastSolutionFor(const std::vector<IntVar*>& vars) co
 }
 
 std::optional<std::vector<IntVar*>> ILP::getLastCore() {
-  if (solver.assumptionsClashWithUnits()) {
-    for (Lit l : assumptions.getKeys()) {
-      if (isUnit(solver.getLevel(), -l)) {
-        return std::vector<IntVar*>{var2var.at(toVar(l))};
-      }
+  for (Lit l : assumptions.getKeys()) {
+    if (isUnit(solver.getLevel(), -l)) {
+      return std::vector<IntVar*>{var2var.at(toVar(l))};
     }
   }
   if (!solver.lastCore) return std::nullopt;
@@ -729,7 +727,7 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
     return {result, CeNull()};
   }
   assert(result == SolveState::SAT);
-  auto [result2, optval] = toOptimum(obj, keepstate, timeout);
+  auto [result2, optval, optcore] = toOptimum(obj, keepstate, timeout);
   if (result2 == SolveState::TIMEOUT) return {SolveState::TIMEOUT, CeNull()};
 
   Ce32 invalidator = global.cePools.take32();
@@ -788,8 +786,8 @@ IntVar* ILP::addFlag() {
   return addVar("__flag" + std::to_string(solver.getNbVars() + 1), 0, 1, Encoding::ORDER);
 }
 
-std::pair<SolveState, bigint> ILP::toOptimum(IntConstraint& objective, bool keepstate, double timeout) {
-  if (objective.size() == 0) return {SolveState::SAT, 0};
+OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, double timeout) {
+  if (objective.size() == 0) return {SolveState::SAT, 0, {}};
   IntVar* flag = addFlag();
   assert(flag->getEncodingVars().size() == 1);
   Var flag_v = flag->getEncodingVars()[0];
@@ -798,12 +796,24 @@ std::pair<SolveState, bigint> ILP::toOptimum(IntConstraint& objective, bool keep
   objective.lhs.emplace_back(cf, flag, false);
   Optim opt = OptimizationSuper::make(objective, solver, assumptions);
   SolveState res = opt->runFull(true, timeout);
+  assert(res == SolveState::UNSAT || res == SolveState::INCONSISTENT || res == SolveState::TIMEOUT);
+  if (res != SolveState::INCONSISTENT) return {res, 0, {}};
+  std::optional<std::vector<IntVar*>> optcore = getLastCore();
+  assert(optcore.has_value());
+  std::vector<IntVar*>& core = optcore.value();
+  for (int64_t i = 0; i < core.size(); ++i) {
+    const IntVar* iv = core[i];
+    if (iv == flag) {
+      plf::single_reorderase(core, core.begin() + i);
+      break;
+    }
+  }
   bigint bound = opt->getUpperBound() - cf;
   assert(objective.lhs.back().v == flag);
   objective.lhs.pop_back();
   assumptions.remove(flag_v);
   solver.addUnitConstraint(-flag_v, Origin::FORMULA);
-  return {res, bound};
+  return {SolveState::INCONSISTENT, bound, core};
 }
 
 // NOTE: also throws AsynchronousInterrupt
@@ -814,7 +824,7 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
     return {};
   }
   assert(result == SolveState::SAT);
-  auto [result2, optval] = toOptimum(obj, keepstate, timeout);
+  auto [result2, optval, optcore] = toOptimum(obj, keepstate, timeout);
   if (result2 == SolveState::TIMEOUT) return {};
 
   Var marker = 0;
@@ -834,13 +844,13 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
       consequences[i] = {0, 1};
     } else {
       IntConstraint varObjPos = IntConstraint({1}, {iv}, {}, 0);
-      auto [lowerstate, lowerbound] = toOptimum(varObjPos, true, timeout);
+      auto [lowerstate, lowerbound, optcore1] = toOptimum(varObjPos, true, timeout);
       if (lowerstate == SolveState::TIMEOUT) {
         if (keepstate) assumptions.remove(marker);
         return {};
       }
       IntConstraint varObjNeg = IntConstraint({-1}, {iv}, {}, 0);
-      auto [upperstate, upperbound] = toOptimum(varObjNeg, true, timeout);
+      auto [upperstate, upperbound, optcore2] = toOptimum(varObjNeg, true, timeout);
       if (upperstate == SolveState::TIMEOUT) {
         if (keepstate) assumptions.remove(marker);
         return {};
@@ -940,7 +950,7 @@ std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool 
   if (global.options.verbosity.get() > 0) {
     std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
   }
-  auto [result, optval] = toOptimum(obj, keepstate, timeout);
+  auto [result, optval, optcore] = toOptimum(obj, keepstate, timeout);
 
   Optim opt = optim;
   Var flag_v = 0;

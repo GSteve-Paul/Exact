@@ -106,6 +106,12 @@ class IntConstraint {
 };
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
+struct OptRes {
+  SolveState state;
+  bigint optval;
+  std::vector<IntVar*> core;
+};
+
 class ILP {
  public:
   Global global;
@@ -132,7 +138,7 @@ class ILP {
   Var fixObjective(const IntConstraint& ico, const bigint& opt);
 
  public:
-  std::pair<SolveState, bigint> toOptimum(IntConstraint& objective, bool keepstate, double timeout);
+  OptRes toOptimum(IntConstraint& objective, bool keepstate, double timeout);
 
   ILP(const Options& opts, bool keepIn = false);
 

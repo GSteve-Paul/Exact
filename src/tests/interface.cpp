@@ -37,11 +37,11 @@ TEST_CASE("toOptimum") {
     }
     ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, 6});
     ilp.setObjective({1, 1, 2, 3, 5}, vars, {});
-    auto [state, obj] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state, obj, optcore1] = ilp.toOptimum(ilp.getObjective(), true, 0);
     CHECK(state == SolveState::INCONSISTENT);
     CHECK(obj == 4);
     ilp.setAssumption(vars[4], true);
-    auto [state2, obj2] = ilp.toOptimum(ilp.getObjective(), false, 0);
+    auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), false, 0);
     CHECK(state2 == SolveState::INCONSISTENT);
     CHECK(obj2 == 6);
     ilp.fix(vars[4], 1);
@@ -64,18 +64,18 @@ TEST_CASE("toOptimum advanced") {
     ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5, 10}, vars, {}, 6});
     ilp.setObjective({1, 1, 2, 3, 5, -10}, vars, {});
     ilp.setAssumption(vars.back(), 0);
-    auto [state, obj] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state, obj, optcore1] = ilp.toOptimum(ilp.getObjective(), true, 0);
     CHECK(state == SolveState::INCONSISTENT);
     CHECK(obj == 4);
     ilp.setAssumption(vars[4], true);
-    auto [state2, obj2] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), true, 0);
     CHECK(state2 == SolveState::INCONSISTENT);
     CHECK(obj2 == 6);
     ilp.setObjective({-1, -1, -1, -1, -1, -1}, vars, {});
-    auto [state3, obj3] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state3, obj3, optcore3] = ilp.toOptimum(ilp.getObjective(), true, 0);
     CHECK(obj3 == -5);
     ilp.clearAssumptions();
-    auto [state4, obj4] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state4, obj4, optcore4] = ilp.toOptimum(ilp.getObjective(), true, 0);
     CHECK(obj4 == -6);
   }
 }
