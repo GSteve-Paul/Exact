@@ -567,23 +567,27 @@ struct ConstrExp final : public ConstrExpSuper {
           // reasonSlack = reason->getSlack(level);
           // conflSlack = getSlack(level);
           LARGE reasonDeg = reason->getDegree();
-          LARGE reasonSum = reasonDeg + reasonSlack;
+          LARGE reasonSum = reason->absCoeffSum();
 
-          assert(reasonSum - reasonDeg == reasonSlack); 
+          // std::cout << "reasonSum: " << reasonSum << std::endl;
+          // std::cout << "absCoeffSum: " << reason->absCoeffSum() << std::endl;
+
+          // assert(reasonSum - reasonDeg == reasonSlack); 
 
           SMALL amount1 = static_cast<SMALL>(reasonDeg - conflCoef);
           SMALL amount2 = reasonCoef - conflCoef;
-          if (cond1 && cond2 && cond3 && cond4) {
-            if ((reasonDeg - amount1)/(reasonSum - amount1 - amount2) >= (reasonDeg - amount2)/(reasonSum - amount2)) {
-              reason->weakenNonFalsified(level, amount1, asserting);
-            } else {
-              Var asserting_var = toVar(asserting);
-              reason->weaken(reason->getCoef(asserting_var) < 0 ? amount2 : -amount2, asserting_var);
-              reason->fixOrderOfVar(asserting_var);
-              // std::cout << "amount: " << amount << std::endl;
-            }
+          // if (cond1 && cond2 && cond3 && cond4) {
+            // if ((reasonDeg - amount1)/(reasonSum - amount1 - amount2) >= (reasonDeg - amount2)/(reasonSum - amount2)) {
+            //   reason->weakenNonFalsified(level, amount1, asserting);
+            // } else {
+            //   Var asserting_var = toVar(asserting);
+            //   reason->weaken(reason->getCoef(asserting_var) < 0 ? amount2 : -amount2, asserting_var);
+            //   reason->fixOrderOfVar(asserting_var);
+            //   // std::cout << "amount: " << amount << std::endl;
+            // }
             // std::cout << "amount: " << amount << std::endl;
-          } else if (cond1 && cond2) {
+          // } else if (cond1 && cond2) {
+          if (cond1 && cond2) {
             reason->weakenNonFalsified(level, amount1, asserting);
             // std::cout << "amount: " << amount << std::endl;
           } else if (cond3 && cond4) {
