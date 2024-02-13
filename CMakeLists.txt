@@ -91,7 +91,7 @@ execute_process(
 add_definitions("-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH}")
 add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wno-attributes")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
 
 set(test_files

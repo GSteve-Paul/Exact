@@ -104,6 +104,9 @@ TEST_CASE("toOptimum advanced") {
     CHECK(optcore5.empty());
 
     for (int64_t i = 2; i < 6; ++i) {
+      ilp.setAssumption(vars[i], true);
+    }
+    for (int64_t i = 2; i < 6; ++i) {
       ilp.setAssumption(vars[i], false);
     }
     auto [state6, obj6, optcore6] = ilp.toOptimum(ilp.getObjective(), true, 0);

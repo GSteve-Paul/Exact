@@ -307,7 +307,7 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
 
 ID Logger::getUnitID(Lit l, const std::vector<int>& pos) const {
   if (!active) return ID_Undef;
-  assert(pos[toVar(l)] < unitIDs.size());
+  assert(pos[toVar(l)] < (int)unitIDs.size());
   return unitIDs[pos[toVar(l)]];
 }
 

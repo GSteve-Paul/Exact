@@ -71,6 +71,7 @@ struct IntVar {
   Var propVar;
 };
 std::ostream& operator<<(std::ostream& o, const IntVar& x);
+std::ostream& operator<<(std::ostream& o, IntVar* x);
 
 struct IntTerm {
   bigint c;
@@ -168,7 +169,7 @@ class ILP {
   void setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals);
   void clearSolutionHints(const std::vector<IntVar*>& ivs);
 
-  void runFromCmdLine(int argc, char** argv);
+  void runFromCmdLine();
 
   void addConstraint(const IntConstraint& ic);
   void addReification(IntVar* head, const IntConstraint& ic);

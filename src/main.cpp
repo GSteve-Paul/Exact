@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
 
   ILP ilp(opts);
   try {
-    ilp.runFromCmdLine(argc, argv);
+    ilp.runFromCmdLine();
   } catch (const AsynchronousInterrupt& ai) {
     std::cout << "c " << ai.what() << std::endl;
     return quit::exit_INDETERMINATE(ilp);

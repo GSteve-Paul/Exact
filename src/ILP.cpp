@@ -42,6 +42,7 @@ Encoding opt2enc(const std::string& opt) {
 std::ostream& operator<<(std::ostream& o, const IntVar& x) {
   return o << x.getName() << "[" << x.getLowerBound() << "," << x.getUpperBound() << "]";
 }
+std::ostream& operator<<(std::ostream& o, IntVar* x) { return o << *x; }
 std::ostream& operator<<(std::ostream& o, const IntTerm& x) {
   return o << (x.c < 0 ? "" : "+") << (x.c == 1 ? "" : aux::str(x.c) + "*") << (x.negated ? "~" : "") << *x.v;
 }
@@ -790,7 +791,9 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, double timeout) 
   SolveState res = optim->runFull(false, timeout);
   if (res == SolveState::TIMEOUT || res == SolveState::UNSAT) return {res, 0, {}};
   if (res == SolveState::INCONSISTENT) {
-    return {SolveState::INCONSISTENT, 0, getLastCore().value()};
+    auto core = getLastCore();
+    assert(core.has_value());
+    return {SolveState::INCONSISTENT, 0, core.value()};
   }
   bigint objrange = obj.getRange();
   if (objrange == 0) return {SolveState::SAT, 0, {}};
@@ -799,16 +802,21 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, double timeout) 
   Var flag_v = flag->getEncodingVars()[0];
   assumptions.add(flag_v);
   bigint cf = keepstate ? obj.getRange() : 1;
+  assert(cf > 0);
   objective.lhs.emplace_back(cf, flag, false);
   Optim opt = OptimizationSuper::make(objective, solver, assumptions);
   res = opt->runFull(true, timeout);
-  if (res == SolveState::TIMEOUT) return {SolveState::TIMEOUT, 0, {}};
+  if (res == SolveState::TIMEOUT) {
+    objective.lhs.pop_back();
+    assumptions.remove(flag_v);
+    return {SolveState::TIMEOUT, 0, {}};
+  }
   assert(res == SolveState::INCONSISTENT);
   // NOTE: UNSAT should not happen, as this should have been caught in first runFull.
   std::optional<std::vector<IntVar*>> optcore = getLastCore();
   assert(optcore.has_value());
   std::vector<IntVar*>& core = optcore.value();
-  for (int64_t i = 0; i < core.size(); ++i) {
+  for (int64_t i = 0; i < (int64_t)core.size(); ++i) {
     const IntVar* iv = core[i];
     if (iv == flag) {
       plf::single_reorderase(core, core.begin() + i);
@@ -988,7 +996,7 @@ std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool 
   }
 }
 
-void ILP::runFromCmdLine(int argc, char** argv) {
+void ILP::runFromCmdLine() {
   global.stats.startTime = std::chrono::steady_clock::now();
 
   if (global.options.verbosity.get() > 0) {
@@ -999,16 +1007,8 @@ void ILP::runFromCmdLine(int argc, char** argv) {
 
   if (global.options.noSolve) throw AsynchronousInterrupt();
   if (global.options.printCsvData) global.stats.printCsvHeader();
-  if (global.options.verbosity.get() > 0) {
-    std::cout << "c " << getSolver().getNbVars() << " vars " << getSolver().getNbConstraints() << " constrs"
-              << std::endl;
-  }
 
-  global.stats.runStartTime = std::chrono::steady_clock::now();
-  SolveState res = SolveState::INPROCESSED;
-  while (res == SolveState::INPROCESSED || res == SolveState::SAT) {
-    res = optim->run(true, 0);
-  }
+  [[maybe_unused]] SolveState res = optim->runFull(true, 0);
 }
 
 }  // namespace xct
