@@ -787,7 +787,13 @@ IntVar* ILP::addFlag() {
 }
 
 OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, double timeout) {
-  if (objective.size() == 0) return {SolveState::SAT, 0, {}};
+  SolveState res = optim->runFull(false, timeout);
+  if (res == SolveState::TIMEOUT || res == SolveState::UNSAT) return {res, 0, {}};
+  if (res == SolveState::INCONSISTENT) {
+    return {SolveState::INCONSISTENT, 0, getLastCore().value()};
+  }
+  bigint objrange = obj.getRange();
+  if (objrange == 0) return {SolveState::SAT, 0, {}};
   IntVar* flag = addFlag();
   assert(flag->getEncodingVars().size() == 1);
   Var flag_v = flag->getEncodingVars()[0];
@@ -795,9 +801,10 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, double timeout) 
   bigint cf = keepstate ? obj.getRange() : 1;
   objective.lhs.emplace_back(cf, flag, false);
   Optim opt = OptimizationSuper::make(objective, solver, assumptions);
-  SolveState res = opt->runFull(true, timeout);
-  assert(res == SolveState::UNSAT || res == SolveState::INCONSISTENT || res == SolveState::TIMEOUT);
-  if (res != SolveState::INCONSISTENT) return {res, 0, {}};
+  res = opt->runFull(true, timeout);
+  if (res == SolveState::TIMEOUT) return {SolveState::TIMEOUT, 0, {}};
+  assert(res == SolveState::INCONSISTENT);
+  // NOTE: UNSAT should not happen, as this should have been caught in first runFull.
   std::optional<std::vector<IntVar*>> optcore = getLastCore();
   assert(optcore.has_value());
   std::vector<IntVar*>& core = optcore.value();
@@ -813,7 +820,7 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, double timeout) 
   objective.lhs.pop_back();
   assumptions.remove(flag_v);
   solver.addUnitConstraint(-flag_v, Origin::FORMULA);
-  return {SolveState::INCONSISTENT, bound, core};
+  return {SolveState::SAT, bound, core};
 }
 
 // NOTE: also throws AsynchronousInterrupt
