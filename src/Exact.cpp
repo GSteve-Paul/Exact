@@ -208,9 +208,15 @@ void Exact::setObjective(const std::vector<std::string>& coefs, const std::vecto
   ilp.setObjective(getCoefs(coefs), getVariables(vars), {}, getCoef(offset));
 }
 
-SolveState Exact::runOnce(double timeout) { return ilp.getOptim()->run(false, timeout); }
+SolveState Exact::runOnce(double timeout) {
+  if (timeout != 0) ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
+  return ilp.getOptim()->run(false, timeout);
+}
 
-SolveState Exact::runFull(bool optimize, double timeout) { return ilp.getOptim()->runFull(optimize, timeout); }
+SolveState Exact::runFull(bool optimize, double timeout) {
+  if (timeout != 0) ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
+  return ilp.getOptim()->runFull(optimize, timeout);
+}
 
 std::pair<long long, long long> Exact::getObjectiveBounds() const {
   return {static_cast<long long>(ilp.getLowerBound()), static_cast<long long>(ilp.getUpperBound())};
@@ -242,28 +248,31 @@ std::vector<std::string> Exact::getLastCore() {
 void Exact::printStats() { quit::printFinalStats(ilp); }
 
 std::vector<std::pair<long long, long long>> Exact::propagate(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.propagate(getVariables(vars), true, timeout), [](const std::pair<bigint, bigint>& x) {
-    return std::pair<long long, long long>(static_cast<long long>(x.first), static_cast<long long>(x.second));
-  });
+  return aux::comprehension(
+      ilp.propagate(getVariables(vars), true, {true, timeout}), [](const std::pair<bigint, bigint>& x) {
+        return std::pair<long long, long long>(static_cast<long long>(x.first), static_cast<long long>(x.second));
+      });
 }
 std::vector<std::pair<std::string, std::string>> Exact::propagate_arb(const std::vector<std::string>& vars,
                                                                       double timeout) {
-  return aux::comprehension(ilp.propagate(getVariables(vars), true, timeout), [](const std::pair<bigint, bigint>& x) {
-    return std::pair<std::string, std::string>(aux::str(x.first), aux::str(x.second));
-  });
+  return aux::comprehension(ilp.propagate(getVariables(vars), true, {true, timeout}),
+                            [](const std::pair<bigint, bigint>& x) {
+                              return std::pair<std::string, std::string>(aux::str(x.first), aux::str(x.second));
+                            });
 }
 
 std::vector<std::vector<long long>> Exact::pruneDomains(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.pruneDomains(getVariables(vars), true, timeout), [](const std::vector<bigint>& x) {
-    return aux::comprehension(x, [](const bigint& y) { return static_cast<long long>(y); });
-  });
+  return aux::comprehension(ilp.pruneDomains(getVariables(vars), true, {true, timeout}),
+                            [](const std::vector<bigint>& x) {
+                              return aux::comprehension(x, [](const bigint& y) { return static_cast<long long>(y); });
+                            });
 }
 std::vector<std::vector<std::string>> Exact::pruneDomains_arb(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.pruneDomains(getVariables(vars), true, timeout), [](const std::vector<bigint>& x) {
-    return aux::comprehension(x, [](const bigint& y) { return aux::str(y); });
-  });
+  return aux::comprehension(
+      ilp.pruneDomains(getVariables(vars), true, {true, timeout}),
+      [](const std::vector<bigint>& x) { return aux::comprehension(x, [](const bigint& y) { return aux::str(y); }); });
 }
 
 long long Exact::count(const std::vector<std::string>& vars, double timeout) {
-  return ilp.count(getVariables(vars), true, timeout).second;
+  return ilp.count(getVariables(vars), true, {true, timeout}).second;
 }

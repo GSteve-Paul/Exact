@@ -113,6 +113,11 @@ struct OptRes {
   std::vector<IntVar*> core;
 };
 
+struct TimeOut {
+  bool reinitialize;
+  double limit;
+};
+
 class ILP {
  public:
   Global global;
@@ -139,8 +144,6 @@ class ILP {
   Var fixObjective(const IntConstraint& ico, const bigint& opt);
 
  public:
-  OptRes toOptimum(IntConstraint& objective, bool keepstate, double timeout);
-
   ILP(const Options& opts, bool keepIn = false);
 
   const Solver& getSolver() const;
@@ -196,12 +199,14 @@ class ILP {
   long long getNbConstraints() const;
   bigint getSolSpaceSize() const;  // in bits
 
-  std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, double timeout = 0);
+  OptRes toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& to = {false, 0});
+  std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                 const TimeOut& to = {false, 0});
   const std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                         double timeout = 0);
+                                                         const TimeOut& to = {false, 0});
   const std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                      double timeout = 0);
-  std::pair<SolveState, int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, double timeout = 0);
+                                                      const TimeOut& to = {false, 0});
+  std::pair<SolveState, int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 

@@ -595,7 +595,6 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
 
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::runFull(bool optimize, double timeout) {
-  global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = SolveState::INPROCESSED;
   if (global.options.verbosity.get() > 0) {
     std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
