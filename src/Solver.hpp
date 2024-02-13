@@ -194,6 +194,8 @@ class Solver {
   std::vector<Lit> getUnits() const;
   const std::vector<Lit>& getLastSolution() const;
 
+  void printHeader() const;
+
   /**
    * @return SolveState:
    * 	UNSAT if root inconsistency detected

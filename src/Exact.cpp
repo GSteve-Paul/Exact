@@ -215,6 +215,7 @@ SolveState Exact::runOnce(double timeout) {
 
 SolveState Exact::runFull(bool optimize, double timeout) {
   if (timeout != 0) ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
+  ilp.getSolver().printHeader();
   return ilp.getOptim()->runFull(optimize, timeout);
 }
 

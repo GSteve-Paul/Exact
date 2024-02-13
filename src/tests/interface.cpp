@@ -37,12 +37,12 @@ TEST_CASE("toOptimum") {
     }
     ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, 6});
     ilp.setObjective({1, 1, 2, 3, 5}, vars, {});
-    auto [state, obj, optcore1] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state, obj, optcore1] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state == SolveState::SAT);
     CHECK(obj == 4);
     CHECK(optcore1.empty());
     ilp.setAssumption(vars[4], true);
-    auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), false, 0);
+    auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), false, {false, 0});
     CHECK(state2 == SolveState::SAT);
     CHECK(obj2 == 6);
     CHECK(optcore2.size() == 1);
@@ -67,38 +67,38 @@ TEST_CASE("toOptimum advanced") {
     ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5, 10}, vars, {}, 6});
 
     ilp.setAssumption(vars[5], false);
-    auto [state0, obj0, optcore0] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state0, obj0, optcore0] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state0 == SolveState::SAT);
     CHECK(obj0 == 0);
     CHECK(optcore0.empty());
 
     ilp.setObjective({1, 1, 2, 3, 5, -10}, vars, {});
-    auto [state1, obj1, optcore1] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state1, obj1, optcore1] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state1 == SolveState::SAT);
     CHECK(obj1 == 4);
     CHECK(optcore1.size() == 1);
     CHECK(optcore1[0] == vars.back());
 
     ilp.setAssumption(vars[4], true);
-    auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state2 == SolveState::SAT);
     CHECK(obj2 == 6);
     CHECK(optcore2.size() == 2);
 
     ilp.setObjective({-1, -1, -1, -1, -1, -1}, vars, {});
-    auto [state3, obj3, optcore3] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state3, obj3, optcore3] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state3 == SolveState::SAT);
     CHECK(obj3 == -5);
     CHECK(optcore3.size() == 1);
     CHECK(optcore3[0] == vars.back());
 
     ilp.clearAssumptions();
-    auto [state4, obj4, optcore4] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state4, obj4, optcore4] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state4 == SolveState::SAT);
     CHECK(obj4 == -6);
     CHECK(optcore4.empty());
 
-    auto [state5, obj5, optcore5] = ilp.toOptimum(ilp.getObjective(), true, 0.0000001);
+    auto [state5, obj5, optcore5] = ilp.toOptimum(ilp.getObjective(), true, {true, 0.0000001});
     CHECK(state5 == SolveState::TIMEOUT);
     CHECK(obj5 == 0);
     CHECK(optcore5.empty());
@@ -109,14 +109,14 @@ TEST_CASE("toOptimum advanced") {
     for (int64_t i = 2; i < 6; ++i) {
       ilp.setAssumption(vars[i], false);
     }
-    auto [state6, obj6, optcore6] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state6, obj6, optcore6] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state6 == SolveState::INCONSISTENT);
     CHECK(obj6 == 0);
     CHECK(optcore6.size() == 4);
 
     ilp.clearAssumption(vars[2]);
     ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5, 10}, vars, {}, std::nullopt, 5});
-    auto [state7, obj7, optcore7] = ilp.toOptimum(ilp.getObjective(), true, 0);
+    auto [state7, obj7, optcore7] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state7 == SolveState::UNSAT);
     CHECK(obj7 == 0);
     CHECK(optcore7.empty());

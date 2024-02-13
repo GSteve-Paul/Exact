@@ -895,6 +895,12 @@ const std::vector<Lit>& Solver::getLastSolution() const {
   return lastSol;
 }
 
+void Solver::printHeader() const {
+  if (global.options.verbosity.get() > 0) {
+    std::cout << "c #vars " << getNbVars() << " #constraints " << getNbConstraints() << std::endl;
+  }
+}
+
 // ---------------------------------------------------------------------
 // Garbage collection
 

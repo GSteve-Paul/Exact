@@ -724,14 +724,11 @@ void ILP::printOrigSol() const {
 
 std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate,
                                                     const TimeOut& to) {
-  if (to.reinitialize) global.stats.runStartTime = std::chrono::steady_clock::now();
-  SolveState result = optim->runFull(false, to.limit);
+  auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
   if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
     return {result, CeNull()};
   }
   assert(result == SolveState::SAT);
-  auto [result2, optval, optcore] = toOptimum(obj, keepstate, {false, to.limit});
-  if (result2 == SolveState::TIMEOUT) return {SolveState::TIMEOUT, CeNull()};
 
   Ce32 invalidator = global.cePools.take32();
   invalidator->addRhs(1);
@@ -781,7 +778,7 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
   assert(result != SolveState::SAT);
   if (result == SolveState::TIMEOUT) return {SolveState::TIMEOUT, CeNull()};
   assert(result == SolveState::INCONSISTENT || result == SolveState::UNSAT);
-  return {result, invalidator};
+  return {SolveState::SAT, invalidator};
 }
 
 IntVar* ILP::addFlag() {
@@ -837,14 +834,12 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& t
 // NOTE: also throws AsynchronousInterrupt
 const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, bool keepstate,
                                                             const TimeOut& to) {
-  if (to.reinitialize) global.stats.runStartTime = std::chrono::steady_clock::now();
-  SolveState result = optim->runFull(false, to.limit);
+  solver.printHeader();
+  auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
   if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
     return {};
   }
   assert(result == SolveState::SAT);
-  auto [result2, optval, optcore] = toOptimum(obj, keepstate, to);
-  if (result2 == SolveState::TIMEOUT) return {};
 
   Var marker = 0;
   if (keepstate) {  // still need to fix the objective, since toOptimum has not done this with keepState==true
@@ -868,15 +863,20 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
         if (keepstate) assumptions.remove(marker);
         return {};
       }
+      assert(lowerstate == SolveState::SAT);
       IntConstraint varObjNeg = IntConstraint({-1}, {iv}, {}, 0);
       auto [upperstate, upperbound, optcore2] = toOptimum(varObjNeg, true, {false, to.limit});
       if (upperstate == SolveState::TIMEOUT) {
         if (keepstate) assumptions.remove(marker);
         return {};
       }
+      assert(upperstate == SolveState::SAT);
       consequences[i] = {lowerbound, -upperbound};
-      if (!keepstate && (consequences[i].first > iv->getLowerBound() || consequences[i].second < iv->getUpperBound())) {
-        addConstraint(IntConstraint({1}, {iv}, {}, consequences[i].first, consequences[i].second));
+      if (!keepstate && consequences[i].first > iv->getLowerBound()) {
+        addConstraint(IntConstraint({1}, {iv}, {}, consequences[i].first));
+      }
+      if (!keepstate && consequences[i].second < iv->getUpperBound()) {
+        addConstraint(IntConstraint({1}, {iv}, {}, std::nullopt, consequences[i].second));
       }
     }
     assert(consequences[i].first <= consequences[i].second);
@@ -905,24 +905,18 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
 // NOTE: also throws AsynchronousInterrupt
 const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
                                                          const TimeOut& to) {
-  if (to.reinitialize) global.stats.runStartTime = std::chrono::steady_clock::now();
   for (IntVar* iv : ivs) {
     if (iv->getEncodingVars().size() != 1 && iv->getEncoding() != Encoding::ONEHOT) {
       throw InvalidArgument("Non-Boolean variable " + iv->getName() +
                             " is passed to pruneDomains but is not one-hot encoded.");
     }
   }
-  SolveState result = optim->runFull(false, to.limit);
-  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
-    std::vector<std::vector<bigint>> doms(ivs.size());
-    return doms;
-  }
-  auto [state, invalidator] = getSolIntersection(ivs, keepstate, {false, to.limit});
-  if (state == SolveState::TIMEOUT) {
-    return {};
-  }
-  assert(state != SolveState::INPROCESSED);
+  solver.printHeader();
+  auto [result, invalidator] = getSolIntersection(ivs, keepstate, to);
+  if (result == SolveState::TIMEOUT) return {};
   std::vector<std::vector<bigint>> doms(ivs.size());
+  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) return doms;
+  assert(result == SolveState::SAT);
 
   for (int i = 0; i < (int)ivs.size(); ++i) {
     IntVar* iv = ivs[i];
@@ -967,11 +961,12 @@ Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
 }
 
 std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
-  if (to.reinitialize) global.stats.runStartTime = std::chrono::steady_clock::now();
-  if (global.options.verbosity.get() > 0) {
-    std::cout << "c #vars " << solver.getNbVars() << " #constraints " << solver.getNbConstraints() << std::endl;
+  solver.printHeader();
+  auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
+  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
+    return {result, -int(result == SolveState::TIMEOUT)};
   }
-  auto [result, optval, optcore] = toOptimum(obj, keepstate, {false, to.limit});
+  assert(result == SolveState::SAT);
 
   Optim opt = optim;
   Var flag_v = 0;
@@ -1013,6 +1008,7 @@ void ILP::runFromCmdLine() {
   if (global.options.noSolve) throw AsynchronousInterrupt();
   if (global.options.printCsvData) global.stats.printCsvHeader();
 
+  solver.printHeader();
   [[maybe_unused]] SolveState res = optim->runFull(true, 0);
 }
 
