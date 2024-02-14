@@ -527,6 +527,8 @@ struct ConstrExp final : public ConstrExpSuper {
           nu = aux::ceildiv(conflCoef, reasonCoef);
         }
 
+        assert(nu*reasonCoef >= mu*conflCoef);
+
         LARGE reasonSlack = reason->getSlack(level);
         LARGE conflSlack = getSlack(level);
 
@@ -543,7 +545,7 @@ struct ConstrExp final : public ConstrExpSuper {
         //&& nu*reasonDeg-mu*conflCoef-nu*reasonCoef < nu*(reasonSlack+1);
         cond = (cond1 && cond2) || (cond3 && cond4);
         if (cond) {
-          ++global.stats.NMULTWEAKEN;
+          // ++global.stats.NMULTWEAKEN;
           // if (static_cast<int>(global.stats.NMULTWEAKEN.z) % 100 == 0) {
           //   std::cout << "multWeaken: " << global.stats.NMULTWEAKEN << std::endl;
           //   std::cout << "aborted: " << global.stats.NNONMULTWEAKEN << std::endl;
@@ -572,7 +574,7 @@ struct ConstrExp final : public ConstrExpSuper {
           // std::cout << "reasonSum: " << reasonSum << std::endl;
           // std::cout << "absCoeffSum: " << reason->absCoeffSum() << std::endl;
 
-          // assert(reasonSum - reasonDeg == reasonSlack); 
+          // assert(reasonSum - reasonDeg == reasonSlack);
 
           SMALL amount1 = static_cast<SMALL>(reasonDeg - conflCoef);
           SMALL amount2 = reasonCoef - conflCoef;
@@ -587,23 +589,27 @@ struct ConstrExp final : public ConstrExpSuper {
             if (strength1 >= strength2) {
               reason->weakenNonFalsified(level, amount1, asserting);
               strength = strength1;
+              ++global.stats.NINDIRECTWEAKEN;
             } else {
               Var asserting_var = toVar(asserting);
               reason->weaken(reason->getCoef(asserting_var) < 0 ? amount2 : -amount2, asserting_var);
               reason->fixOrderOfVar(asserting_var);
               strength = strength2;
+              ++global.stats.NDIRECTWEAKEN;
               // std::cout << "amount: " << amount << std::endl;
             }
             // std::cout << "amount: " << amount << std::endl;
           } else if (cond1 && cond2) {
             reason->weakenNonFalsified(level, amount1, asserting);
             strength = strength1;
+            ++global.stats.NINDIRECTWEAKEN;
             // std::cout << "amount: " << amount << std::endl;
-          } else if (cond3 && cond4) {
+          } else {
             Var asserting_var = toVar(asserting);
             reason->weaken(reason->getCoef(asserting_var) < 0 ? amount2 : -amount2, asserting_var);
             reason->fixOrderOfVar(asserting_var);
             strength = strength2;
+            ++global.stats.NDIRECTWEAKEN;
             // std::cout << "amount: " << amount << std::endl;
           }
           reason->saturate(true, false);
