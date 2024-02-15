@@ -244,6 +244,8 @@ struct Stats {
   Stat NWEAKENEDNONIMPLIED{0, "weakened non-implied"};
   Stat NORIGVARS{0, "original variables"};
   Stat NAUXVARS{0, "auxiliary variables"};
+  Stat NINDIRECTWEAKEN{0, "indirect weakenings"};
+  Stat NDIRECTWEAKEN{0, "direct weakenings"};
 
   Stat NCONSFORMULA{0, "formula constraints"};
   Stat NCONSLEARNED{0, "learned constraints"};
@@ -451,6 +453,8 @@ struct Stats {
       &DEPLTIME,
       &NMULTWEAKEN,
       &NNONMULTWEAKEN,
+      &NINDIRECTWEAKEN,
+      &NDIRECTWEAKEN,
 #if WITHSOPLEX
       &LPOBJ,
       &NLPADDEDROWS,

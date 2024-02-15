@@ -20,3 +20,8 @@
 /python/cmake*
 /python/libExact.so
 /python/Makefile
+/python/exact/**
+
+**.pyc
+
+**settings.json
