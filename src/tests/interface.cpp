@@ -25,6 +25,8 @@ using namespace xct;
 
 TEST_SUITE_BEGIN("ILP interface tests");
 
+constexpr double timeouttime = 0.0000001;
+
 TEST_CASE("toOptimum") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
@@ -98,7 +100,7 @@ TEST_CASE("toOptimum advanced") {
     CHECK(obj4 == -6);
     CHECK(optcore4.empty());
 
-    auto [state5, obj5, optcore5] = ilp.toOptimum(ilp.getObjective(), true, {true, 0.0000001});
+    auto [state5, obj5, optcore5] = ilp.toOptimum(ilp.getObjective(), true, {true, timeouttime});
     CHECK(state5 == SolveState::TIMEOUT);
     CHECK(obj5 == 0);
     CHECK(optcore5.empty());
@@ -127,6 +129,7 @@ TEST_CASE("count") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
     opts.cgHybrid.set(x);
+
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(5);
@@ -139,6 +142,48 @@ TEST_CASE("count") {
     CHECK(ilp.count(vars, false).second == 2);
     CHECK(ilp.count(vars, false).second == 0);
   }
+}
+
+TEST_CASE("count advanced") {
+  Options opts;
+  ILP ilp(opts);
+  std::vector<IntVar*> vars;
+  vars.reserve(5);
+  for (const auto& s : {"a", "b", "c", "d", "e"}) {
+    vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+  }
+
+  ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, 6});
+  ilp.setAssumption(vars[4], false);
+  auto [state1, count1] = ilp.count(vars, true);
+  CHECK(state1 == SolveState::SAT);
+  CHECK(count1 == 7);
+
+  ilp.setObjective({1, 1, 2, 3, 5}, vars, {});
+  auto [state2, count2] = ilp.count(vars, true);
+  CHECK(state2 == SolveState::SAT);
+  CHECK(count2 == 2);
+
+  ilp.setObjective({-1, -1, -2, -3, -5}, vars, {});
+  auto [state3, count3] = ilp.count(vars, true, {true, timeouttime});
+  CHECK(state3 == SolveState::TIMEOUT);
+  CHECK(count3 < 0);
+
+  auto [state4, count4] = ilp.count(vars, true);
+  CHECK(state4 == SolveState::SAT);
+  CHECK(count4 == 1);
+
+  ilp.setAssumption(vars[3], false);
+  ilp.setAssumption(vars[1], false);
+  auto [state5, count5] = ilp.count(vars, true);
+  CHECK(state5 == SolveState::INCONSISTENT);
+  CHECK(count5 == 0);
+
+  ilp.clearAssumptions();
+  ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, std::nullopt, 5});
+  auto [state6, count6] = ilp.count(vars, true);
+  CHECK(state6 == SolveState::UNSAT);
+  CHECK(count6 == 0);
 }
 
 TEST_CASE("intersect") {
@@ -162,6 +207,51 @@ TEST_CASE("intersect") {
   }
 }
 
+TEST_CASE("intersect advanced") {
+  Options opts;
+  ILP ilp(opts);
+  std::vector<IntVar*> vars;
+  vars.reserve(5);
+  for (const auto& s : {"a", "b", "c", "d", "e"}) {
+    vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+  }
+  ilp.addConstraint(IntConstraint{{2, 3, 4, 6, 6}, vars, {}, std::nullopt, 10});
+
+  ilp.setAssumption(vars[0], false);
+  auto [state1, invalidator1] = ilp.getSolIntersection(vars, true);
+  CHECK(state1 == SolveState::SAT);
+  CHECK((std::stringstream() << invalidator1).str() == "+1 x1 >= 1 ;");
+
+  ilp.setObjective({-1, -4, -3, -5, -5}, vars, {});
+  auto [state2, invalidator2] = ilp.getSolIntersection(vars, true);
+  CHECK(state2 == SolveState::SAT);
+  CHECK((std::stringstream() << invalidator2).str() == "+1 x1 +1 ~x2 +1 x3 >= 1 ;");
+
+  auto [state3, invalidator3] = ilp.getSolIntersection(vars, true, {true, timeouttime});
+  CHECK(state3 == SolveState::TIMEOUT);
+  CHECK(invalidator3 == nullptr);
+
+  std::vector<IntVar*> vars2 = vars;
+  vars2.resize(2);
+  auto [state4, invalidator4] = ilp.getSolIntersection(vars2, true);
+  CHECK(state4 == SolveState::SAT);
+  CHECK((std::stringstream() << invalidator4).str() == "+1 x1 +1 ~x2 >= 1 ;");
+
+  ilp.setAssumption(vars[3], true);
+  ilp.setAssumption(vars[4], true);
+  auto [state5, invalidator5] = ilp.getSolIntersection(vars2, true);
+  CHECK(state5 == SolveState::INCONSISTENT);
+  CHECK(invalidator5 == nullptr);
+
+  ilp.clearAssumption(vars[4]);
+  ilp.clearAssumption(vars[3]);
+  ilp.fix(vars[4], 1);
+  ilp.fix(vars[3], 1);
+  auto [state6, invalidator6] = ilp.getSolIntersection(vars2, true);
+  CHECK(state6 == SolveState::UNSAT);
+  CHECK(invalidator6 == nullptr);
+}
+
 TEST_CASE("propagate") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
@@ -172,20 +262,62 @@ TEST_CASE("propagate") {
     for (const auto& s : {"a", "b", "c", "d", "e"}) {
       vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
     }
-    for (const auto& s : {"k", "l", "m", "n", "o"}) {
+    for (const auto& s : {"k", "l", "m", "n"}) {
       vars.push_back(ilp.addVar(s, -1, 2, Encoding::LOG));
     }
+    vars.push_back(ilp.addVar("o", -1, 2, Encoding::ONEHOT));
+
+    auto propres = ilp.propagate(vars, true);
+    std::cout << propres << std::endl;
+    CHECK(propres == std::vector<std::pair<bigint, bigint>>{
+                         {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}});
+
     ilp.addConstraint(IntConstraint{{1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars, {}, 7});
     ilp.setObjective({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars, {});
-    auto propres = ilp.propagate(vars, true);
+    propres = ilp.propagate(vars, true);
     CHECK(propres == std::vector<std::pair<bigint, bigint>>{
-                         {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+                         {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 1}, {-1, 0}, {1, 2}, {1, 2}});
     propres = ilp.propagate(vars, false);
     CHECK(propres == std::vector<std::pair<bigint, bigint>>{
                          {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
     propres = ilp.propagate(vars, true);
     CHECK(propres == std::vector<std::pair<bigint, bigint>>{});
   }
+}
+
+TEST_CASE("propagate advanced") {
+  Options opts;
+  ILP ilp(opts);
+  std::vector<IntVar*> vars;
+  vars.reserve(10);
+  for (const auto& s : {"a", "b", "c", "d", "e"}) {
+    vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+  }
+  for (const auto& s : {"k", "l", "m", "n"}) {
+    vars.push_back(ilp.addVar(s, -1, 2, Encoding::LOG));
+  }
+  vars.push_back(ilp.addVar("o", -1, 2, Encoding::ONEHOT));
+
+  auto propres = ilp.propagate(vars, true);
+  CHECK(propres == std::vector<std::pair<bigint, bigint>>{
+                       {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}});
+
+  ilp.addConstraint(IntConstraint{{1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars, {}, 7});
+
+  // ilp.setAssumption(vars[7], std::vector<bigint>{1});
+  propres = ilp.propagate(vars, true);
+  CHECK(propres == std::vector<std::pair<bigint, bigint>>{
+                       {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}});
+
+  //  ilp.setObjective({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars, {});
+  //  propres = ilp.propagate(vars, true);
+  //  CHECK(propres == std::vector<std::pair<bigint, bigint>>{
+  //                       {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+  //  propres = ilp.propagate(vars, false);
+  //  CHECK(propres == std::vector<std::pair<bigint, bigint>>{
+  //                       {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+  //  propres = ilp.propagate(vars, true);
+  //  CHECK(propres == std::vector<std::pair<bigint, bigint>>{});
 }
 
 TEST_CASE("pruneDomains") {
@@ -214,4 +346,56 @@ TEST_CASE("pruneDomains") {
   }
 }
 
+TEST_CASE("pruneDomains advanced") {
+  Options opts;
+  ILP ilp(opts);
+  std::vector<IntVar*> vars;
+  vars.reserve(10);
+  for (const auto& s : {"a", "b", "c", "d", "e"}) {
+    vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+  }
+  for (const auto& s : {"k", "l", "m", "n", "o"}) {
+    vars.push_back(ilp.addVar(s, -1, 2, Encoding::ONEHOT));
+  }
+  ilp.addConstraint(IntConstraint{{1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars, {}, 7});
+  ilp.setObjective({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars, {});
+  auto propres = ilp.pruneDomains(vars, true);
+  CHECK(propres == std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+  propres = ilp.pruneDomains(vars, false);
+  CHECK(propres == std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+  propres = ilp.pruneDomains(vars, true);
+  CHECK(propres == std::vector<std::vector<bigint>>{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}});
+}
+
 TEST_SUITE_END();
+
+/*
+declare a,b,c,d,e: -> {0,1}.
+declare k,l,m,n,o: -> {-1..2}.
+
+0
++1*a()
+-2*b()
++3*c()
+-1*d()
++2*e()
+-3*k()
++1*l()
+-2*m()
++3*n()
++3*o() >= 7.
+
+n()<2.
+
+0=0
++3*a()
+-4*b()
++1*c()
+-2*d()
++3*e()
+-4*k()
++1*l()
+-2*m()
++3*n()
++3*o().
+ */
