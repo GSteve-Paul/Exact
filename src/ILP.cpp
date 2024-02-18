@@ -795,13 +795,15 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& t
     assert(core.has_value());
     return {SolveState::INCONSISTENT, 0, core.value()};
   }
-  bigint objrange = obj.getRange();
-  if (objrange == 0) return {SolveState::SAT, 0, {}};
+  bigint objrange = objective.getRange();
+  if (objrange == 0) {
+    return {SolveState::SAT, 0, {}};
+  }
   IntVar* flag = addFlag();
   assert(flag->getEncodingVars().size() == 1);
   Var flag_v = flag->getEncodingVars()[0];
   assumptions.add(flag_v);
-  bigint cf = keepstate ? obj.getRange() : 1;
+  bigint cf = keepstate ? objrange : 1;
   assert(cf > 0);
   objective.lhs.emplace_back(cf, flag, false);
   Optim opt = OptimizationSuper::make(objective, solver, assumptions);
@@ -949,6 +951,7 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
 }
 
 Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
+  // TODO: don't fix objective if none exists!
   IntVar* flag = addFlag();
   IntConstraint ic = ico;
   assert(ico.getLB().has_value());
@@ -992,7 +995,7 @@ std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool 
   if (result == SolveState::TIMEOUT) {
     return {SolveState::TIMEOUT, -1 - n};
   } else {
-    return {result, n};
+    return {SolveState::SAT, n};
   }
 }
 

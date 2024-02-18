@@ -237,6 +237,10 @@ template <typename SMALL, typename LARGE>
 CeSuper Optimization<SMALL, LARGE>::getOrigObj() const {
   return origObj;
 }
+template <typename SMALL, typename LARGE>
+bigint Optimization<SMALL, LARGE>::getOffset() const {
+  return offset;
+}
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::printObjBounds() {
