@@ -862,14 +862,14 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
       IntConstraint varObjPos = IntConstraint({1}, {iv}, {}, 0);
       auto [lowerstate, lowerbound, optcore1] = toOptimum(varObjPos, true, {false, to.limit});
       if (lowerstate == SolveState::TIMEOUT) {
-        if (keepstate) assumptions.remove(marker);
+        assumptions.remove(marker);
         return {};
       }
       assert(lowerstate == SolveState::SAT);
       IntConstraint varObjNeg = IntConstraint({-1}, {iv}, {}, 0);
       auto [upperstate, upperbound, optcore2] = toOptimum(varObjNeg, true, {false, to.limit});
       if (upperstate == SolveState::TIMEOUT) {
-        if (keepstate) assumptions.remove(marker);
+        assumptions.remove(marker);
         return {};
       }
       assert(upperstate == SolveState::SAT);
@@ -884,7 +884,7 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
     assert(consequences[i].first <= consequences[i].second);
     ++i;
   }
-  if (keepstate) assumptions.remove(marker);
+  assumptions.remove(marker);
 
   auto [intersectstate, invalidator] = getSolIntersection(bools, keepstate, {false, to.limit});
   // TODO: getSolIntersection will do double work (e.g., use its own marker literal)
@@ -951,15 +951,16 @@ const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVa
 }
 
 Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
-  // TODO: don't fix objective if none exists!
   IntVar* flag = addFlag();
-  IntConstraint ic = ico;
-  assert(ico.getLB().has_value());
-  ic.upperBound = optval + ico.getLB().value();
-  ic.lowerBound.reset();
-  addRightReification(flag, ic);
   Var flag_v = flag->getEncodingVars()[0];
   assumptions.add(flag_v);
+  if (ico.getRange() > 0) {
+    IntConstraint ic = ico;
+    assert(ico.getLB().has_value());
+    ic.upperBound = optval + ico.getLB().value();
+    ic.lowerBound.reset();
+    addRightReification(flag, ic);
+  }
   return flag_v;
 }
 
