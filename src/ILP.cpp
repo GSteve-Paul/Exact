@@ -803,7 +803,7 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& t
   assert(flag->getEncodingVars().size() == 1);
   Var flag_v = flag->getEncodingVars()[0];
   assumptions.add(flag_v);
-  bigint cf = keepstate ? objrange : 1;
+  bigint cf = 1 + (keepstate ? objrange : 0);
   assert(cf > 0);
   objective.lhs.emplace_back(cf, flag, false);
   Optim opt = OptimizationSuper::make(objective, solver, assumptions);
