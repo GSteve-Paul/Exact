@@ -186,8 +186,8 @@ class Solver {
 
   void setAssumptions(const std::vector<Lit>& assumps);
   void clearAssumptions();
-  const IntSet& getAssumptions() const { return assumptions; }
-  bool hasAssumptions() const { return !assumptions.isEmpty(); }
+  const IntSet& getAssumptions() const;
+  bool hasAssumptions() const;
   bool assumptionsClashWithUnits() const;
 
   int getNbUnits() const;

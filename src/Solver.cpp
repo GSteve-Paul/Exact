@@ -871,6 +871,9 @@ void Solver::clearAssumptions() {
   assumptions_lim[0] = 0;
 }
 
+const IntSet& Solver::getAssumptions() const { return assumptions; }
+bool Solver::hasAssumptions() const { return !assumptions.isEmpty(); }
+
 bool Solver::assumptionsClashWithUnits() const {
   return std::any_of(assumptions.getKeys().cbegin(), assumptions.getKeys().cend(),
                      [&](Lit l) { return isUnit(getLevel(), -l); });

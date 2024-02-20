@@ -82,6 +82,9 @@ struct IntTerm {
 };
 std::ostream& operator<<(std::ostream& o, const IntTerm& x);
 
+using Core = std::unique_ptr<unordered_set<IntVar*>>;
+Core emptyCore();
+
 class ILP;
 
 class IntConstraint {
@@ -90,7 +93,7 @@ class IntConstraint {
   std::optional<bigint> lowerBound;
   std::optional<bigint> upperBound;
 
-  void normalize();
+  void normalize();  // TODO: make IntConstraint stateless and remove this method
 
  public:
   IntConstraint();
@@ -110,7 +113,7 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 struct OptRes {
   SolveState state;
   bigint optval;
-  std::vector<IntVar*> core;
+  Core core;
 };
 
 struct TimeOut {
@@ -142,6 +145,7 @@ class ILP {
 
   IntVar* addFlag();
   Var fixObjective(const IntConstraint& ico, const bigint& opt);
+  void addSingleAssumption(IntVar* iv, const bigint& val);
 
  public:
   ILP(const Options& opts, bool keepIn = false);
@@ -164,6 +168,8 @@ class ILP {
   const IntConstraint& getObjective() const;
   void setAssumption(const IntVar* iv, const std::vector<bigint>& vals);
   void setAssumption(const IntVar* iv, bool val);
+  void setAssumptions(const std::vector<std::pair<IntVar*, std::vector<bigint>>>& ivs);
+  void setAssumptions(const std::vector<std::pair<IntVar*, bigint>>& ivs);
   bool hasAssumption(const IntVar* iv) const;
   std::vector<bigint> getAssumption(const IntVar* iv) const;
   void clearAssumptions();
@@ -171,8 +177,6 @@ class ILP {
 
   void setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals);
   void clearSolutionHints(const std::vector<IntVar*>& ivs);
-
-  void runFromCmdLine();
 
   void addConstraint(const IntConstraint& ic);
   void addReification(IntVar* head, const IntConstraint& ic);
@@ -188,7 +192,7 @@ class ILP {
   bigint getLastSolutionFor(IntVar* iv) const;
   std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;
 
-  std::optional<std::vector<IntVar*>> getLastCore();
+  Core getLastCore();
 
   void printOrigSol() const;
   void printFormula();
@@ -207,6 +211,9 @@ class ILP {
   const std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
                                                       const TimeOut& to = {false, 0});
   std::pair<SolveState, int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
+  Core extractMUS(const TimeOut& to = {false, 0});
+
+  void runFromCmdLine();
 };
 std::ostream& operator<<(std::ostream& o, const ILP& x);
 

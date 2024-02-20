@@ -238,9 +238,9 @@ std::vector<std::string> Exact::getLastSolutionFor_arb(const std::vector<std::st
 }
 
 std::vector<std::string> Exact::getLastCore() {
-  std::optional<std::vector<IntVar*>> core = ilp.getLastCore();
+  Core core = ilp.getLastCore();
   if (core) {
-    return aux::comprehension(core.value(), [](IntVar* iv) { return iv->getName(); });
+    return aux::comprehension(*core, [](IntVar* iv) { return iv->getName(); });
   } else {
     return {};
   }

@@ -41,26 +41,26 @@ TEST_CASE("toOptimum") {
     auto [state, obj, optcore] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state == SolveState::SAT);
     CHECK(obj == 0);
-    CHECK(optcore.empty());
+    CHECK(optcore->empty());
 
     ilp.setObjective({1, 1, 2, 3, 5}, vars, {});
     auto [state1, obj1, optcore1] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state1 == SolveState::SAT);
     CHECK(obj1 == 0);
-    CHECK(optcore1.empty());
+    CHECK(optcore1->empty());
 
     ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5}, vars, {}, 6});
     auto [state0, obj0, optcore0] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state0 == SolveState::SAT);
     CHECK(obj0 == 4);
-    CHECK(optcore0.empty());
+    CHECK(optcore0->empty());
 
     ilp.setAssumption(vars[4], true);
     auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), false, {false, 0});
     CHECK(state2 == SolveState::SAT);
     CHECK(obj2 == 6);
-    CHECK(optcore2.size() == 1);
-    CHECK(optcore2[0] == vars[4]);
+    CHECK(optcore2->size() == 1);
+    CHECK(optcore2->contains(vars[4]));
     ilp.fix(vars[4], 1);
     ilp.addConstraint(IntConstraint{{1, 1, 2, 3, 5}, vars, {}, std::nullopt, 5});
     state = ilp.getOptim()->runFull(false, 0);
@@ -83,44 +83,47 @@ TEST_CASE("toOptimum advanced") {
     auto [state, obj, optcore] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state == SolveState::SAT);
     CHECK(obj == 0);
-    CHECK(optcore.empty());
+    CHECK(optcore->empty());
 
     ilp.setObjective({1, 1, 2, 3, 5, -10}, vars, {});
     auto [state0, obj0, optcore0] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state0 == SolveState::SAT);
     CHECK(obj0 == 0);
-    CHECK(optcore0 == std::vector<IntVar*>{vars[5]});
+    CHECK(optcore0->size() == 1);
+    CHECK(optcore0->contains(vars[5]));
 
     ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5, 10}, vars, {}, 6});
     auto [state1, obj1, optcore1] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state1 == SolveState::SAT);
     CHECK(obj1 == 4);
-    CHECK(optcore1.size() == 1);
-    CHECK(optcore1 == std::vector<IntVar*>{vars[5]});
+    CHECK(optcore1->size() == 1);
+    CHECK(optcore1->contains(vars[5]));
 
     ilp.setAssumption(vars[4], true);
     auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state2 == SolveState::SAT);
     CHECK(obj2 == 6);
-    CHECK(optcore2.size() == 2);
+    CHECK(optcore2->size() == 2);
+    CHECK(optcore2->contains(vars[5]));
+    CHECK(optcore2->contains(vars[4]));
 
     ilp.setObjective({-1, -1, -1, -1, -1, -1}, vars, {});
     auto [state3, obj3, optcore3] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state3 == SolveState::SAT);
     CHECK(obj3 == -5);
-    CHECK(optcore3.size() == 1);
-    CHECK(optcore3 == std::vector<IntVar*>{vars[5]});
+    CHECK(optcore3->size() == 1);
+    CHECK(optcore3->contains(vars[5]));
 
     ilp.clearAssumptions();
     auto [state4, obj4, optcore4] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state4 == SolveState::SAT);
     CHECK(obj4 == -6);
-    CHECK(optcore4.empty());
+    CHECK(optcore4->empty());
 
     auto [state5, obj5, optcore5] = ilp.toOptimum(ilp.getObjective(), true, {true, timeouttime});
     CHECK(state5 == SolveState::TIMEOUT);
     CHECK(obj5 == 0);
-    CHECK(optcore5.empty());
+    CHECK(optcore5->empty());
 
     for (int64_t i = 2; i < 6; ++i) {
       ilp.setAssumption(vars[i], true);
@@ -131,14 +134,14 @@ TEST_CASE("toOptimum advanced") {
     auto [state6, obj6, optcore6] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state6 == SolveState::INCONSISTENT);
     CHECK(obj6 == 0);
-    CHECK(optcore6.size() == 4);
+    CHECK(optcore6->size() == 4);
 
     ilp.clearAssumption(vars[2]);
     ilp.addConstraint(IntConstraint{{1, 2, 3, 4, 5, 10}, vars, {}, std::nullopt, 5});
     auto [state7, obj7, optcore7] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
     CHECK(state7 == SolveState::UNSAT);
     CHECK(obj7 == 0);
-    CHECK(optcore7.empty());
+    CHECK(optcore7->empty());
   }
 }
 
@@ -238,6 +241,9 @@ TEST_CASE("intersect") {
     auto [solvestate1, invalidator1] = ilp.getSolIntersection(vars, true);
     CHECK((std::stringstream() << invalidator1).str() == "+1 x1 +1 ~x2 +1 x3 >= 1 ;");
 
+    SolveState res = ilp.getOptim()->runFull(false, 0);
+    CHECK(res == SolveState::SAT);
+
     auto [solvestate2, invalidator2] = ilp.getSolIntersection(vars, false);
     CHECK((std::stringstream() << invalidator2).str() == "+1 x1 +1 ~x2 +1 x3 >= 1 ;");
 
@@ -307,7 +313,10 @@ TEST_CASE("propagate") {
     for (const auto& s : {"a", "b", "c", "d", "e"}) {
       vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
     }
-    for (const auto& s : {"k", "l", "m", "n"}) {
+    for (const auto& s : {"k", "l"}) {
+      vars.push_back(ilp.addVar(s, -1, 2, Encoding::ORDER));
+    }
+    for (const auto& s : {"m", "n"}) {
       vars.push_back(ilp.addVar(s, -1, 2, Encoding::LOG));
     }
     vars.push_back(ilp.addVar("o", -1, 2, Encoding::ONEHOT));
@@ -345,7 +354,10 @@ TEST_CASE("propagate advanced") {
     for (const auto& s : {"a", "b", "c", "d", "e"}) {
       vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
     }
-    for (const auto& s : {"k", "l", "m", "n"}) {
+    for (const auto& s : {"k", "l"}) {
+      vars.push_back(ilp.addVar(s, -1, 2, Encoding::ORDER));
+    }
+    for (const auto& s : {"m", "n"}) {
       vars.push_back(ilp.addVar(s, -1, 2, Encoding::LOG));
     }
     vars.push_back(ilp.addVar("o", -1, 2, Encoding::ONEHOT));
@@ -458,6 +470,46 @@ TEST_CASE("pruneDomains advanced") {
     propres = ilp.pruneDomains(vars, false);
     CHECK(propres == std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {1}, {2}, {-1}, {0}, {2}});
   }
+}
+
+TEST_CASE("extract MUS") {
+  Options opts;
+  opts.lpTimeRatio.set(0);
+  opts.inpProbing.set(0);
+  opts.inpAMO.set(0);
+  ILP ilp(opts);
+  std::vector<IntVar*> vars;
+  vars.reserve(10);
+  for (const auto& s : {"a", "b", "c", "d", "e", "f", "x", "y", "z"}) {
+    vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+  }
+
+  std::vector<IntVar*> abc = {vars[0], vars[1], vars[2]};
+  std::vector<IntVar*> defxyz = {vars[3], vars[4], vars[5], vars[6], vars[7], vars[8]};
+
+  ilp.addConstraint(IntConstraint{{1, 1, 1, 1, 1, 1}, defxyz, {}, 1});
+  ilp.addConstraint(IntConstraint{{1, 1, 1}, {vars[0], vars[1], vars[3]}, {}, 1});
+  ilp.addConstraint(IntConstraint{{1, 1, 1}, {vars[1], vars[2], vars[4]}, {}, 1});
+  ilp.addConstraint(IntConstraint{{1, 1, 1}, {vars[2], vars[0], vars[5]}, {}, 1});
+  ilp.addConstraint(IntConstraint{{-1, -1, -1}, abc, {}, -1});
+
+  Core core = ilp.extractMUS();
+  CHECK(!core);
+
+  ilp.setAssumptions({{vars[3], 0}, {vars[4], 0}, {vars[5], 0}, {vars[6], 0}, {vars[7], 0}, {vars[8], 0}});
+  SolveState res = ilp.getOptim()->runFull(false, 0);
+  CHECK(res == SolveState::INCONSISTENT);
+
+  core = ilp.getLastCore();
+  CHECK(core);
+  CHECK(core->size() == 6);
+
+  core = ilp.extractMUS();
+  CHECK(core);
+  CHECK(core->size() == 3);
+
+  core = ilp.extractMUS({true, timeouttime});
+  CHECK(!core);
 }
 
 TEST_SUITE_END();
