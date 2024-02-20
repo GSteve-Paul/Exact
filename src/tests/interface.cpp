@@ -480,14 +480,17 @@ TEST_CASE("extract MUS") {
   ILP ilp(opts);
   std::vector<IntVar*> vars;
   vars.reserve(10);
-  for (const auto& s : {"a", "b", "c", "d", "e", "f", "x", "y", "z"}) {
+  for (const auto& s : {"a", "b", "c", "d", "e", "f"}) {
     vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
   }
+  vars.push_back(ilp.addVar("x", -2, 2, Encoding::ORDER));
+  vars.push_back(ilp.addVar("y", -2, 2, Encoding::ONEHOT));
+  vars.push_back(ilp.addVar("z", -2, 2, Encoding::LOG));
 
   std::vector<IntVar*> abc = {vars[0], vars[1], vars[2]};
   std::vector<IntVar*> defxyz = {vars[3], vars[4], vars[5], vars[6], vars[7], vars[8]};
 
-  ilp.addConstraint(IntConstraint{{1, 1, 1, 1, 1, 1}, defxyz, {}, 1});
+  ilp.addConstraint(IntConstraint{{1, 1, 1, 1, 1, 1}, defxyz, {}, -5});
   ilp.addConstraint(IntConstraint{{1, 1, 1}, {vars[0], vars[1], vars[3]}, {}, 1});
   ilp.addConstraint(IntConstraint{{1, 1, 1}, {vars[1], vars[2], vars[4]}, {}, 1});
   ilp.addConstraint(IntConstraint{{1, 1, 1}, {vars[2], vars[0], vars[5]}, {}, 1});
@@ -496,7 +499,7 @@ TEST_CASE("extract MUS") {
   Core core = ilp.extractMUS();
   CHECK(!core);
 
-  ilp.setAssumptions({{vars[3], 0}, {vars[4], 0}, {vars[5], 0}, {vars[6], 0}, {vars[7], 0}, {vars[8], 0}});
+  ilp.setAssumptions({{vars[3], 0}, {vars[4], 0}, {vars[5], 0}, {vars[6], -2}, {vars[7], -2}, {vars[8], -2}});
   SolveState res = ilp.getOptim()->runFull(false, 0);
   CHECK(res == SolveState::INCONSISTENT);
 

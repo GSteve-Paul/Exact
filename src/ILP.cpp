@@ -367,76 +367,15 @@ void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVa
 IntConstraint& ILP::getObjective() { return obj; }
 const IntConstraint& ILP::getObjective() const { return obj; }
 
-void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) {
-  assert(iv);
-  if (dom.empty()) {
-    throw InvalidArgument("No possible values given when setting assumptions for " + iv->getName() + ".");
-  }
-  for (const bigint& vals_i : dom) {
-    if (vals_i < iv->getLowerBound() || vals_i > iv->getUpperBound())
-      throw InvalidArgument("Assumption value " + aux::str(vals_i) + " for " + iv->getName() +
-                            " exceeds variable bounds.");
-  }
-  for (Var v : iv->getEncodingVars()) {
-    assumptions.remove(v);
-    assumptions.remove(-v);
-  }
-  if (dom.size() == 1) {
-    if (iv->getEncoding() == Encoding::LOG) {
-      log2assumptions(iv->getEncodingVars(), dom[0], iv->getLowerBound(), assumptions);
-    } else {
-      assert(dom[0] - iv->getLowerBound() <= iv->getEncodingVars().size());
-      int val_int = static_cast<int>(dom[0] - iv->getLowerBound());
-      if (iv->getEncoding() == Encoding::ORDER) {
-        if (val_int > 0) {
-          assumptions.add(iv->getEncodingVars()[val_int - 1]);
-        }
-        if (val_int < (int)iv->getEncodingVars().size()) {
-          assumptions.add(-iv->getEncodingVars()[val_int]);
-        }
-      } else {
-        assert(iv->getEncoding() == Encoding::ONEHOT);
-        assumptions.add(iv->getEncodingVars()[val_int]);
-      }
-    }
-  } else {
-    unordered_set<bigint> toCheck(dom.begin(), dom.end());
-    if (toCheck.size() == iv->getUpperBound() - iv->getLowerBound() + 1) return;
-    if (iv->getEncoding() != Encoding::ONEHOT) {
-      throw InvalidArgument("Variable " + iv->getName() + " is not one-hot encoded but has " +
-                            std::to_string(toCheck.size()) +
-                            " (more than one and less than its range) values to assume.");
-    }
-    bigint val = iv->getLowerBound();
-    for (Var v : iv->getEncodingVars()) {
-      if (!toCheck.count(val)) {
-        assumptions.add(-v);
-      }
-      ++val;
-    }
-  }
-  optim = OptimizationSuper::make(obj, solver, assumptions);
-}
+void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) { setAssumptions({{iv, dom}}); }
 
 void ILP::setAssumption(const IntVar* iv, bool val) {
   assert(iv);
   assert(iv->isBoolean());
-  for (Var v : iv->getEncodingVars()) {
-    assumptions.remove(v);
-    assumptions.remove(-v);
-  }
-  Var v = iv->getEncodingVars()[0];
-  if (val) {
-    assumptions.remove(-v);
-    assumptions.add(v);
-  } else {
-    assumptions.remove(v);
-    assumptions.add(-v);
-  }
-  optim = OptimizationSuper::make(obj, solver, assumptions);
+  setAssumptions({{iv, val}});
 }
 
-void ILP::addSingleAssumption(IntVar* iv, const bigint& val) {
+void ILP::addSingleAssumption(const IntVar* iv, const bigint& val) {
   if (iv->getEncoding() == Encoding::LOG) {
     log2assumptions(iv->getEncodingVars(), val, iv->getLowerBound(), assumptions);
   } else {
@@ -456,7 +395,7 @@ void ILP::addSingleAssumption(IntVar* iv, const bigint& val) {
   }
 }
 
-void ILP::setAssumptions(const std::vector<std::pair<IntVar*, std::vector<bigint>>>& ivs) {
+void ILP::setAssumptions(const std::vector<std::pair<const IntVar*, std::vector<bigint>>>& ivs) {
   for (auto [iv, dom] : ivs) {
     assert(iv);
     if (dom.empty()) {
@@ -493,7 +432,7 @@ void ILP::setAssumptions(const std::vector<std::pair<IntVar*, std::vector<bigint
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
-void ILP::setAssumptions(const std::vector<std::pair<IntVar*, bigint>>& ivs) {
+void ILP::setAssumptions(const std::vector<std::pair<const IntVar*, bigint>>& ivs) {
   for (auto [iv, val] : ivs) {
     assert(iv);
     if (val < iv->getLowerBound() || val > iv->getUpperBound())
