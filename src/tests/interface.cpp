@@ -513,6 +513,10 @@ TEST_CASE("extract MUS") {
 
   core = ilp.extractMUS({true, timeouttime});
   CHECK(!core);
+
+  // check that state has not been altered
+  ilp.clearAssumptions();
+  CHECK(ilp.count(vars, true).second == 1625);
 }
 
 TEST_SUITE_END();
