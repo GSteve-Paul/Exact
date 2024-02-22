@@ -95,7 +95,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
 
 set(test_files
-    src/tests/interface.cpp
+    src/tests/inferences.cpp
+    src/tests/input.cpp
 )
 
 set(source_files

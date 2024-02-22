@@ -103,7 +103,7 @@ void log2assumptions(const std::vector<Var>& encoding, const bigint& value, cons
 }
 
 IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e)
-    : name(n), lowerBound(lb), upperBound(ub), encoding(getRange() <= 1 ? Encoding::ORDER : e), propVars(), propVar(0) {
+    : name(n), lowerBound(lb), upperBound(ub), encoding(getRange() <= 1 ? Encoding::ORDER : e) {
   assert(lb <= ub);
 
   if (nameAsId) {
@@ -191,43 +191,6 @@ bigint IntVar::getValue(const std::vector<Lit>& sol) const {
     }
   }
   return val;
-}
-
-Var IntVar::getPropVar() const {
-  assert(propVar != 0);  // call getPropVars(solver) first!
-  return propVar;
-}
-
-const std::vector<Var>& IntVar::getPropVars(Solver& solver) {
-  assert(encoding == Encoding::LOG);
-  if (propVar == 0) {
-    int oldvars = solver.getNbVars();
-    int newvars = oldvars + encodingVars.size() + 1;
-    solver.setNbVars(newvars, true);
-    propVar = oldvars + 1;
-    propVars.reserve(encodingVars.size());
-    for (Var v = propVar + 1; v <= newvars; ++v) {
-      propVars.push_back(v);
-    }
-    ConstrSimpleArb upperBound;  // M + propVars >= encodingVars + M*propVar
-    ConstrSimpleArb lowerBound;  // M*propVar + encodingVars >= propVars
-    bigint coef = 1;
-    for (int i = 0; i < (int)encodingVars.size(); ++i) {
-      upperBound.terms.push_back({coef, propVars[i]});
-      upperBound.terms.push_back({-coef, encodingVars[i]});
-      lowerBound.terms.push_back({-coef, propVars[i]});
-      lowerBound.terms.push_back({coef, encodingVars[i]});
-      coef *= 2;
-    }
-    coef -= 1;
-    upperBound.terms.push_back({-coef, propVar});
-    upperBound.rhs = -coef;
-    solver.addConstraint(upperBound, Origin::FORMULA);
-    lowerBound.terms.push_back({coef, propVar});
-    lowerBound.rhs = 0;
-    solver.addConstraint(lowerBound, Origin::FORMULA);
-  }
-  return propVars;
 }
 
 Core emptyCore() { return std::make_unique<unordered_set<IntVar*>>(); }
@@ -590,6 +553,88 @@ void ILP::addLeftReification(IntVar* head, const IntConstraint& ic) {
     geq->invert();
     geq->addLhs(geq->degree, h);
     solver.addConstraint(geq, Origin::FORMULA);
+  }
+}
+
+void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_bound, IntVar* upper_bound) {
+  // TODO: add special cases for when factors is one or empty?
+  if (!lower_bound && !upper_bound) return;
+  std::vector<std::pair<bigint, std::vector<Var>>> terms = {{1, {}}};
+  std::vector<std::pair<bigint, std::vector<Var>>> terms_new;
+  for (IntVar* f : factors) {
+    assert(terms_new.empty());
+    terms_new.reserve(terms.size());
+    for (const std::pair<bigint, std::vector<Var>>& t : terms) {
+      if (f->getLowerBound() != 0) terms_new.emplace_back(f->getLowerBound() * t.first, t.second);
+      if (f->getRange() == 0) continue;
+      if (f->getEncoding() == Encoding::LOG) {
+        bigint base = 1;
+        for (Var v : f->getEncodingVars()) {
+          terms_new.emplace_back(base * t.first, t.second);
+          terms_new.back().second.push_back(v);
+          base *= 2;
+        }
+      } else if (f->getEncoding() == Encoding::ONEHOT) {
+        for (int64_t i = 1; i < (int64_t)f->getEncodingVars().size(); ++i) {
+          terms_new.emplace_back(i * t.first, t.second);
+          terms_new.back().second.push_back(f->getEncodingVars()[i]);
+        }
+      } else {
+        assert(f->getEncoding() == Encoding::ORDER);
+        for (Var v : f->getEncodingVars()) {
+          terms_new.emplace_back(t.first, t.second);
+          terms_new.back().second.push_back(v);
+        }
+      }
+    }
+    terms = std::move(terms_new);
+  }
+
+  ConstrSimple32 clause;
+  std::vector<TermArb> lhs;
+  lhs.reserve(terms.size());
+  for (const std::pair<bigint, std::vector<Var>>& t : terms) {
+    assert(t.first != 0);
+    Var aux = solver.addVar(true);
+    lhs.emplace_back(t.first, aux);
+    clause.reset();
+    clause.rhs = 1;
+    clause.orig = Origin::FORMULA;
+    clause.terms.push_back({1, aux});
+    for (Var v : t.second) {
+      clause.terms.push_back({1, -v});
+      solver.addBinaryConstraint(-aux, v, Origin::FORMULA);
+    }
+    solver.addConstraint(clause, Origin::FORMULA);
+  }
+
+  std::array<IntVar*, 2> bounds = {lower_bound, upper_bound};
+  for (int j = 0; j < 2; ++j) {
+    IntVar* iv = bounds[j];
+    if (!iv) continue;
+    CeArb ca = global.cePools.takeArb();
+    ca->addRhs(iv->getLowerBound());
+    for (const TermArb& ta : lhs) {
+      ca->addLhs(ta.c, ta.l);
+    }
+    if (lower_bound->getEncoding() == Encoding::LOG) {
+      bigint base = -1;
+      for (Var v : lower_bound->getEncodingVars()) {
+        ca->addLhs(base, v);
+        base *= 2;
+      }
+    } else if (lower_bound->getEncoding() == Encoding::ONEHOT) {
+      for (int64_t i = 1; i < (int64_t)lower_bound->getEncodingVars().size(); ++i) {
+        ca->addLhs(-i, lower_bound->getEncodingVars()[i]);
+      }
+    } else {
+      assert(lower_bound->getEncoding() == Encoding::ORDER);
+      for (Var v : lower_bound->getEncodingVars()) {
+        ca->addLhs(-1, v);
+      }
+    }
+    if (j > 0) ca->invert();
+    solver.addConstraint(ca, Origin::FORMULA);
   }
 }
 

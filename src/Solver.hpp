@@ -156,6 +156,7 @@ class Solver {
 
   int getNbVars() const;
   void setNbVars(int nvars, bool orig);
+  Var addVar(bool orig);
   bool isOrig(Var v) const;
 
   Options& getOptions();

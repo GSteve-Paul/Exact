@@ -23,7 +23,7 @@ or run with the flag --license=AGPLv3. If not, see
 
 using namespace xct;
 
-TEST_SUITE_BEGIN("ILP interface tests");
+TEST_SUITE_BEGIN("ILP inference tests");
 
 constexpr double timeouttime = 0.0000001;
 

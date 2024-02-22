@@ -268,8 +268,7 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
         plf::single_reorderase(lazyVars, lazyVars.begin() + i);  // fully expanded, no need to keep in memory
         --i;
       } else {  // add auxiliary variable
-        int newN = solver.getNbVars() + 1;
-        solver.setNbVars(newN, false);
+        int newN = solver.addVar(false);
         Var oldvar = lv.currentVar;
         lv.addVar(newN);
         // reformulate the objective
@@ -368,8 +367,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   bool needAuxiliary = cardUpperBound > cardCore->getDegree();
   if (needAuxiliary) {
     // add auxiliary variable
-    int newN = solver.getNbVars() + 1;
-    solver.setNbVars(newN, false);
+    int newN = solver.addVar(false);
     reformObj->addLhs(mult, newN);  // add only one variable for now
 
     // add first lazy constraint

@@ -126,6 +126,11 @@ void Solver::setNbVars(int nvars, bool orig) {
   n = nvars;
 }
 
+Var Solver::addVar(bool orig) {
+  setNbVars(n + 1, orig);
+  return n;
+}
+
 bool Solver::isOrig(Var v) const {
   assert(v >= 0);
   assert(v <= getNbVars());

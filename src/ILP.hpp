@@ -56,9 +56,6 @@ struct IntVar {
   [[nodiscard]] const std::vector<Var>& getEncodingVars() const { return encodingVars; }
   [[nodiscard]] bigint getValue(const std::vector<Lit>& sol) const;
 
-  [[nodiscard]] const std::vector<Var>& getPropVars(Solver& solver);
-  [[nodiscatd]] Var getPropVar() const;
-
  private:
   const std::string name;
   const bigint lowerBound;
@@ -66,9 +63,6 @@ struct IntVar {
 
   const Encoding encoding;
   std::vector<Var> encodingVars;
-
-  std::vector<Var> propVars;
-  Var propVar;
 };
 std::ostream& operator<<(std::ostream& o, const IntVar& x);
 std::ostream& operator<<(std::ostream& o, IntVar* x);
@@ -76,7 +70,7 @@ std::ostream& operator<<(std::ostream& o, IntVar* x);
 struct IntTerm {
   bigint c;
   IntVar* v;
-  bool negated;
+  bool negated;  // TODO: remove to simplify
 
   IntTerm(const bigint& val, IntVar* var, bool neg) : c(val), v(var), negated(neg) {}
 };
@@ -184,6 +178,9 @@ class ILP {
   void addReification(IntVar* head, const IntConstraint& ic);
   void addRightReification(IntVar* head, const IntConstraint& ic);
   void addLeftReification(IntVar* head, const IntConstraint& ic);
+  void addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_bound = nullptr,
+                         IntVar* upper_bound = nullptr);
+
   void fix(IntVar* iv, const bigint& val);
   void invalidateLastSol();
   void invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag = 0);

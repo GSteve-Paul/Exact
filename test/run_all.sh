@@ -2,6 +2,8 @@
 
 # usage: ../test/run_all.sh 3 "testruns" /home/jod/workspace/exact-dev/build_testruns/Exact
 
+# to kill: killall Exact --signal 9; killall veripb --signal 9 (multiple times until it reports no process busy)
+
 logfolder="/tmp/Exact/$2"
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
