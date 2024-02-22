@@ -52,17 +52,22 @@ TEST_CASE("multiplication") {
   vars.push_back(ilp.addVar("d", 0, 1, Encoding::ORDER));
   vars.push_back(ilp.addVar("e", 2, 2, Encoding::ONEHOT));
 
-  IntVar* rhs = ilp.addVar("z", -1000, 1000, Encoding::LOG);
+  IntVar* z = ilp.addVar("z", -1000, 1000, Encoding::LOG);
 
-  ilp.addMultiplication(vars, rhs, rhs);
+  ilp.addMultiplication(vars, z, z);
 
   CHECK(ilp.count(vars, true).second == 1024);
-  auto propres = ilp.propagate({rhs}, true);
+  auto propres = ilp.propagate({z}, true);
   CHECK(propres == std::vector<std::pair<bigint, bigint>>{{-180, 240}});
 
   std::stringstream ss;
   ilp.printInput(ss);
   CHECK(ss.str() == "OBJ \nz[-1000,1000] =< 1*a[-3,4]*b[-2,5]*c[-1,6]*d[0,1]*e[2,2] =< z[-1000,1000]\n");
+
+  // Auxiliary variables are only created when needed
+  int64_t internal_nvars = ilp.getSolver().getNbVars();
+  ilp.addMultiplication(vars, z, z);
+  CHECK(ilp.getSolver().getNbVars() == internal_nvars);
 }
 
 TEST_CASE("multiplication edge cases") {

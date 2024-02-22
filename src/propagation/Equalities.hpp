@@ -41,7 +41,7 @@ class Solver;
 struct Repr {
   Lit l;
   ID id;
-  std::vector<Lit> equals;
+  LitVec equals;
 };
 
 class Equalities : public Propagator {  // a union-find data structure

@@ -90,7 +90,7 @@ class Heuristic {
   ActValV getActivity(Var v) const;
   const std::vector<ActNode>& getActList() const;
   void randomize(const std::vector<int>& position);
-  void vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position, double weightNew, long long nConfl);
+  void vBumpActivity(VarVec& vars, const std::vector<int>& position, double weightNew, long long nConfl);
   bool before(Var v1, Var v2) const;
 
   Lit pickBranchLit(const std::vector<int>& position);

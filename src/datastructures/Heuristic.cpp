@@ -117,7 +117,7 @@ ActValV Heuristic::getActivity(Var v) const {
 const std::vector<ActNode>& Heuristic::getActList() const { return actList; }
 
 void Heuristic::randomize(const std::vector<int>& position) {
-  std::vector<Var> vars;
+  VarVec vars;
   vars.reserve((int)actList.size() - 1);
   for (Var v = 1; v < (int)actList.size(); ++v) {
     vars.push_back(v);
@@ -127,8 +127,7 @@ void Heuristic::randomize(const std::vector<int>& position) {
   vBumpActivity(vars, position, 0, 0);
 }
 
-void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position, double weightNew,
-                              long long nConfl) {
+void Heuristic::vBumpActivity(VarVec& vars, const std::vector<int>& position, double weightNew, long long nConfl) {
   assert(weightNew >= 0);
   assert(weightNew <= 1);
   double weightOld = 1 - weightNew;

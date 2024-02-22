@@ -96,7 +96,7 @@ class Solver {
   // Members
 
  public:
-  std::vector<Lit> lastSol = {0};
+  LitVec lastSol = {0};
   bool foundSolution() const;
   CeSuper lastCore;
   CeSuper lastGlobalDual;
@@ -123,7 +123,7 @@ class Solver {
   // TODO: make position, level, contiguous memory for better cache efficiency.
   IntMap<int> level;           // map from literal to decision level when on the trail. INF means unset.
   std::vector<int> position;   // map from variable to index ('position') in the trail.
-  std::vector<Lit> trail;      // current assignment in chronological order
+  LitVec trail;                // current assignment in chronological order
   std::vector<int> trail_lim;  // for each level, first index on the trail. This is the index of the decision literal.
   std::vector<CRef> reason;    // map from variable to reason constraint (when propagated, otherwise CRef_Undef)
 
@@ -142,7 +142,7 @@ class Solver {
   Var nextToSort = 0;
 
   // vectors used in subroutines that should not be reallocated over and over
-  std::vector<Lit> assertionStateMem;
+  LitVec assertionStateMem;
   std::vector<std::pair<int, Lit>> litsToSubsumeMem;
   std::vector<unsigned int> falsifiedIdcsMem;
 
@@ -177,7 +177,7 @@ class Solver {
   std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
   std::pair<ID, ID> addUnitConstraint(Lit l, Origin orig);
   std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
-  void invalidateLastSol(const std::vector<Var>& vars);
+  void invalidateLastSol(const VarVec& vars);
 
   void dropExternal(ID id, bool erasable, bool forceDelete);
   int getNbConstraints() const { return constraints.size(); }
@@ -185,15 +185,15 @@ class Solver {
   const std::vector<CRef>& getRawConstraints() const { return constraints; }
   const ConstraintAllocator& getCA() const { return ca; }
 
-  void setAssumptions(const std::vector<Lit>& assumps);
+  void setAssumptions(const LitVec& assumps);
   void clearAssumptions();
   const IntSet& getAssumptions() const;
   bool hasAssumptions() const;
   bool assumptionsClashWithUnits() const;
 
   int getNbUnits() const;
-  std::vector<Lit> getUnits() const;
-  const std::vector<Lit>& getLastSolution() const;
+  LitVec getUnits() const;
+  const LitVec& getLastSolution() const;
 
   void printHeader() const;
 
@@ -248,7 +248,7 @@ class Solver {
   void removeConstraint(const CRef& cr, bool override = false);
   void learnConstraint(const CeSuper& c, Origin orig);
   void learnUnitConstraint(Lit l, Origin orig, ID id);
-  void learnClause(const std::vector<Lit>& lits, Origin orig, ID id);
+  void learnClause(const LitVec& lits, Origin orig, ID id);
   void learnClause(Lit l1, Lit l2, Origin orig, ID id);
   std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
 
@@ -279,7 +279,7 @@ class Solver {
   Var lastRestartNext = 0;
   void probeRestart(Lit next);
 
-  void detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
+  void detectAtMostOne(Lit seed, unordered_set<Lit>& considered, LitVec& previousProbe);
   unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
   void runAtMostOneDetection();
 };

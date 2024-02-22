@@ -163,7 +163,7 @@ void Solver::fixPhase(const std::vector<std::pair<Var, Lit>>& vls, bool bump) {
     heur.setFixedPhase(vl.first, vl.second);
   }
   if (bump) {
-    std::vector<Var> vs = aux::comprehension(vls, [](const std::pair<Var, Lit>& vl) { return vl.first; });
+    VarVec vs = aux::comprehension(vls, [](const std::pair<Var, Lit>& vl) { return vl.first; });
     heur.vBumpActivity(vs, getPos(), global.options.varWeight.get(), global.stats.NCONFL.z);
   }
 }
@@ -509,9 +509,9 @@ CeSuper Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   // Set all assumptions in front of the trail, all propagations later. This makes it easy to do decision learning.
   // For this, we first copy the trail, then backjump to 0, then rebuild the trail.
   // Otherwise, reordering the trail messes up the slacks of the watched constraints (see undoOne()).
-  std::vector<Lit> decisions;  // holds the decisions
+  LitVec decisions;  // holds the decisions
   decisions.reserve(decisionLevel());
-  std::vector<Lit> props;  // holds the propagations
+  LitVec props;  // holds the propagations
   props.reserve(trail.size());
   assert(!trail_lim.empty());
   for (int i = trail_lim[0]; i < (int)trail.size(); ++i) {
@@ -707,7 +707,7 @@ void Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
   c.decreaseLBD(1);
 }
 
-void Solver::learnClause(const std::vector<Lit>& lits, Origin orig, ID id) {
+void Solver::learnClause(const LitVec& lits, Origin orig, ID id) {
   Ce32 ce = global.cePools.take32();
   ce->addRhs(1);
   for (Lit l : lits) ce->addLhs(1, l);
@@ -816,7 +816,7 @@ std::pair<ID, ID> Solver::addBinaryConstraint(Lit l1, Lit l2, Origin orig) {
   return addInputConstraint(ce);
 }
 
-void Solver::invalidateLastSol(const std::vector<Var>& vars) {
+void Solver::invalidateLastSol(const VarVec& vars) {
   assert(foundSolution());
   ConstrSimple32 invalidator;
   invalidator.terms.reserve(global.stats.NORIGVARS.z);
@@ -860,7 +860,7 @@ CeSuper Solver::getIthConstraint(int i) const { return ca[constraints[i]].toExpa
 // ---------------------------------------------------------------------
 // Assumptions
 
-void Solver::setAssumptions(const std::vector<Lit>& assumps) {
+void Solver::setAssumptions(const LitVec& assumps) {
   clearAssumptions();
   if (assumps.empty()) return;
   for (Lit l : assumps) {
@@ -886,9 +886,9 @@ bool Solver::assumptionsClashWithUnits() const {
 
 int Solver::getNbUnits() const { return trail.size(); }
 
-std::vector<Lit> Solver::getUnits() const {
+LitVec Solver::getUnits() const {
   if (decisionLevel() == 0) return trail;
-  std::vector<Lit> units;
+  LitVec units;
   units.reserve(trail_lim[0]);
   for (int i = 0; i < trail_lim[0]; ++i) {
     Lit l = trail[i];
@@ -898,7 +898,7 @@ std::vector<Lit> Solver::getUnits() const {
   return units;
 }
 
-const std::vector<Lit>& Solver::getLastSolution() const {
+const LitVec& Solver::getLastSolution() const {
   assert(foundSolution());
   return lastSol;
 }
@@ -1392,7 +1392,7 @@ void Solver::probeRestart(Lit next) {
       trailSet.add(trail[i]);
     }
     backjumpTo(0);
-    std::vector<Lit> newUnits;
+    LitVec newUnits;
     State state2 = probe(next, true);
     if (state2 == State::SUCCESS) {
       for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
@@ -1428,7 +1428,7 @@ void Solver::probeRestart(Lit next) {
   }
 }
 
-void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vector<Lit>& previousProbe) {
+void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, LitVec& previousProbe) {
   assert(decisionLevel() == 0);
   DetTime currentDetTime = global.stats.getDetTime();
   DetTime oldDetTime = currentDetTime;
@@ -1439,7 +1439,7 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
   }
 
   // find candidates
-  std::vector<Lit> candidates = {};
+  LitVec candidates = {};
   assert(decisionLevel() == 1);
   candidates.reserve(trail.size() - trail_lim[0]);
   for (int i = trail_lim[0] + 1; i < (int)trail.size(); ++i) {
@@ -1467,7 +1467,7 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
   }
 
   // check whether at least three of them form a clique
-  std::vector<Lit> cardLits = {seed};  // clique so far
+  LitVec cardLits = {seed};  // clique so far
   std::sort(candidates.begin(), candidates.end(),
             [&](Lit x, Lit y) { return getHeuristic().getActivity(toVar(x)) < getHeuristic().getActivity(toVar(y)); });
   assert(candidates.size() <= 1 ||
@@ -1536,7 +1536,7 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vect
 void Solver::runAtMostOneDetection() {
   assert(decisionLevel() == 0);
   int currentUnits = trail.size();
-  std::vector<Lit> previous;
+  LitVec previous;
   unordered_set<Lit> considered;
   Lit next = heur.firstInActOrder();
   while (next != 0 &&

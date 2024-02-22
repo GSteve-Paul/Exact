@@ -361,7 +361,7 @@ SMALL ConstrExp<SMALL, LARGE>::nthCoef(int i) const {  // TODO: refactor other u
 }
 
 template <typename SMALL, typename LARGE>
-SMALL ConstrExp<SMALL, LARGE>::getLargestCoef(const std::vector<Var>& vs) const {
+SMALL ConstrExp<SMALL, LARGE>::getLargestCoef(const VarVec& vs) const {
   SMALL result = 0;
   for (Var v : vs) result = std::max(result, aux::abs(coefs[v]));
   return result;
@@ -449,7 +449,7 @@ bool ConstrExp<SMALL, LARGE>::isInconsistency() const {
 }
 
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::isSatisfied(const std::vector<Lit>& assignment) const {
+bool ConstrExp<SMALL, LARGE>::isSatisfied(const LitVec& assignment) const {
   LARGE eval = -degree;
   for (Var v : vars) {
     if (assignment[v] == getLit(v)) eval += aux::abs(coefs[v]);
@@ -671,7 +671,7 @@ bool ConstrExp<SMALL, LARGE>::hasNoZeroes() const {
 // @post: preserves order of vars
 // NOTE: other variables should already be saturated, otherwise proof logging will break
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, bool sorted) {
+void ConstrExp<SMALL, LARGE>::saturate(const VarVec& vs, bool check, bool sorted) {
   global.stats.NSATURATESTEPS += vs.size();
   assert(check || !sorted);
   if (vars.empty() || (sorted && aux::abs(coefs[vars[0]]) <= degree) ||
@@ -1172,7 +1172,7 @@ AssertionStatus ConstrExp<SMALL, LARGE>::isAssertingBefore(const IntMap<int>& le
 // @return: whether or not the constraint is asserting at that level
 template <typename SMALL, typename LARGE>
 std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
-                                                                 std::vector<Lit>& litsByPos) const {
+                                                                 LitVec& litsByPos) const {
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
   assert(hasNoUnits(level));
@@ -1531,7 +1531,7 @@ void ConstrExpSuper::reverseOrder() {
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::toStreamAsOPBlhs(std::ostream& o, bool withConstant) const {
-  std::vector<Var> vs = vars;
+  VarVec vs = vars;
   std::sort(vs.begin(), vs.end(), [](Var v1, Var v2) { return v1 < v2; });
   for (Var v : vs) {
     Lit l = getLit(v);
@@ -1552,7 +1552,7 @@ void ConstrExp<SMALL, LARGE>::toStreamAsOPB(std::ostream& o) const {
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::toStreamWithAssignment(std::ostream& o, const IntMap<int>& level,
                                                      const std::vector<int>& pos) const {
-  std::vector<Var> vs = vars;
+  VarVec vs = vars;
   std::sort(vs.begin(), vs.end(), [](Var v1, Var v2) { return v1 < v2; });
   for (Var v : vs) {
     Lit l = getLit(v);
@@ -1567,7 +1567,7 @@ void ConstrExp<SMALL, LARGE>::toStreamWithAssignment(std::ostream& o, const IntM
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::toStreamPure(std::ostream& o) const {
-  std::vector<Var> vs = vars;
+  VarVec vs = vars;
   for (Var v : vs) {
     Lit l = getLit(v);
     o << (l == 0 ? std::pair<SMALL, Lit>{0, v} : std::pair<SMALL, Lit>{getCoef(l), l}) << " ";

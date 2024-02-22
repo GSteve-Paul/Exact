@@ -62,9 +62,9 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   return o;
 }
 
-std::vector<Lit> val2lits(const IntVar* iv, const bigint& val) {
-  const std::vector<Var>& encoding = iv->getEncodingVars();
-  std::vector<Lit> res;
+LitVec val2lits(const IntVar* iv, const bigint& val) {
+  const VarVec& encoding = iv->getEncodingVars();
+  LitVec res;
   res.reserve(encoding.size());
   if (iv->getEncoding() == Encoding::LOG) {
     bigint value = val - iv->getLowerBound();
@@ -91,8 +91,7 @@ std::vector<Lit> val2lits(const IntVar* iv, const bigint& val) {
   return res;
 }
 
-void log2assumptions(const std::vector<Var>& encoding, const bigint& value, const bigint& lowerbound,
-                     xct::IntSet& assumptions) {
+void log2assumptions(const VarVec& encoding, const bigint& value, const bigint& lowerbound, xct::IntSet& assumptions) {
   bigint val = value - lowerbound;
   assert(val >= 0);
   for (Var v : encoding) {
@@ -158,7 +157,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
   }
 }
 
-bigint IntVar::getValue(const std::vector<Lit>& sol) const {
+bigint IntVar::getValue(const LitVec& sol) const {
   bigint val = getLowerBound();
   if (encoding == Encoding::LOG) {
     bigint base = 1;
@@ -580,12 +579,12 @@ void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_b
     multiplications.back().push_back(upper_bound);
   }
 
-  std::vector<std::pair<bigint, std::vector<Var>>> terms = {{1, {}}};
-  std::vector<std::pair<bigint, std::vector<Var>>> terms_new;
+  std::vector<std::pair<bigint, VarVec>> terms = {{1, {}}};
+  std::vector<std::pair<bigint, VarVec>> terms_new;
   for (IntVar* f : factors) {
     assert(terms_new.empty());
     terms_new.reserve(terms.size());
-    for (const std::pair<bigint, std::vector<Var>>& t : terms) {
+    for (const std::pair<bigint, VarVec>& t : terms) {
       if (f->getLowerBound() != 0) terms_new.emplace_back(f->getLowerBound() * t.first, t.second);
       if (f->getRange() == 0) continue;
       if (f->getEncoding() == Encoding::LOG) {
@@ -614,9 +613,16 @@ void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_b
   ConstrSimple32 clause;
   std::vector<TermArb> lhs;
   lhs.reserve(terms.size());
-  for (const std::pair<bigint, std::vector<Var>>& t : terms) {
+  for (std::pair<bigint, VarVec>& t : terms) {
     assert(t.first != 0);
-    Var aux = solver.addVar(true);
+    std::sort(t.second.begin(), t.second.end());
+    Var aux;
+    if (multAuxs.contains(t.second)) {
+      aux = multAuxs[t.second];
+    } else {
+      aux = solver.addVar(true);
+      multAuxs[t.second] = aux;
+    }
     lhs.emplace_back(t.first, aux);
     clause.reset();
     clause.rhs = 1;
@@ -664,7 +670,7 @@ void ILP::fix(IntVar* iv, const bigint& val) { addConstraint(IntConstraint{{1}, 
 void ILP::invalidateLastSol() {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to add objective bound.");
 
-  std::vector<Var> vars;
+  VarVec vars;
   vars.reserve(name2var.size());
   for (const auto& tup : name2var) {
     aux::appendTo(vars, tup.second->getEncodingVars());
@@ -675,7 +681,7 @@ void ILP::invalidateLastSol() {
 void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag) {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to add objective bound.");
 
-  std::vector<Var> vars;
+  VarVec vars;
   vars.reserve(ivs.size() + (flag != 0));
   for (IntVar* iv : ivs) {
     aux::appendTo(vars, iv->getEncodingVars());

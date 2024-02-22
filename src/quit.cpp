@@ -69,7 +69,7 @@ namespace xct {
 
 std::atomic<bool> asynch_interrupt(false);
 
-void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) {
+void quit::printLits(const LitVec& lits, char pre, bool onlyPositive) {
   std::cout << pre;
   for (Lit l : lits) {
     if (l == 0 || (onlyPositive && l < 0)) continue;
@@ -78,7 +78,7 @@ void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) 
   std::cout << std::endl;
 }
 
-void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
+void quit::printLitsMaxsat(const LitVec& lits, const ILP& ilp) {
   std::cout << "v ";
   for (Var v = 1; v <= ilp.getMaxSatVars(); ++v) {
     std::cout << (lits[v] > 0);

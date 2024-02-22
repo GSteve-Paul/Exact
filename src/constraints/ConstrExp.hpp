@@ -83,7 +83,7 @@ struct IntSet;
 struct ConstrExpSuper {
   // protected:
   // for some reason (templates?) copyTo_ cannot acces external vars and indexes if protected
-  std::vector<Var> vars;   // variables in the constraint
+  VarVec vars;             // variables in the constraint
   std::vector<int> index;  // maps variables to their index in vars, -1 implies the variable has coefficient 0
 
  public:
@@ -96,7 +96,7 @@ struct ConstrExpSuper {
 
   int nVars() const { return vars.size(); }
   int nNonZeroVars() const;
-  const std::vector<Var>& getVars() const { return vars; }
+  const VarVec& getVars() const { return vars; }
   bool used(Var v) const { return index[v] >= 0; }
   void reverseOrder();
 
@@ -141,7 +141,7 @@ struct ConstrExpSuper {
   virtual bool hasNegativeSlack(const IntMap<int>& level) const = 0;
   virtual bool isTautology() const = 0;
   virtual bool isInconsistency() const = 0;
-  virtual bool isSatisfied(const std::vector<Lit>& assignment) const = 0;
+  virtual bool isSatisfied(const LitVec& assignment) const = 0;
   virtual unsigned int getLBD(const IntMap<int>& level) const = 0;
 
   virtual void removeUnitsAndZeroes(const IntMap<int>& level, const std::vector<int>& pos) = 0;
@@ -150,7 +150,7 @@ struct ConstrExpSuper {
   virtual void removeEqualities(Equalities& equalities, bool saturate) = 0;
   virtual void selfSubsumeImplications(const Implications& implications) = 0;
 
-  virtual void saturate(const std::vector<Var>& vs, bool check, bool sorted) = 0;
+  virtual void saturate(const VarVec& vs, bool check, bool sorted) = 0;
   virtual void saturate(bool check, bool sorted) = 0;
   virtual bool isSaturated() const = 0;
   virtual bool isSaturated(const aux::predicate<Lit>& toWeaken) const = 0;
@@ -164,7 +164,7 @@ struct ConstrExpSuper {
   virtual bool divideTo(double limit, const aux::predicate<Lit>& toWeaken) = 0;
   virtual AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const = 0;
   virtual std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
-                                                  std::vector<Lit>& litsByPos) const = 0;
+                                                  LitVec& litsByPos) const = 0;
   virtual bool falsifiedBy(const IntSet& assumptions) const = 0;
   virtual void heuristicWeakening(const IntMap<int>& level, const std::vector<int>& pos) = 0;
 
@@ -254,7 +254,7 @@ struct ConstrExp final : public ConstrExpSuper {
   SMALL getCoef(Lit l) const;
   SMALL absCoef(Var v) const;
   SMALL nthCoef(int i) const;
-  SMALL getLargestCoef(const std::vector<Var>& vs) const;
+  SMALL getLargestCoef(const VarVec& vs) const;
   SMALL getLargestCoef() const;
   SMALL getSmallestCoef() const;
   LARGE getCutoffVal() const;
@@ -274,7 +274,7 @@ struct ConstrExp final : public ConstrExpSuper {
   bool hasNegativeSlack(const IntMap<int>& level) const;
   bool isTautology() const;
   bool isInconsistency() const;
-  bool isSatisfied(const std::vector<Lit>& assignment) const;
+  bool isSatisfied(const LitVec& assignment) const;
   unsigned int getLBD(const IntMap<int>& level) const;
 
   // @post: preserves order of vars
@@ -288,7 +288,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void selfSubsumeImplications(const Implications& implications);
 
   // @post: preserves order of vars
-  void saturate(const std::vector<Var>& vs, bool check, bool sorted);
+  void saturate(const VarVec& vs, bool check, bool sorted);
   void saturate(Var v);
   void saturate(bool check, bool sorted);
   bool isSaturated() const;
@@ -354,7 +354,7 @@ struct ConstrExp final : public ConstrExpSuper {
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level
   std::pair<int, bool> getAssertionStatus(const IntMap<int>& level, const std::vector<int>& pos,
-                                          std::vector<Lit>& litsByPos) const;
+                                          LitVec& litsByPos) const;
   bool falsifiedBy(const IntSet& assumptions) const;
   // @post: preserves order after removeZeroes()
   void weakenNonImplied(const IntMap<int>& level, const LARGE& slack);
@@ -586,7 +586,7 @@ struct ConstrExp final : public ConstrExpSuper {
     // add reason to conflict
     addUp(reason);
 
-    std::vector<Var>& varsToCheck = oldDegree <= getDegree() ? reason->vars : vars;
+    VarVec& varsToCheck = oldDegree <= getDegree() ? reason->vars : vars;
     SMALL largestCF = getLargestCoef(varsToCheck);
     if (largestCF > getDegree()) {
       saturate(varsToCheck, false, false);

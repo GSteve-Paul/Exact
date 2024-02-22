@@ -53,8 +53,8 @@ struct IntVar {
   [[nodiscard]] bool isBoolean() const { return lowerBound == 0 && upperBound == 1; }
 
   [[nodiscard]] Encoding getEncoding() const { return encoding; }
-  [[nodiscard]] const std::vector<Var>& getEncodingVars() const { return encodingVars; }
-  [[nodiscard]] bigint getValue(const std::vector<Lit>& sol) const;
+  [[nodiscard]] const VarVec& getEncodingVars() const { return encodingVars; }
+  [[nodiscard]] bigint getValue(const LitVec& sol) const;
 
  private:
   const std::string name;
@@ -62,7 +62,7 @@ struct IntVar {
   const bigint upperBound;
 
   const Encoding encoding;
-  std::vector<Var> encodingVars;
+  VarVec encodingVars;
 };
 std::ostream& operator<<(std::ostream& o, const IntVar& x);
 std::ostream& operator<<(std::ostream& o, IntVar* x);
@@ -132,6 +132,10 @@ class ILP {
   int64_t nConstrs = 0;
 
   xct::IntSet assumptions;
+  struct intvechash {
+    size_t operator()(const std::vector<int32_t>& t) const { return xct::aux::hashForList<int32_t>(t); }
+  };
+  unordered_map<VarVec, Var, intvechash> multAuxs;
 
   // only for printing purposes:
   const bool keepInput;

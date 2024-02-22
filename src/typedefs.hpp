@@ -74,6 +74,8 @@ inline bool isValid(ID id) { return id > 0 && id < ID_Undef; }
 using Var = int32_t;
 using Lit = int32_t;
 inline Var toVar(Lit l) { return std::abs(l); }
+using VarVec = std::vector<Var>;
+using LitVec = std::vector<Lit>;
 
 const int32_t resize_factor = 2;
 

@@ -427,7 +427,7 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::boundObjByLastSol() {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to add objective bound.");
-  const std::vector<Lit>& sol = solver.getLastSolution();
+  const LitVec& sol = solver.getLastSolution();
 
   upper_bound = -origObj->getRhs();
   for (Var v : origObj->getVars()) upper_bound += sol[v] > 0 ? origObj->coefs[v] : 0;
@@ -516,7 +516,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
         std::sort(litcoefs.begin(), litcoefs.end(), [](const Term<double>& t1, const Term<double>& t2) {
           return t1.c > t2.c || (t1.c == t2.c && t1.l < t2.l);
         });
-        std::vector<Lit> assumps = assumptions.getKeys();
+        LitVec assumps = assumptions.getKeys();
         assumps.reserve(assumps.size() + litcoefs.size());
         for (const Term<double>& t : litcoefs) assumps.push_back(-reformObj->getLit(t.l));
         solver.setAssumptions(assumps);
