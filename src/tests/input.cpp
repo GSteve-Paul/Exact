@@ -61,24 +61,21 @@ TEST_CASE("multiplication") {
   CHECK(propres == std::vector<std::pair<bigint, bigint>>{{-180, 240}});
 }
 
-TEST_CASE("multiplication") {
+TEST_CASE("multiplication edge cases") {
   Options opts;
   ILP ilp(opts);
-  std::vector<IntVar*> vars;
-  vars.reserve(5);
-  vars.push_back(ilp.addVar("a", -3, 4, Encoding::LOG));
-  vars.push_back(ilp.addVar("b", -2, 5, Encoding::ORDER));
-  vars.push_back(ilp.addVar("c", -1, 6, Encoding::ONEHOT));
-  vars.push_back(ilp.addVar("d", 0, 1, Encoding::ORDER));
-  vars.push_back(ilp.addVar("e", 2, 2, Encoding::ONEHOT));
 
-  IntVar* rhs = ilp.addVar("z", -10000, 10000, Encoding::LOG);
+  IntVar* a = ilp.addVar("a", -2, 2, Encoding::ONEHOT);
+  IntVar* y = ilp.addVar("y", -10, 10, Encoding::LOG);
+  IntVar* z = ilp.addVar("z", -10, 10, Encoding::ORDER);
+  IntVar* q = ilp.addVar("q", -10, 10, Encoding::LOG);
+  IntVar* r = ilp.addVar("r", -10, 10, Encoding::ORDER);
 
-  ilp.addMultiplication(vars, rhs, rhs);
+  ilp.addMultiplication({}, q, r);
+  ilp.addMultiplication({a}, y, z);
 
-  CHECK(ilp.count(vars, true).second == 1024);
-  auto propres = ilp.propagate({rhs}, true);
-  std::cout << propres << std::endl;
+  auto propres = ilp.propagate({a, q, r, y, z}, true);
+  CHECK(propres == std::vector<std::pair<bigint, bigint>>{{-2, 2}, {-10, 1}, {1, 10}, {-10, 2}, {-2, 10}});
 }
 
 TEST_SUITE_END();

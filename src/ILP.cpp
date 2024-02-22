@@ -557,8 +557,18 @@ void ILP::addLeftReification(IntVar* head, const IntConstraint& ic) {
 }
 
 void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_bound, IntVar* upper_bound) {
-  // TODO: add special cases for when factors is one or empty?
   if (!lower_bound && !upper_bound) return;
+  if (factors.empty()) {
+    if (lower_bound) addConstraint(IntConstraint({1}, {lower_bound}, {}, std::nullopt, 1));
+    if (upper_bound) addConstraint(IntConstraint({1}, {upper_bound}, {}, 1));
+    return;
+  }
+  if (factors.size() == 1) {
+    if (lower_bound) addConstraint(IntConstraint({1, -1}, {factors.back(), lower_bound}, {}, 0));
+    if (upper_bound) addConstraint(IntConstraint({1, -1}, {factors.back(), upper_bound}, {}, std::nullopt, 0));
+    return;
+  }
+
   std::vector<std::pair<bigint, std::vector<Var>>> terms = {{1, {}}};
   std::vector<std::pair<bigint, std::vector<Var>>> terms_new;
   for (IntVar* f : factors) {
