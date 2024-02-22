@@ -909,7 +909,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
     popLast();
   }
   assert(hasNoZeroes());
-  
+
   // std::cout << "in weakenDivideRoundOrdered: " << std::endl;
   // toStreamPure(std::cout);
   // std::cout << "\n" << std::endl;
@@ -1271,20 +1271,20 @@ void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const
   for (int i = vars.size() - 1; i >= 0 && am > 0; --i) {
     Var v = vars[i];
     if (coefs[v] != 0 && !falsified(level, v) && getLit(v) != asserting) {
-      if (aux::abs(coefs[v]) < am) { 
+      if (aux::abs(coefs[v]) < am) {
         am -= aux::abs(coefs[v]);
         // std::cout << "weakened: " << v << std::endl;
         // std::cout << "coefs[v]: " << coefs[v] << std::endl;
         // std::cout << "am: " << am << std::endl;
-        weaken(v); 
-      } else { 
+        weaken(v);
+      } else {
         // std::cout << "weakened partially: " << v << std::endl;
         // std::cout << "coefs[v]: " << coefs[v] << std::endl;
         // std::cout << "am: " << am << std::endl;
         weaken(coefs[v] < 0 ? am : -am, v);
         am = 0;
         removeZeroes();
-        fixOrderAtIndex(i); 
+        fixOrderAtIndex(i);
       }
     }
   }
@@ -1558,7 +1558,7 @@ void ConstrExp<SMALL, LARGE>::fixOrderAtIndex(const int index) {
   assert(index >= 0 && index < (int)vars.size());
   Var checking = vars[index];
   SMALL checkingCoef = absCoef(checking);
-  for (int i = index; i < vars.size() - 1 && absCoef(vars[i+1]) > checkingCoef; i++) {
+  for (int i = index; i < vars.size() - 1 && absCoef(vars[i + 1]) > checkingCoef; i++) {
     std::swap(vars[i], vars[i + 1]);
   }
   assert(isSortedInDecreasingCoefOrder());

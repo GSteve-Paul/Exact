@@ -26,7 +26,6 @@ or run with the flag --license=AGPLv3. If not, see
 using namespace xct;
 
 int main(int argc, char** argv) {
-
   // Global global;
   // ConstrExp32 ce32(global);
 
@@ -40,7 +39,6 @@ int main(int argc, char** argv) {
   // reason->addLhs(2, 4);
   // reason->addLhs(1, 5);
   // reason->addRhs(6); // reason = 5a+5b+3c+2d+e>=6
-
 
   // Ce32 confl = global.cePools.take32();
 
@@ -100,7 +98,6 @@ int main(int argc, char** argv) {
   // std::cout << "confl coeff: " << conflCoef << std::endl;
   // // std::cout << "reason coeff: " << reasonCoef << std::endl;
 
-
   // // if (strcmp(argv[1], "mult") == 0) std::cout << "multiplied reason: " << std::endl;
 
   // // std::cout << argc << std::endl;
@@ -108,7 +105,6 @@ int main(int argc, char** argv) {
   // // for (int i = 0; i < argc; i++) {
   // //   std::cout << argv[i] << std::endl;
   // // }
-
 
   // const int reasonCoef = reason->getCoef(asserting); // 5
   // std::cout << "reason coeff: " << reasonCoef << "\n" << std::endl;
@@ -126,14 +122,14 @@ int main(int argc, char** argv) {
 
   // int reasonSlack = reason->getSlack(level); // rslack=3
   // std::cout << "reason slack: " << reasonSlack << "\n" << std::endl;
-  
+
   // int conflSlack = confl->getSlack(level); // cslack=-5
   // std::cout << "confl slack: " << conflSlack << "\n" << std::endl;
 
   // int reasonDeg = reason->getDegree(); // rdeg=6
   // std::cout << "reason deg: " << reasonDeg << "\n" << std::endl;
 
-  // // new_slack = nu*reasonslack + mu*conflictslack 
+  // // new_slack = nu*reasonslack + mu*conflictslack
   // // weakenen = nu*reasondeg - mu*conflictcoef
   // // saturate = nu*rcoef - mu*ccoef
 
@@ -237,8 +233,6 @@ int main(int argc, char** argv) {
   //     }
   //   }
   // }
-
-
 
   // // for (Var v : reason->vars) {
   // //   Lit ll = reason->getLit(v);

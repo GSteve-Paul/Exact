@@ -215,7 +215,7 @@ std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce);
 std::ostream& operator<<(std::ostream& o, const CeSuper& ce);
 
 template <typename SMALL, typename LARGE>  // LARGE should be able to fit the sum of 2^32 SMALLs
-struct ConstrExp final : public ConstrExpSuper {
+struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<ConstrExp<SMALL, LARGE>> {
  public:
   LARGE degree = 0;
   LARGE rhs = 0;
@@ -503,7 +503,8 @@ struct ConstrExp final : public ConstrExpSuper {
     // negation of asserting literal has positive coefficient in conflict
     SMALL conflCoef = getCoef(-asserting);
     assert(conflCoef > 0);
-    if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0 if it wasn't then it the literal wouldn't propagate
+    if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0 if it wasn't then it
+                                            // the literal wouldn't propagate
       reason->multiply(conflCoef);
       assert(reason->getSlack(level) <= 0);
       ++global.stats.NNONMULTWEAKEN;
@@ -527,7 +528,7 @@ struct ConstrExp final : public ConstrExpSuper {
           nu = aux::ceildiv(conflCoef, reasonCoef);
         }
 
-        assert(nu*reasonCoef >= mu*conflCoef);
+        assert(nu * reasonCoef >= mu * conflCoef);
 
         CePtr<SMALL, LARGE> indirectReason = global.cePools.take<SMALL, LARGE>();
         CePtr<SMALL, LARGE> directReason = global.cePools.take<SMALL, LARGE>();
@@ -550,7 +551,7 @@ struct ConstrExp final : public ConstrExpSuper {
         SMALL amountIndirect = static_cast<SMALL>(indirectReason->getDegree() - conflCoef);
         SMALL amountDirect = reasonCoef - conflCoef;
 
-        LARGE reasonSlack = nu*(reason->getSlack(level));
+        LARGE reasonSlack = nu * (reason->getSlack(level));
         // LARGE conflSlack = getSlack(level);
 
         bool flagIndirect = false;
@@ -564,13 +565,15 @@ struct ConstrExp final : public ConstrExpSuper {
           indirectReason->saturate(true, false);
           indirectConfl->addUp(indirectReason);
 
-          std::vector<Var>& varsToCheckIndirect = oldDegree <= indirectConfl->getDegree() ? indirectReason->vars : indirectConfl->vars;
+          std::vector<Var>& varsToCheckIndirect =
+              oldDegree <= indirectConfl->getDegree() ? indirectReason->vars : indirectConfl->vars;
           largestCF = indirectConfl->getLargestCoef(varsToCheckIndirect);
           if (largestCF > indirectConfl->getDegree()) {
             indirectConfl->saturate(varsToCheckIndirect, false, false);
             largestCF = static_cast<SMALL>(indirectConfl->getDegree());
           }
-          indirectConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
+          indirectConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
+                                     largestCF, 0);
           if (indirectConfl->getSlack(level) <= 0) {
             flagIndirect = true;
           }
@@ -582,13 +585,15 @@ struct ConstrExp final : public ConstrExpSuper {
           directReason->saturate(true, false);
           directConfl->addUp(directReason);
 
-          std::vector<Var>& varsToCheckDirect = oldDegree <= directConfl->getDegree() ? directReason->vars : directConfl->vars;
+          std::vector<Var>& varsToCheckDirect =
+              oldDegree <= directConfl->getDegree() ? directReason->vars : directConfl->vars;
           largestCF = directConfl->getLargestCoef(varsToCheckDirect);
           if (largestCF > directConfl->getDegree()) {
             directConfl->saturate(varsToCheckDirect, false, false);
             largestCF = static_cast<SMALL>(directConfl->getDegree());
           }
-          directConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
+          directConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
+                                   largestCF, 0);
           if (directConfl->getSlack(level) <= 0) {
             flagDirect = true;
           }
@@ -598,20 +603,20 @@ struct ConstrExp final : public ConstrExpSuper {
 
         if (flagIndirect && flagDirect) {
           if (indirectConfl->getStrength() >= directConfl->getStrength()) {
-            indirectConfl->copyTo(this);
+            indirectConfl->copyTo(this->shared_from_this());
             returnval = indirectReason->getLBD(level);
             ++global.stats.NINDIRECTWEAKEN;
           } else {
-            directConfl->copyTo(this);
+            directConfl->copyTo(this->shared_from_this());
             returnval = directReason->getLBD(level);
             ++global.stats.NDIRECTWEAKEN;
           }
         } else if (flagIndirect) {
-          indirectConfl->copyTo(this);
+          indirectConfl->copyTo(this->shared_from_this());
           returnval = indirectReason->getLBD(level);
           ++global.stats.NINDIRECTWEAKEN;
         } else if (flagDirect) {
-          directConfl->copyTo(this);
+          directConfl->copyTo(this->shared_from_this());
           returnval = directReason->getLBD(level);
           ++global.stats.NDIRECTWEAKEN;
         } else {
@@ -619,8 +624,7 @@ struct ConstrExp final : public ConstrExpSuper {
         }
 
         return returnval;
-        
-      } 
+      }
       if (!cond || !global.options.multWeaken) {
         // std::cout << "reason after abort: " << std::endl;
         // reason->toStreamPure(std::cout);
@@ -633,7 +637,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
         if (global.options.multBeforeDiv) {
           reason->multiply(conflCoef);
-        } 
+        }
         const SMALL reasonCoef = reason->getCoef(asserting);
         assert(reasonCoef > 0);
         if (global.options.division.is("rto")) {
@@ -648,7 +652,7 @@ struct ConstrExp final : public ConstrExpSuper {
             assert(reason->getSlack(level) <= 0);
           } else {
             assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
-                  reasonCoef / (reasonSlack + 1) >= conflCoef);
+                   reasonCoef / (reasonSlack + 1) >= conflCoef);
             assert(!global.options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
             SMALL gcd = global.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
             const SMALL minDiv = reasonCoef / gcd;
