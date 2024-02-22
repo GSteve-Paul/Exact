@@ -43,7 +43,7 @@ TEST_CASE("multiplication simple") {
 
 TEST_CASE("multiplication") {
   Options opts;
-  ILP ilp(opts);
+  ILP ilp(opts, true);
   std::vector<IntVar*> vars;
   vars.reserve(5);
   vars.push_back(ilp.addVar("a", -3, 4, Encoding::LOG));
@@ -59,6 +59,10 @@ TEST_CASE("multiplication") {
   CHECK(ilp.count(vars, true).second == 1024);
   auto propres = ilp.propagate({rhs}, true);
   CHECK(propres == std::vector<std::pair<bigint, bigint>>{{-180, 240}});
+
+  std::stringstream ss;
+  ilp.printInput(ss);
+  CHECK(ss.str() == "OBJ \nz[-1000,1000] =< 1*a[-3,4]*b[-2,5]*c[-1,6]*d[0,1]*e[2,2] =< z[-1000,1000]\n");
 }
 
 TEST_CASE("multiplication edge cases") {

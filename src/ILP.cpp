@@ -495,6 +495,7 @@ void ILP::clearSolutionHints(const std::vector<IntVar*>& ivs) {
 
 void ILP::addConstraint(const IntConstraint& ic) {
   if (ic.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
+  ++nConstrs;
   if (keepInput) constraints.push_back(ic);
   if (ic.getLB().has_value()) {
     CeArb input = global.cePools.takeArb();
@@ -519,6 +520,7 @@ void ILP::addRightReification(IntVar* head, const IntConstraint& ic) {
   if (ic.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
+  ++nConstrs;
   if (keepInput) reifications.push_back({head, ic});
 
   bool run[2] = {ic.getUB().has_value(), ic.getLB().has_value()};
@@ -539,6 +541,7 @@ void ILP::addLeftReification(IntVar* head, const IntConstraint& ic) {
   if (ic.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
+  ++nConstrs;
   if (keepInput) reifications.push_back({head, ic});
 
   bool run[2] = {ic.getUB().has_value(), ic.getLB().has_value()};
@@ -567,6 +570,14 @@ void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_b
     if (lower_bound) addConstraint(IntConstraint({1, -1}, {factors.back(), lower_bound}, {}, 0));
     if (upper_bound) addConstraint(IntConstraint({1, -1}, {factors.back(), upper_bound}, {}, std::nullopt, 0));
     return;
+  }
+
+  ++nConstrs;
+  if (keepInput) {
+    multiplications.push_back(factors);
+    multiplications.back().reserve(factors.size() + 2);
+    multiplications.back().push_back(lower_bound);
+    multiplications.back().push_back(upper_bound);
   }
 
   std::vector<std::pair<bigint, std::vector<Var>>> terms = {{1, {}}};
@@ -719,20 +730,40 @@ std::ostream& ILP::printInput(std::ostream& out) const {
   out << "OBJ ";
   lhs2str(out, obj);
   out << std::endl;
-  std::vector<std::string> reifics;
+
+  std::vector<std::string> strs;
   for (const auto& pr : reifications) {
     std::stringstream ss;
     ss << *pr.first << " <=> " << pr.second;
-    reifics.push_back(ss.str());
+    strs.push_back(ss.str());
   }
-  std::sort(reifics.begin(), reifics.end());
-  for (const std::string& s : reifics) out << s << std::endl;
-  std::vector<std::string> constrs;
+  std::sort(strs.begin(), strs.end());
+  for (const std::string& s : strs) out << s << std::endl;
+
+  strs.clear();
   for (const IntConstraint& ic : constraints) {
-    constrs.push_back(aux::str(ic));
+    strs.push_back(aux::str(ic));
   }
-  std::sort(constrs.begin(), constrs.end());
-  for (const std::string& s : constrs) out << s << std::endl;
+  std::sort(strs.begin(), strs.end());
+  for (const std::string& s : strs) out << s << std::endl;
+
+  strs.clear();
+  for (const std::vector<IntVar*>& m : multiplications) {
+    assert(m.size() > 3);  // at least two factors and two bounds
+    std::stringstream ss;
+    IntVar* lower_bound = m.at(m.size() - 2);
+    IntVar* upper_bound = m.at(m.size() - 1);
+    if (lower_bound) ss << lower_bound << " =< ";
+    ss << "1";
+    for (int64_t i = 0; i < (int64_t)m.size() - 2; ++i) {
+      ss << "*" << m[i];
+    }
+    if (upper_bound) ss << " =< " << upper_bound;
+    strs.push_back(ss.str());
+  }
+  std::sort(strs.begin(), strs.end());
+  for (const std::string& s : strs) out << s << std::endl;
+
   return out;
 }
 
@@ -745,7 +776,7 @@ std::ostream& ILP::printVars(std::ostream& out) const {
 
 long long ILP::getNbVars() const { return vars.size(); }
 
-long long ILP::getNbConstraints() const { return reifications.size() + constraints.size(); }
+long long ILP::getNbConstraints() const { return nConstrs; }
 
 bigint ILP::getSolSpaceSize() const {
   bigint total = 0;

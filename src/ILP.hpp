@@ -129,6 +129,7 @@ class ILP {
   unordered_map<Var, IntVar*> var2var;
 
   int maxSatVars = -1;
+  int64_t nConstrs = 0;
 
   xct::IntSet assumptions;
 
@@ -136,6 +137,7 @@ class ILP {
   const bool keepInput;
   std::vector<IntConstraint> constraints;
   std::vector<std::pair<IntVar*, IntConstraint>> reifications;
+  std::vector<std::vector<IntVar*>> multiplications;  // last two are bounds
 
   IntVar* addFlag();
   Var fixObjective(const IntConstraint& ico, const bigint& opt);
