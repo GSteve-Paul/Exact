@@ -44,21 +44,21 @@ std::ostream& operator<<(std::ostream& o, const IntVar& x) {
 }
 std::ostream& operator<<(std::ostream& o, IntVar* x) { return o << *x; }
 std::ostream& operator<<(std::ostream& o, const IntTerm& x) {
-  return o << (x.c < 0 ? "" : "+") << (x.c == 1 ? "" : aux::str(x.c) + "*") << (x.negated ? "~" : "") << *x.v;
+  return o << (x.c < 0 ? "" : "+") << (x.c == 1 ? "" : aux::str(x.c) + "*") << *x.v;
 }
 void lhs2str(std::ostream& o, const IntConstraint& x) {
   std::vector<std::string> terms;
-  terms.reserve(x.getLhs().size());
-  for (const IntTerm& t : x.getLhs()) {
+  terms.reserve(x.lhs.size());
+  for (const IntTerm& t : x.lhs) {
     terms.push_back(aux::str(t));
   }
   std::sort(terms.begin(), terms.end());
   for (const std::string& s : terms) o << s << " ";
 }
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
-  if (x.getUB().has_value()) o << x.getUB().value() << " >= ";
+  if (x.upperBound.has_value()) o << x.upperBound.value() << " >= ";
   lhs2str(o, x);
-  if (x.getLB().has_value()) o << ">= " << x.getLB().value();
+  if (x.lowerBound.has_value()) o << ">= " << x.lowerBound.value();
   return o;
 }
 
@@ -194,24 +194,15 @@ bigint IntVar::getValue(const LitVec& sol) const {
 
 Core emptyCore() { return std::make_unique<unordered_set<IntVar*>>(); }
 
-IntConstraint::IntConstraint() : lowerBound(0) {}
-
-IntConstraint::IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                             const std::vector<bool>& negated, const std::optional<bigint>& lb,
-                             const std::optional<bigint>& ub)
-    : lowerBound(lb), upperBound(ub) {
+std::vector<IntTerm> IntConstraint::zip(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars) {
   assert(coefs.size() == vars.size());
-  assert(negated.empty() || negated.size() == coefs.size());
-  lhs.reserve(coefs.size());
+  std::vector<IntTerm> res;
+  res.reserve(coefs.size());
   for (int i = 0; i < (int)coefs.size(); ++i) {
-    lhs.emplace_back(coefs[i], vars[i], !negated.empty() && negated[i]);
+    res.push_back({coefs[i], vars[i]});
   }
-  normalize();
+  return res;
 }
-
-const std::vector<IntTerm>& IntConstraint::getLhs() const { return lhs; }
-const std::optional<bigint>& IntConstraint::getLB() const { return lowerBound; }
-const std::optional<bigint>& IntConstraint::getUB() const { return upperBound; }
 
 const bigint IntConstraint::getRange() const {
   bigint res = 0;
@@ -233,7 +224,8 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
     input->addRhs(upperBound.value());
   }
   for (const IntTerm& t : lhs) {
-    assert(!t.negated);
+    if (t.c == 0) continue;
+    if (t.v->getLowerBound() != 0) input->addRhs(-t.c * t.v->getLowerBound());
     if (t.v->getEncoding() == Encoding::LOG) {
       assert(!t.v->getEncodingVars().empty());
       bigint base = 1;
@@ -259,28 +251,11 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (!useLowerBound) input->invert();
 }
 
-// Normalization removes negated terms and turns the constraint in GTE or EQ
-void IntConstraint::normalize() {
-  for (IntTerm& t : lhs) {
-    if (t.negated) {
-      assert(t.v->isBoolean());
-      t.c = -t.c;
-      if (lowerBound.has_value()) lowerBound = lowerBound.value() + t.c;
-      if (upperBound.has_value()) upperBound = upperBound.value() + t.c;
-      t.negated = false;
-    } else if (t.v->getLowerBound() != 0) {
-      bigint adjustment = -t.c * t.v->getLowerBound();
-      if (lowerBound.has_value()) lowerBound = lowerBound.value() + adjustment;
-      if (upperBound.has_value()) upperBound = upperBound.value() + adjustment;
-    }
-  }
-}
-
-ILP::ILP(const Options& opts, bool keepIn) : global(opts), solver(global), obj({}, {}, {}, 0), keepInput(keepIn) {
+ILP::ILP(const Options& opts, bool keepIn) : global(opts), solver(global), obj(), keepInput(keepIn) {
   global.stats.startTime = std::chrono::steady_clock::now();
   aux::rng::seed = global.options.randomSeed.get();
   global.logger.activate(global.options.proofLog.get(), (bool)global.options.proofZip);
-  setObjective({}, {}, {});
+  setObjective({}, {});
 }
 
 const Solver& ILP::getSolver() const { return solver; }
@@ -315,15 +290,8 @@ std::vector<IntVar*> ILP::getVariables() const {
   return aux::comprehension(name2var, [](auto pair) { return pair.second; });
 }
 
-std::pair<bigint, bigint> ILP::getBounds(IntVar* iv) const { return {iv->getLowerBound(), iv->getUpperBound()}; }
-
-void ILP::setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                       const std::vector<bool>& negated, const bigint& offset) {
-  if (coefs.size() != vars.size() || (!negated.empty() && negated.size() != vars.size())) {
-    throw InvalidArgument("Coefficient, variable, or negated lists differ in size.");
-  }
-
-  obj = IntConstraint(coefs, vars, negated, -offset);
+void ILP::setObjective(const std::vector<IntTerm>& terms, const bigint& offset) {  // TODO: pass IntConstraint?
+  obj = {terms, -offset};
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 IntConstraint& ILP::getObjective() { return obj; }
@@ -496,12 +464,12 @@ void ILP::addConstraint(const IntConstraint& ic) {
   if (ic.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   ++nConstrs;
   if (keepInput) constraints.push_back(ic);
-  if (ic.getLB().has_value()) {
+  if (ic.lowerBound.has_value()) {
     CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, true);
     solver.addConstraint(input, Origin::FORMULA);
   }
-  if (ic.getUB().has_value()) {
+  if (ic.upperBound.has_value()) {
     CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, false);
     solver.addConstraint(input, Origin::FORMULA);
@@ -522,7 +490,7 @@ void ILP::addRightReification(IntVar* head, const IntConstraint& ic) {
   ++nConstrs;
   if (keepInput) reifications.push_back({head, ic});
 
-  bool run[2] = {ic.getUB().has_value(), ic.getLB().has_value()};
+  bool run[2] = {ic.upperBound.has_value(), ic.lowerBound.has_value()};
   for (int i = 0; i < 2; ++i) {
     if (!run[i]) continue;
     CeArb leq = global.cePools.takeArb();
@@ -543,7 +511,7 @@ void ILP::addLeftReification(IntVar* head, const IntConstraint& ic) {
   ++nConstrs;
   if (keepInput) reifications.push_back({head, ic});
 
-  bool run[2] = {ic.getUB().has_value(), ic.getLB().has_value()};
+  bool run[2] = {ic.upperBound.has_value(), ic.lowerBound.has_value()};
   for (int i = 0; i < 2; ++i) {
     if (!run[i]) continue;
     CeArb geq = global.cePools.takeArb();
@@ -561,13 +529,13 @@ void ILP::addLeftReification(IntVar* head, const IntConstraint& ic) {
 void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_bound, IntVar* upper_bound) {
   if (!lower_bound && !upper_bound) return;
   if (factors.empty()) {
-    if (lower_bound) addConstraint(IntConstraint({1}, {lower_bound}, {}, std::nullopt, 1));
-    if (upper_bound) addConstraint(IntConstraint({1}, {upper_bound}, {}, 1));
+    if (lower_bound) addConstraint({{{1, lower_bound}}, std::nullopt, 1});
+    if (upper_bound) addConstraint({{{1, upper_bound}}, 1});
     return;
   }
   if (factors.size() == 1) {
-    if (lower_bound) addConstraint(IntConstraint({1, -1}, {factors.back(), lower_bound}, {}, 0));
-    if (upper_bound) addConstraint(IntConstraint({1, -1}, {factors.back(), upper_bound}, {}, std::nullopt, 0));
+    if (lower_bound) addConstraint({{{1, factors.back()}, {-1, lower_bound}}, 0});
+    if (upper_bound) addConstraint({{{1, factors.back()}, {-1, upper_bound}}, std::nullopt, 0});
     return;
   }
 
@@ -665,7 +633,7 @@ void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_b
   }
 }
 
-void ILP::fix(IntVar* iv, const bigint& val) { addConstraint(IntConstraint{{1}, {iv}, {false}, val, val}); }
+void ILP::fix(IntVar* iv, const bigint& val) { addConstraint(IntConstraint{{{1, iv}}, val, val}); }
 
 void ILP::invalidateLastSol() {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to add objective bound.");
@@ -858,7 +826,7 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
     marker = fixObjective(obj, optval);
     invalidator->addLhs(1, -marker);
     assert(invalidator->isClause());
-    opt = OptimizationSuper::make(IntConstraint(), solver, assumptions);
+    opt = OptimizationSuper::make(IntConstraint{}, solver, assumptions);
   }
 
   result = opt->runFull(false, to.limit);
@@ -916,7 +884,7 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& t
   assumptions.add(flag_v);
   bigint cf = 1 + (keepstate ? objrange : 0);
   assert(cf > 0);
-  objective.lhs.emplace_back(cf, flag, false);
+  objective.lhs.push_back({cf, flag});
   Optim opt = OptimizationSuper::make(objective, solver, assumptions);
   res = opt->runFull(true, to.limit);
   if (res == SolveState::TIMEOUT) {
@@ -963,14 +931,14 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
       bools.push_back(iv);
       consequences[i] = {0, 1};
     } else {
-      IntConstraint varObjPos = IntConstraint({1}, {iv}, {}, 0);
+      IntConstraint varObjPos = {{{1, iv}}, 0};
       auto [lowerstate, lowerbound, optcore1] = toOptimum(varObjPos, true, {false, to.limit});
       if (lowerstate == SolveState::TIMEOUT) {
         assumptions.remove(marker);
         return {};
       }
       assert(lowerstate == SolveState::SAT);
-      IntConstraint varObjNeg = IntConstraint({-1}, {iv}, {}, 0);
+      IntConstraint varObjNeg = {{{-1, iv}}, 0};
       auto [upperstate, upperbound, optcore2] = toOptimum(varObjNeg, true, {false, to.limit});
       if (upperstate == SolveState::TIMEOUT) {
         assumptions.remove(marker);
@@ -979,10 +947,10 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
       assert(upperstate == SolveState::SAT);
       consequences[i] = {lowerbound, -upperbound};
       if (!keepstate && consequences[i].first > iv->getLowerBound()) {
-        addConstraint(IntConstraint({1}, {iv}, {}, consequences[i].first));
+        addConstraint({{{1, iv}}, consequences[i].first});
       }
       if (!keepstate && consequences[i].second < iv->getUpperBound()) {
-        addConstraint(IntConstraint({1}, {iv}, {}, std::nullopt, consequences[i].second));
+        addConstraint({{{1, iv}}, std::nullopt, consequences[i].second});
       }
     }
     assert(consequences[i].first <= consequences[i].second);
@@ -1060,8 +1028,8 @@ Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
   assumptions.add(flag_v);
   if (ico.getRange() > 0) {
     IntConstraint ic = ico;
-    assert(ico.getLB().has_value());
-    ic.upperBound = optval + ico.getLB().value();
+    assert(ico.lowerBound.has_value());
+    ic.upperBound = optval + ico.lowerBound.value();
     ic.lowerBound.reset();
     addRightReification(flag, ic);
   }
@@ -1080,7 +1048,7 @@ std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool 
   Var flag_v = 0;
   if (keepstate) {
     flag_v = fixObjective(obj, optval);
-    opt = OptimizationSuper::make(IntConstraint(), solver, assumptions);
+    opt = OptimizationSuper::make(IntConstraint{}, solver, assumptions);
   }
   int64_t n = 0;
   result = SolveState::SAT;
@@ -1127,7 +1095,7 @@ Core ILP::extractMUS(const TimeOut& to) {
     }
   }
 
-  Optim opt = OptimizationSuper::make(IntConstraint(), solver, newAssumps);
+  Optim opt = OptimizationSuper::make(IntConstraint{}, solver, newAssumps);
 
   while (!toCheck.empty()) {
     IntVar* current = toCheck.back();

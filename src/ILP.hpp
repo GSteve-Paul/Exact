@@ -70,9 +70,6 @@ std::ostream& operator<<(std::ostream& o, IntVar* x);
 struct IntTerm {
   bigint c;
   IntVar* v;
-  bool negated;  // TODO: remove to simplify
-
-  IntTerm(const bigint& val, IntVar* var, bool neg) : c(val), v(var), negated(neg) {}
 };
 std::ostream& operator<<(std::ostream& o, const IntTerm& x);
 
@@ -81,22 +78,14 @@ Core emptyCore();
 
 class ILP;
 
-class IntConstraint {
-  friend class ILP;
-  std::vector<IntTerm> lhs;
-  std::optional<bigint> lowerBound;
-  std::optional<bigint> upperBound;
-
-  void normalize();  // TODO: make IntConstraint stateless and remove this method
-
+struct IntConstraint {
  public:
-  IntConstraint();
-  IntConstraint(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars, const std::vector<bool>& negated,
-                const std::optional<bigint>& lb = std::nullopt, const std::optional<bigint>& ub = std::nullopt);
+  std::vector<IntTerm> lhs = {};
+  std::optional<bigint> lowerBound = 0;
+  std::optional<bigint> upperBound = std::nullopt;
 
-  const std::vector<IntTerm>& getLhs() const;
-  const std::optional<bigint>& getLB() const;
-  const std::optional<bigint>& getUB() const;
+  static std::vector<IntTerm> zip(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars);
+
   const bigint getRange() const;
   int64_t size() const;
 
@@ -160,10 +149,8 @@ class ILP {
                  bool nameAsId = false);
   IntVar* getVarFor(const std::string& name) const;  // returns nullptr if it does not exist
   std::vector<IntVar*> getVariables() const;
-  std::pair<bigint, bigint> getBounds(IntVar* iv) const;
 
-  void setObjective(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars,
-                    const std::vector<bool>& negated, const bigint& offset = 0);
+  void setObjective(const std::vector<IntTerm>& terms, const bigint& offset = 0);
   IntConstraint& getObjective();
   const IntConstraint& getObjective() const;
 

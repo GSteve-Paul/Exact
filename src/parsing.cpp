@@ -152,9 +152,7 @@ IntVar* indexedBoolVar(ILP& ilp, const std::string& name) {
 
 void opb_read(std::istream& in, ILP& ilp) {
   [[maybe_unused]] bool first_constraint = true;
-  std::vector<bigint> coefs;
-  std::vector<IntVar*> vars;
-  std::vector<bool> negated;
+  std::vector<IntTerm> terms;
   bigint lb;
   long long lineNr = -1;
   for (std::string line; getline(in, line);) {
@@ -197,36 +195,34 @@ void opb_read(std::istream& in, ILP& ilp) {
       }
     }
 
-    coefs.clear();
-    vars.clear();
-    negated.clear();
+    terms.clear();
     for (int i = 0; i < (long long)tokens.size(); i += 2) {
       const std::string& var = tokens[i + 1];
       if (var.empty()) {
         throw InvalidArgument("Invalid literal token " + var + " at line " + std::to_string(lineNr));
-      } else if (var[0] != '~' && var[0] != 'x') {
-        lb -= read_bigint(tokens[i], 0) * read_bigint(var, 0);
+      } else if (var[0] == '~') {
+        terms.push_back({-read_bigint(tokens[i], 0), indexedBoolVar(ilp, var.substr(2))});
+        lb += terms.back().c;
+      } else if (var[0] == 'x') {
+        terms.push_back({read_bigint(tokens[i], 0), indexedBoolVar(ilp, var.substr(1))});
       } else {
-        coefs.emplace_back(read_bigint(tokens[i], 0));
-        negated.emplace_back(var[0] == '~');
-        vars.emplace_back(indexedBoolVar(ilp, var.substr(negated.back() + 1)));
+        lb -= read_bigint(tokens[i], 0) * read_bigint(var, 0);
       }
     }
 
     if (opt_line) {
-      ilp.setObjective(coefs, vars, negated, -lb);
+      ilp.setObjective(terms, -lb);
     } else {
-      ilp.addConstraint(IntConstraint{coefs, vars, negated, lb, aux::option(!isInequality, lb)});
+      ilp.addConstraint(IntConstraint{terms, lb, aux::option(!isInequality, lb)});
     }
   }
 }
 
 void wcnf_read(std::istream& in, ILP& ilp) {
-  std::vector<ConstrSimple32> inputs;
   char dummy;
-  std::vector<bigint> objcoefs;
-  std::vector<IntVar*> objvars;
-  std::vector<bool> objnegated;
+  ConstrSimple32 input;
+  std::vector<IntTerm> obj_terms;
+  bigint obj_offset = 0;
   for (std::string line; getline(in, line);) {
     if (line.empty() || line[0] == 'c') continue;
     quit::checkInterrupt(ilp.global);
@@ -236,57 +232,48 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       is >> dummy;
     } else {
       is >> weight;
-      if (weight == 0) continue;
-      if (weight < 0) {
-        throw InvalidArgument("Negative clause weight: " + line);
+      if (weight <= 0) {
+        throw InvalidArgument("Non-positive clause weight: " + line);
       }
     }
-    inputs.emplace_back();
-    ConstrSimple32& input = inputs.back();
+    input.reset();
     input.rhs = 1;
-    objcoefs.push_back(weight);
-    Lit l;
+    Lit l = 0;
     while (is >> l, l) {
+      // TODO: does this capture the case of a multi-line clause (ending at 0)?
       input.terms.push_back({1, l});
       ilp.getSolver().setNbVars(toVar(l), true);
     }
     if (weight == 0) {  // hard clause
       ilp.getSolver().addConstraint(input, Origin::FORMULA);
-      inputs.pop_back();
-      objcoefs.pop_back();
+    } else {
+      if (input.size() == 1) {
+        Lit ll = input.terms.back().l;
+        IntVar* iv = indexedBoolVar(ilp, std::to_string(toVar(ll)));
+        if (ll > 0) {
+          obj_terms.push_back({-weight, iv});
+          obj_offset += weight;
+          // if l is true, toVar(l) is true, the objective contribution will be 0
+          // if l is false, toVar(l) is false, the objective contribution will be weight
+        } else {
+          obj_terms.push_back({weight, iv});
+          // if l is true, toVar(l) is false, the objective contribution will be 0
+          // if l is false, toVar(l) is true, the objective contribution will be weight
+        }
+      } else {
+        Var aux = ilp.getSolver().addVar(true);
+        obj_terms.push_back({weight, indexedBoolVar(ilp, std::to_string(aux))});
+        assert(aux > 0);
+        for (const Term32& t : input.terms) {  // reverse implication as binary clauses
+          ilp.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
+        }
+        input.terms.push_back({1, aux});  // implication
+        ilp.getSolver().addConstraint(input, Origin::FORMULA);
+      }
     }
   }
   ilp.setMaxSatVars();
-  assert(inputs.size() == objcoefs.size());
-  for (ConstrSimple32& input : inputs) {  // soft clauses
-    quit::checkInterrupt(ilp.global);
-    if (input.size() == 1) {  // no need to introduce auxiliary variable
-      objvars.push_back(indexedBoolVar(ilp, std::to_string(toVar(input.terms[0].l))));
-      objnegated.push_back(-input.terms[0].l < 0);
-    } else {
-      Var aux = ilp.getSolver().getNbVars() + 1;
-      ilp.getSolver().setNbVars(aux, true);  // increases n to n+1
-      objvars.push_back(indexedBoolVar(ilp, std::to_string(toVar(aux))));
-      objnegated.push_back(aux < 0);
-      // if (ilp.global.options.test.get()) {
-      for (const Term32& t : input.terms) {  // reverse implication as binary clauses
-        ilp.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
-      }
-      //} else {  // reverse implication as single constraint // TODO: add this one constraint instead?
-      //        ConstrSimple32 reverse;
-      //        reverse.rhs = input.size();
-      //        reverse.terms.reserve(input.size() + 1);
-      //        reverse.terms.push_back({(int) input.size(), -aux});
-      //        for (const Term32& t : input.terms) {
-      //          reverse.terms.push_back({1, -t.l});
-      //        }
-      //        ilp.getSolver().addConstraint(input, Origin::FORMULA);
-      //}
-      input.terms.push_back({1, aux});  // implication
-      ilp.getSolver().addConstraint(input, Origin::FORMULA);
-    }
-  }
-  ilp.setObjective(objcoefs, objvars, objnegated);
+  ilp.setObjective(obj_terms, obj_offset);
 }
 
 void cnf_read(std::istream& in, ILP& ilp) {
@@ -353,7 +340,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     }
     if (std::ceil(upper) < std::floor(upper)) {
       std::cout << "c Conflicting bound on integer variable" << std::endl;
-      ilp.addConstraint(IntConstraint{{}, {}, {}, 1});  // 0>=1 should trigger UNSAT
+      ilp.addConstraint(IntConstraint{{}, {}, 1});  // 0>=1 should trigger UNSAT
     }
     [[maybe_unused]] IntVar* iv =
         ilp.addVar(varname, static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)),
@@ -382,7 +369,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
   }
   bigint offset = coefs.back();
   coefs.pop_back();
-  ilp.setObjective(coefs, vars, {}, offset);
+  ilp.setObjective(IntConstraint::zip(coefs, vars), offset);
 
   // Constraints
   const CoinPackedMatrix* cpm = coinutils.getMatrixByRow();
@@ -413,7 +400,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     coefs.pop_back();
     bigint lb = coefs.back();
     coefs.pop_back();
-    ilp.addConstraint(IntConstraint{coefs, vars, {}, aux::option(useLB, lb), aux::option(useUB, ub)});
+    ilp.addConstraint({IntConstraint::zip(coefs, vars), aux::option(useLB, lb), aux::option(useUB, ub)});
   }
 }
 

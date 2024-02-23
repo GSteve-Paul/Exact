@@ -101,7 +101,7 @@ std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
   return o;
 }
 
-class IntConstraint;
+struct IntConstraint;
 class OptimizationSuper;
 using Optim = std::shared_ptr<OptimizationSuper>;
 
