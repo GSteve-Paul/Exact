@@ -218,9 +218,10 @@ void opb_read(std::istream& in, ILP& ilp) {
   }
 }
 
+// TODO: does this capture the case of a multi-line clause (ending at 0)?
 void wcnf_read(std::istream& in, ILP& ilp) {
+  std::vector<ConstrSimple32> inputs;
   char dummy;
-  ConstrSimple32 input;
   std::vector<IntTerm> obj_terms;
   bigint obj_offset = 0;
   for (std::string line; getline(in, line);) {
@@ -232,61 +233,54 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       is >> dummy;
     } else {
       is >> weight;
-      if (weight <= 0) {
-        throw InvalidArgument("Non-positive clause weight: " + line);
+      if (weight == 0) continue;
+      if (weight < 0) {
+        throw InvalidArgument("Negative clause weight: " + line);
       }
     }
-    input.reset();
+    inputs.emplace_back();
+    ConstrSimple32& input = inputs.back();
     input.rhs = 1;
-    Lit l = 0;
+    obj_terms.push_back({weight, nullptr});
+    Lit l;
     while (is >> l, l) {
-      // TODO: does this capture the case of a multi-line clause (ending at 0)?
-      // NOTE: bug exact/test/instances/wcnf/WCNF_pathways_p02.wcnf --timeout=2  --seed=3
-      /*
-c Foo
-h 1 -2 0
-c Bar
-h 5 0
-c Wiz
-2 -1 0
-1 -2 0
-3 3 0
-c Bang
-2 2 -3 0
-c Wuk
-       */
       input.terms.push_back({1, l});
       ilp.getSolver().setNbVars(toVar(l), true);
     }
     if (weight == 0) {  // hard clause
       ilp.getSolver().addConstraint(input, Origin::FORMULA);
-    } else {
-      if (input.size() == 1) {
-        Lit ll = input.terms.back().l;
-        IntVar* iv = indexedBoolVar(ilp, std::to_string(toVar(ll)));
-        if (ll > 0) {
-          obj_terms.push_back({-weight, iv});
-          obj_offset += weight;
-          // if l is true, toVar(l) is true, the objective contribution will be 0
-          // if l is false, toVar(l) is false, the objective contribution will be weight
-        } else {
-          obj_terms.push_back({weight, iv});
-          // if l is true, toVar(l) is false, the objective contribution will be 0
-          // if l is false, toVar(l) is true, the objective contribution will be weight
-        }
-      } else {
-        Var aux = ilp.getSolver().addVar(true);
-        obj_terms.push_back({weight, indexedBoolVar(ilp, std::to_string(aux))});
-        assert(aux > 0);
-        for (const Term32& t : input.terms) {  // reverse implication as binary clauses
-          ilp.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
-        }
-        input.terms.push_back({1, aux});  // implication
-        ilp.getSolver().addConstraint(input, Origin::FORMULA);
-      }
+      inputs.pop_back();
+      obj_terms.pop_back();
     }
   }
   ilp.setMaxSatVars();
+  // NOTE: to avoid using original maxsat variable indices for auxiliary variables,
+  // introduce auxiliary variables *after* parsing all the original maxsat variables
+  assert(inputs.size() == obj_terms.size());
+  for (int64_t i = inputs.size() - 1; i >= 0; --i) {
+    quit::checkInterrupt(ilp.global);
+    assert(i + 1 == (int64_t)inputs.size());  // each processed input is popped
+    ConstrSimple32& input = inputs[i];
+    if (input.size() == 1) {  // no need to introduce auxiliary variable
+      Lit ll = input.terms[0].l;
+      obj_terms[i].v = indexedBoolVar(ilp, std::to_string(toVar(ll)));
+      if (ll > 0) {
+        const bigint& weight = obj_terms[i].c;
+        obj_offset += weight;
+        obj_terms[i].c = -weight;
+      }
+    } else {
+      Var aux = ilp.getSolver().addVar(true);
+      ilp.getSolver().setNbVars(aux, true);  // increases n to n+1
+      obj_terms[i].v = indexedBoolVar(ilp, std::to_string(toVar(aux)));
+      for (const Term32& t : input.terms) {  // reverse implication as binary clauses
+        ilp.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
+      }
+      input.terms.push_back({1, aux});  // implication
+      ilp.getSolver().addConstraint(input, Origin::FORMULA);
+    }
+    inputs.pop_back();
+  }
   ilp.setObjective(obj_terms, obj_offset);
 }
 
