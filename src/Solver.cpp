@@ -95,7 +95,7 @@ Solver::~Solver() {
   ca.cleanup();
 }
 
-bool Solver::foundSolution() const { return global.stats.NORIGVARS.z == 0 || lastSol.size() > 1; }
+bool Solver::foundSolution() const { return lastSol.has_value(); }
 
 int Solver::getNbVars() const { return n; }
 
@@ -822,7 +822,7 @@ void Solver::invalidateLastSol(const VarVec& vars) {
   invalidator.terms.reserve(global.stats.NORIGVARS.z);
   invalidator.rhs = 1;
   for (Var v : vars) {
-    invalidator.terms.push_back({1, -lastSol[v]});
+    invalidator.terms.push_back({1, -lastSol.value()[v]});
   }
   addConstraint(invalidator, Origin::INVALIDATOR);
 }
@@ -900,7 +900,7 @@ LitVec Solver::getUnits() const {
 
 const LitVec& Solver::getLastSolution() const {
   assert(foundSolution());
-  return lastSol;
+  return lastSol.value();
 }
 
 void Solver::printHeader() const {
@@ -1066,9 +1066,10 @@ double Solver::luby(double y, int i) {
 }
 
 bool Solver::checkSAT() const {
+  if (!foundSolution()) return false;
   return std::all_of(constraints.cbegin(), constraints.cend(), [&](CRef cr) {
     const Constr& c = ca[cr];
-    return c.getOrigin() != Origin::FORMULA || c.toExpanded(global.cePools)->isSatisfied(lastSol);
+    return c.getOrigin() != Origin::FORMULA || c.toExpanded(global.cePools)->isSatisfied(lastSol.value());
   });
 }
 
@@ -1359,9 +1360,10 @@ SolveState Solver::solve() {
       }
       if (next == 0) {
         assert((int)trail.size() == getNbVars());
-        lastSol.resize(getNbVars() + 1);
-        lastSol[0] = 0;
-        for (Var v = 1; v <= getNbVars(); ++v) lastSol[v] = isOrig(v) ? (isTrue(level, v) ? v : -v) : 0;
+        if (!lastSol.has_value()) lastSol = LitVec();
+        lastSol.value().resize(getNbVars() + 1);
+        lastSol.value()[0] = 0;
+        for (Var v = 1; v <= getNbVars(); ++v) lastSol.value()[v] = isOrig(v) ? (isTrue(level, v) ? v : -v) : 0;
         assert(checkSAT());
         backjumpTo(0);
         return SolveState::SAT;

@@ -103,7 +103,7 @@ int quit::exit_SUCCESS(ILP& ilp) {
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
       if (ilp.global.options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
-    } else if (ilp.global.options.fileFormat.is("wcnf")) {
+    } else if (ilp.global.options.fileFormat.is("wcnf") || ilp.global.options.fileFormat.is("cnf")) {
       std::cout << "o " << ilp.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
       if (ilp.global.options.printSol) printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
@@ -132,6 +132,7 @@ int quit::exit_INDETERMINATE(ILP& ilp) {
   ilp.global.logger.flush();
   printFinalStats(ilp);
   if (ilp.getSolver().foundSolution()) {
+    assert(!ilp.global.options.fileFormat.is("cnf"));  // otherwise we would have succesfully terminated
     if (ilp.global.options.uniformOut || ilp.global.options.fileFormat.is("opb")) {
       std::cout << "c best so far " << ilp.getUpperBound() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;

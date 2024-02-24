@@ -230,20 +230,17 @@ void wcnf_read(std::istream& in, ILP& ilp) {
   std::string all = "";
   for (std::string line; getline(in, line);) {
     if (line.empty() || line[0] == 'c') continue;
-    if (line[0] == '0') line[0] = '#';
-    all += boost::replace_all_copy(line, " 0", "#");
+    all += boost::replace_all_copy(" " + line, " 0", " #");
   }
   boost::tokenizer<boost::char_separator<char>> lines(all, boost::char_separator<char>("#"));
   for (const std::string& line : lines) {
     std::istringstream is(line);
     bigint weight = 0;
-    if (line[0] == 'h') {
+    if (line.find('h') != std::string::npos) {
       is >> dummy;
     } else {
       is >> weight;
-      if (weight <= 0) {
-        throw InvalidArgument("Non-positive clause weight: " + line);
-      }
+      if (weight <= 0) throw InvalidArgument("Non-positive clause weight: " + line);
     }
     inputs.emplace_back();
     ConstrSimple32& input = inputs.back();
@@ -293,18 +290,25 @@ void wcnf_read(std::istream& in, ILP& ilp) {
 
 void cnf_read(std::istream& in, ILP& ilp) {
   ConstrSimple32 input;
+  // NOTE: there are annoying edge cases where two clauses share the same line, or a clause is split on two lines.
+  // the following rewrite fixes this.
+  std::string all = "";
   for (std::string line; getline(in, line);) {
     if (line.empty() || line[0] == 'c' || line[0] == 'p') continue;
+    all += boost::replace_all_copy(" " + line, " 0", " #");
+  }
+  boost::tokenizer<boost::char_separator<char>> lines(all, boost::char_separator<char>("#"));
+  for (const std::string& line : lines) {
+    quit::checkInterrupt(ilp.global);
     std::istringstream is(line);
     input.reset();
     input.rhs = 1;
-    Lit l;
-    while (is >> l, l) {
+    Lit l = 0;
+    while (is >> l) {
       ilp.getSolver().setNbVars(toVar(l), true);
       input.terms.push_back({1, l});
     }
     ilp.getSolver().addConstraint(input, Origin::FORMULA);
-    quit::checkInterrupt(ilp.global);
   }
 }
 

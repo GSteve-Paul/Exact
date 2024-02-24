@@ -1138,10 +1138,11 @@ void ILP::runFromCmdLine() {
 
   aux::timeCallVoid([&] { parsing::file_read(*this); }, global.stats.PARSETIME);
 
-  if (global.options.noSolve) throw AsynchronousInterrupt();
-  if (global.options.printCsvData) global.stats.printCsvHeader();
+  if (global.options.noSolve) throw EarlyTermination();
 
+  if (global.options.printCsvData) global.stats.printCsvHeader();
   solver.printHeader();
+
   [[maybe_unused]] SolveState res = optim->runFull(true, 0);
 }
 

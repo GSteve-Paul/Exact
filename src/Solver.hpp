@@ -94,9 +94,10 @@ class Solver {
 
   // ---------------------------------------------------------------------
   // Members
+ private:
+  std::optional<LitVec> lastSol;
 
  public:
-  LitVec lastSol = {0};
   bool foundSolution() const;
   CeSuper lastCore;
   CeSuper lastGlobalDual;

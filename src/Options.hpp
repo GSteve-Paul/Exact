@@ -286,7 +286,7 @@ struct Options {
                            "Ratio of time spent detecting at-most-ones (0 means none, 1 means unlimited)", 0.1,
                            "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
-                              "0=< float", [](const DetTime& x) -> bool { return x >= 0; }};
+                              "0 =< float", [](const DetTime& x) -> bool { return x >= 0; }};
 
   const std::vector<Option*> options = {
       &help,

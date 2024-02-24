@@ -35,6 +35,8 @@ declare -a arr_opt=(
 "wcnf/g2_n56e57_n61e85.wcnf*39"
 "wcnf/synthetic-20.wcnf*6720"
 "wcnf/f49-DC_TotalLoss.seq-A-2-2-EDCBAir.wcnf*85435860665"
+"wcnf/edgecase2.wcnf*0"
+"wcnf/edgecases.wcnf*2"
 "lp/hole.lp*2917/2"
 "mps/disctom.mps*-5000"
 "mps/hypothyroid-k1.mps*-2851"

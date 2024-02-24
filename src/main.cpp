@@ -31,24 +31,26 @@ int main(int argc, char** argv) {
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 
-  Options opts;
-  opts.pureLits.set(true);
-  opts.domBreakLim.set(-1);
-  opts.verbosity.set(1);
-  opts.parseCommandLine(argc, argv);
-
-  ILP ilp(opts);
   try {
-    ilp.runFromCmdLine();
-  } catch (const AsynchronousInterrupt& ai) {
-    std::cout << "c " << ai.what() << std::endl;
-    return quit::exit_INDETERMINATE(ilp);
-  } catch (const UnsatEncounter& ue) {
-    return quit::exit_SUCCESS(ilp);
-  } catch (const std::invalid_argument& ia) {
-    return quit::exit_ERROR(ia.what());
+    Options opts;
+    opts.pureLits.set(true);
+    opts.domBreakLim.set(-1);
+    opts.verbosity.set(1);
+    opts.parseCommandLine(argc, argv);
+    ILP ilp(opts);
+
+    try {
+      ilp.runFromCmdLine();
+      return quit::exit_SUCCESS(ilp);
+    } catch (const AsynchronousInterrupt& ai) {
+      std::cout << "c " << ai.what() << std::endl;
+      return quit::exit_INDETERMINATE(ilp);
+    } catch (const UnsatEncounter& ue) {
+      return quit::exit_SUCCESS(ilp);
+    } catch (const std::invalid_argument& ia) {
+      return quit::exit_ERROR(ia.what());
+    }
   } catch (const EarlyTermination& et) {
     return quit::exit_EARLY();
   }
-  return quit::exit_SUCCESS(ilp);
 }
