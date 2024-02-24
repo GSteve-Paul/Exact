@@ -242,6 +242,19 @@ void wcnf_read(std::istream& in, ILP& ilp) {
     while (is >> l, l) {
       // TODO: does this capture the case of a multi-line clause (ending at 0)?
       // NOTE: bug exact/test/instances/wcnf/WCNF_pathways_p02.wcnf --timeout=2  --seed=3
+      /*
+c Foo
+h 1 -2 0
+c Bar
+h 5 0
+c Wiz
+2 -1 0
+1 -2 0
+3 3 0
+c Bang
+2 2 -3 0
+c Wuk
+       */
       input.terms.push_back({1, l});
       ilp.getSolver().setNbVars(toVar(l), true);
     }
