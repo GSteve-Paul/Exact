@@ -2,7 +2,7 @@
 
 [Exact](https://gitlab.com/JoD/exact) solves decision and optimization problems formulated as integer linear programs. Under the hood, it converts integer variables to binary (0-1) variables and applies highly efficient propagation routines and strong cutting-planes / pseudo-Boolean conflict analysis.
 
-Exact is a fork of [RoundingSat](https://gitlab.com/miao_research/roundingsat) and improves upon its predecessor in reliability, performance and ease-of-use.
+Exact is a fork of [RoundingSat](https://gitlab.com/MIAOresearch/roundingsat) and improves upon its predecessor in reliability, performance and ease-of-use.
 The name "Exact" reflects that the answers are fully sound, as approximate and floating-point calculations only occur in heuristic parts of the algorithm.
 As such, Exact can soundly be used for verification and theorem proving, where its envisioned ability to emit machine-checkable certificates of optimality and unsatisfiability should prove useful.
 
@@ -21,7 +21,7 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [
 - Optional integration with the **SoPlex LP solver**.
 - Core solver also compiles on **macOS** and **Windows**.
 - Under development: **Python** interface with assumption solving and reuse of solver state (Linux only for now).
-- Under development: generation of **certificates** of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://github.com/StephanGocht/VeriPB).
+- Under development: generation of **certificates** of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://gitlab.com/MIAOresearch/software/VeriPB).
 
 
 ## Python interface
