@@ -60,6 +60,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "parsing.hpp"
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/tokenizer.hpp>
 #include "ILP.hpp"
 #include "Solver.hpp"
 
@@ -218,32 +220,37 @@ void opb_read(std::istream& in, ILP& ilp) {
   }
 }
 
-// TODO: does this capture the case of a multi-line clause (ending at 0)?
 void wcnf_read(std::istream& in, ILP& ilp) {
   std::vector<ConstrSimple32> inputs;
   char dummy;
   std::vector<IntTerm> obj_terms;
   bigint obj_offset = 0;
+  // NOTE: there are annoying edge cases where two clauses share the same line, or a clause is split on two lines.
+  // the following rewrite fixes this.
+  std::string all = "";
   for (std::string line; getline(in, line);) {
     if (line.empty() || line[0] == 'c') continue;
-    quit::checkInterrupt(ilp.global);
+    if (line[0] == '0') line[0] = '#';
+    all += boost::replace_all_copy(line, " 0", "#");
+  }
+  boost::tokenizer<boost::char_separator<char>> lines(all, boost::char_separator<char>("#"));
+  for (const std::string& line : lines) {
     std::istringstream is(line);
     bigint weight = 0;
     if (line[0] == 'h') {
       is >> dummy;
     } else {
       is >> weight;
-      if (weight == 0) continue;
-      if (weight < 0) {
-        throw InvalidArgument("Negative clause weight: " + line);
+      if (weight <= 0) {
+        throw InvalidArgument("Non-positive clause weight: " + line);
       }
     }
     inputs.emplace_back();
     ConstrSimple32& input = inputs.back();
     input.rhs = 1;
     obj_terms.push_back({weight, nullptr});
-    Lit l;
-    while (is >> l, l) {
+    Lit l = 0;
+    while (is >> l) {
       input.terms.push_back({1, l});
       ilp.getSolver().setNbVars(toVar(l), true);
     }
