@@ -241,9 +241,9 @@ struct Options {
                       "mindiv",
                       {"rto", "slack+1", "mindiv"}};
   BoolOption weakenNonImplying{"ca-weaken-nonimplying",
-                               "Weaken non-implying falsified literals from learned constraints", false};
+                               "Weaken non-implying falsified literals from learned constraints", true};
   BoolOption learnedMin{"ca-min", "Minimize learned constraints through generalized self-subsumption.", true};
-  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", false};
+  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", true};
   ValOption<int> bitsOverflow{"bits-overflow",
                               "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
                               "unlimited or greater than 62 may use slower arbitrary precision implementations)",
@@ -257,7 +257,7 @@ struct Options {
       "Bit width of maximum coefficient for learned constraints (0 is unlimited, 1 reduces to cardinalities)",
       limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
   ValOption<float> cgHybrid{"cg",
-                            "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 1,
+                            "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
