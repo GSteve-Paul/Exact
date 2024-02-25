@@ -241,9 +241,9 @@ struct Options {
                       "mindiv",
                       {"rto", "slack+1", "mindiv"}};
   BoolOption weakenNonImplying{"ca-weaken-nonimplying",
-                               "Weaken non-implying falsified literals from learned constraints", true};
+                               "Weaken non-implying falsified literals from learned constraints", false};
   BoolOption learnedMin{"ca-min", "Minimize learned constraints through generalized self-subsumption.", true};
-  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", true};
+  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", false};
   ValOption<int> bitsOverflow{"bits-overflow",
                               "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
                               "unlimited or greater than 62 may use slower arbitrary precision implementations)",
@@ -257,10 +257,8 @@ struct Options {
       "Bit width of maximum coefficient for learned constraints (0 is unlimited, 1 reduces to cardinalities)",
       limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
   ValOption<float> cgHybrid{"cg",
-                            "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
+                            "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 1,
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
-  ValOption<int> cgMaxCoef{"cg-maxcoef", "Max coefficient when reducing cores", 100, "1 =< int =< 1e9",
-                           [](const int& x) -> bool { return x >= 1 && x <= limitAbs<int, long long>(); }};
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
@@ -333,7 +331,6 @@ struct Options {
       &bitsReduced,
       &bitsLearned,
       &cgHybrid,
-      &cgMaxCoef,
       &cgResolveProp,
       &cgStrat,
       &ilpEncoding,

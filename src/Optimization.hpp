@@ -116,7 +116,6 @@ class OptimizationSuper {
   virtual bigint getUpperBound() const = 0;
   virtual bigint getLowerBound() const = 0;
   virtual CeSuper getOrigObj() const = 0;
-  virtual bigint getOffset() const = 0;
 
   static Optim make(const IntConstraint& obj, Solver& solver, const IntSet& assumps);
 
@@ -156,7 +155,6 @@ class Optimization final : public OptimizationSuper {
   bigint getUpperBound() const;
   bigint getLowerBound() const;
   CeSuper getOrigObj() const;
-  bigint getOffset() const;
 
   void printObjBounds();
   void checkLazyVariables();
