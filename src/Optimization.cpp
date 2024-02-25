@@ -73,7 +73,7 @@ template <typename SMALL, typename LARGE>
 LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, int upperBnd)
     : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(upperBnd), mult(m) {
   assert(remainingVars() > 0);
-  cardCore->toSimple()->copyTo(atLeast);
+  cardCore->copyTo(atLeast);
   atLeast.toNormalFormLit();
   assert(atLeast.rhs == cardCore->getDegree());
   atMost.rhs = -atLeast.rhs;

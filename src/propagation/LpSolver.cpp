@@ -70,7 +70,7 @@ namespace xct {
 CandidateCut::CandidateCut(const CeSuper& in, const std::vector<double>& sol) {
   assert(in->isSaturated());
   in->saturateAndFixOverflowRational();
-  in->toSimple()->copyTo(simpcons);
+  in->copyTo(simpcons);
   // NOTE: simpcons is already in var-normal form
   initialize(sol);
 }
@@ -83,7 +83,7 @@ CandidateCut::CandidateCut(const Constr& in, CRef cref, const std::vector<double
   if (tmp->isTautology()) {
     return;
   }
-  tmp->toSimple()->copyTo(simpcons);
+  tmp->copyTo(simpcons);
   // NOTE: simpcons is already in var-normal form
   initialize(sol);
   assert(isValid(cr));
@@ -586,10 +586,10 @@ void LpSolver::addConstraint(const CeSuper& c, bool removable, bool upperbound, 
   ID id = global.logger.logProofLineWithInfo(c, "LP");
   if (upperbound || lowerbound) {
     boundsToAdd[lowerbound].id = id;
-    c->toSimple()->copyTo(boundsToAdd[lowerbound].cs);
+    c->copyTo(boundsToAdd[lowerbound].cs);
   } else {
     toAdd[id] = {ConstrSimple64(), removable};
-    c->toSimple()->copyTo(toAdd[id].cs);
+    c->copyTo(toAdd[id].cs);
   }
 }
 

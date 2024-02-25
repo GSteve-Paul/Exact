@@ -855,8 +855,6 @@ void Solver::dropExternal(ID id, bool erasable, bool forceDelete) {
   if (forceDelete) removeConstraint(cr);
 }
 
-CeSuper Solver::getIthConstraint(int i) const { return ca[constraints[i]].toExpanded(global.cePools); }
-
 // ---------------------------------------------------------------------
 // Assumptions
 

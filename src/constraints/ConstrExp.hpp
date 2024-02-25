@@ -118,10 +118,14 @@ struct ConstrExpSuper {
   virtual void copyTo(const Ce96& ce) const = 0;
   virtual void copyTo(const Ce128& ce) const = 0;
   virtual void copyTo(const CeArb& ce) const = 0;
+  virtual void copyTo(ConstrSimple32& cs) const = 0;
+  virtual void copyTo(ConstrSimple64& cs) const = 0;
+  virtual void copyTo(ConstrSimple96& cs) const = 0;
+  virtual void copyTo(ConstrSimple128& cs) const = 0;
+  virtual void copyTo(ConstrSimpleArb& cs) const = 0;
 
   virtual CeSuper clone(ConstrExpPools& ce) const = 0;
   virtual CRef toConstr(ConstraintAllocator& ca, bool locked, ID id) const = 0;
-  virtual std::unique_ptr<ConstrSimpleSuper> toSimple() const = 0;
 
   virtual void resize(size_t s) = 0;
   virtual bool isReset() const = 0;
@@ -239,10 +243,14 @@ struct ConstrExp final : public ConstrExpSuper {
   void copyTo(const Ce96& ce) const;
   void copyTo(const Ce128& ce) const;
   void copyTo(const CeArb& ce) const;
+  void copyTo(ConstrSimple32& cs) const;
+  void copyTo(ConstrSimple64& cs) const;
+  void copyTo(ConstrSimple96& cs) const;
+  void copyTo(ConstrSimple128& cs) const;
+  void copyTo(ConstrSimpleArb& cs) const;
 
   CeSuper clone(ConstrExpPools& ce) const;
   CRef toConstr(ConstraintAllocator& ca, bool locked, ID id) const;
-  std::unique_ptr<ConstrSimpleSuper> toSimple() const;
 
   void resize(size_t s);
   bool isReset() const;
@@ -678,15 +686,14 @@ struct ConstrExp final : public ConstrExpSuper {
   }
 
   template <typename S, typename L>
-  std::unique_ptr<ConstrSimple<S, L>> toSimple_() const {
-    std::unique_ptr<ConstrSimple<S, L>> result = std::make_unique<ConstrSimple<S, L>>();
-    result->rhs = static_cast<L>(rhs);
-    result->terms.reserve(vars.size());
+  void copyTo_(ConstrSimple<S, L>& target) const {
+    target.rhs = static_cast<L>(rhs);
+    target.terms.clear();
+    target.terms.reserve(vars.size());
     for (Var v : vars)
-      if (coefs[v] != 0) result->terms.emplace_back(static_cast<S>(coefs[v]), v);
-    if (global.logger.isActive()) result->proofLine = proofBuffer.str();
-    result->orig = orig;
-    return result;
+      if (coefs[v] != 0) target.terms.emplace_back(static_cast<S>(coefs[v]), v);
+    if (global.logger.isActive()) target.proofLine = proofBuffer.str();
+    target.orig = orig;
   }
 };
 template <typename SMALL, typename LARGE>

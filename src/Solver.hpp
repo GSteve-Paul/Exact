@@ -182,7 +182,6 @@ class Solver {
 
   void dropExternal(ID id, bool erasable, bool forceDelete);
   int getNbConstraints() const { return constraints.size(); }
-  CeSuper getIthConstraint(int i) const;
   const std::vector<CRef>& getRawConstraints() const { return constraints; }
   const ConstraintAllocator& getCA() const { return ca; }
 

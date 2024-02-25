@@ -209,19 +209,24 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
 }
 
 template <typename SMALL, typename LARGE>
-std::unique_ptr<ConstrSimpleSuper> ConstrExp<SMALL, LARGE>::toSimple() const {
-  LARGE maxVal = getCutoffVal();
-  if (maxVal <= static_cast<LARGE>(limitAbs<int, long long>())) {
-    return toSimple_<int, long long>();
-  } else if (maxVal <= static_cast<LARGE>(limitAbs<long long, int128>())) {
-    return toSimple_<long long, int128>();
-  } else if (maxVal <= static_cast<LARGE>(limitAbs<int128, int128>())) {
-    return toSimple_<int128, int128>();
-  } else if (maxVal <= static_cast<LARGE>(limitAbs<int128, int256>())) {
-    return toSimple_<int128, int256>();
-  } else {
-    return toSimple_<bigint, bigint>();
-  }
+void ConstrExp<SMALL, LARGE>::copyTo(ConstrSimple32& target) const {
+  copyTo_(target);
+}
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::copyTo(ConstrSimple64& target) const {
+  copyTo_(target);
+}
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::copyTo(ConstrSimple96& target) const {
+  copyTo_(target);
+}
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::copyTo(ConstrSimple128& target) const {
+  copyTo_(target);
+}
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::copyTo(ConstrSimpleArb& target) const {
+  copyTo_(target);
 }
 
 template <typename SMALL, typename LARGE>
