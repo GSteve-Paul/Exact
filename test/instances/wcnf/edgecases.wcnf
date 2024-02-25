@@ -1,0 +1,14 @@
+c Foo
+ h 1
+-2
+0
+c Bar
+    h 5 0 h
+4 0
+c Wiz
+2 -1 0 1
+-2
+0 3 3 0
+c Bang
+2 2          -3 0
+c Wuk
