@@ -305,6 +305,15 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
   return {reprAImpReprB, reprBImpReprA};
 }
 
+void Logger::logDeletion(ID id) {
+  if (!active) return;
+  assert(isValid(id));
+#if !NDEBUG
+  logComment("Delete");
+#endif
+  proofStream() << "del id " << id << "\n";
+}
+
 ID Logger::getUnitID(Lit l, const std::vector<int>& pos) const {
   if (!active) return ID_Undef;
   assert(pos[toVar(l)] < (int)unitIDs.size());

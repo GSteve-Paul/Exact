@@ -115,6 +115,7 @@ class Logger {
   ID logResolvent(ID id1, ID id2);
   std::pair<ID, ID> logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB, Lit reprA,
                                 Lit reprB);
+  void logDeletion(ID id);
 
   ID getUnitID(Lit l, const std::vector<int>& pos) const;
   int getNbUnitIDs() const;
