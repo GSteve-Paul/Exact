@@ -285,7 +285,7 @@ CeSuper Solver::runDatabasePropagation() {
     Lit p = trail[qhead++];
     std::vector<Watch>& ws = adj[-p];
     float prevStrength = std::numeric_limits<float>::max();
-    int prevLBD = 0;
+    unsigned int prevLBD = 0;
     for (int it_ws = 0; it_ws < (int)ws.size(); ++it_ws) {
       int idx = ws[it_ws].idx;
       if (idx < 0 && isTrue(level, idx + INF)) {
@@ -317,7 +317,7 @@ CeSuper Solver::runDatabasePropagation() {
         assert(wstat == WatchStatus::KEEPWATCH);
         Constr& c = ca[cr];
         float cStrength = c.strength;
-        int cLBD = c.lbd();
+        unsigned int cLBD = c.lbd();
         if (cStrength > prevStrength || (cStrength == prevStrength && cLBD < prevLBD)) {
           assert(it_ws > 0);
           std::swap(ws[it_ws], ws[it_ws - 1]);
@@ -424,7 +424,7 @@ resolve:
       assert(isPropagated(reason, l));
       Constr& reasonC = ca[reason[toVar(l)]];
 
-      int lbd = reasonC.resolveWith(confl, l, *this, actSet);
+      unsigned int lbd = reasonC.resolveWith(confl, l, *this, actSet);
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered(global.stats);
     }
@@ -472,7 +472,7 @@ void Solver::minimize(CeSuper& conflict) {
     Lit l = pr.second;
     assert(conflict->getLit(toVar(l)) != 0);
     Constr& reasonC = ca[reason[toVar(l)]];
-    int lbd = reasonC.subsumeWith(conflict, -l, *this, saturatedLits);
+    unsigned int lbd = reasonC.subsumeWith(conflict, -l, *this, saturatedLits);
     if (lbd > 0) {
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered(global.stats);
@@ -543,7 +543,7 @@ CeSuper Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
       assert(isPropagated(reason, l));
       Constr& reasonC = ca[reason[toVar(l)]];
 
-      int lbd = reasonC.resolveWith(core, l, *this, actSet);
+      unsigned int lbd = reasonC.resolveWith(core, l, *this, actSet);
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered(global.stats);
     }
@@ -980,14 +980,13 @@ void Solver::reduceDB() {
     int res = (int)ca[x].lbd() - (int)ca[y].lbd();
     return res < 0 || (res == 0 && ca[x].strength > ca[y].strength);
   });
-  long long limit =
-      global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
+  int64_t limit = global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
   }
 
-  int currentConstraints = constraints.size();
-  for (int i = 0; i < currentConstraints; ++i) {
+  int64_t currentConstraints = constraints.size();
+  for (int64_t i = 0; i < currentConstraints; ++i) {
     CRef cr = constraints[i];
     Constr& c = ca[cr];
     if (c.isMarkedForDelete() || external.count(c.id) ||
@@ -997,14 +996,11 @@ void Solver::reduceDB() {
     ++global.stats.NCONSREADDED;
     CeSuper ce = c.toExpanded(global.cePools);
     bool isLocked = c.isLocked();
-    bool lbd = c.lbd();
+    unsigned int lbd = c.lbd();
     removeConstraint(cr, true);
     ce->strongPostProcess(*this);
     if (ce->isTautology()) continue;
-    if (ce->nVars() == 0) {
-      assert(ce->isInconsistency());  // it's not a tautology ;)
-      reportUnsat(ce);                // throws  UnsatEncounter
-    }
+    if (ce->isInconsistency()) reportUnsat(ce);
     CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates ce!
     if (crnew == CRef_Undef) continue;
     ca[crnew].decreaseLBD(lbd);

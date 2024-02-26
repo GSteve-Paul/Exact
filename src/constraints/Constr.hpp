@@ -118,8 +118,8 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   virtual void initializeWatches(CRef cr, Solver& solver) = 0;
   virtual WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& slvr, Stats& stats) = 0;
   virtual void undoFalsified(int i) = 0;
-  virtual int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const = 0;
-  virtual int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const = 0;
+  virtual unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const = 0;
+  virtual unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const = 0;
 
   virtual CeSuper toExpanded(ConstrExpPools& cePools) const = 0;
   virtual bool isSatisfiedAtRoot(const IntMap<int>& level) const = 0;
@@ -167,8 +167,8 @@ struct Clause final : public Constr {
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified([[maybe_unused]] int i) { assert(false); }
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
@@ -219,8 +219,8 @@ struct Cardinality final : public Constr {
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified([[maybe_unused]] int i) { assert(false); }
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
@@ -282,8 +282,8 @@ struct Counting final : public Constr {
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
@@ -348,8 +348,8 @@ struct Watched final : public Constr {
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
@@ -416,8 +416,8 @@ struct CountingSafe final : public Constr {
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
@@ -483,8 +483,8 @@ struct WatchedSafe final : public Constr {
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;

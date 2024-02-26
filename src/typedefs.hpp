@@ -383,6 +383,7 @@ class AsynchronousInterrupt : public std::exception {
 
 class UnsatEncounter : public std::exception {
  public:
+  //  UnsatEncounter() : std::exception() { assert(false); }
   [[nodiscard]] const char* what() const noexcept override {
     return "UNSAT state reached, this exception should have been caught.";
   }
