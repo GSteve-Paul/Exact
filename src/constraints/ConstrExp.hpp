@@ -318,6 +318,13 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
   void addUp(const CePtr<S, L>& c, const SMALL& cmult = 1) {
     global.stats.NADDEDLITERALS += c->nVars();
     assert(cmult >= 1);
+    std::cout << "in addup" << std::endl;
+    std::cout << "confl start: " << std::endl;
+    toStreamPure(std::cout);
+    std::cout << "\n" << std::endl;
+    std::cout << "reason start: " << std::endl;
+    c->toStreamPure(std::cout);
+    std::cout << "\n" << std::endl;
     if (global.logger.isActive()) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
     rhs += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->rhs);
     degree += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->degree);
@@ -327,6 +334,9 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
       SMALL val = cmult * static_cast<SMALL>(c->coefs[v]);
       add(v, val, true);
     }
+    std::cout << "confl end: " << std::endl;
+    toStreamPure(std::cout);
+    std::cout << "\n" << std::endl;
   }
 
   template <typename S, typename L>
@@ -334,12 +344,13 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     assert(mult >= 1);
     // assert(isSortedInDecreasingCoefOrder());
     assert(other->isSortedInDecreasingCoefOrder());
-    LARGE oldDegree = degree;
     multiply(mult);
+    LARGE oldDegree = degree;
     addUp(other);
     std::vector<Var>& varsToCheck = oldDegree <= getDegree() ? other->vars : vars;
     SMALL largestCF = getLargestCoef(varsToCheck);
     if (largestCF > getDegree()) {
+      std::cout << "in clean up" << std::endl;
       saturate(varsToCheck, false, false);
       largestCF = static_cast<SMALL>(getDegree());
     }
@@ -597,6 +608,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
               oldDegree <= indirectConfl->getDegree() ? indirectReason->vars : indirectConfl->vars;
           largestCF = indirectConfl->getLargestCoef(varsToCheckIndirect);
           if (largestCF > indirectConfl->getDegree()) {
+            std::cout << "indirect sat" << std::endl;
             indirectConfl->saturate(varsToCheckIndirect, false, false);
             largestCF = static_cast<SMALL>(indirectConfl->getDegree());
           }
@@ -612,15 +624,33 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           directReason->weaken(asserting < 0 ? amountDirect : -amountDirect, toVar(asserting));
           directReason->fixOrderOfVar(toVar(asserting));
           directReason->saturate(true, false);
+          std::cout << "pre add: " << std::endl;
+          std::cout << "directConfl: " << std::endl;
+          directConfl->toStreamPure(std::cout);
+          std::cout << "\n" << std::endl;
           directConfl->addUp(directReason);
+
+          std::cout << "post direct add: " << std::endl;
+          std::cout << "directConfl: " << std::endl;
+          directConfl->toStreamPure(std::cout);
+          std::cout << "\n" << std::endl;
 
           std::vector<Var>& varsToCheckDirect =
               oldDegree <= directConfl->getDegree() ? directReason->vars : directConfl->vars;
           largestCF = directConfl->getLargestCoef(varsToCheckDirect);
           if (largestCF > directConfl->getDegree()) {
+            std::cout << "direct sat" << std::endl;
             directConfl->saturate(varsToCheckDirect, false, false);
+            std::cout << "post direct sat: " << std::endl;
+            std::cout << "directConfl: " << std::endl;
+            directConfl->toStreamPure(std::cout);
+            std::cout << "\n" << std::endl;
             largestCF = static_cast<SMALL>(directConfl->getDegree());
           }
+          std::cout << "largestCF: " << largestCF << std::endl;	
+          std::cout << "directConfl: " << std::endl;
+          directConfl->toStreamPure(std::cout);
+          std::cout << "\n" << std::endl;
           directConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
                                    largestCF, 0);
           if (directConfl->getSlack(level) < 0) {

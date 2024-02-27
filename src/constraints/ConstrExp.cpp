@@ -673,8 +673,12 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, bool sorted) {
   global.stats.NSATURATESTEPS += vs.size();
   assert(check || !sorted);
+  std::cout << "saturate" << std::endl;
+  toStreamPure(std::cout);
+  std::cout << std::endl;
   if (vars.empty() || (sorted && aux::abs(coefs[vars[0]]) <= degree) ||
       (!sorted && check && getLargestCoef() <= degree)) {
+    std::cout << "return empty" << std::endl;
     return;
   }
   assert(getLargestCoef() > degree);
@@ -684,16 +688,22 @@ void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, b
     reset(false);
     return;
   }
+  std::cout << "smallDeg: " << smallDeg << std::endl;
   for (Var v : vs) {
+    std::cout << "v: " << v << " coefs[v]: " << coefs[v] << std::endl;
     if (coefs[v] < -smallDeg) {
       rhs -= coefs[v] + smallDeg;
       coefs[v] = -smallDeg;
     } else if (coefs[v] > smallDeg) {
       coefs[v] = smallDeg;
+      std::cout << "check" << std::endl;
     } else if (sorted) {
+      std::cout << "break" << std::endl;
       break;
     }
   }
+  toStreamPure(std::cout);
+  std::cout << std::endl;
   assert(isSaturated());
 }
 
@@ -719,7 +729,12 @@ void ConstrExp<SMALL, LARGE>::saturate(bool check, bool sorted) {
 
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isSaturated() const {
-  return getLargestCoef() <= degree;
+  // std::cout << "isSaturated" << std::endl;
+  // toStreamPure(std::cout);
+  // std::cout << std::endl;
+  // std::cout << "getLargestCoef: " << getLargestCoef() << std::endl;
+  // std::cout << "degree: " << degree << std::endl;
+  return getLargestCoef() <= degree || degree < 0;
 }
 
 template <typename SMALL, typename LARGE>
@@ -770,6 +785,8 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce,
                                           const SMALL& largestCoef, Lit asserting) {
   assert(hasNoZeroes());
+  std::cout << "fixOverflow" << std::endl;
+  toStreamPure(std::cout);
   assert(isSaturated());
   if (bitOverflow == 0) {
     return;

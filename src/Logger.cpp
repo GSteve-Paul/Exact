@@ -276,7 +276,7 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
   proofStream() << "pol " << reprAImplA << " " << aImpliesB << " + " << bImpReprB << " + s\n";
   ID reprAImpReprB = ++last_proofID;
 #if !NDEBUG
-  proofStream() << reprAImpReprB << " : " << (std::pair<int, Lit>{1, -reprA}) << " "
+  proofStream() << "e " << reprAImpReprB << " : " << (std::pair<int, Lit>{1, -reprA}) << " "
                 << (std::pair<int, Lit>{1, reprB}) << " >= 1 ;\n";
 #endif
   ID bImpliesA = logRUP(-b, a);
