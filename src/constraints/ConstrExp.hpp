@@ -329,6 +329,26 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     }
   }
 
+  template <typename S, typename L>
+  void addAndCleanUp(const CePtr<S, L>& other, const IntMap<int>& level, SMALL& mult = 1) {
+    assert(mult >= 1);
+    // assert(isSortedInDecreasingCoefOrder());
+    assert(other->isSortedInDecreasingCoefOrder());
+    LARGE oldDegree = degree;
+    multiply(mult);
+    addUp(other);
+    std::vector<Var>& varsToCheck = oldDegree <= getDegree() ? other->vars : vars;
+    SMALL largestCF = getLargestCoef(varsToCheck);
+    if (largestCF > getDegree()) {
+      saturate(varsToCheck, false, false);
+      largestCF = static_cast<SMALL>(getDegree());
+    }
+    fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
+                                     largestCF, 0);
+
+
+} 
+
   void invert();
   void multiply(const SMALL& m);
   void divideRoundUp(const LARGE& d);
@@ -346,6 +366,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
   void weakenSuperfluous(const LARGE& div);
   void weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
+  // void multiplyadd(const CePtr<S, L>& c, const SMALL& m);
 
   bool divideByGCD();
   bool divideTo(double limit, const aux::predicate<Lit>& toWeaken);
@@ -501,7 +522,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     assert(reason->getCoef(asserting) > reason->getSlack(level));
 
     // negation of asserting literal has positive coefficient in conflict
-    SMALL conflCoef = getCoef(-asserting);
+    const SMALL conflCoef = getCoef(-asserting);
     assert(conflCoef > 0);
     if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0 if it wasn't then it
                                             // the literal wouldn't propagate
@@ -509,6 +530,12 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
       assert(reason->getSlack(level) <= 0);
       ++global.stats.NNONMULTWEAKEN;
     } else {
+      // std::cout << "confl start: " << std::endl;
+      // toStreamPure(std::cout);
+      // std::cout << "\n" << std::endl;
+      // std::cout << "reason start: " << std::endl;
+      // reason->toStreamPure(std::cout);
+      // std::cout << "\n" << std::endl;
       bool cond = true;
       if (global.options.multWeaken) {
         // std::cout << "reason start: " << std::endl;
@@ -546,10 +573,10 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
         indirectConfl->multiply(mu);
 
         reasonCoef *= nu;
-        conflCoef *= mu;
+        const SMALL newConflCoef = conflCoef * mu;
 
-        SMALL amountIndirect = static_cast<SMALL>(indirectReason->getDegree() - conflCoef);
-        SMALL amountDirect = reasonCoef - conflCoef;
+        SMALL amountIndirect = static_cast<SMALL>(indirectReason->getDegree() - newConflCoef);
+        SMALL amountDirect = reasonCoef - newConflCoef;
 
         LARGE reasonSlack = nu * (reason->getSlack(level));
         // LARGE conflSlack = getSlack(level);
@@ -560,7 +587,8 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
         LARGE oldDegree = directConfl->getDegree();
         SMALL largestCF;
 
-        if (reasonSlack - reasonCoef + conflCoef >= 0) {
+        if (reasonSlack - reasonCoef + newConflCoef >= 0) {
+          // std::cout << "doing indirect \n" << std::endl;
           indirectReason->weakenNonFalsified(level, amountIndirect, asserting);
           indirectReason->saturate(true, false);
           indirectConfl->addUp(indirectReason);
@@ -574,13 +602,14 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           }
           indirectConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
                                      largestCF, 0);
-          if (indirectConfl->getSlack(level) <= 0) {
+          if (indirectConfl->getSlack(level) < 0) {
             flagIndirect = true;
           }
         }
 
-        if (conflCoef > reasonSlack) {
-          directReason->weaken(amountDirect, asserting);
+        if (newConflCoef > reasonSlack) {
+          // std::cout << "doing direct \n" << std::endl;
+          directReason->weaken(asserting < 0 ? amountDirect : -amountDirect, toVar(asserting));
           directReason->fixOrderOfVar(toVar(asserting));
           directReason->saturate(true, false);
           directConfl->addUp(directReason);
@@ -594,7 +623,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           }
           directConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
                                    largestCF, 0);
-          if (directConfl->getSlack(level) <= 0) {
+          if (directConfl->getSlack(level) < 0) {
             flagDirect = true;
           }
         }
@@ -603,34 +632,71 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
 
         if (flagIndirect && flagDirect) {
           if (indirectConfl->getStrength() >= directConfl->getStrength()) {
-            indirectConfl->copyTo(this->shared_from_this());
+            addAndCleanUp(indirectReason, level, mu);
             returnval = indirectReason->getLBD(level);
             ++global.stats.NINDIRECTWEAKEN;
+            // std::cout << "real: " << std::endl;
+            // toStreamPure(std::cout);
+            // std::cout << "\n" << std::endl;
+            // std::cout << "indirectConfl: " << std::endl;
+            // indirectConfl->toStreamPure(std::cout);
+            // std::cout << "\n" << std::endl;
+            // std::cout << "real slack: " << getSlack(level) << std::endl;
+            // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
+
           } else {
-            directConfl->copyTo(this->shared_from_this());
+            addAndCleanUp(directReason, level, mu);
             returnval = directReason->getLBD(level);
             ++global.stats.NDIRECTWEAKEN;
+            // std::cout << "real: " << std::endl;
+            // toStreamPure(std::cout);
+            // std::cout << "\n" << std::endl;
+            // std::cout << "directConfl: " << std::endl;
+            // directConfl->toStreamPure(std::cout);
+            // std::cout << "\n" << std::endl;
+            // std::cout << "real slack: " << getSlack(level) << std::endl;
+            // std::cout << "direct slack: " << directConfl->getSlack(level) << std::endl;
           }
         } else if (flagIndirect) {
-          indirectConfl->copyTo(this->shared_from_this());
+          addAndCleanUp(indirectReason, level, mu);
           returnval = indirectReason->getLBD(level);
           ++global.stats.NINDIRECTWEAKEN;
+          // std::cout << "real: " << std::endl;
+          // toStreamPure(std::cout);
+          // std::cout << "\n" << std::endl;
+          // std::cout << "indirectConfl: " << std::endl;
+          // indirectConfl->toStreamPure(std::cout);
+          // std::cout << "\n" << std::endl;
+          // std::cout << "real slack: " << getSlack(level) << std::endl;
+          // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
         } else if (flagDirect) {
-          directConfl->copyTo(this->shared_from_this());
+          addAndCleanUp(directReason, level, mu);
           returnval = directReason->getLBD(level);
           ++global.stats.NDIRECTWEAKEN;
+          // std::cout << "real: " << std::endl;
+          // toStreamPure(std::cout);
+          // std::cout << "\n" << std::endl;
+          // std::cout << "directConfl: " << std::endl;
+          // directConfl->toStreamPure(std::cout);
+          // std::cout << "\n" << std::endl;
+          // std::cout << "real slack: " << getSlack(level) << std::endl;
+          // std::cout << "direct slack: " << directConfl->getSlack(level) << std::endl;
         } else {
           cond = false;
         }
-
-        return returnval;
+        
+        if (cond) {
+          assert(hasNegativeSlack(level));
+          // std::cout << "exiting mws" << std::endl;
+          return returnval;
+        }
       }
       if (!cond || !global.options.multWeaken) {
-        // std::cout << "reason after abort: " << std::endl;
-        // reason->toStreamPure(std::cout);
-        // std::cout << "\n" << std::endl;
         // std::cout << "conflict after abort: " << std::endl;
         // toStreamPure(std::cout);
+        // std::cout << "\n" << std::endl;
+        // std::cout << "reason after abort: " << std::endl;
+        // reason->toStreamPure(std::cout);
         // std::cout << "\n" << std::endl;
 
         ++global.stats.NNONMULTWEAKEN;
@@ -710,10 +776,6 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
 
     // std::cout << "Asserting: " << asserting << std::endl;
 
-    // assert(reason->getCoef(asserting) >= conflCoef);
-    // assert(reason->getCoef(asserting) < 2 * conflCoef);
-    // assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
-
     assert(reason->getCoef(asserting) >= getCoef(-asserting));
     assert(reason->getCoef(asserting) < 2 * getCoef(-asserting));
     assert(global.options.division.is("slack+1") || getCoef(-asserting) == reason->getCoef(asserting));
@@ -741,6 +803,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 
+    // std::cout << "exiting standard: " << std::endl;
     return reason->getLBD(level);
   }
 

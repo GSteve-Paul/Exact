@@ -1284,7 +1284,8 @@ void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const
         weaken(coefs[v] < 0 ? am : -am, v);
         am = 0;
         removeZeroes();
-        fixOrderAtIndex(i);
+        std::cout << "after weakening partially: " << std::endl;
+        if (coefs[v] != 0) fixOrderAtIndex(i);
       }
     }
   }
@@ -1555,22 +1556,36 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOrderAtIndex(const int index) {
+  std::cout << "in fixOrderAtIndex: " << std::endl;
+  std::cout << "index: " << index << std::endl;
   assert(index >= 0 && index < (int)vars.size());
   Var checking = vars[index];
   SMALL checkingCoef = absCoef(checking);
-  for (int i = index; i < vars.size() - 1 && absCoef(vars[i + 1]) > checkingCoef; i++) {
+  for (unsigned long int i = index; i < vars.size() - 1 && absCoef(vars[i + 1]) > checkingCoef; i++) {
     std::swap(vars[i], vars[i + 1]);
   }
+  toStreamPure(std::cout);
+  std::cout << "\n" << std::endl;
   assert(isSortedInDecreasingCoefOrder());
 }
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOrderOfVar(Var v) {
+  std::cout << "in fixOrderOfVar: " << std::endl;
   assert(hasVar(v));
+  std::cout << "var: " << v << std::endl;
   int i = index[v];
+  std::cout << "index: " << i << std::endl;
+  toStreamPure(std::cout);
+  std::cout << "\n" << std::endl;
   fixOrderAtIndex(i);
+  std::cout << "after fixOrderAtIndex: " << std::endl;
+  toStreamPure(std::cout);
+  std::cout << "\n" << std::endl;
   assert(isSortedInDecreasingCoefOrder());
 }
+
+
 
 int ConstrExpSuper::nNonZeroVars() const {
   int result = 0;
