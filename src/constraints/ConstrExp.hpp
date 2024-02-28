@@ -325,7 +325,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     std::cout << "reason start: " << std::endl;
     c->toStreamPure(std::cout);
     std::cout << "\n" << std::endl;
-    if (global.logger.isActive()) Logger::proofMult(proofBuffer << c->proofBuffer.rdbuf(), cmult) << "+ ";
+    if (global.logger.isActive()) Logger::proofMult(proofBuffer << c->proofBuffer.str(), cmult) << "+ ";
     rhs += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->rhs);
     degree += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->degree);
     for (Var v : c->vars) {
