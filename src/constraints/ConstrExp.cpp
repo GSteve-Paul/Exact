@@ -622,8 +622,8 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _sat
   int oldsize = vars.size();  // newly added literals are their own canonical representative
   for (int i = 0; i < oldsize && degree > 0; ++i) {
     Var v = vars[i];
+    if (coefs[v] == 0) continue;
     Lit l = getLit(v);
-    if (l == 0) continue;
     if (const Repr& repr = equalities.getRepr(l); repr.l != l) {  // literal is not its own canonical representative
       SMALL mult = _saturate ? static_cast<SMALL>(std::min<LARGE>(degree, aux::abs(coefs[v]))) : aux::abs(coefs[v]);
       addLhs(mult, repr.l);
@@ -633,8 +633,9 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _sat
         addLhs(mult, -l);
         addRhs(mult);
         coefs[v] = 0;
-        if (global.logger.isActive())
+        if (global.logger.isActive()) {
           Logger::proofMult(proofBuffer << repr.id << " ", mult) << (_saturate ? "+ s " : "+ ");
+        }
         if (_saturate) saturate(reprv);
       } else {
         addLhs(-mult, repr.l);  // revert change
@@ -687,7 +688,7 @@ void ConstrExp<SMALL, LARGE>::saturate(const VarVec& vs, bool check, bool sorted
   if (global.logger.isActive()) proofBuffer << "s ";  // log saturation only if it modifies the constraint
   SMALL smallDeg = static_cast<SMALL>(degree);        // safe cast because of above assert
   if (smallDeg <= 0) {
-    reset(false);
+    reset(true);
     return;
   }
   for (Var v : vs) {

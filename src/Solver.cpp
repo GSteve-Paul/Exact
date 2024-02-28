@@ -1028,7 +1028,9 @@ void Solver::reduceDB() {
     }
     CRef crnew = attachConstraint(ce, isLocked);  // NOTE: this invalidates ce!
     if (crnew == CRef_Undef) continue;
-    ca[crnew].decreaseLBD(lbd);
+    Constr& cnew = ca[crnew];
+    cnew.decreaseLBD(lbd);
+    // if (isNonImplied(cnew.getOrigin())) getLogger().logAsCore(cnew.id);
     removeConstraint(cr, true);  // NOTE: remove after attaching a stronger version
   }
 

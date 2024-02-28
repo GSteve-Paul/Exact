@@ -195,7 +195,7 @@ void Logger::logUnit(const CeSuper& ce) {
 
 ID Logger::logRUP(Lit l, Lit ll) {
   if (!active) return ++last_proofID;
-  proofStream() << "u " << (std::pair<int, Lit>{1, l}) << " " << (std::pair<int, Lit>{1, ll}) << " >= 1 ;\n";
+  proofStream() << "rup " << (std::pair<int, Lit>{1, l}) << " " << (std::pair<int, Lit>{1, ll}) << " >= 1 ;\n";
   return ++last_proofID;
 }
 
@@ -312,6 +312,15 @@ void Logger::logDeletion(ID id) {
   logComment("Delete");
 #endif
   proofStream() << "del id " << id << "\n";
+}
+
+void Logger::logAsCore(ID id) {
+  if (!active) return;
+  assert(isValid(id));
+#if !NDEBUG
+  logComment("Core");
+#endif
+  proofStream() << "core id " << id << "\n";
 }
 
 ID Logger::getUnitID(Lit l, const std::vector<int>& pos) const {
