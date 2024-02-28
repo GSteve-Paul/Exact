@@ -685,7 +685,7 @@ void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, b
   if (global.logger.isActive()) proofBuffer << "s ";  // log saturation only if it modifies the constraint
   SMALL smallDeg = static_cast<SMALL>(degree);        // safe cast because of above assert
   if (smallDeg <= 0) {
-    reset(false);
+    reset(true);
     return;
   }
   std::cout << "smallDeg: " << smallDeg << std::endl;
@@ -1601,8 +1601,6 @@ void ConstrExp<SMALL, LARGE>::fixOrderOfVar(Var v) {
   std::cout << "\n" << std::endl;
   assert(isSortedInDecreasingCoefOrder());
 }
-
-
 
 int ConstrExpSuper::nNonZeroVars() const {
   int result = 0;

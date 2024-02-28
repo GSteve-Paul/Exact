@@ -354,11 +354,8 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
       saturate(varsToCheck, false, false);
       largestCF = static_cast<SMALL>(getDegree());
     }
-    fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
-                                     largestCF, 0);
-
-
-} 
+    fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
+  }
 
   void invert();
   void multiply(const SMALL& m);
@@ -647,7 +644,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
             std::cout << "\n" << std::endl;
             largestCF = static_cast<SMALL>(directConfl->getDegree());
           }
-          std::cout << "largestCF: " << largestCF << std::endl;	
+          std::cout << "largestCF: " << largestCF << std::endl;
           std::cout << "directConfl: " << std::endl;
           directConfl->toStreamPure(std::cout);
           std::cout << "\n" << std::endl;
@@ -714,7 +711,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
         } else {
           cond = false;
         }
-        
+
         if (cond) {
           assert(hasNegativeSlack(level));
           // std::cout << "exiting mws" << std::endl;
@@ -911,7 +908,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     }
     if (global.logger.isActive()) {
       out->proofBuffer.str(std::string());
-      out->proofBuffer << proofBuffer.rdbuf();
+      out->proofBuffer << proofBuffer.str();
     }
   }
 
