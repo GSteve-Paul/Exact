@@ -750,7 +750,7 @@ void Solver::learnClause(Lit l1, Lit l2, Origin orig, ID id) {
 
 std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: should not throw UnsatEncounter
   if (unsatReached) return {ID_Undef, ID_Undef};
-  //  std::cout << "ADD INPUT CONSTRAINT " << ce->orig << " " << ce << std::endl;
+  // std::cout << "ADD INPUT CONSTRAINT " << ce->orig << " " << ce << std::endl;
 
   assert(isInput(ce->orig));
   assert(decisionLevel() == 0);

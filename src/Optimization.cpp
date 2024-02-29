@@ -436,7 +436,6 @@ void Optimization<SMALL, LARGE>::boundObjByLastSol() {
   solver.dropExternal(lastUpperBound, true, true);
   std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
   lastUpperBound = res.second;
-  if (assumptions.isEmpty()) harden();
 }
 
 template <typename SMALL, typename LARGE>
