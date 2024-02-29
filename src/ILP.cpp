@@ -1135,12 +1135,12 @@ void ILP::runFromCmdLine() {
   if (global.options.verbosity.get() > 0) {
     std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
+  if (global.options.printCsvData) global.stats.printCsvHeader();
 
   aux::timeCallVoid([&] { parsing::file_read(*this); }, global.stats.PARSETIME);
 
   if (global.options.noSolve) throw EarlyTermination();
 
-  if (global.options.printCsvData) global.stats.printCsvHeader();
   solver.printHeader();
 
   [[maybe_unused]] SolveState res = optim->runFull(true, 0);
