@@ -469,7 +469,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   } catch (const UnsatEncounter& ue) {
     return SolveState::UNSAT;
   }
-  coreguided = coreguided && optimize;
+
   while (true) {
     if (timeout != 0 && global.stats.getRunTime() > timeout) return SolveState::TIMEOUT;
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
@@ -479,13 +479,36 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
     }
 
-    if (optimize && lower_bound < upper_bound) {
-      bisect();
-      std::vector<Lit> assumps = assumptions.getKeys();
-      assumps.push_back(-bisectVar);
-      solver.setAssumptions(assumps);
-    } else {
+    if (global.options.optMethod.get() == "topdown") {
       solver.setAssumptions(assumptions.getKeys());
+    } else if (global.options.optMethod.get() == "bisect" || global.options.optMethod.get() == "bottomup") {
+      if (optimize && lower_bound < upper_bound) {
+        if (global.options.optMethod.get() == "bisect") {
+          bisect();
+        } else {
+          boundBottomUp();
+        }
+
+        std::vector<Lit> assumps = assumptions.getKeys();
+        assumps.push_back(-boundingVar);
+        solver.setAssumptions(assumps);
+      } else {
+        solver.setAssumptions(assumptions.getKeys());
+      }
+    } else if (global.options.optMethod.get() == "mixed") {
+      coreguided = optimize && lower_bound < upper_bound &&
+                   (global.options.cgHybrid.get() >= 1 ||
+                    global.stats.DETTIMEASSUMP <
+                        global.options.cgHybrid.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP));
+
+      if (coreguided) {
+        boundBottomUp();
+        std::vector<Lit> assumps = assumptions.getKeys();
+        assumps.push_back(-boundingVar);
+        solver.setAssumptions(assumps);
+      } else {
+        solver.setAssumptions(assumptions.getKeys());
+      }
     }
 
     try {
@@ -517,8 +540,8 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           solver.clearAssumptions();
           return SolveState::INCONSISTENT;
         } else {
-          lower_bound = bisectVal + 1;
-          solver.addUnitConstraint(bisectVar, Origin::COREGUIDED);
+          lower_bound = boundingVal + 1;
+          solver.addUnitConstraint(boundingVar, Origin::COREGUIDED);
           solver.clearAssumptions();
           printObjBounds();
         }
@@ -534,13 +557,15 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
 
     continue;
 
+    assert(false);
+
     // There are three possibilities:
     // - no assumptions are set (because something happened during previous core-guided step)
     // - only the given assumptions are set (because the previous step was not core-guided)
     // - more than only the given assumptions are set (because the previous core-guided step did not finish)
     // NOTE: what if no coreguided possible because all variables of the objective are assumed?
 
-    assert(!coreguided || optimize);
+    coreguided = coreguided && optimize;
     if (coreguided &&
         solver.getAssumptions().size() <= assumptions.size()) {  // figure out and set new coreguided assumptions
       reformObj->removeEqualities(solver.getEqualities(), false);
@@ -660,17 +685,35 @@ void Optimization<SMALL, LARGE>::bisect() {
   LARGE middle = lower_bound + (upper_bound - lower_bound) / 2;
   assert(middle < upper_bound);
   assert(middle >= lower_bound);
-  if (bisectVar == 0 || middle != bisectVal) {
+  if (boundingVar == 0 || middle != boundingVal) {
+    boundingVal = middle;
     CeArb bisect = global.cePools.takeArb();
     origObj->copyTo(bisect);
     assert(bisect->getDegree() == 0);
-    bisect->addRhs(middle);  // objective must be at least middle
-    bisect->invert();        // objective must be at most middle
-    bisectVar = solver.addVar(false);
-    bisectVal = middle;
-    bisect->addLhs(bisect->getDegree(), bisectVar);  // ~bisectVar enables bisect constraint
+    bisect->addRhs(boundingVal);  // objective must be at least middle
+    bisect->invert();             // objective must be at most middle
+    boundingVar = solver.addVar(false);
+    bisect->addLhs(bisect->getDegree(), boundingVar);  // ~boundingVar enables bisect constraint
     solver.addConstraint(bisect, Origin::COREGUIDED);
-    if (global.options.verbosity.get() > 0) std::cout << "c bisecting on " << bisectVal << std::endl;
+  }
+}
+
+template <typename SMALL, typename LARGE>
+void Optimization<SMALL, LARGE>::boundBottomUp() {
+  assert(lower_bound < upper_bound);
+  LARGE bnd = lower_bound + (upper_bound - lower_bound) / global.options.objRange.get();
+  assert(bnd < upper_bound);
+  assert(bnd >= lower_bound);
+  if (boundingVar == 0 || bnd != boundingVal) {
+    boundingVal = bnd;
+    CeArb bound = global.cePools.takeArb();
+    origObj->copyTo(bound);
+    assert(bound->getDegree() == 0);
+    bound->addRhs(boundingVal);  // objective must be at least middle
+    bound->invert();             // objective must be at most middle
+    boundingVar = solver.addVar(false);
+    bound->addLhs(bound->getDegree(), boundingVar);  // ~boundingVar enables bisect constraint
+    solver.addConstraint(bound, Origin::COREGUIDED);
   }
 }
 

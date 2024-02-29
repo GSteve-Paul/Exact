@@ -141,8 +141,8 @@ class Optimization final : public OptimizationSuper {
   ID lastUpperBound = ID_Undef;
   ID lastLowerBound = ID_Undef;
 
-  LARGE bisectVal;
-  Var bisectVar = 0;
+  LARGE boundingVal;
+  Var boundingVar = 0;
 
   std::vector<std::unique_ptr<LazyVar<SMALL, LARGE>>> lazyVars;
 
@@ -153,6 +153,7 @@ class Optimization final : public OptimizationSuper {
   bool coreguided;
 
   void bisect();
+  void boundBottomUp();
 
  public:
   explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& offset, const IntSet& assumps);
