@@ -495,28 +495,6 @@ Ce32 Solver::getUnitClause(Lit l) const {
   return core;
 }
 
-/*
- UNSAT BUG IN RMINE21.MPS:
-
- 0x000000000084fbec in pthread_kill ()
-(gdb) bt
-#0  0x000000000084fbec in pthread_kill ()
-#1  0x000000000082f686 in raise ()
-#2  0x0000000000409f66 in abort ()
-#3  0x0000000000409e8e in __assert_fail_base.cold ()
-#4  0x0000000000829146 in __assert_fail ()
-#5  0x000000000065d3bb in xct::Solver::reportUnsat(std::shared_ptr<xct::ConstrExpSuper> const&) ()
-#6  0x0000000000661718 in xct::Solver::attachConstraint(std::shared_ptr<xct::ConstrExpSuper> const&, bool) ()
-#7  0x0000000000661bd6 in xct::Solver::learnConstraint(std::shared_ptr<xct::ConstrExpSuper> const&, xct::Origin) ()
-#8  0x0000000000660834 in xct::Solver::extractCore(std::shared_ptr<xct::ConstrExpSuper> const&, int) ()
-#9  0x0000000000671b95 in std::_Function_handler<std::shared_ptr<xct::ConstrExpSuper> (),
-xct::Solver::solve()::$_30>::_M_invoke(std::_Any_data const&) () #10 0x00000000006687a7 in xct::Solver::solve() () #11
-0x00000000006cb1f6 in xct::Optimization<__int128, __int128>::run(bool, double) () #12 0x00000000006cbb7f in
-xct::Optimization<__int128, __int128>::runFull(bool, double)
-   ()
-#13 0x000000000040c081 in main ()
- */
-
 CeSuper Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   if (l_assump != 0) {  // l_assump is an assumption propagated to the opposite value
     assert(assumptions.has(l_assump));
@@ -538,7 +516,7 @@ CeSuper Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   assert(!trail_lim.empty());
   for (int i = trail_lim[0]; i < (int)trail.size(); ++i) {
     Lit l = trail[i];
-    if (assumptions.has(l) && !(isPropagated(reason, l) && global.options.cgResolveProp)) {
+    if (assumptions.has(l) && !isPropagated(reason, l)) {
       decisions.push_back(l);
     } else {
       props.push_back(l);

@@ -70,37 +70,6 @@ namespace xct {
 struct Global;
 class Solver;
 
-template <typename SMALL, typename LARGE>
-struct LazyVar {
-  Solver& solver;
-  int coveredVars;
-  int upperBound;
-  Var currentVar;
-  ID atLeastID = ID_Undef;
-  ID atMostID = ID_Undef;
-  ConstrSimple32 atLeast;  // X >= k + y1 + ... + yi
-  ConstrSimple32 atMost;   // k + y1 + ... + yi-1 + (1+n-k-i)yi >= X
-
-  SMALL mult;
-
-  LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, int upperBnd);
-  ~LazyVar();
-
-  void addVar(Var v);
-  void addAtLeastConstraint();
-  void addAtMostConstraint();
-  void addSymBreakingConstraint(Var prevvar) const;
-  void addFinalAtMost();
-  [[nodiscard]] int remainingVars() const;
-  void setUpperBound(const LARGE& normalizedUpperBound);
-};
-
-template <typename SMALL, typename LARGE>
-std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
-  o << lv.atLeast << "\n" << lv.atMost;
-  return o;
-}
-
 struct IntConstraint;
 class OptimizationSuper;
 using Optim = std::shared_ptr<OptimizationSuper>;
@@ -134,23 +103,12 @@ class Optimization final : public OptimizationSuper {
   const CePtr<SMALL, LARGE> origObj;
 
  private:
-  CePtr<SMALL, LARGE> reformObj;
-
   LARGE lower_bound;
   LARGE upper_bound;
-  ID lastUpperBound = ID_Undef;
-  ID lastLowerBound = ID_Undef;
+  ID lastUpperBound;
 
   LARGE boundingVal;
-  Var boundingVar = 0;
-
-  std::vector<std::unique_ptr<LazyVar<SMALL, LARGE>>> lazyVars;
-
-  // State variables during solve loop:
-  SolveState reply;
-  const bigint stratDiv;
-  bigint stratLim;
-  bool coreguided;
+  Var boundingVar;
 
   void boundBottomUp();
 
@@ -162,16 +120,8 @@ class Optimization final : public OptimizationSuper {
   CeSuper getOrigObj() const;
 
   void printObjBounds();
-  void checkLazyVariables();
-  void addLowerBound();
 
-  Ce32 reduceToCardinality(const CeSuper& core);                            // does not modify core
-  [[nodiscard]] State reformObjective(const CeSuper& core);                 // modifies core
-  [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
-  void handleInconsistency(const CeSuper& core);                            // modifies core
   void boundObjByLastSol();
-
-  void harden();
 
   [[nodiscard]] SolveState run(bool optimize, double timeout);
   [[nodiscard]] SolveState runFull(bool optimize, double timeout);
