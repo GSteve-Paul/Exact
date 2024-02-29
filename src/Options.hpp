@@ -256,8 +256,9 @@ struct Options {
       "bits-learned",
       "Bit width of maximum coefficient for learned constraints (0 is unlimited, 1 reduces to cardinalities)",
       limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
-  ValOption<int64_t> objRange{"objrange","Range of objective reformulation, higher means more finegrained search over objective (0 disables)", 50,
-      "0 or 10 =< int", [](const int64_t& x) -> bool { return x==0 || x >= 10; }};
+  ValOption<int64_t> objRange{
+      "objrange", "Range of objective reformulation, higher means more finegrained search over objective (0 disables)",
+      50, "0 or 10 =< int", [](const int64_t& x) -> bool { return x == 0 || x >= 10; }};
   ValOption<float> cgHybrid{"cg",
                             "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};

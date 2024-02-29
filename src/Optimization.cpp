@@ -480,11 +480,11 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
     }
 
-    if(optimize){
+    if (optimize) {
       std::vector<Lit> assumps = assumptions.getKeys();
       assumps.push_back(-bisectVar);
       solver.setAssumptions(assumps);
-    }else{
+    } else {
       solver.setAssumptions(assumptions.getKeys());
     }
 
@@ -504,9 +504,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
     if (reply == SolveState::UNSAT) {
       return SolveState::UNSAT;
     } else if (reply == SolveState::SAT) {
-
     } else if (reply == SolveState::INCONSISTENT) {
-      
     }
 
     continue;
@@ -632,20 +630,20 @@ SolveState Optimization<SMALL, LARGE>::runFull(bool optimize, double timeout) {
 }
 
 template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::bisect(){
-  bigint middle = (upper_bound - lower_bound)/2;
-  assert(middle<upper_bound);
-  assert(middle>=lower_bound);
-  if(bisectVar==0 || middle!=bisectVal){
-    assert(bisectVar==0 || middle<bisectVal);
+void Optimization<SMALL, LARGE>::bisect() {
+  bigint middle = (upper_bound - lower_bound) / 2;
+  assert(middle < upper_bound);
+  assert(middle >= lower_bound);
+  if (bisectVar == 0 || middle != bisectVal) {
+    assert(bisectVar == 0 || middle < bisectVal);
     CeArb bisect = global.cePools.takeArb();
     origObj->copyTo(bisect);
-    assert(bisect->getDegree()==0);
-    bisect->addRhs(middle); // objective must be at least middle
-    bisect->invert(); // objective must be at most middle
+    assert(bisect->getDegree() == 0);
+    bisect->addRhs(middle);  // objective must be at least middle
+    bisect->invert();        // objective must be at most middle
     bisectVar = solver.addVar(false);
-    bisect->addLhs(bisect->getDegree(), bisectVar); // ~bisectVar enables bisect constraint
-    solver.addConstraint(bisect);
+    bisect->addLhs(bisect->getDegree(), bisectVar);  // ~bisectVar enables bisect constraint
+    solver.addConstraint(bisect, Origin::COREGUIDED);
   }
 }
 
