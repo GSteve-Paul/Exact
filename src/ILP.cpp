@@ -1014,10 +1014,12 @@ void ILP::runInternal(int argc, char** argv) {
     std::cout << "c Exact - branch " EXPANDED(GIT_BRANCH) " commit " EXPANDED(GIT_COMMIT_HASH) << std::endl;
   }
 
+  if (global.options.printCsvData) global.stats.printCsvHeader();
+
   aux::timeCallVoid([&] { parsing::file_read(*this); }, global.stats.PARSETIME);
 
   if (global.options.noSolve) throw AsynchronousInterrupt();
-  if (global.options.printCsvData) global.stats.printCsvHeader();
+
   if (global.options.verbosity.get() > 0) {
     std::cout << "c " << getSolver().getNbVars() << " vars " << getSolver().getNbConstraints() << " constrs"
               << std::endl;
