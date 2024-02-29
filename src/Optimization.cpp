@@ -212,7 +212,7 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
       origObj(obj),
       reply(SolveState::INPROCESSED),
       stratDiv(stratFactor * global.options.cgStrat.get()),
-      coreguided(global.options.cgHybrid.get() >= 1) {
+      coreguided(global.options.optRatio.get() >= 1) {
   assert(origObj->getDegree() == 0);
   reformObj = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(reformObj);
@@ -479,36 +479,18 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
     }
 
-    if (global.options.optMethod.get() == "topdown") {
+    coreguided = optimize && lower_bound < upper_bound &&
+                 (global.options.optRatio.get() >= 1 ||
+                  global.stats.DETTIMEASSUMP <
+                      global.options.optRatio.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP));
+
+    if (coreguided) {
+      boundBottomUp();
+      std::vector<Lit> assumps = assumptions.getKeys();
+      assumps.push_back(-boundingVar);
+      solver.setAssumptions(assumps);
+    } else {
       solver.setAssumptions(assumptions.getKeys());
-    } else if (global.options.optMethod.get() == "bisect" || global.options.optMethod.get() == "bottomup") {
-      if (optimize && lower_bound < upper_bound) {
-        if (global.options.optMethod.get() == "bisect") {
-          bisect();
-        } else {
-          boundBottomUp();
-        }
-
-        std::vector<Lit> assumps = assumptions.getKeys();
-        assumps.push_back(-boundingVar);
-        solver.setAssumptions(assumps);
-      } else {
-        solver.setAssumptions(assumptions.getKeys());
-      }
-    } else if (global.options.optMethod.get() == "mixed") {
-      coreguided = optimize && lower_bound < upper_bound &&
-                   (global.options.cgHybrid.get() >= 1 ||
-                    global.stats.DETTIMEASSUMP <
-                        global.options.cgHybrid.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP));
-
-      if (coreguided) {
-        boundBottomUp();
-        std::vector<Lit> assumps = assumptions.getKeys();
-        assumps.push_back(-boundingVar);
-        solver.setAssumptions(assumps);
-      } else {
-        solver.setAssumptions(assumptions.getKeys());
-      }
     }
 
     try {
@@ -554,119 +536,6 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       assert(reply == SolveState::INPROCESSED || reply == SolveState::UNSAT);
       return reply;
     }
-
-    continue;
-
-    assert(false);
-
-    // There are three possibilities:
-    // - no assumptions are set (because something happened during previous core-guided step)
-    // - only the given assumptions are set (because the previous step was not core-guided)
-    // - more than only the given assumptions are set (because the previous core-guided step did not finish)
-    // NOTE: what if no coreguided possible because all variables of the objective are assumed?
-
-    coreguided = coreguided && optimize;
-    if (coreguided &&
-        solver.getAssumptions().size() <= assumptions.size()) {  // figure out and set new coreguided assumptions
-      reformObj->removeEqualities(solver.getEqualities(), false);
-      simplifyAssumps(reformObj, assumptions);
-      reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-      if (reformObj->nVars() == 0) {
-        solver.setAssumptions(assumptions.getKeys());
-      } else {
-        std::vector<Term<double>> litcoefs;  // using double will lead to faster sort than bigint
-        litcoefs.reserve(reformObj->nVars());
-        while (true) {
-          for (Var v : reformObj->getVars()) {
-            assert(reformObj->getLit(v) != 0);
-            assert(!assumptions.has(v));
-            assert(!assumptions.has(-v));
-            if (stratLim <= reformObj->coefs[v] || stratLim <= -reformObj->coefs[v]) {
-              litcoefs.emplace_back(aux::toDouble(aux::abs(reformObj->coefs[v])), v);
-            }
-          }
-          if (!litcoefs.empty() || stratLim == 1) break;
-          decreaseStratLim(stratLim, stratDiv);
-        }
-        std::sort(litcoefs.begin(), litcoefs.end(), [](const Term<double>& t1, const Term<double>& t2) {
-          return t1.c > t2.c || (t1.c == t2.c && t1.l < t2.l);
-        });
-        LitVec assumps = assumptions.getKeys();
-        assumps.reserve(assumps.size() + litcoefs.size());
-        for (const Term<double>& t : litcoefs) assumps.push_back(-reformObj->getLit(t.l));
-        solver.setAssumptions(assumps);
-        assert(solver.getAssumptions().size() > assumptions.size());
-      }
-    } else if (!coreguided) {  // set regular assumptions
-      solver.setAssumptions(assumptions.getKeys());
-    }
-
-    if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
-      // NOTE: this optimization really helps with knapsack instances, because it immediately fixes a bunch of variables
-      // TODO: generalize this: reformulate the *original* objective with the new bound after an inconsistency?
-      reply = SolveState::INCONSISTENT;
-      solver.lastCore = solver.lastGlobalDual;
-    } else {
-      try {
-        reply = aux::timeCall<SolveState>([&] { return solver.solve(); }, solver.hasAssumptions()
-                                                                              ? global.stats.SOLVETIMEASSUMP
-                                                                              : global.stats.SOLVETIMEFREE);
-      } catch (const UnsatEncounter& ue) {
-        reply = SolveState::UNSAT;
-      }
-      if (solver.hasAssumptions()) {
-        global.stats.DETTIMEASSUMP += global.stats.getDetTime() - current_time;
-      } else {
-        global.stats.DETTIMEFREE += global.stats.getDetTime() - current_time;
-      }
-    }
-
-    if (reply == SolveState::UNSAT) {
-      return SolveState::UNSAT;
-    } else if (reply == SolveState::SAT) {
-      assert(solver.foundSolution());
-      ++global.stats.NSOLS;
-      if (optimize) {
-        boundObjByLastSol();
-      }
-      if (coreguided) {
-        decreaseStratLim(stratLim, stratDiv);
-        solver.clearAssumptions();
-      }
-      return SolveState::SAT;
-    } else if (reply == SolveState::INCONSISTENT) {
-      assert(!solver.getAssumptions().isEmpty());
-      ++global.stats.NCORES;
-      if (solver.getAssumptions().size() > assumptions.size()) {
-        assert(coreguided);
-        if (solver.lastCore->falsifiedBy(assumptions)) {
-          solver.clearAssumptions();
-          return SolveState::INCONSISTENT;
-        } else {
-          handleInconsistency(solver.lastCore);
-          solver.clearAssumptions();
-        }
-      } else {
-        assert(solver.getAssumptions().size() == assumptions.size());  // no coreguided assumptions
-        assert(solver.lastCore->falsifiedBy(assumptions));
-        return SolveState::INCONSISTENT;
-      }
-    } else if (reply == SolveState::INPROCESSED) {
-      bool oldcoreguided = coreguided;
-      coreguided = optimize && lower_bound < upper_bound &&
-                   (global.options.cgHybrid.get() >= 1 ||
-                    global.stats.DETTIMEASSUMP <
-                        global.options.cgHybrid.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP));
-      // NOTE: no need to do coreguided search once we know the lower bound is at least the upper bound
-      // in that case, let the solver figure out the inconsistency on its own
-      if (oldcoreguided && !coreguided && stratLim > 1) {
-        // next time, use more assumption lits
-        decreaseStratLim(stratLim, stratDiv);
-      }
-      return SolveState::INPROCESSED;
-    } else {
-      assert(false);  // should not happen
-    }
   }
 }
 
@@ -680,28 +549,9 @@ SolveState Optimization<SMALL, LARGE>::runFull(bool optimize, double timeout) {
 }
 
 template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::bisect() {
-  assert(lower_bound < upper_bound);
-  LARGE middle = lower_bound + (upper_bound - lower_bound) / 2;
-  assert(middle < upper_bound);
-  assert(middle >= lower_bound);
-  if (boundingVar == 0 || middle != boundingVal) {
-    boundingVal = middle;
-    CeArb bisect = global.cePools.takeArb();
-    origObj->copyTo(bisect);
-    assert(bisect->getDegree() == 0);
-    bisect->addRhs(boundingVal);  // objective must be at least middle
-    bisect->invert();             // objective must be at most middle
-    boundingVar = solver.addVar(false);
-    bisect->addLhs(bisect->getDegree(), boundingVar);  // ~boundingVar enables bisect constraint
-    solver.addConstraint(bisect, Origin::COREGUIDED);
-  }
-}
-
-template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::boundBottomUp() {
   assert(lower_bound < upper_bound);
-  LARGE bnd = lower_bound + (upper_bound - lower_bound) / global.options.objRange.get();
+  LARGE bnd = lower_bound + (upper_bound - lower_bound) / global.options.optPrecision.get();
   assert(bnd < upper_bound);
   assert(bnd >= lower_bound);
   if (boundingVar == 0 || bnd != boundingVal) {

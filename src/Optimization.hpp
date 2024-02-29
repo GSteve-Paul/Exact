@@ -152,7 +152,6 @@ class Optimization final : public OptimizationSuper {
   bigint stratLim;
   bool coreguided;
 
-  void bisect();
   void boundBottomUp();
 
  public:

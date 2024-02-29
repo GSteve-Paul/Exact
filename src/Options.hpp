@@ -256,15 +256,13 @@ struct Options {
       "bits-learned",
       "Bit width of maximum coefficient for learned constraints (0 is unlimited, 1 reduces to cardinalities)",
       limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
-  EnumOption optMethod{
-      "opt-method", "Optimization method", "mixed", {"topdown", "bottomup", "mixed", "ranged", "random", "bisect"}};
-  ValOption<int32_t> objRange{
-      "opt-objrange",
-      "Range of objective reformulation, higher means more finegrained search over objective (0 disables)", 50,
-      "0 or int > 1", [](const int32_t& x) -> bool { return x == 0 || x > 1; }};
-  ValOption<float> cgHybrid{"cg",
-                            "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
+  ValOption<float> optRatio{"opt-ratio",
+                            "Ratio of bottom-up optimization time (0 means only top-down, 1 fully bottom-up)", 0.5,
                             "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
+  ValOption<int32_t> optPrecision{"opt-precision",
+                                  "Precision of bottom-up optimization (2 bisects the optimality gap, higher means "
+                                  "more finegrained bottom-up optimization)",
+                                  50, "int > 1", [](const int32_t& x) -> bool { return x > 1; }};
   BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
   ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
                            2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
@@ -336,9 +334,8 @@ struct Options {
       &bitsOverflow,
       &bitsReduced,
       &bitsLearned,
-      &optMethod,
-      &objRange,
-      &cgHybrid,
+      &optPrecision,
+      &optRatio,
       &cgResolveProp,
       &cgStrat,
       &ilpEncoding,
