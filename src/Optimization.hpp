@@ -141,8 +141,8 @@ class Optimization final : public OptimizationSuper {
   ID lastUpperBound = ID_Undef;
   ID lastLowerBound = ID_Undef;
 
-  bigint bisectVal;
-  Var bisectVar;
+  LARGE bisectVal;
+  Var bisectVar = 0;
 
   std::vector<std::unique_ptr<LazyVar<SMALL, LARGE>>> lazyVars;
 

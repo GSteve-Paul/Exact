@@ -480,7 +480,8 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
     }
 
-    if (optimize) {
+    if (optimize && lower_bound < upper_bound) {
+      bisect();
       std::vector<Lit> assumps = assumptions.getKeys();
       assumps.push_back(-bisectVar);
       solver.setAssumptions(assumps);
@@ -501,10 +502,35 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       global.stats.DETTIMEFREE += global.stats.getDetTime() - current_time;
     }
 
-    if (reply == SolveState::UNSAT) {
-      return SolveState::UNSAT;
-    } else if (reply == SolveState::SAT) {
+    if (reply == SolveState::SAT) {
+      assert(solver.foundSolution());
+      ++global.stats.NSOLS;
+      if (optimize) {
+        boundObjByLastSol();
+        solver.clearAssumptions();
+      }
+      return SolveState::SAT;
     } else if (reply == SolveState::INCONSISTENT) {
+      assert(!solver.getAssumptions().isEmpty());
+      ++global.stats.NCORES;
+      if (solver.getAssumptions().size() > assumptions.size()) {
+        if (solver.lastCore->falsifiedBy(assumptions)) {
+          solver.clearAssumptions();
+          return SolveState::INCONSISTENT;
+        } else {
+          lower_bound = bisectVal + 1;
+          solver.addUnitConstraint(bisectVar, Origin::COREGUIDED);
+          solver.clearAssumptions();
+          printObjBounds();
+        }
+      } else {
+        assert(solver.getAssumptions().size() == assumptions.size());  // no coreguided assumptions
+        assert(solver.lastCore->falsifiedBy(assumptions));
+        return SolveState::INCONSISTENT;
+      }
+    } else {
+      assert(reply == SolveState::INPROCESSED || reply == SolveState::UNSAT);
+      return reply;
     }
 
     continue;
@@ -631,19 +657,21 @@ SolveState Optimization<SMALL, LARGE>::runFull(bool optimize, double timeout) {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::bisect() {
-  bigint middle = (upper_bound - lower_bound) / 2;
+  assert(lower_bound < upper_bound);
+  LARGE middle = lower_bound + (upper_bound - lower_bound) / 2;
   assert(middle < upper_bound);
   assert(middle >= lower_bound);
   if (bisectVar == 0 || middle != bisectVal) {
-    assert(bisectVar == 0 || middle < bisectVal);
     CeArb bisect = global.cePools.takeArb();
     origObj->copyTo(bisect);
     assert(bisect->getDegree() == 0);
     bisect->addRhs(middle);  // objective must be at least middle
     bisect->invert();        // objective must be at most middle
     bisectVar = solver.addVar(false);
+    bisectVal = middle;
     bisect->addLhs(bisect->getDegree(), bisectVar);  // ~bisectVar enables bisect constraint
     solver.addConstraint(bisect, Origin::COREGUIDED);
+    if (global.options.verbosity.get() > 0) std::cout << "c bisecting on " << bisectVal << std::endl;
   }
 }
 
