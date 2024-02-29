@@ -80,7 +80,10 @@ Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver, const In
   assert(obj->getDegree() == 0);
   solver.setObjective(obj);
 
-  bigint maxVal = obj->getCutoffVal();
+  bigint maxVal = obj->absCoeffSum();
+  // Bottom-up optimization may introduce reification variables where the coefficient is the degree.
+  // If the absCoeffSum fits in SMALL, this should be no problem.
+
   if (maxVal <= static_cast<bigint>(limitAbs<int, long long>())) {  // TODO: try to internalize this check in ConstrExp
     Ce32 o = solver.global.cePools.take32();
     obj->copyTo(o);
