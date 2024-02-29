@@ -174,8 +174,8 @@ class Solver {
   int assumptionLevel() const { return assumptions_lim.size() - 1; }
 
   // @return: formula line id, processed id, needed for optimization proof logging
-  std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
-  std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
+  std::pair<ID, ID> addConstraint(const CeSuper& c);
+  std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c);
   std::pair<ID, ID> addUnitConstraint(Lit l, Origin orig);
   std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
   void invalidateLastSol(const VarVec& vars);
@@ -246,9 +246,8 @@ class Solver {
 
   [[nodiscard]] CRef attachConstraint(const CeSuper& constraint, bool locked);
   void removeConstraint(const CRef& cr, bool override = false);
-  void learnConstraint(const CeSuper& c, Origin orig);
+  void learnConstraint(const CeSuper& c);
   void learnUnitConstraint(Lit l, Origin orig, ID id);
-  void learnClause(const LitVec& lits, Origin orig, ID id);
   void learnClause(Lit l1, Lit l2, Origin orig, ID id);
   std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
 

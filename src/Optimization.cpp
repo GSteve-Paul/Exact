@@ -74,8 +74,10 @@ LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar,
     : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(upperBnd), mult(m) {
   assert(remainingVars() > 0);
   cardCore->copyTo(atLeast);
+  atLeast.orig = Origin::COREGUIDED;
   atLeast.toNormalFormLit();
   assert(atLeast.rhs == cardCore->getDegree());
+  atMost.orig = Origin::COREGUIDED;
   atMost.rhs = -atLeast.rhs;
   atMost.terms.reserve(atLeast.size() + 1);
   for (auto& t : atLeast.terms) {
@@ -117,14 +119,14 @@ template <typename SMALL, typename LARGE>
 void LazyVar<SMALL, LARGE>::addAtLeastConstraint() {
   assert(atLeast.terms.back().l == currentVar);
   solver.dropExternal(atLeastID, true, false);  // TODO: should old constraints be force deleted?
-  solver.addConstraint(atLeast, Origin::COREGUIDED);
+  solver.addConstraint(atLeast);
 }
 
 template <typename SMALL, typename LARGE>
 void LazyVar<SMALL, LARGE>::addAtMostConstraint() {
   assert(atMost.terms.back().l == currentVar);
   solver.dropExternal(atMostID, true, false);
-  solver.addConstraint(atMost, Origin::COREGUIDED);
+  solver.addConstraint(atMost);
 }
 
 template <typename SMALL, typename LARGE>
@@ -139,7 +141,7 @@ void LazyVar<SMALL, LARGE>::addFinalAtMost() {
   solver.dropExternal(atMostID, true, false);
   Term32& last = atMost.terms.back();
   last = {1, last.l};
-  solver.addConstraint(atMost, Origin::COREGUIDED);
+  solver.addConstraint(atMost);
 }
 
 OptimizationSuper::OptimizationSuper(Solver& s, const bigint& os, const IntSet& assumps)
@@ -287,9 +289,10 @@ void Optimization<SMALL, LARGE>::addLowerBound() {
   if (!assumptions.isEmpty()) return;  // otherwise the lower_bound is not globally valid
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
+  aux->orig = Origin::LOWERBOUND;
   aux->addRhs(lower_bound);
   solver.dropExternal(lastLowerBound, true, true);
-  std::pair<ID, ID> res = solver.addConstraint(aux, Origin::LOWERBOUND);
+  std::pair<ID, ID> res = solver.addConstraint(aux);
   lastLowerBound = res.second;
   harden();
 }
@@ -345,6 +348,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   if (!core->hasNegativeSlack(solver.getAssumptions().getIndex())) return State::FAIL;
   core->saturate(true, false);
   Ce32 cardCore = reduceToCardinality(core);
+  cardCore->orig = Origin::COREGUIDED;
   assert(cardCore->hasNoZeroes());
 
   // adjust the lower bound
@@ -380,7 +384,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
 
   if (!needAuxiliary) {
     // since the cardinality is actually an equality, we can add its inverted form to the solver
-    solver.addConstraint(cardCore, Origin::COREGUIDED);
+    solver.addConstraint(cardCore);
   }
 
   lower_bound = -reformObj->getDegree();
@@ -431,10 +435,11 @@ void Optimization<SMALL, LARGE>::boundObjByLastSol() {
 
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
+  aux->orig = Origin::UPPERBOUND;
   aux->invert();
   aux->addRhs(-upper_bound + 1);
   solver.dropExternal(lastUpperBound, true, true);
-  std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
+  std::pair<ID, ID> res = solver.addConstraint(aux);
   lastUpperBound = res.second;
   if (assumptions.isEmpty()) harden();
 }
