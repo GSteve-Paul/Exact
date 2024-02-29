@@ -244,6 +244,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
     }
     inputs.emplace_back();
     ConstrSimple32& input = inputs.back();
+    input.orig = Origin::FORMULA;
     input.rhs = 1;
     obj_terms.push_back({weight, nullptr});
     Lit l = 0;
@@ -252,7 +253,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
       ilp.getSolver().setNbVars(toVar(l), true);
     }
     if (weight == 0) {  // hard clause
-      ilp.getSolver().addConstraint(input, Origin::FORMULA);
+      ilp.getSolver().addConstraint(input);
       inputs.pop_back();
       obj_terms.pop_back();
     }
@@ -281,7 +282,7 @@ void wcnf_read(std::istream& in, ILP& ilp) {
         ilp.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
       }
       input.terms.push_back({1, aux});  // implication
-      ilp.getSolver().addConstraint(input, Origin::FORMULA);
+      ilp.getSolver().addConstraint(input);
     }
     inputs.pop_back();
   }
@@ -302,13 +303,14 @@ void cnf_read(std::istream& in, ILP& ilp) {
     quit::checkInterrupt(ilp.global);
     std::istringstream is(line);
     input.reset();
+    input.orig = Origin::FORMULA;
     input.rhs = 1;
     Lit l = 0;
     while (is >> l) {
       ilp.getSolver().setNbVars(toVar(l), true);
       input.terms.push_back({1, l});
     }
-    ilp.getSolver().addConstraint(input, Origin::FORMULA);
+    ilp.getSolver().addConstraint(input);
   }
 }
 

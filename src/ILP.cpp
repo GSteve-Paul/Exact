@@ -126,6 +126,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
       assert(!encodingVars.empty());
       ConstrSimpleArb csa({}, -range);
       csa.terms.reserve(encodingVars.size());
+      csa.orig = Origin::FORMULA;
       bigint base = -1;
       for (const Var v : encodingVars) {
         csa.terms.emplace_back(base, v);
@@ -134,7 +135,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
       // NOTE: last variable could have a smaller coefficient if the range is not a nice power of two - 1
       // This would actually increase the number of solutions to the constraint. It would also not guarantee that each
       // value for an integer variable had a unique Boolean representation. Bad idea probably.
-      solver.addConstraint(csa, Origin::FORMULA);
+      solver.addConstraint(csa);
     } else if (encoding == Encoding::ORDER) {
       assert(!encodingVars.empty() || range == 0);
       for (Var var = oldvars + 1; var < solver.getNbVars(); ++var) {
@@ -145,14 +146,16 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
       assert(encoding == Encoding::ONEHOT);
       ConstrSimple32 cs1({}, 1);
       cs1.terms.reserve(encodingVars.size());
+      cs1.orig = Origin::FORMULA;
       ConstrSimple32 cs2({}, -1);
       cs2.terms.reserve(encodingVars.size());
+      cs2.orig = Origin::FORMULA;
       for (int var = oldvars + 1; var <= solver.getNbVars(); ++var) {
         cs1.terms.emplace_back(1, var);
         cs2.terms.emplace_back(-1, var);
       }
-      solver.addConstraint(cs1, Origin::FORMULA);
-      solver.addConstraint(cs2, Origin::FORMULA);
+      solver.addConstraint(cs1);
+      solver.addConstraint(cs2);
     }
   }
 }
@@ -216,6 +219,7 @@ const bigint IntConstraint::getRange() const {
 int64_t IntConstraint::size() const { return lhs.size(); }
 
 void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
+  input->orig = Origin::FORMULA;
   if (useLowerBound) {
     assert(lowerBound.has_value());
     input->addRhs(lowerBound.value());
@@ -467,12 +471,12 @@ void ILP::addConstraint(const IntConstraint& ic) {
   if (ic.lowerBound.has_value()) {
     CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, true);
-    solver.addConstraint(input, Origin::FORMULA);
+    solver.addConstraint(input);
   }
   if (ic.upperBound.has_value()) {
     CeArb input = global.cePools.takeArb();
     ic.toConstrExp(input, false);
-    solver.addConstraint(input, Origin::FORMULA);
+    solver.addConstraint(input);
   }
 }
 
@@ -499,7 +503,7 @@ void ILP::addRightReification(IntVar* head, const IntConstraint& ic) {
 
     Var h = head->getEncodingVars()[0];
     leq->addLhs(leq->degree, -h);
-    solver.addConstraint(leq, Origin::FORMULA);
+    solver.addConstraint(leq);
   }
 }
 
@@ -522,7 +526,7 @@ void ILP::addLeftReification(IntVar* head, const IntConstraint& ic) {
     geq->addRhs(-1);
     geq->invert();
     geq->addLhs(geq->degree, h);
-    solver.addConstraint(geq, Origin::FORMULA);
+    solver.addConstraint(geq);
   }
 }
 
@@ -579,6 +583,7 @@ void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_b
   }
 
   ConstrSimple32 clause;
+  clause.orig = Origin::FORMULA;
   std::vector<TermArb> lhs;
   lhs.reserve(terms.size());
   for (std::pair<bigint, VarVec>& t : terms) {
@@ -600,7 +605,7 @@ void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_b
       clause.terms.push_back({1, -v});
       solver.addBinaryConstraint(-aux, v, Origin::FORMULA);
     }
-    solver.addConstraint(clause, Origin::FORMULA);
+    solver.addConstraint(clause);
   }
 
   std::array<IntVar*, 2> bounds = {lower_bound, upper_bound};
@@ -608,6 +613,7 @@ void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_b
     IntVar* iv = bounds[j];
     if (!iv) continue;
     CeArb ca = global.cePools.takeArb();
+    ca->orig = Origin::FORMULA;
     ca->addRhs(iv->getLowerBound());
     for (const TermArb& ta : lhs) {
       ca->addLhs(ta.c, ta.l);
@@ -629,7 +635,7 @@ void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_b
       }
     }
     if (j > 0) ca->invert();
-    solver.addConstraint(ca, Origin::FORMULA);
+    solver.addConstraint(ca);
   }
 }
 
@@ -812,6 +818,7 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
   assert(result == SolveState::SAT);
 
   Ce32 invalidator = global.cePools.take32();
+  invalidator->orig = Origin::INVALIDATOR;
   invalidator->addRhs(1);
   for (IntVar* iv : ivs) {
     for (Var v : iv->getEncodingVars()) {
@@ -833,7 +840,7 @@ std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& 
   assert(result == SolveState::SAT || result == SolveState::TIMEOUT);
   if (result == SolveState::SAT) {
     while (true) {
-      solver.addConstraint(invalidator, Origin::INVALIDATOR);
+      solver.addConstraint(invalidator);
       result = opt->runFull(false, to.limit);
       if (result != SolveState::SAT) break;
       for (Var v : invalidator->getVars()) {

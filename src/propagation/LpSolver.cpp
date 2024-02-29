@@ -210,6 +210,7 @@ CeSuper LpSolver::createLinearCombinationFarkas(soplex::DVectorReal& mults) {
   assert(scale > 0);
 
   Ce128 out = global.cePools.take128();
+  out->orig = Origin::FARKAS;
   for (int r = 0; r < mults.dim(); ++r) {
     int128 factor = aux::cast<int128, double>(mults[r] * scale);
     if (factor <= 0) continue;
@@ -364,11 +365,12 @@ void LpSolver::addFilteredCuts() {
   for (int i : keptCuts) {
     CandidateCut& cc = candidateCuts[i];
     CeSuper ce = cc.simpcons.toExpanded(global.cePools);
+    ce->orig = Origin::GOMORY;
     ce->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
     assert(ce->fitsInDouble());
     assert(!ce->isTautology());
     if (cc.cr == CRef_Undef) {  // Gomory cut
-      aux::timeCallVoid([&] { solver.learnConstraint(ce, Origin::GOMORY); }, global.stats.LEARNTIME);
+      aux::timeCallVoid([&] { solver.learnConstraint(ce); }, global.stats.LEARNTIME);
     } else {  // learned cut
       ++global.stats.NLPLEARNEDCUTS;
     }
@@ -474,7 +476,8 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
       if (lp.getDual(lpMultipliers)) {
         CeSuper dual = createLinearCombinationFarkas(lpMultipliers);
         if (dual) {
-          aux::timeCallVoid([&] { solver.learnConstraint(dual, Origin::DUAL); }, global.stats.LEARNTIME);
+          dual->orig = Origin::DUAL;
+          aux::timeCallVoid([&] { solver.learnConstraint(dual); }, global.stats.LEARNTIME);
           return {LpStatus::OPTIMAL, dual};
         }
       } else {
@@ -513,7 +516,7 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
 
   CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
   if (confl) {
-    aux::timeCallVoid([&] { solver.learnConstraint(confl, Origin::FARKAS); }, global.stats.LEARNTIME);
+    aux::timeCallVoid([&] { solver.learnConstraint(confl); }, global.stats.LEARNTIME);
     return {LpStatus::INFEASIBLE, confl};
   }
   return {LpStatus::INFEASIBLE, CeNull()};

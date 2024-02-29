@@ -254,7 +254,7 @@ State Solver::probe(Lit l, bool deriveImplications) {
     CeSuper confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
     if (confl) {
       CeSuper analyzed = aux::timeCall<CeSuper>([&] { return analyze(confl); }, global.stats.CATIME);
-      aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
+      aux::timeCallVoid([&] { learnConstraint(analyzed); }, global.stats.LEARNTIME);
       return State::FAIL;
     }
     // NOTE: we may have backjumped to level 0 due to a learned constraint that did not propagate.
@@ -398,7 +398,7 @@ CeSuper Solver::analyze(const CeSuper& conflict) {
   conflict->saturateAndFixOverflow(getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0);
 
   CeSuper confl = getAnalysisCE(conflict);
-  conflict->reset(false);  // TODO: can be dropped, is done by CePools?
+  confl->orig = Origin::LEARNED;
 
   IntSet& actSet = global.isPool.take();  // will hold the literals that need their activity bumped
   for (Var v : confl->getVars()) {
@@ -532,7 +532,7 @@ CeSuper Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   conflict->saturateAndFixOverflow(getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0);
   assert(conflict->hasNegativeSlack(level));
   CeSuper core = getAnalysisCE(conflict);
-  conflict->reset(false);
+  core->orig = Origin::LEARNED;
 
   // analyze conflict to the point where we have a decision core
   IntSet& actSet = global.isPool.take();
@@ -561,7 +561,7 @@ CeSuper Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   assert(core->hasNegativeSlack(assumptions.getIndex()));
   assert(!core->isTautology());
   assert(core->isSaturated());
-  aux::timeCallVoid([&] { learnConstraint(core, Origin::LEARNED); }, global.stats.LEARNTIME);
+  aux::timeCallVoid([&] { learnConstraint(core); }, global.stats.LEARNTIME);
   // NOTE: takes care of inconsistency
   backjumpTo(0);
   for (Lit l : assumptions.getKeys()) {
@@ -654,12 +654,11 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
  * Adds c as a learned constraint with origin orig.
  * Backjumps to the level where c is no longer conflicting, as otherwise we might miss propagations.
  */
-void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
+void Solver::learnConstraint(const CeSuper& ce) {
   assert(!unsatReached);  // may work, but should not happen, as solve() and presolve() both guard for this
   assert(ce);
-  assert(isLearned(orig));
+  assert(isLearned(ce->orig));
   CeSuper learned = ce->clone(global.cePools);
-  learned->orig = orig;
   // NOTE: below line can cause loops when the equalities are not yet propagated, as the conflict constraint becomes
   // non-falsified
   // if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities(), true);
@@ -707,15 +706,6 @@ void Solver::learnUnitConstraint(Lit l, Origin orig, ID id) {
   c.decreaseLBD(1);
 }
 
-void Solver::learnClause(const LitVec& lits, Origin orig, ID id) {
-  Ce32 ce = global.cePools.take32();
-  ce->addRhs(1);
-  for (Lit l : lits) ce->addLhs(1, l);
-  ce->orig = orig;
-  ce->resetBuffer(std::to_string(id) + " ");
-  aux::timeCallVoid([&] { learnConstraint(ce, orig); }, global.stats.LEARNTIME);
-}
-
 void Solver::learnClause(Lit l1, Lit l2, Origin orig, ID id) {
   Ce32 ce = global.cePools.take32();
   ce->addRhs(1);
@@ -723,7 +713,7 @@ void Solver::learnClause(Lit l1, Lit l2, Origin orig, ID id) {
   ce->addLhs(1, l2);
   ce->orig = orig;
   ce->resetBuffer(std::to_string(id) + " ");
-  aux::timeCallVoid([&] { learnConstraint(ce, orig); }, global.stats.LEARNTIME);
+  aux::timeCallVoid([&] { learnConstraint(ce); }, global.stats.LEARNTIME);
 }
 
 std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: should not throw UnsatEncounter
@@ -785,17 +775,15 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
   }
 }
 
-std::pair<ID, ID> Solver::addConstraint(const CeSuper& c, Origin orig) {
+std::pair<ID, ID> Solver::addConstraint(const CeSuper& c) {
   // NOTE: copy to temporary constraint guarantees original constraint is not changed and does not need
   // global.logger
   CeSuper ce = c->clone(global.cePools);
-  ce->orig = orig;
   return addInputConstraint(ce);
 }
 
-std::pair<ID, ID> Solver::addConstraint(const ConstrSimpleSuper& c, Origin orig) {
+std::pair<ID, ID> Solver::addConstraint(const ConstrSimpleSuper& c) {
   CeSuper ce = c.toExpanded(global.cePools);
-  ce->orig = orig;
   return addInputConstraint(ce);
 }
 
@@ -819,12 +807,13 @@ std::pair<ID, ID> Solver::addBinaryConstraint(Lit l1, Lit l2, Origin orig) {
 void Solver::invalidateLastSol(const VarVec& vars) {
   assert(foundSolution());
   ConstrSimple32 invalidator;
+  invalidator.orig = Origin::INVALIDATOR;
   invalidator.terms.reserve(global.stats.NORIGVARS.z);
   invalidator.rhs = 1;
   for (Var v : vars) {
     invalidator.terms.push_back({1, -lastSol.value()[v]});
   }
-  addConstraint(invalidator, Origin::INVALIDATOR);
+  addConstraint(invalidator);
 }
 
 void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
@@ -1023,10 +1012,11 @@ void Solver::reduceDB() {
     assert(c.isMarkedForDelete());
     if (!c.isClauseOrCard()) {
       CeSuper ce = c.toExpanded(global.cePools);
+      ce->orig = Origin::REDUCED;
       ce->removeUnitsAndZeroes(getLevel(), getPos());
       if (ce->isTautology()) continue;  // possible due to further root propagations during rewriting of constraints
       ce->simplifyToCardinality(false, ce->getMaxStrengthCardinalityDegree(cardPoints));
-      aux::timeCallVoid([&] { learnConstraint(ce, Origin::REDUCED); }, global.stats.LEARNTIME);
+      aux::timeCallVoid([&] { learnConstraint(ce); }, global.stats.LEARNTIME);
     }
   }
 
@@ -1290,7 +1280,7 @@ SolveState Solver::solve() {
         assert(analyzed);
         assert(analyzed->hasNegativeSlack(getLevel()));
         assert(analyzed->isSaturated());
-        aux::timeCallVoid([&] { learnConstraint(analyzed, Origin::LEARNED); }, global.stats.LEARNTIME);
+        aux::timeCallVoid([&] { learnConstraint(analyzed); }, global.stats.LEARNTIME);
       } else {
         lastCore = aux::timeCall<CeSuper>([&] { return extractCore(confl); }, global.stats.CATIME);
         assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
@@ -1528,8 +1518,9 @@ void Solver::detectAtMostOne(Lit seed, unordered_set<Lit>& considered, LitVec& p
     }
     ++global.stats.ATMOSTONES;
     CeSuper ce = card.toExpanded(global.cePools);
+    ce->orig = Origin::DETECTEDAMO;
     global.logger.logAtMostOne(card, ce);
-    aux::timeCallVoid([&] { learnConstraint(ce, Origin::DETECTEDAMO); }, global.stats.LEARNTIME);
+    aux::timeCallVoid([&] { learnConstraint(ce); }, global.stats.LEARNTIME);
   }
   currentDetTime = global.stats.getDetTime();
   global.stats.ATMOSTONEDETTIME += currentDetTime - oldDetTime;

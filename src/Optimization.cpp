@@ -156,7 +156,8 @@ void Optimization<SMALL, LARGE>::boundObjByLastSol() {
   aux->invert();
   aux->addRhs(-upper_bound + 1);
   solver.dropExternal(lastUpperBound, true, true);
-  std::pair<ID, ID> res = solver.addConstraint(aux, Origin::UPPERBOUND);
+  aux->orig = Origin::UPPERBOUND;
+  std::pair<ID, ID> res = solver.addConstraint(aux);
   lastUpperBound = res.second;
 }
 
@@ -260,7 +261,8 @@ void Optimization<SMALL, LARGE>::boundBottomUp() {
     bound->invert();             // objective must be at most middle
     boundingVar = solver.addVar(false);
     bound->addLhs(bound->getDegree(), boundingVar);  // ~boundingVar enables bisect constraint
-    solver.addConstraint(bound, Origin::COREGUIDED);
+    bound->orig = Origin::COREGUIDED;
+    solver.addConstraint(bound);
   }
 }
 
