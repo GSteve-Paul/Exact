@@ -673,12 +673,12 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, bool sorted) {
   global.stats.NSATURATESTEPS += vs.size();
   assert(check || !sorted);
-  std::cout << "saturate" << std::endl;
-  toStreamPure(std::cout);
-  std::cout << std::endl;
+  // std::cout << "saturate" << std::endl;
+  // toStreamPure(std::cout);
+  // std::cout << std::endl;
   if (vars.empty() || (sorted && aux::abs(coefs[vars[0]]) <= degree) ||
       (!sorted && check && getLargestCoef() <= degree)) {
-    std::cout << "return empty" << std::endl;
+    // std::cout << "return empty" << std::endl;
     return;
   }
   assert(getLargestCoef() > degree);
@@ -688,22 +688,22 @@ void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, b
     reset(true);
     return;
   }
-  std::cout << "smallDeg: " << smallDeg << std::endl;
+  // std::cout << "smallDeg: " << smallDeg << std::endl;
   for (Var v : vs) {
-    std::cout << "v: " << v << " coefs[v]: " << coefs[v] << std::endl;
+    // std::cout << "v: " << v << " coefs[v]: " << coefs[v] << std::endl;
     if (coefs[v] < -smallDeg) {
       rhs -= coefs[v] + smallDeg;
       coefs[v] = -smallDeg;
     } else if (coefs[v] > smallDeg) {
       coefs[v] = smallDeg;
-      std::cout << "check" << std::endl;
+      // std::cout << "check" << std::endl;
     } else if (sorted) {
-      std::cout << "break" << std::endl;
+      // std::cout << "break" << std::endl;
       break;
     }
   }
-  toStreamPure(std::cout);
-  std::cout << std::endl;
+  // toStreamPure(std::cout);
+  // std::cout << std::endl;
   assert(isSaturated());
 }
 
@@ -785,8 +785,8 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce,
                                           const SMALL& largestCoef, Lit asserting) {
   assert(hasNoZeroes());
-  std::cout << "fixOverflow" << std::endl;
-  toStreamPure(std::cout);
+  // std::cout << "fixOverflow" << std::endl;
+  // toStreamPure(std::cout);
   assert(isSaturated());
   if (bitOverflow == 0) {
     return;
@@ -1301,7 +1301,7 @@ void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const
         weaken(coefs[v] < 0 ? am : -am, v);
         am = 0;
         removeZeroes();
-        std::cout << "after weakening partially: " << std::endl;
+        // std::cout << "after weakening partially: " << std::endl;
         if (coefs[v] != 0) fixOrderAtIndex(i);
       }
     }
@@ -1573,32 +1573,32 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOrderAtIndex(const int index) {
-  std::cout << "in fixOrderAtIndex: " << std::endl;
-  std::cout << "index: " << index << std::endl;
+  // std::cout << "in fixOrderAtIndex: " << std::endl;
+  // std::cout << "index: " << index << std::endl;
   assert(index >= 0 && index < (int)vars.size());
   Var checking = vars[index];
   SMALL checkingCoef = absCoef(checking);
   for (unsigned long int i = index; i < vars.size() - 1 && absCoef(vars[i + 1]) > checkingCoef; i++) {
     std::swap(vars[i], vars[i + 1]);
   }
-  toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
+  // toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
   assert(isSortedInDecreasingCoefOrder());
 }
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOrderOfVar(Var v) {
-  std::cout << "in fixOrderOfVar: " << std::endl;
+  // std::cout << "in fixOrderOfVar: " << std::endl;
   assert(hasVar(v));
-  std::cout << "var: " << v << std::endl;
+  // std::cout << "var: " << v << std::endl;
   int i = index[v];
-  std::cout << "index: " << i << std::endl;
-  toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
+  // std::cout << "index: " << i << std::endl;
+  // toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
   fixOrderAtIndex(i);
-  std::cout << "after fixOrderAtIndex: " << std::endl;
-  toStreamPure(std::cout);
-  std::cout << "\n" << std::endl;
+  // std::cout << "after fixOrderAtIndex: " << std::endl;
+  // toStreamPure(std::cout);
+  // std::cout << "\n" << std::endl;
   assert(isSortedInDecreasingCoefOrder());
 }
 
