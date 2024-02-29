@@ -480,6 +480,37 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
     }
 
+    if(optimize){
+      std::vector<Lit> assumps = assumptions.getKeys();
+      assumps.push_back(-bisectVar);
+      solver.setAssumptions(assumps);
+    }else{
+      solver.setAssumptions(assumptions.getKeys());
+    }
+
+    try {
+      reply = aux::timeCall<SolveState>([&] { return solver.solve(); }, solver.hasAssumptions()
+                                                                            ? global.stats.SOLVETIMEASSUMP
+                                                                            : global.stats.SOLVETIMEFREE);
+    } catch (const UnsatEncounter& ue) {
+      reply = SolveState::UNSAT;
+    }
+    if (solver.hasAssumptions()) {
+      global.stats.DETTIMEASSUMP += global.stats.getDetTime() - current_time;
+    } else {
+      global.stats.DETTIMEFREE += global.stats.getDetTime() - current_time;
+    }
+
+    if (reply == SolveState::UNSAT) {
+      return SolveState::UNSAT;
+    } else if (reply == SolveState::SAT) {
+
+    } else if (reply == SolveState::INCONSISTENT) {
+      
+    }
+
+    continue;
+
     // There are three possibilities:
     // - no assumptions are set (because something happened during previous core-guided step)
     // - only the given assumptions are set (because the previous step was not core-guided)
@@ -598,6 +629,24 @@ SolveState Optimization<SMALL, LARGE>::runFull(bool optimize, double timeout) {
     result = run(optimize, timeout);
   }
   return result;
+}
+
+template <typename SMALL, typename LARGE>
+void Optimization<SMALL, LARGE>::bisect(){
+  bigint middle = (upper_bound - lower_bound)/2;
+  assert(middle<upper_bound);
+  assert(middle>=lower_bound);
+  if(bisectVar==0 || middle!=bisectVal){
+    assert(bisectVar==0 || middle<bisectVal);
+    CeArb bisect = global.cePools.takeArb();
+    origObj->copyTo(bisect);
+    assert(bisect->getDegree()==0);
+    bisect->addRhs(middle); // objective must be at least middle
+    bisect->invert(); // objective must be at most middle
+    bisectVar = solver.addVar(false);
+    bisect->addLhs(bisect->getDegree(), bisectVar); // ~bisectVar enables bisect constraint
+    solver.addConstraint(bisect);
+  }
 }
 
 template class Optimization<int, long long>;
