@@ -262,7 +262,7 @@ struct Options {
   ValOption<int32_t> optPrecision{"opt-precision",
                                   "Precision of bottom-up optimization (2 bisects the optimality gap, higher means "
                                   "more finegrained bottom-up optimization)",
-                                  50, "int > 1", [](const int32_t& x) -> bool { return x > 1; }};
+                                  100, "int > 1", [](const int32_t& x) -> bool { return x > 1; }};
   EnumOption ilpEncoding{"ilp-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
   BoolOption ilpContinuous{"ilp-continuous",
                            "Accept continuous variables by treating them as integer variables. This restricts the "
