@@ -114,6 +114,7 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
       origObj(obj),
       lower_bound(0),
       upper_bound(obj->absCoeffSum() + 1),
+      lastLowerBound(ID_Undef),
       lastUpperBound(ID_Undef),
       boundingVal(0),
       boundingVar(0) {
@@ -158,10 +159,21 @@ void Optimization<SMALL, LARGE>::boundObjByLastSol() {
   origObj->copyTo(aux);
   aux->invert();
   aux->addRhs(-upper_bound + 1);
-  solver.dropExternal(lastUpperBound, true, true);
+  solver.dropExternal(lastUpperBound);
   aux->orig = Origin::UPPERBOUND;
   std::pair<ID, ID> res = solver.addConstraint(aux);
   lastUpperBound = res.second;
+}
+
+template <typename SMALL, typename LARGE>
+void Optimization<SMALL, LARGE>::addLowerBound() {
+  CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
+  origObj->copyTo(aux);
+  aux->orig = Origin::LOWERBOUND;
+  aux->addRhs(lower_bound);
+  solver.dropExternal(lastLowerBound);
+  std::pair<ID, ID> res = solver.addConstraint(aux);
+  lastLowerBound = res.second;
 }
 
 template <typename SMALL, typename LARGE>
@@ -221,7 +233,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           return SolveState::INCONSISTENT;
         } else {
           lower_bound = boundingVal + 1;
-          solver.addUnitConstraint(boundingVar, Origin::COREGUIDED);
+          if (assumptions.isEmpty()) addLowerBound();
           solver.clearAssumptions();
           printObjBounds();
         }

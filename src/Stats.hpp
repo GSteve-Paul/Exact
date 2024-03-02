@@ -195,7 +195,6 @@ struct Stats {
   Stat LEARNEDLBDSUM{0, "learned LBD sum"};
 
   Stat NUNITS{0, "unit literals derived"};
-  Stat NHARDENINGS{0, "hardened literals"};
   Stat NPURELITS{0, "pure literals"};
   Stat NSATISFIEDSREMOVED{0, "constraints satisfied at root"};
   Stat NCONSREADDED{0, "constraints simplified during database reduction"};
@@ -291,10 +290,6 @@ struct Stats {
   Stat NLPENCDUAL{0, "LP encountered dual constraints"};
   Stat LPOBJ{std::numeric_limits<StatNum>::quiet_NaN(), "LP relaxation objective"};
 
-  Stat NCGUNITCORES{0, "CG unit cores"};
-  Stat NCGNONCLAUSALCORES{0, "CG non-clausal cores"};
-  Stat NCGCOREREUSES{0, "CG additional cardinalities from a core"};
-
   // derived statistics
   Stat CPUTIME{0, "cpu time"};
   Stat SOLVETIME{0, "solve time"};
@@ -389,7 +384,6 @@ struct Stats {
       &LEARNEDSTRENGTHAVG,
       &LEARNEDLBDAVG,
       &NUNITS,
-      &NHARDENINGS,
       &NPURELITS,
       &NSATISFIEDSREMOVED,
       &NCONSREADDED,
@@ -439,9 +433,6 @@ struct Stats {
       &NENCDETECTEDAMO,
       &NENCEQ,
       &NENCIMPL,
-      &NCGUNITCORES,
-      &NCGNONCLAUSALCORES,
-      &NCGCOREREUSES,
       &LASTUB,
       &LASTLB,
 #if WITHSOPLEX

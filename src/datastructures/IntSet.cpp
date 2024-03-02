@@ -93,7 +93,7 @@ const IntMap<int>& IntSet::getIndex() const { return index; }
 
 void IntSet::resize(int size) { index.resize(size, _unused_()); }
 size_t IntSet::size() const { return keys.size(); }
-bool IntSet::isEmpty() const { return size() == 0; }
+bool IntSet::isEmpty() const { return keys.empty(); }
 
 void IntSet::clear() {
   //    assert(check());  // test

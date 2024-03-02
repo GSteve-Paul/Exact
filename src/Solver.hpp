@@ -180,7 +180,7 @@ class Solver {
   std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
   void invalidateLastSol(const VarVec& vars);
 
-  void dropExternal(ID id, bool erasable, bool forceDelete);
+  void dropExternal(ID id);
   int getNbConstraints() const { return constraints.size(); }
   const std::vector<CRef>& getRawConstraints() const { return constraints; }
   const ConstraintAllocator& getCA() const { return ca; }

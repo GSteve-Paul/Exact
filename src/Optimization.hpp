@@ -105,6 +105,7 @@ class Optimization final : public OptimizationSuper {
  private:
   LARGE lower_bound;
   LARGE upper_bound;
+  ID lastLowerBound;
   ID lastUpperBound;
 
   LARGE boundingVal;
@@ -122,6 +123,7 @@ class Optimization final : public OptimizationSuper {
   void printObjBounds();
 
   void boundObjByLastSol();
+  void addLowerBound();
 
   [[nodiscard]] SolveState run(bool optimize, double timeout);
   [[nodiscard]] SolveState runFull(bool optimize, double timeout);

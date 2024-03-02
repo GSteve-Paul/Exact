@@ -636,7 +636,6 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   global.stats.NLPDUAL += orig == Origin::DUAL;
   global.stats.NLPFARKAS += orig == Origin::FARKAS;
   global.stats.NPURELITS += orig == Origin::PURE;
-  global.stats.NHARDENINGS += orig == Origin::HARDENEDBOUND;
   global.stats.NCONSREDUCED += orig == Origin::REDUCED;
 
   // NOTE: propagation is not necessary, but do it at first level to make sure to derive as many unit lits as possible
@@ -834,15 +833,14 @@ void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
   }
 }
 
-void Solver::dropExternal(ID id, bool erasable, bool forceDelete) {
-  assert(erasable || !forceDelete);
+void Solver::dropExternal(ID id) {
   if (id == ID_Undef) return;
   auto old_it = external.find(id);
   assert(old_it != external.end());
   CRef cr = old_it->second;
   external.erase(old_it);
-  ca[cr].setLocked(!erasable);
-  if (forceDelete) removeConstraint(cr);
+  ca[cr].setLocked(false);
+  removeConstraint(cr);
 }
 
 // ---------------------------------------------------------------------
