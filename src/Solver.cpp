@@ -281,11 +281,21 @@ State Solver::probe(Lit l, bool deriveImplications) {
  * @return: a CeNull when no conflict is detected, otherwise the conflicting constraint
  */
 CeSuper Solver::runDatabasePropagation() {
+  int constrPrio =
+      global.options.constrPrio.is("none")
+          ? 0
+          : (global.options.constrPrio.is("old")
+                 ? 1
+                 : (global.options.constrPrio.is("lbd")
+                        ? 2
+                        : (global.options.constrPrio.is("strength") ? 3
+                                                                    : (global.options.constrPrio.is("ilbd") ? 4 : 5))));
   while (qhead < (int)trail.size()) {
     Lit p = trail[qhead++];
     std::vector<Watch>& ws = adj[-p];
-    float prevStrength = std::numeric_limits<float>::max();
+    double prevStrength = std::numeric_limits<double>::max();
     unsigned int prevLBD = 0;
+
     for (int it_ws = 0; it_ws < (int)ws.size(); ++it_ws) {
       int idx = ws[it_ws].idx;
       if (idx < 0 && isTrue(level, idx + INF)) {
@@ -315,15 +325,42 @@ CeSuper Solver::runDatabasePropagation() {
         return result;
       } else {
         assert(wstat == WatchStatus::KEEPWATCH);
+        if (it_ws == 0) continue;
+        assert(it_ws > 0);
         Constr& c = ca[cr];
-        float cStrength = c.strength;
-        unsigned int cLBD = c.lbd();
-        if (cStrength > prevStrength || (cStrength == prevStrength && cLBD < prevLBD)) {
-          assert(it_ws > 0);
-          std::swap(ws[it_ws], ws[it_ws - 1]);
+        if (constrPrio == 1) {
+          double cStrength = c.strength;
+          unsigned int cLBD = c.lbd();
+          if (cStrength > prevStrength || (cStrength == prevStrength && cLBD < prevLBD)) {
+            std::swap(ws[it_ws], ws[it_ws - 1]);
+          }
+          prevLBD = cLBD;
+          prevStrength = cStrength;
+        } else if (constrPrio == 2) {
+          double cStrength = c.lbdThanStrength();
+          if (cStrength < prevStrength) {
+            std::swap(ws[it_ws], ws[it_ws - 1]);
+          }
+          prevStrength = cStrength;
+        } else if (constrPrio == 3) {
+          double cStrength = c.strengthThanLBD();
+          if (cStrength < prevStrength) {
+            std::swap(ws[it_ws], ws[it_ws - 1]);
+          }
+          prevStrength = cStrength;
+        } else if (constrPrio == 4) {
+          double cStrength = c.lbdThanStrength();
+          if (cStrength > prevStrength) {
+            std::swap(ws[it_ws], ws[it_ws - 1]);
+          }
+          prevStrength = cStrength;
+        } else if (constrPrio == 5) {
+          double cStrength = c.strengthThanLBD();
+          if (cStrength > prevStrength) {
+            std::swap(ws[it_ws], ws[it_ws - 1]);
+          }
+          prevStrength = cStrength;
         }
-        prevStrength = cStrength;
-        prevLBD = cLBD;
       }
     }
   }
@@ -949,6 +986,16 @@ void Solver::reduceDB() {
   std::vector<CRef> learnts;
   learnts.reserve(constraints.size());
 
+  int constrPrio =
+      global.options.constrPrio.is("none")
+          ? 0
+          : (global.options.constrPrio.is("old")
+                 ? 1
+                 : (global.options.constrPrio.is("lbd")
+                        ? 2
+                        : (global.options.constrPrio.is("strength") ? 3
+                                                                    : (global.options.constrPrio.is("ilbd") ? 4 : 5))));
+
   removeSatisfiedNonImpliedsAtRoot();
   for (const CRef& cr : constraints) {
     Constr& c = ca[cr];
@@ -964,10 +1011,25 @@ void Solver::reduceDB() {
     }
   }
 
-  std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) {
-    int res = (int)ca[x].lbd() - (int)ca[y].lbd();
-    return res < 0 || (res == 0 && ca[x].strength > ca[y].strength);
-  });
+  if (constrPrio == 1) {
+    std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) {
+      int res = (int)ca[x].lbd() - (int)ca[y].lbd();
+      return res < 0 || (res == 0 && ca[x].strength > ca[y].strength);
+    });
+  } else if (constrPrio == 2) {
+    std::sort(learnts.begin(), learnts.end(),
+              [&](CRef x, CRef y) { return ca[x].lbdThanStrength() < ca[y].lbdThanStrength(); });
+  } else if (constrPrio == 3) {
+    std::sort(learnts.begin(), learnts.end(),
+              [&](CRef x, CRef y) { return ca[x].strengthThanLBD() < ca[y].strengthThanLBD(); });
+  } else if (constrPrio == 4) {
+    std::sort(learnts.begin(), learnts.end(),
+              [&](CRef x, CRef y) { return ca[x].lbdThanStrength() > ca[y].lbdThanStrength(); });
+  } else if (constrPrio == 5) {
+    std::sort(learnts.begin(), learnts.end(),
+              [&](CRef x, CRef y) { return ca[x].strengthThanLBD() > ca[y].strengthThanLBD(); });
+  }
+
   int64_t limit = global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
@@ -1080,16 +1142,79 @@ void Solver::inProcess() {
 }
 
 void Solver::sortWatchlists() {
-  Var first = getHeuristic().firstInActOrder();
-  sort(adj[first].begin(), adj[first].end(),
-       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].strength > ca[w2.cref].strength; });
-  if (getNbVars() == 0) return;
-  nextToSort = (nextToSort % getNbVars()) + 1;
-  if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
-  assert(nextToSort > 0);
-  assert(nextToSort <= getNbVars());
-  sort(adj[nextToSort].begin(), adj[nextToSort].end(),
-       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].strength > ca[w2.cref].strength; });
+  int constrPrio =
+      global.options.constrPrio.is("none")
+          ? 0
+          : (global.options.constrPrio.is("old")
+                 ? 1
+                 : (global.options.constrPrio.is("lbd")
+                        ? 2
+                        : (global.options.constrPrio.is("strength") ? 3
+                                                                    : (global.options.constrPrio.is("ilbd") ? 4 : 5))));
+  if (constrPrio == 1) {
+    Var first = getHeuristic().firstInActOrder();
+    sort(adj[first].begin(), adj[first].end(),
+         [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].strength > ca[w2.cref].strength; });
+    if (getNbVars() == 0) return;
+    nextToSort = (nextToSort % getNbVars()) + 1;
+    if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
+    assert(nextToSort > 0);
+    assert(nextToSort <= getNbVars());
+    sort(adj[nextToSort].begin(), adj[nextToSort].end(),
+         [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].strength > ca[w2.cref].strength; });
+  } else if (constrPrio == 2) {
+    Var first = getHeuristic().firstInActOrder();
+    sort(adj[first].begin(), adj[first].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+      return ca[w1.cref].lbdThanStrength() < ca[w2.cref].lbdThanStrength();
+    });
+    if (getNbVars() == 0) return;
+    nextToSort = (nextToSort % getNbVars()) + 1;
+    if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
+    assert(nextToSort > 0);
+    assert(nextToSort <= getNbVars());
+    sort(adj[nextToSort].begin(), adj[nextToSort].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+      return ca[w1.cref].lbdThanStrength() < ca[w2.cref].lbdThanStrength();
+    });
+  } else if (constrPrio == 3) {
+    Var first = getHeuristic().firstInActOrder();
+    sort(adj[first].begin(), adj[first].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+      return ca[w1.cref].strengthThanLBD() < ca[w2.cref].strengthThanLBD();
+    });
+    if (getNbVars() == 0) return;
+    nextToSort = (nextToSort % getNbVars()) + 1;
+    if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
+    assert(nextToSort > 0);
+    assert(nextToSort <= getNbVars());
+    sort(adj[nextToSort].begin(), adj[nextToSort].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+      return ca[w1.cref].strengthThanLBD() < ca[w2.cref].strengthThanLBD();
+    });
+  } else if (constrPrio == 4) {
+    Var first = getHeuristic().firstInActOrder();
+    sort(adj[first].begin(), adj[first].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+      return ca[w1.cref].lbdThanStrength() > ca[w2.cref].lbdThanStrength();
+    });
+    if (getNbVars() == 0) return;
+    nextToSort = (nextToSort % getNbVars()) + 1;
+    if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
+    assert(nextToSort > 0);
+    assert(nextToSort <= getNbVars());
+    sort(adj[nextToSort].begin(), adj[nextToSort].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+      return ca[w1.cref].lbdThanStrength() > ca[w2.cref].lbdThanStrength();
+    });
+  } else if (constrPrio == 5) {
+    Var first = getHeuristic().firstInActOrder();
+    sort(adj[first].begin(), adj[first].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+      return ca[w1.cref].strengthThanLBD() > ca[w2.cref].strengthThanLBD();
+    });
+    if (getNbVars() == 0) return;
+    nextToSort = (nextToSort % getNbVars()) + 1;
+    if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
+    assert(nextToSort > 0);
+    assert(nextToSort <= getNbVars());
+    sort(adj[nextToSort].begin(), adj[nextToSort].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+      return ca[w1.cref].strengthThanLBD() > ca[w2.cref].strengthThanLBD();
+    });
+  }
 }
 
 void Solver::presolve() {

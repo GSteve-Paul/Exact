@@ -126,6 +126,9 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   virtual bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                                IntSetPool& isp) const = 0;
 
+  double lbdThanStrength() const;
+  double strengthThanLBD() const;
+
   void print(const Solver& solver) const;
 
   bool isCorrectlyConflicting(const Solver& solver) const;

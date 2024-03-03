@@ -1037,6 +1037,10 @@ bool Constr::isCorrectlyPropagating(const Solver& solver, int idx) const {
   return slack < coef(idx);
 }
 
+double Constr::lbdThanStrength() const { return (double)lbd() - strength / 2; }
+
+double Constr::strengthThanLBD() const { return (double)lbd() - strength * INF; }
+
 void Constr::print(const Solver& solver) const {
   for (size_t i = 0; i < size; ++i) {
     int pos = solver.getPos()[toVar(lit(i))];

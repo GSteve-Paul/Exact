@@ -287,6 +287,11 @@ struct Options {
   ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
                               "0 =< float", [](const DetTime& x) -> bool { return x >= 0; }};
 
+  EnumOption constrPrio{"constrprio",
+                        "Heuristic to prioritize constraints",
+                        "old",
+                        {"old", "none", "lbd", "strength", "ilbd", "istrength"}};
+
   const std::vector<Option*> options = {
       &help,
       &copyright,
@@ -342,6 +347,7 @@ struct Options {
       &inpProbing,
       &inpAMO,
       &basetime,
+      &constrPrio,
   };
   unordered_map<std::string, Option*> name2opt;
 
