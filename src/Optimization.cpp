@@ -388,7 +388,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   }
 
   lower_bound = -reformObj->getDegree();
-  addLowerBound();
+  if (assumptions.isEmpty()) addLowerBound();
   return State::SUCCESS;
 }
 
@@ -408,7 +408,7 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
 
   if (core->isTautology()) {
     // only violated unit assumptions were derived
-    addLowerBound();
+    if (assumptions.isEmpty()) addLowerBound();
   } else {
     assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
     --global.stats.NCGCOREREUSES;

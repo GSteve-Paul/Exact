@@ -68,9 +68,7 @@ namespace xct {
 
 enum class WatchStatus { DROPWATCH, KEEPWATCH, CONFLICTING };
 const unsigned int LBDBITS = 24;
-const unsigned int SAFELBD = (((unsigned int)1) << LBDBITS) - 1;
-// TODO: use SAFELBD to keep fresh constraints active for one round
-const unsigned int MAXLBD = SAFELBD - 1;
+const unsigned int MAXLBD = (((unsigned int)1) << LBDBITS) - 1;
 
 class Solver;
 class Equalities;
