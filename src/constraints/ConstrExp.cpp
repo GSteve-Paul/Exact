@@ -684,13 +684,13 @@ void ConstrExp<SMALL, LARGE>::saturate(const VarVec& vs, bool check, bool sorted
       (!sorted && check && getLargestCoef() <= degree)) {
     return;
   }
-  assert(getLargestCoef() > degree);
   if (global.logger.isActive()) proofBuffer << "s ";  // log saturation only if it modifies the constraint
-  SMALL smallDeg = static_cast<SMALL>(degree);        // safe cast because of above assert
-  if (smallDeg <= 0) {
+  if (degree <= 0) {
     reset(true);
     return;
   }
+  assert(getLargestCoef() > degree);
+  SMALL smallDeg = static_cast<SMALL>(degree);  // safe cast because of above assert
   for (Var v : vs) {
     if (coefs[v] < -smallDeg) {
       rhs -= coefs[v] + smallDeg;
