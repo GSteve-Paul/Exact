@@ -284,8 +284,8 @@ CeSuper Solver::runDatabasePropagation() {
   while (qhead < (int)trail.size()) {
     Lit p = trail[qhead++];
     std::vector<Watch>& ws = adj[-p];
-    float prevStrength = std::numeric_limits<float>::max();
-    unsigned int prevLBD = 0;
+    double prevPrio = std::numeric_limits<double>::lowest();
+    double cPrio = 0;
     for (int it_ws = 0; it_ws < (int)ws.size(); ++it_ws) {
       int idx = ws[it_ws].idx;
       if (idx < 0 && isTrue(level, idx + INF)) {
@@ -316,14 +316,12 @@ CeSuper Solver::runDatabasePropagation() {
       } else {
         assert(wstat == WatchStatus::KEEPWATCH);
         Constr& c = ca[cr];
-        float cStrength = c.strength;
-        unsigned int cLBD = c.lbd();
-        if (cStrength > prevStrength || (cStrength == prevStrength && cLBD < prevLBD)) {
+        cPrio = c.priority();
+        if (cPrio < prevPrio) {
           assert(it_ws > 0);
           std::swap(ws[it_ws], ws[it_ws - 1]);
         }
-        prevStrength = cStrength;
-        prevLBD = cLBD;
+        prevPrio = cPrio;
       }
     }
   }
@@ -988,10 +986,7 @@ void Solver::reduceDB() {
     }
   }
 
-  std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) {
-    int res = (int)ca[x].lbd() - (int)ca[y].lbd();
-    return res < 0 || (res == 0 && ca[x].strength > ca[y].strength);
-  });
+  std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) { return ca[x].priority() < ca[y].priority(); });
   int64_t limit = global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
@@ -1106,14 +1101,14 @@ void Solver::inProcess() {
 void Solver::sortWatchlists() {
   Var first = getHeuristic().firstInActOrder();
   sort(adj[first].begin(), adj[first].end(),
-       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].strength > ca[w2.cref].strength; });
+       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].priority() < ca[w2.cref].priority(); });
   if (getNbVars() == 0) return;
   nextToSort = (nextToSort % getNbVars()) + 1;
   if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
   assert(nextToSort > 0);
   assert(nextToSort <= getNbVars());
   sort(adj[nextToSort].begin(), adj[nextToSort].end(),
-       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].strength > ca[w2.cref].strength; });
+       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].priority() < ca[w2.cref].priority(); });
 }
 
 void Solver::presolve() {

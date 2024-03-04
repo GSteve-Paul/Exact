@@ -473,16 +473,10 @@ unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntMap<int>& level) const {
       if (weakenedDeg <= 0) break;
     }
   }
-  int i = vars.size() - 1;
-  if (weakenedDeg > 0) {
-    for (; i >= 0; --i) {  // weaken all smallest falsifieds
-      Var v = vars[i];
-      Lit l = getLit(v);
-      if (isFalse(level, l)) {
-        weakenedDeg -= aux::abs(coefs[v]);
-        if (weakenedDeg <= 0) break;
-      }
-    }
+  int i = int(vars.size()) - 1;
+  for (; i >= 0 && weakenedDeg > 0; --i) {  // weaken all smallest falsifieds
+    Var v = vars[i];
+    if (isFalse(level, getLit(v))) weakenedDeg -= aux::abs(coefs[v]);
   }
   assert(i >= 0);  // constraint is asserting or conflicting
   IntSet& lbdSet = global.isPool.take();
