@@ -77,6 +77,17 @@ std::ostream& operator<<(std::ostream& o, const Constr& c) {
   return o << ">= " << c.degree();
 }
 
+void Constr::setLocked(bool lkd) { header.locked = lkd; }
+bool Constr::isLocked() const { return header.locked; }
+Origin Constr::getOrigin() const { return (Origin)header.origin; }
+void Constr::decreaseLBD(unsigned int lbd) { header.lbd = std::min(header.lbd, lbd); }
+void Constr::decayLBD(unsigned int decay) { header.lbd = std::min({header.lbd + decay, MAXLBD}); }
+unsigned int Constr::lbd() const { return header.lbd; }
+double Constr::priority() const { return lbd() - strength; }
+bool Constr::isMarkedForDelete() const { return header.markedfordel; }
+bool Constr::isSeen() const { return header.seen; }
+void Constr::setSeen(bool s) { header.seen = s; }
+
 void Constr::fixEncountered(Stats& stats) const {  // TODO: better as method of Stats?
   const Origin o = getOrigin();
   stats.NENCFORMULA += o == Origin::FORMULA;
@@ -93,6 +104,16 @@ void Constr::fixEncountered(Stats& stats) const {  // TODO: better as method of 
   stats.NENCIMPL += o == Origin::IMPLICATION;
   ++stats.NRESOLVESTEPS;
 }
+
+size_t Clause::getMemSize(unsigned int length) { return aux::ceildiv(sizeof(Clause) + sizeof(Lit) * length, maxAlign); }
+size_t Clause::getMemSize() const { return getMemSize(size); }
+
+bigint Clause::degree() const { return 1; }
+bigint Clause::coef([[maybe_unused]] unsigned int i) const { return 1; }
+Lit Clause::lit(unsigned int i) const { return data[i]; }
+unsigned int Clause::getUnsaturatedIdx() const { return size; }
+bool Clause::isClauseOrCard() const { return true; }
+bool Clause::isAtMostOne() const { return size == 2; }
 
 void Clause::initializeWatches(CRef cr, Solver& solver) {
   auto& level = solver.level;
@@ -237,6 +258,18 @@ bool Clause::canBeSimplified(const IntMap<int>& level, Equalities& equalities, I
   }
   return false;
 }
+
+size_t Cardinality::getMemSize(unsigned int length) {
+  return aux::ceildiv(sizeof(Cardinality) + sizeof(Lit) * length, maxAlign);
+}
+size_t Cardinality::getMemSize() const { return getMemSize(size); }
+
+bigint Cardinality::degree() const { return degr; }
+bigint Cardinality::coef([[maybe_unused]] unsigned int i) const { return 1; }
+Lit Cardinality::lit(unsigned int i) const { return data[i]; }
+unsigned int Cardinality::getUnsaturatedIdx() const { return 0; }
+bool Cardinality::isClauseOrCard() const { return true; }
+bool Cardinality::isAtMostOne() const { return degr == size - 1; }
 
 void Cardinality::initializeWatches(CRef cr, Solver& solver) {
   assert(degr > 1);  // otherwise not a cardinality

@@ -92,15 +92,16 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   virtual ~Constr() {}
   virtual void cleanup() = 0;  // poor man's destructor
 
-  void setLocked(bool lkd) { header.locked = lkd; }
-  bool isLocked() const { return header.locked; }
-  Origin getOrigin() const { return (Origin)header.origin; }
-  void decreaseLBD(unsigned int lbd) { header.lbd = std::min(header.lbd, lbd); }
-  void decayLBD(unsigned int decay) { header.lbd = std::min({header.lbd + decay, MAXLBD}); }
-  unsigned int lbd() const { return header.lbd; }
-  bool isMarkedForDelete() const { return header.markedfordel; }
-  bool isSeen() const { return header.seen; }
-  void setSeen(bool s) { header.seen = s; }
+  void setLocked(bool lkd);
+  bool isLocked() const;
+  Origin getOrigin() const;
+  void decreaseLBD(unsigned int lbd);
+  void decayLBD(unsigned int decay);
+  unsigned int lbd() const;
+  double priority() const;  // lower is better
+  bool isMarkedForDelete() const;
+  bool isSeen() const;
+  void setSeen(bool s);
   void fixEncountered(Stats& stats) const;
 
   // TODO: remove direct uses of these bigint methods, convert to ConstrExp instead
@@ -134,17 +135,15 @@ std::ostream& operator<<(std::ostream& o, const Constr& c);
 struct Clause final : public Constr {
   Lit data[];  // Flexible Array Member
 
-  static size_t getMemSize(unsigned int length) {
-    return aux::ceildiv(sizeof(Clause) + sizeof(Lit) * length, maxAlign);
-  }
-  size_t getMemSize() const { return getMemSize(size); }
+  static size_t getMemSize(unsigned int length);
+  size_t getMemSize() const;
 
-  bigint degree() const { return 1; }
-  bigint coef([[maybe_unused]] unsigned int i) const { return 1; }
-  Lit lit(unsigned int i) const { return data[i]; }
-  unsigned int getUnsaturatedIdx() const { return size; }
-  bool isClauseOrCard() const { return true; }
-  bool isAtMostOne() const { return size == 2; }
+  bigint degree() const;
+  bigint coef([[maybe_unused]] unsigned int i) const;
+  Lit lit(unsigned int i) const;
+  unsigned int getUnsaturatedIdx() const;
+  bool isClauseOrCard() const;
+  bool isAtMostOne() const;
 
   template <typename SMALL, typename LARGE>
   Clause(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
@@ -180,17 +179,15 @@ struct Cardinality final : public Constr {
   long long ntrailpops;
   Lit data[];  // Flexible Array Member
 
-  static size_t getMemSize(unsigned int length) {
-    return aux::ceildiv(sizeof(Cardinality) + sizeof(Lit) * length, maxAlign);
-  }
-  size_t getMemSize() const { return getMemSize(size); }
+  static size_t getMemSize(unsigned int length);
+  size_t getMemSize() const;
 
-  bigint degree() const { return degr; }
-  bigint coef([[maybe_unused]] unsigned int i) const { return 1; }
-  Lit lit(unsigned int i) const { return data[i]; }
-  unsigned int getUnsaturatedIdx() const { return 0; }
-  bool isClauseOrCard() const { return true; }
-  bool isAtMostOne() const { return degr == size - 1; }
+  bigint degree() const;
+  bigint coef([[maybe_unused]] unsigned int i) const;
+  Lit lit(unsigned int i) const;
+  unsigned int getUnsaturatedIdx() const;
+  bool isClauseOrCard() const;
+  bool isAtMostOne() const;
 
   template <typename SMALL, typename LARGE>
   Cardinality(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
