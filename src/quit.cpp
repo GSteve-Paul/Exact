@@ -92,7 +92,6 @@ void quit::printFinalStats(ILP& ilp) {
   StatNum ub = static_cast<StatNum>(ilp.getUpperBound());
   if (ilp.global.options.verbosity.get() > 0) ilp.global.stats.print(lb, ub);
   if (ilp.global.options.printCsvData) ilp.global.stats.printCsvLine(lb, ub);
-  if (ilp.global.options.printOpb) ilp.printFormula();
 }
 
 int quit::exit_SUCCESS(ILP& ilp) {

@@ -1146,6 +1146,7 @@ void ILP::runFromCmdLine() {
 
   aux::timeCallVoid([&] { parsing::file_read(*this); }, global.stats.PARSETIME);
 
+  if (global.options.printOpb) printFormula();
   if (global.options.noSolve) throw EarlyTermination();
 
   solver.printHeader();
