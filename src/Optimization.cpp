@@ -70,8 +70,9 @@ namespace xct {
 constexpr int stratFactor = 1000;
 
 template <typename SMALL, typename LARGE>
-LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, int upperBnd)
-    : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(upperBnd), mult(m) {
+LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& upperBnd)
+    : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(cardCore->nVars()), mult(m) {
+  setUpperBound(upperBnd);
   assert(remainingVars() > 0);
   cardCore->copyTo(atLeast);
   atLeast.orig = Origin::COREGUIDED;
@@ -102,7 +103,10 @@ int LazyVar<SMALL, LARGE>::remainingVars() const {
 
 template <typename SMALL, typename LARGE>
 void LazyVar<SMALL, LARGE>::setUpperBound(const LARGE& normalizedUpperBound) {
-  upperBound = std::min(upperBound, static_cast<int>(normalizedUpperBound / mult));
+  assert(normalizedUpperBound >= 0);
+  assert(mult > 0);
+  const LARGE tmp = normalizedUpperBound / mult;
+  if (tmp < upperBound) upperBound = static_cast<int>(tmp);
 }
 
 template <typename SMALL, typename LARGE>
@@ -346,6 +350,10 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   core->weaken([&](Lit l) { return !assumptions.has(-l) && !reformObj->hasLit(l); });
   if (core->isTautology()) return State::FAIL;
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  if (core->isInconsistency()) {
+    solver.addConstraint(core);
+    throw UnsatEncounter();
+  }
   if (!core->hasNegativeSlack(solver.getAssumptions().getIndex())) return State::FAIL;
   core->saturate(true, false);
   Ce32 cardCore = reduceToCardinality(core);
@@ -364,15 +372,17 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
 
   global.stats.NCGNONCLAUSALCORES += !cardCore->isClause();
 
-  int cardUpperBound = static_cast<int>(upper_bound / mult);
-  bool needAuxiliary = cardUpperBound > cardCore->getDegree();
+  assert(!cardCore->isTautology());
+  assert(!cardCore->isInconsistency());
+  // so we need at least 1 variable, unless the upper bound is already tight
+  bool needAuxiliary = upper_bound / mult > cardCore->getDegree();
   if (needAuxiliary) {
     // add auxiliary variable
     int newN = solver.addVar(false);
     reformObj->addLhs(mult, newN);  // add only one variable for now
 
     // add first lazy constraint
-    lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, cardUpperBound));
+    lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, upper_bound));
     lazyVars.back()->addAtLeastConstraint();
     lazyVars.back()->addAtMostConstraint();
   }
@@ -570,7 +580,11 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           solver.clearAssumptions();
           return SolveState::INCONSISTENT;
         } else {
-          handleInconsistency(solver.lastCore);
+          try {
+            handleInconsistency(solver.lastCore);
+          } catch (const UnsatEncounter&) {
+            return SolveState::UNSAT;
+          }
           solver.clearAssumptions();
         }
       } else {

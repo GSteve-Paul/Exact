@@ -83,7 +83,7 @@ struct LazyVar {
 
   SMALL mult;
 
-  LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, int upperBnd);
+  LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& upperBnd);
   ~LazyVar();
 
   void addVar(Var v);
