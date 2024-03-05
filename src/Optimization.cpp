@@ -181,10 +181,11 @@ Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver, const In
     Ce64 o = solver.global.cePools.take64();
     obj->copyTo(o);
     return std::make_shared<Optimization<long long, int128>>(o, solver, offs, assumps);
-  } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
-    Ce96 o = solver.global.cePools.take96();
-    obj->copyTo(o);
-    return std::make_shared<Optimization<int128, int128>>(o, solver, offs, assumps);
+    // NOTE: yielded a bug during coreguided search - not sure where. Multiplying two coefficients?
+    //  } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
+    //    Ce96 o = solver.global.cePools.take96();
+    //    obj->copyTo(o);
+    //    return std::make_shared<Optimization<int128, int128>>(o, solver, offs, assumps);
   } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
     Ce128 o = solver.global.cePools.take128();
     obj->copyTo(o);
