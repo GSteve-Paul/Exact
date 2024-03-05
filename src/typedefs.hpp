@@ -100,11 +100,11 @@ inline double limitAbs<long long, int128>() {
 }
 template <>
 inline double limitAbs<int128, int128>() {
-  return 8e27;  // 2^92-2^93
+  return 9e27;  // 2^92-2^93
 }
 template <>
 inline double limitAbs<int128, int256>() {
-  return 32e36;  // 2^124-2^125
+  return 4e37;  // 2^124-2^125
 }
 template <>
 inline double limitAbs<int256, bigint>() {
