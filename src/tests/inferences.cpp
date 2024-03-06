@@ -30,7 +30,7 @@ constexpr double timeouttime = 0.0000001;
 TEST_CASE("toOptimum") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(5);
@@ -71,7 +71,7 @@ TEST_CASE("toOptimum") {
 TEST_CASE("toOptimum advanced") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(6);
@@ -148,7 +148,7 @@ TEST_CASE("toOptimum advanced") {
 TEST_CASE("count") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
 
     ILP ilp(opts);
     std::vector<IntVar*> vars;
@@ -173,7 +173,7 @@ TEST_CASE("count") {
 TEST_CASE("count advanced") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(5);
@@ -222,7 +222,7 @@ TEST_CASE("count advanced") {
 TEST_CASE("intersect") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(5);
@@ -255,7 +255,7 @@ TEST_CASE("intersect") {
 TEST_CASE("intersect advanced") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(5);
@@ -306,7 +306,7 @@ TEST_CASE("intersect advanced") {
 TEST_CASE("propagate") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(10);
@@ -347,7 +347,7 @@ TEST_CASE("propagate") {
 TEST_CASE("propagate advanced") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(10);
@@ -389,7 +389,7 @@ TEST_CASE("propagate advanced") {
 TEST_CASE("pruneDomains") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(10);
@@ -437,7 +437,7 @@ TEST_CASE("pruneDomains") {
 TEST_CASE("pruneDomains advanced") {
   Options opts;
   for (double x : {0.0, 0.5, 1.0}) {
-    opts.cgHybrid.set(x);
+    opts.optRatio.set(x);
     ILP ilp(opts);
     std::vector<IntVar*> vars;
     vars.reserve(10);

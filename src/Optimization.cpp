@@ -218,8 +218,8 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
     : OptimizationSuper(s, os, assumps),
       origObj(obj),
       reply(SolveState::INPROCESSED),
-      stratDiv(stratFactor * global.options.cgStrat.get()),
-      coreguided(global.options.cgHybrid.get() >= 1) {
+      stratDiv(stratFactor * global.options.optStrat.get()),
+      coreguided(global.options.optRatio.get() >= 1) {
   assert(origObj->getDegree() == 0);
   reformObj = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(reformObj);
@@ -229,7 +229,7 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
 
   lower_bound = -reformObj->getDegree();
   upper_bound = origObj->absCoeffSum() + 1;
-  stratLim = global.options.cgStrat.get() == 1 ? 1 : reformObj->getLargestCoef();
+  stratLim = global.options.optStrat.get() == 1 ? 1 : reformObj->getLargestCoef();
 }
 
 template <typename SMALL, typename LARGE>
@@ -611,9 +611,9 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
     } else if (reply == SolveState::INPROCESSED) {
       bool oldcoreguided = coreguided;
       coreguided = optimize && lower_bound < upper_bound &&
-                   (global.options.cgHybrid.get() >= 1 ||
+                   (global.options.optRatio.get() >= 1 ||
                     global.stats.DETTIMEASSUMP <
-                        global.options.cgHybrid.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP));
+                        global.options.optRatio.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP));
       // NOTE: no need to do coreguided search once we know the lower bound is at least the upper bound
       // in that case, let the solver figure out the inconsistency on its own
       if (oldcoreguided && !coreguided && stratLim > 1) {
