@@ -140,6 +140,7 @@ class Optimization final : public OptimizationSuper {
   LARGE upper_bound;
   ID lastUpperBound = ID_Undef;
   ID lastLowerBound = ID_Undef;
+  ID lastReformUpperBound = ID_Undef;
 
   std::vector<std::unique_ptr<LazyVar<SMALL, LARGE>>> lazyVars;
 
@@ -151,6 +152,7 @@ class Optimization final : public OptimizationSuper {
 
  public:
   explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& offset, const IntSet& assumps);
+  ~Optimization();
 
   bigint getUpperBound() const;
   bigint getLowerBound() const;
@@ -159,14 +161,13 @@ class Optimization final : public OptimizationSuper {
   void printObjBounds();
   void checkLazyVariables();
   void addLowerBound();
+  void addReformUpperBound(bool deletePrevious);
 
   Ce32 reduceToCardinality(const CeSuper& core);                            // does not modify core
   [[nodiscard]] State reformObjective(const CeSuper& core);                 // modifies core
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
   void handleInconsistency(const CeSuper& core);                            // modifies core
   void boundObjByLastSol();
-
-  void harden();
 
   [[nodiscard]] SolveState run(bool optimize, double timeout);
   [[nodiscard]] SolveState runFull(bool optimize, double timeout);

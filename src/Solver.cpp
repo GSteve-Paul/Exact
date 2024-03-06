@@ -656,7 +656,6 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   global.stats.NLPDUAL += orig == Origin::DUAL;
   global.stats.NLPFARKAS += orig == Origin::FARKAS;
   global.stats.NPURELITS += orig == Origin::PURE;
-  global.stats.NHARDENINGS += orig == Origin::HARDENEDBOUND;
   global.stats.NCONSREDUCED += orig == Origin::REDUCED;
 
   // NOTE: propagation is not necessary, but do it at first level to make sure to derive as many unit lits as possible

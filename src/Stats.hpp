@@ -195,7 +195,6 @@ struct Stats {
   Stat LEARNEDLBDSUM{0, "learned LBD sum"};
 
   Stat NUNITS{0, "unit literals derived"};
-  Stat NHARDENINGS{0, "hardened literals"};
   Stat NPURELITS{0, "pure literals"};
   Stat NSATISFIEDSREMOVED{0, "constraints satisfied at root"};
   Stat NCONSREADDED{0, "constraints simplified during database reduction"};
@@ -389,7 +388,6 @@ struct Stats {
       &LEARNEDSTRENGTHAVG,
       &LEARNEDLBDAVG,
       &NUNITS,
-      &NHARDENINGS,
       &NPURELITS,
       &NSATISFIEDSREMOVED,
       &NCONSREADDED,

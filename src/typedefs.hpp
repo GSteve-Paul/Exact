@@ -206,24 +206,24 @@ using StatNum = long double;
 
 // NOTE: max number of types is 32, as the type is stored with 5 bits in Constr
 enum class Origin {
-  UNKNOWN,        // uninitialized
-  FORMULA,        // original input formula
-  DOMBREAKER,     // dominance breaking
-  INVALIDATOR,    // solution-invalidating constraint
-  PURE,           // pure unit literal
-  COREGUIDED,     // extension constraints from coreguided optimization
-  HARDENEDBOUND,  // unit constraint due to upper bound on the objective function
-  UPPERBOUND,     // upper bound on the objective function
-  LOWERBOUND,     // lower bound on the objective function
-  LEARNED,        // learned from regular conflict analysis
-  FARKAS,         // LP solver infeasibility witness
-  DUAL,           // LP solver feasibility dual constraint
-  GOMORY,         // Gomory cut
-  PROBING,        // probing unit literal
-  DETECTEDAMO,    // detected cardinality constraint
-  REDUCED,        // reduced constraint
-  EQUALITY,       // equality enforcing constraint
-  IMPLICATION,    // binary implication clause
+  UNKNOWN,      // uninitialized
+  FORMULA,      // original input formula
+  DOMBREAKER,   // dominance breaking
+  INVALIDATOR,  // solution-invalidating constraint
+  PURE,         // pure unit literal
+  COREGUIDED,   // extension constraints from coreguided optimization
+  REFORMBOUND,  // unit constraint due to upper bound on the objective function
+  UPPERBOUND,   // upper bound on the objective function
+  LOWERBOUND,   // lower bound on the objective function
+  LEARNED,      // learned from regular conflict analysis
+  FARKAS,       // LP solver infeasibility witness
+  DUAL,         // LP solver feasibility dual constraint
+  GOMORY,       // Gomory cut
+  PROBING,      // probing unit literal
+  DETECTEDAMO,  // detected cardinality constraint
+  REDUCED,      // reduced constraint
+  EQUALITY,     // equality enforcing constraint
+  IMPLICATION,  // binary implication clause
 };
 inline std::ostream& operator<<(std::ostream& o, enum Origin orig) {
   switch (orig) {
@@ -245,8 +245,8 @@ inline std::ostream& operator<<(std::ostream& o, enum Origin orig) {
     case (Origin::COREGUIDED):
       o << "COREGUIDED";
       break;
-    case (Origin::HARDENEDBOUND):
-      o << "HARDENEDBOUND";
+    case (Origin::REFORMBOUND):
+      o << "REFORMBOUND";
       break;
     case (Origin::UPPERBOUND):
       o << "UPPERBOUND";
@@ -291,7 +291,7 @@ inline bool isNonImplied(Origin o) {
   return o == Origin::FORMULA || o == Origin::DOMBREAKER || o == Origin::INVALIDATOR;
 }
 inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
-inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED; }
+inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED || o == Origin::REFORMBOUND; }
 inline bool isInput(Origin o) { return o != Origin::UNKNOWN && o < Origin::LEARNED; }
 inline bool isLearned(Origin o) { return o >= Origin::LEARNED; }
 

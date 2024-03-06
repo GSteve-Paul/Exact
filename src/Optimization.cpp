@@ -233,6 +233,14 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
 }
 
 template <typename SMALL, typename LARGE>
+Optimization<SMALL, LARGE>::~Optimization() {
+  // NOTE: do not make the upper bound erasable, otherwise the solver is not guaranteed to remain optimal
+  solver.dropExternal(lastUpperBound, false, false);
+  solver.dropExternal(lastLowerBound, true, false);
+  solver.dropExternal(lastReformUpperBound, true, false);
+}
+
+template <typename SMALL, typename LARGE>
 bigint Optimization<SMALL, LARGE>::getUpperBound() const {
   return offset + upper_bound;
 }
@@ -291,15 +299,33 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::addLowerBound() {
-  if (!assumptions.isEmpty()) return;  // otherwise the lower_bound is not globally valid
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
   aux->orig = Origin::LOWERBOUND;
   aux->addRhs(lower_bound);
+  assert(aux->getDegree() < static_cast<bigint>(limitAbs<SMALL, LARGE>()));
+  for (Lit l : assumptions.getKeys()) {
+    aux->addLhs(static_cast<SMALL>(aux->getDegree()), -l);  // bound only holds under assumptions
+  }
   solver.dropExternal(lastLowerBound, true, true);
   std::pair<ID, ID> res = solver.addConstraint(aux);
   lastLowerBound = res.second;
-  harden();
+}
+
+template <typename SMALL, typename LARGE>
+void Optimization<SMALL, LARGE>::addReformUpperBound(bool deletePrevious) {
+  CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
+  reformObj->copyTo(aux);
+  aux->orig = Origin::REFORMBOUND;
+  aux->invert();
+  aux->addRhs(-upper_bound + 1);
+  assert(aux->getDegree() < static_cast<bigint>(limitAbs<SMALL, LARGE>()));
+  for (Lit l : assumptions.getKeys()) {
+    aux->addLhs(static_cast<SMALL>(aux->getDegree()), -l);  // bound only holds under assumptions
+  }
+  solver.dropExternal(lastReformUpperBound, true, deletePrevious);
+  std::pair<ID, ID> res = solver.addConstraint(aux);
+  lastReformUpperBound = res.second;
 }
 
 template <typename SMALL, typename LARGE>
@@ -399,7 +425,6 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   }
 
   lower_bound = -reformObj->getDegree();
-  if (assumptions.isEmpty()) addLowerBound();
   return State::SUCCESS;
 }
 
@@ -419,7 +444,7 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
 
   if (core->isTautology()) {
     // only violated unit assumptions were derived
-    if (assumptions.isEmpty()) addLowerBound();
+    addLowerBound();
   } else {
     assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
     --global.stats.NCGCOREREUSES;
@@ -429,6 +454,8 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
       result = reformObjective(core);
     }
     simplifyAssumps(reformObj, assumptions);
+    addLowerBound();
+    addReformUpperBound(false);
   }
 
   checkLazyVariables();
@@ -452,19 +479,8 @@ void Optimization<SMALL, LARGE>::boundObjByLastSol() {
   solver.dropExternal(lastUpperBound, true, true);
   std::pair<ID, ID> res = solver.addConstraint(aux);
   lastUpperBound = res.second;
-  if (assumptions.isEmpty()) harden();
-}
 
-template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::harden() {
-  // NOTE: this does not play nice with assumptions which impact the upper and lower bounds
-  assert(assumptions.isEmpty());
-  LARGE diff = upper_bound - lower_bound;
-  for (Var v : reformObj->getVars()) {
-    if (aux::abs(reformObj->coefs[v]) > diff) {
-      solver.addUnitConstraint(-reformObj->getLit(v), Origin::HARDENEDBOUND);
-    }
-  }
+  addReformUpperBound(true);
 }
 
 void decreaseStratLim(bigint& stratLim, const bigint& stratDiv) {
