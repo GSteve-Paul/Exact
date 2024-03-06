@@ -144,8 +144,10 @@ class Optimization final : public OptimizationSuper {
 
   std::vector<std::unique_ptr<LazyVar<SMALL, LARGE>>> lazyVars;
 
+  LARGE boundingVal;
+  Var boundingVar;
+
   // State variables during solve loop:
-  SolveState reply;
   const bigint stratDiv;
   bigint stratLim;
   bool coreguided;

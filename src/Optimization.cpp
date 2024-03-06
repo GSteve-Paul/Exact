@@ -217,7 +217,6 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
                                          const IntSet& assumps)
     : OptimizationSuper(s, os, assumps),
       origObj(obj),
-      reply(SolveState::INPROCESSED),
       stratDiv(stratFactor * global.options.optStrat.get()),
       coreguided(global.options.optRatio.get() >= 1) {
   assert(origObj->getDegree() == 0);
@@ -508,9 +507,6 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
     // constraint yields UNSAT, at which case core-guided search can derive any constraint.
     StatNum current_time = global.stats.getDetTime();
-    if (reply == SolveState::INPROCESSED && global.options.printCsvData) {
-      global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
-    }
 
     // There are three possibilities:
     // - no assumptions are set (because something happened during previous core-guided step)
@@ -554,6 +550,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       solver.setAssumptions(assumptions.getKeys());
     }
 
+    SolveState reply;
     if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
       // NOTE: this optimization really helps with knapsack instances, because it immediately fixes a bunch of variables
       // TODO: generalize this: reformulate the *original* objective with the new bound after an inconsistency?
@@ -619,6 +616,9 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       if (oldcoreguided && !coreguided && stratLim > 1) {
         // next time, use more assumption lits
         decreaseStratLim(stratLim, stratDiv);
+      }
+      if (global.options.printCsvData) {
+        global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
       }
       return SolveState::INPROCESSED;
     } else {
