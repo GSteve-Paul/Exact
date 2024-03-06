@@ -181,7 +181,7 @@ ID Logger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::s
 ID Logger::logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position) {
   if (!active) return ID_Undef;
   ce->removeUnitsAndZeroes(level, position);
-  assert(ce->isInconsistency());
+  assert(ce->isUnsat());
   ID id = logProofLineWithInfo(ce, "Inconsistency");
   proofStream() << "c " << id << "" << std::endl;
   return id;

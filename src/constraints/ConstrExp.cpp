@@ -155,7 +155,7 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
   assert(hasNoZeroes());
   assert(!vars.empty());
   assert(!isTautology());
-  assert(!isInconsistency());
+  assert(!isUnsat());
 
   CRef result = CRef{ca.at};
   SMALL maxCoef = aux::abs(coefs[vars[0]]);
@@ -449,7 +449,7 @@ bool ConstrExp<SMALL, LARGE>::isTautology() const {
 }
 
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::isInconsistency() const {
+bool ConstrExp<SMALL, LARGE>::isUnsat() const {
   return getDegree() > absCoeffSum();
 }
 
@@ -1481,7 +1481,7 @@ void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntMap<int>& level, const std
   assert(isUnitConstraint());
 }
 
-bool ConstrExpSuper::isUnitConstraint() const { return isClause() && nVars() == 1 && !isInconsistency(); }
+bool ConstrExpSuper::isUnitConstraint() const { return isClause() && nVars() == 1 && !isUnsat(); }
 
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isSortedInDecreasingCoefOrder() const {

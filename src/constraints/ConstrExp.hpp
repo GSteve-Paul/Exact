@@ -144,7 +144,7 @@ struct ConstrExpSuper {
 
   virtual bool hasNegativeSlack(const IntMap<int>& level) const = 0;
   virtual bool isTautology() const = 0;
-  virtual bool isInconsistency() const = 0;
+  virtual bool isUnsat() const = 0;
   virtual bool isSatisfied(const LitVec& assignment) const = 0;
   virtual unsigned int getLBD(const IntMap<int>& level) const = 0;
 
@@ -281,7 +281,7 @@ struct ConstrExp final : public ConstrExpSuper {
   LARGE getSlack(const IntMap<int>& level) const;
   bool hasNegativeSlack(const IntMap<int>& level) const;
   bool isTautology() const;
-  bool isInconsistency() const;
+  bool isUnsat() const;
   bool isSatisfied(const LitVec& assignment) const;
   unsigned int getLBD(const IntMap<int>& level) const;
 

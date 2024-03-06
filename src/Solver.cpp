@@ -668,7 +668,7 @@ void Solver::learnConstraint(const CeSuper& ce) {
   auto [assertionLevel, isAsserting] = learned->getAssertionStatus(level, position, assertionStateMem);
   if (assertionLevel < 0) {
     backjumpTo(0);
-    assert(learned->isInconsistency());
+    assert(learned->isUnsat());
     reportUnsat(learned);  // throws  UnsatEncounter
   }
   assert(learned->hasNegativeSlack(level) == ce->hasNegativeSlack(level));
@@ -742,7 +742,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
   if (ce->hasNegativeSlack(level)) {
     assert(decisionLevel() == 0);
     assert(ce->hasNoUnits(level));
-    assert(ce->isInconsistency());
+    assert(ce->isUnsat());
     if (global.options.verbosity.get() > 0) {
       std::cout << "c Conflicting input constraint" << std::endl;
     }
@@ -982,7 +982,7 @@ void Solver::reduceDB() {
     bool isLocked = c.isLocked();
     unsigned int lbd = c.lbd();
     ce->strongPostProcess(*this);
-    if (ce->isInconsistency()) reportUnsat(ce);
+    if (ce->isUnsat()) reportUnsat(ce);
     if (ce->isTautology()) {
       removeConstraint(cr, true);
       continue;

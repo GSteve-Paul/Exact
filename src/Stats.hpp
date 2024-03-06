@@ -211,10 +211,10 @@ struct Stats {
   Stat NATMOSTONEUNITS{0, "units derived during at-most-one detection"};
 
   Stat PARSETIME{0, "parse time"};
-  Stat SOLVETIMEFREE{0, "free solve time"};
-  Stat DETTIMEFREE{0, "free solve time det"};
-  Stat SOLVETIMEASSUMP{0, "assumption solve time"};
-  Stat DETTIMEASSUMP{0, "assumption solve time det"};
+  Stat SOLVETIMETOPDOWN{0, "top-down time"};
+  Stat DETTIMETOPDOWN{0, "top-down time det"};
+  Stat SOLVETIMEBOTTOMUP{0, "bottom-up solve time"};
+  Stat DETTIMEBOTTOMUP{0, "bottom-up solve time det"};
   Stat CATIME{0, "conflict analysis time"};
   Stat MINTIME{0, "learned minimize time"};
   Stat PROPTIME{0, "propagation time"};
@@ -292,7 +292,6 @@ struct Stats {
 
   Stat NCGUNITCORES{0, "CG unit cores"};
   Stat NCGNONCLAUSALCORES{0, "CG non-clausal cores"};
-  Stat NCGCOREREUSES{0, "CG additional cardinalities from a core"};
 
   // derived statistics
   Stat CPUTIME{0, "cpu time"};
@@ -346,10 +345,10 @@ struct Stats {
       &SOLVETIME,
       &DETTIME,
       &OPTTIME,
-      &SOLVETIMEFREE,
-      &DETTIMEFREE,
-      &SOLVETIMEASSUMP,
-      &DETTIMEASSUMP,
+      &SOLVETIMETOPDOWN,
+      &DETTIMETOPDOWN,
+      &SOLVETIMEBOTTOMUP,
+      &DETTIMEBOTTOMUP,
       &CATIME,
       &MINTIME,
       &PROPTIME,
@@ -439,7 +438,6 @@ struct Stats {
       &NENCIMPL,
       &NCGUNITCORES,
       &NCGNONCLAUSALCORES,
-      &NCGCOREREUSES,
       &LASTUB,
       &LASTLB,
 #if WITHSOPLEX
