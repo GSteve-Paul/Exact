@@ -481,13 +481,13 @@ void ILP::addConstraint(const IntConstraint& ic) {
 }
 
 // head <=> rhs -- head iff rhs
-void ILP::addReification(IntVar* head, const IntConstraint& ic) {
-  addLeftReification(head, ic);
-  addRightReification(head, ic);
+void ILP::addReification(IntVar* head, bool sign, const IntConstraint& ic) {
+  addLeftReification(head, sign, ic);
+  addRightReification(head, sign, ic);
 }
 
 // head => rhs -- head implies rhs
-void ILP::addRightReification(IntVar* head, const IntConstraint& ic) {
+void ILP::addRightReification(IntVar* head, bool sign, const IntConstraint& ic) {
   if (ic.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
@@ -502,13 +502,13 @@ void ILP::addRightReification(IntVar* head, const IntConstraint& ic) {
     leq->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
 
     Var h = head->getEncodingVars()[0];
-    leq->addLhs(leq->degree, -h);
+    leq->addLhs(leq->degree, sign ? -h : h);
     solver.addConstraint(leq);
   }
 }
 
 // head <= rhs -- rhs implies head
-void ILP::addLeftReification(IntVar* head, const IntConstraint& ic) {
+void ILP::addLeftReification(IntVar* head, bool sign, const IntConstraint& ic) {
   if (ic.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
@@ -525,7 +525,7 @@ void ILP::addLeftReification(IntVar* head, const IntConstraint& ic) {
     Var h = head->getEncodingVars()[0];
     geq->addRhs(-1);
     geq->invert();
-    geq->addLhs(geq->degree, h);
+    geq->addLhs(geq->degree, sign ? h : -h);
     solver.addConstraint(geq);
   }
 }
@@ -1038,7 +1038,7 @@ Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
     assert(ico.lowerBound.has_value());
     ic.upperBound = optval + ico.lowerBound.value();
     ic.lowerBound.reset();
-    addRightReification(flag, ic);
+    addRightReification(flag, true, ic);
   }
   return flag_v;
 }

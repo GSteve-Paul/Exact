@@ -121,7 +121,7 @@ void Exact::addConstraint(const std::vector<std::string>& coefs, const std::vect
   ilp.addConstraint(ic);
 }
 
-void Exact::addReification(const std::string& head, const std::vector<long long>& coefs,
+void Exact::addReification(const std::string& head, bool sign, const std::vector<long long>& coefs,
                            const std::vector<std::string>& vars, long long lb) {
   if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
@@ -131,9 +131,9 @@ void Exact::addReification(const std::string& head, const std::vector<long long>
   for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
     ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
   }
-  ilp.addReification(getVariable(head), ic);
+  ilp.addReification(getVariable(head), sign, ic);
 }
-void Exact::addReification(const std::string& head, const std::vector<std::string>& coefs,
+void Exact::addReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
                            const std::vector<std::string>& vars, const std::string& lb) {
   if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
@@ -143,9 +143,9 @@ void Exact::addReification(const std::string& head, const std::vector<std::strin
   for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
     ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
   }
-  ilp.addReification(getVariable(head), ic);
+  ilp.addReification(getVariable(head), sign, ic);
 }
-void Exact::addRightReification(const std::string& head, const std::vector<long long>& coefs,
+void Exact::addRightReification(const std::string& head, bool sign, const std::vector<long long>& coefs,
                                 const std::vector<std::string>& vars, long long lb) {
   if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
@@ -155,9 +155,9 @@ void Exact::addRightReification(const std::string& head, const std::vector<long 
   for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
     ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
   }
-  ilp.addRightReification(getVariable(head), ic);
+  ilp.addRightReification(getVariable(head), sign, ic);
 }
-void Exact::addRightReification(const std::string& head, const std::vector<std::string>& coefs,
+void Exact::addRightReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
                                 const std::vector<std::string>& vars, const std::string& lb) {
   if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
@@ -167,9 +167,9 @@ void Exact::addRightReification(const std::string& head, const std::vector<std::
   for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
     ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
   }
-  ilp.addRightReification(getVariable(head), ic);
+  ilp.addRightReification(getVariable(head), sign, ic);
 }
-void Exact::addLeftReification(const std::string& head, const std::vector<long long>& coefs,
+void Exact::addLeftReification(const std::string& head, bool sign, const std::vector<long long>& coefs,
                                const std::vector<std::string>& vars, long long lb) {
   if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
@@ -179,9 +179,9 @@ void Exact::addLeftReification(const std::string& head, const std::vector<long l
   for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
     ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
   }
-  ilp.addLeftReification(getVariable(head), ic);
+  ilp.addLeftReification(getVariable(head), sign, ic);
 }
-void Exact::addLeftReification(const std::string& head, const std::vector<std::string>& coefs,
+void Exact::addLeftReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
                                const std::vector<std::string>& vars, const std::string& lb) {
   if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
   if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
@@ -191,7 +191,7 @@ void Exact::addLeftReification(const std::string& head, const std::vector<std::s
   for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
     ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
   }
-  ilp.addLeftReification(getVariable(head), ic);
+  ilp.addLeftReification(getVariable(head), sign, ic);
 }
 
 void Exact::fix(const std::string& var, long long val) { ilp.fix(getVariable(var), getCoef(val)); }

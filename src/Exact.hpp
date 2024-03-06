@@ -98,9 +98,9 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void addReification(const std::string& head, const std::vector<long long>& coefs,
+  void addReification(const std::string& head, bool sign, const std::vector<long long>& coefs,
                       const std::vector<std::string>& vars, long long lb);
-  void addReification(const std::string& head, const std::vector<std::string>& coefs,
+  void addReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
                       const std::vector<std::string>& vars, const std::string& lb);
 
   /**
@@ -113,9 +113,9 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void addRightReification(const std::string& head, const std::vector<long long>& coefs,
+  void addRightReification(const std::string& head, bool sign, const std::vector<long long>& coefs,
                            const std::vector<std::string>& vars, long long lb);
-  void addRightReification(const std::string& head, const std::vector<std::string>& coefs,
+  void addRightReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
                            const std::vector<std::string>& vars, const std::string& lb);
 
   /**
@@ -128,9 +128,9 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void addLeftReification(const std::string& head, const std::vector<long long>& coefs,
+  void addLeftReification(const std::string& head, bool sign, const std::vector<long long>& coefs,
                           const std::vector<std::string>& vars, long long lb);
-  void addLeftReification(const std::string& head, const std::vector<std::string>& coefs,
+  void addLeftReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
                           const std::vector<std::string>& vars, const std::string& lb);
 
   /**

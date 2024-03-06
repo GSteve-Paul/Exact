@@ -168,9 +168,9 @@ class ILP {
   void clearSolutionHints(const std::vector<IntVar*>& ivs);
 
   void addConstraint(const IntConstraint& ic);
-  void addReification(IntVar* head, const IntConstraint& ic);
-  void addRightReification(IntVar* head, const IntConstraint& ic);
-  void addLeftReification(IntVar* head, const IntConstraint& ic);
+  void addReification(IntVar* head, bool sign, const IntConstraint& ic);
+  void addRightReification(IntVar* head, bool sign, const IntConstraint& ic);
+  void addLeftReification(IntVar* head, bool sign, const IntConstraint& ic);
   void addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_bound = nullptr,
                          IntVar* upper_bound = nullptr);
 
