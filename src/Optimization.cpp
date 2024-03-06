@@ -213,7 +213,15 @@ void simplifyAssumps(CePtr<SMALL, LARGE>& c, const IntSet& assumps) {
 template <typename SMALL, typename LARGE>
 Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& os,
                                          const IntSet& assumps)
-    : OptimizationSuper(s, os, assumps), origObj(obj) {
+    : OptimizationSuper(s, os, assumps),
+      origObj(obj),
+      lower_bound(0),
+      upper_bound(obj->absCoeffSum() + 1),
+      lastUpperBound(ID_Undef),
+      lastLowerBound(ID_Undef),
+      lastReformUpperBound(ID_Undef),
+      boundingVal(0),
+      boundingVar(0) {
   assert(origObj->getDegree() == 0);
   reformObj = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(reformObj);
@@ -222,7 +230,6 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
 
   lower_bound = -reformObj->getDegree();
-  upper_bound = origObj->absCoeffSum() + 1;
 }
 
 template <typename SMALL, typename LARGE>
@@ -425,6 +432,12 @@ template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // modifies core
   assert(!core->hasNegativeSlack(solver.getLevel()));  // root inconsistency was handled by solver's learnConstraint
 
+  if (toVar(assumps.back()) == boundingVar) {
+    // simple bottom-up
+    lower_bound = boundingVal + 1;
+    return;
+  }
+
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   assert(lower_bound <= -reformObj->getDegree());
   if (lower_bound < -reformObj->getDegree()) {
@@ -452,7 +465,6 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
   }
 
   checkLazyVariables();
-  printObjBounds();
 }
 
 template <typename SMALL, typename LARGE>
@@ -462,7 +474,6 @@ void Optimization<SMALL, LARGE>::boundObjByLastSol() {
 
   upper_bound = -origObj->getRhs();
   for (Var v : origObj->getVars()) upper_bound += sol[v] > 0 ? origObj->coefs[v] : 0;
-  printObjBounds();
 
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
@@ -493,30 +504,38 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
     // - no assumptions are set (because something happened during previous core-guided step)
     // - only the given assumptions are set (because the previous step was not core-guided)
     // - more than only the given assumptions are set (because the previous core-guided step did not finish)
-    // NOTE: what if no coreguided possible because all variables of the objective are assumed?
 
-    bool coreguided = optimize && lower_bound < upper_bound &&
-                      (global.options.optRatio.get() >= 1 ||
-                       global.stats.DETTIMEASSUMP <
-                           global.options.optRatio.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP));
-
-    if (coreguided &&
-        solver.getAssumptions().size() <= assumptions.size()) {  // figure out and set new coreguided assumptions
-      reformObj->removeEqualities(solver.getEqualities(), false);
-      simplifyAssumps(reformObj, assumptions);
-      reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-      if (reformObj->nVars() == 0) {
-        solver.setAssumptions(assumptions.getKeys());
-      } else {
+    if (optimize && lower_bound < upper_bound &&
+        (global.options.optRatio.get() >= 1 ||
+         global.stats.DETTIMEASSUMP <
+             global.options.optRatio.get() * (global.stats.DETTIMEFREE + global.stats.DETTIMEASSUMP))) {
+      // figure out and set new bottom-up assumptions
+      bool cgFailed = false;
+      if (global.options.optCoreguided) {
+        reformObj->removeEqualities(solver.getEqualities(), false);
+        simplifyAssumps(reformObj, assumptions);
+        reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+        if (reformObj->nVars() == 0) {
+          solver.setAssumptions(assumptions.getKeys());
+        } else {
+          assumps.clear();
+          assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
+          LARGE bnd = (upper_bound - lower_bound) / global.options.optPrecision.get();
+          for (Var v : reformObj->vars) {
+            if (reformObj->coefs[v] >= bnd || reformObj->coefs[v] <= -bnd) assumps.push_back(-reformObj->getLit(v));
+          }
+          cgFailed = assumps.size() == assumptions.getKeys().size();
+          solver.setAssumptions(assumps);
+        }
+      }
+      if (cgFailed || !global.options.optCoreguided) {
+        boundBottomUp();
         assumps.clear();
         assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
-        LARGE bnd = (upper_bound - lower_bound) / global.options.optPrecision.get();
-        for (Var v : reformObj->vars) {
-          if (reformObj->coefs[v] >= bnd || reformObj->coefs[v] <= -bnd) assumps.push_back(-reformObj->getLit(v));
-        }
+        assumps.push_back(-boundingVar);
         solver.setAssumptions(assumps);
       }
-    } else if (!coreguided) {  // set regular assumptions
+    } else {  // set regular assumptions
       solver.setAssumptions(assumptions.getKeys());
     }
 
@@ -541,19 +560,19 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       }
     }
 
-    if (reply == SolveState::UNSAT) {
-      return SolveState::UNSAT;
-    } else if (reply == SolveState::SAT) {
+    if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
       ++global.stats.NSOLS;
-      if (optimize) boundObjByLastSol();
+      if (optimize) {
+        boundObjByLastSol();
+        printObjBounds();
+      }
       solver.clearAssumptions();
       return SolveState::SAT;
     } else if (reply == SolveState::INCONSISTENT) {
       assert(!solver.getAssumptions().isEmpty());
       ++global.stats.NCORES;
       if (solver.getAssumptions().size() > assumptions.size()) {
-        assert(coreguided);
         if (solver.lastCore->falsifiedBy(assumptions)) {
           solver.clearAssumptions();
           return SolveState::INCONSISTENT;
@@ -564,19 +583,19 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
             return SolveState::UNSAT;
           }
           solver.clearAssumptions();
+          printObjBounds();
         }
       } else {
         assert(solver.getAssumptions().size() == assumptions.size());  // no bottom-up assumptions
         assert(solver.lastCore->falsifiedBy(assumptions));
         return SolveState::INCONSISTENT;
       }
-    } else if (reply == SolveState::INPROCESSED) {
+    } else {
+      assert(reply == SolveState::INPROCESSED || reply == SolveState::UNSAT);
       if (global.options.printCsvData) {
         global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
       }
-      return SolveState::INPROCESSED;
-    } else {
-      assert(false);  // should not happen
+      return reply;
     }
   }
 }
@@ -588,6 +607,26 @@ SolveState Optimization<SMALL, LARGE>::runFull(bool optimize, double timeout) {
     result = run(optimize, timeout);
   }
   return result;
+}
+
+template <typename SMALL, typename LARGE>
+void Optimization<SMALL, LARGE>::boundBottomUp() {
+  assert(lower_bound < upper_bound);
+  LARGE bnd = lower_bound + (upper_bound - lower_bound) / global.options.optPrecision.get();
+  assert(bnd < upper_bound);
+  assert(bnd >= lower_bound);
+  if (boundingVar == 0 || bnd != boundingVal) {
+    boundingVal = bnd;
+    CeArb bound = global.cePools.takeArb();
+    origObj->copyTo(bound);
+    assert(bound->getDegree() == 0);
+    bound->addRhs(boundingVal);  // objective must be at least middle
+    bound->invert();             // objective must be at most middle
+    boundingVar = solver.addVar(false);
+    bound->addLhs(bound->getDegree(), boundingVar);  // ~boundingVar enables bisect constraint
+    bound->orig = Origin::COREGUIDED;
+    solver.addConstraint(bound);
+  }
 }
 
 template class Optimization<int, long long>;

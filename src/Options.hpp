@@ -256,13 +256,13 @@ struct Options {
       "bits-learned",
       "Bit width of maximum coefficient for learned constraints (0 is unlimited, 1 reduces to cardinalities)",
       limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
-  ValOption<float> optRatio{"opt-ratio",
-                            "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
-                            "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
-  ValOption<int32_t> optPrecision{"opt-precision",
-                                  "Precision of bottom-up optimization (2 bisects the optimality gap, higher means "
-                                  "more finegrained bottom-up optimization)",
-                                  100, "int > 1", [](const int32_t& x) -> bool { return x > 1; }};
+  ValOption<float> optRatio{"opt-ratio", "Ratio of bottom-up optimization time (0 means top-down, 1 fully bottom-up)",
+                            0.5, "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
+  ValOption<int32_t> optPrecision{
+      "opt-precision",
+      "Precision of bottom-up optimization (each core will improve the optimality gap by at least 1/x)", 100, "int > 1",
+      [](const int32_t& x) -> bool { return x > 1; }};
+  BoolOption optCoreguided{"opt-coreguided", "Core-guided bottom up optimization instead of a basic approach", true};
   EnumOption ilpEncoding{"ilp-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
   BoolOption ilpContinuous{"ilp-continuous",
                            "Accept continuous variables by treating them as integer variables. This restricts the "
@@ -333,6 +333,7 @@ struct Options {
       &bitsLearned,
       &optRatio,
       &optPrecision,
+      &optCoreguided,
       &ilpEncoding,
       &ilpContinuous,
       &ilpUnbounded,
