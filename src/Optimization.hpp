@@ -110,7 +110,8 @@ class OptimizationSuper {
   Solver& solver;
   Global& global;
   const bigint offset;
-  const IntSet& assumptions;
+  const IntSet& assumptions;  // external assumptions
+  LitVec assumps;             // all assumptions passed to solver
 
  public:
   virtual bigint getUpperBound() const = 0;
@@ -146,11 +147,6 @@ class Optimization final : public OptimizationSuper {
 
   LARGE boundingVal;
   Var boundingVar;
-
-  // State variables during solve loop:
-  const bigint stratDiv;
-  bigint stratLim;
-  bool coreguided;
 
  public:
   explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& offset, const IntSet& assumps);
