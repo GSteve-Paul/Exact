@@ -25,6 +25,26 @@ or run with the flag --license=AGPLv3. If not, see
 using namespace xct;
 
 int main(int argc, char** argv) {
+
+  // Global global;
+  // ConstrExp32 ce32(global);
+
+  // global.cePools.resize(6);
+
+  // Ce32 reason = global.cePools.take32();
+
+  // reason->addLhs(7, 3);
+  // reason->addLhs(4, 2);
+  // reason->addLhs(3, 1);
+  // reason->addRhs(13);
+
+  // std::cout << "reason: " << *reason << std::endl;
+
+  // reason->applyMIR(5, [reason](Var v) { return reason->getLit(v); });
+
+  // std::cout << "MIR: " << *reason << std::endl;
+
+  // return 0; 
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE

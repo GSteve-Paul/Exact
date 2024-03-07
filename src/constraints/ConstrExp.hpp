@@ -337,6 +337,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level);
   void weakenDivideRoundOrderedCanceling(const LARGE& div, const IntMap<int>& level, const std::vector<int>& pos,
                                          const SMALL& mult, const ConstrExp<SMALL, LARGE>& confl);
+  void weakenMIROrdered(const LARGE& d, const IntMap<int>& level, const std::function<Lit(Var)>& toLit);
   void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
   void weakenNonDivisible(const LARGE& div, const IntMap<int>& level);
   void weakenNonDivisibleCanceling(const LARGE& div, const IntMap<int>& level, const SMALL& mult,
@@ -508,12 +509,14 @@ struct ConstrExp final : public ConstrExpSuper {
       assert(reasonCoef > 0);
       if (global.options.division.is("rto")) {
         reason->weakenDivideRoundOrdered(reasonCoef, level);
+        // reason->applyMIR(reasonCoef, [this](Var v) { return getLit(v); });
         reason->multiply(conflCoef);
         assert(reason->getSlack(level) <= 0);
       } else {
         const LARGE reasonSlack = reason->getSlack(level);
         if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
           reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
+          // reason->applyMIR(reasonSlack + 1, [this](Var v) { return getLit(v); });
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
           assert(reason->getSlack(level) <= 0);
         } else {
@@ -558,7 +561,9 @@ struct ConstrExp final : public ConstrExpSuper {
             reason->multiply(mult);
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
-            reason->weakenDivideRoundOrdered(bestDiv, level);
+            // reason->weakenDivideRoundOrdered(bestDiv, level);
+            reason->applyMIR(bestDiv, [this](Var v) { return getLit(v); });
+            // reason->weakenMIROrdered(bestDiv, level, [this](Var v) { return getLit(v); });
             reason->multiply(mult);
             assert(reason->getSlack(level) <= 0);
           }

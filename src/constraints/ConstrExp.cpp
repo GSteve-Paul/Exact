@@ -941,6 +941,29 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
   }
 }
 
+// NOTE: this does not preserve order
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>& level, const std::function<Lit(Var)>& toLit) {
+  assert(isSortedInDecreasingCoefOrder());
+  assert(d > 0);
+  if (d == 1) return;
+  weakenNonDivisible(d, level);
+  // weakenSuperfluous(d, true, [&](Var v) { return !isFalse(level, v); });
+  repairOrder();
+  while (!vars.empty() && coefs[vars.back()] == 0) {
+    popLast();
+  }
+  assert(hasNoZeroes());
+  if (d >= degree) {
+    simplifyToClause();
+  } else if (!vars.empty() && d >= aux::abs(coefs[vars[0]])) {
+    simplifyToCardinality(false, getCardinalityDegree());
+  } else {
+    applyMIR(d, toLit);
+    saturate(true, true);
+  }
+}
+
 // NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
 // NOTE: after call to weakenNonDivisible, order can be re repaired by call to repairOrder
 template <typename SMALL, typename LARGE>
