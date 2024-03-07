@@ -244,6 +244,8 @@ struct Options {
                       {"rto", "slack+1", "mindiv"}};
   BoolOption weakenNonImplying{"ca-weaken-nonimplying",
                                "Weaken non-implying falsified literals from learned constraints", true};
+  BoolOption weakenNonImplied{"ca-weaken-nonimplied",
+                               "Weaken non-implied non-falsified literals from learned constraints", true};
   BoolOption learnedMin{"ca-min", "Minimize learned constraints through generalized self-subsumption.", true};
   BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", true};
   ValOption<int> bitsOverflow{"bits-overflow",
@@ -331,6 +333,7 @@ struct Options {
       &multBeforeDiv,
       &division,
       &weakenNonImplying,
+      &weakenNonImplied,
       &learnedMin,
       &caCancelingUnkns,
       &bitsOverflow,
