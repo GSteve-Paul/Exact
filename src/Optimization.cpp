@@ -223,13 +223,16 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
       boundingVal(0),
       boundingVar(0) {
   assert(origObj->getDegree() == 0);
-  reformObj = global.cePools.take<SMALL, LARGE>();
-  origObj->copyTo(reformObj);
-  reformObj->removeEqualities(solver.getEqualities(), false);
-  simplifyAssumps(reformObj, assumptions);
-  reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+  global.logger.logObjective(origObj);
+  if (global.options.optCoreguided) {
+    reformObj = global.cePools.take<SMALL, LARGE>();
+    origObj->copyTo(reformObj);
+    reformObj->removeEqualities(solver.getEqualities(), false);
+    simplifyAssumps(reformObj, assumptions);
+    reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
 
-  lower_bound = -reformObj->getDegree();
+    lower_bound = -reformObj->getDegree();
+  }
 }
 
 template <typename SMALL, typename LARGE>
@@ -314,7 +317,7 @@ void Optimization<SMALL, LARGE>::addLowerBound() {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::addReformUpperBound(bool deletePrevious) {
-  if (reformObj->vars.empty()) return;
+  if (!reformObj || reformObj->vars.empty()) return;
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   reformObj->copyTo(aux);
   aux->orig = Origin::REFORMBOUND;
@@ -440,6 +443,7 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
     return;
   }
 
+  assert(reformObj);
   reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   if (lower_bound < -reformObj->getDegree()) {
     ++global.stats.NCGUNITCORES;
@@ -508,6 +512,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       // figure out and set new bottom-up assumptions
       bool cgFailed = false;
       if (global.options.optCoreguided) {
+        assert(reformObj);
         reformObj->removeEqualities(solver.getEqualities(), false);
         simplifyAssumps(reformObj, assumptions);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -621,7 +626,7 @@ void Optimization<SMALL, LARGE>::boundBottomUp() {
     bound->invert();             // objective must be at most middle
     boundingVar = solver.addVar(false);
     bound->addLhs(bound->getDegree(), boundingVar);  // ~boundingVar enables bisect constraint
-    bound->orig = Origin::COREGUIDED;
+    bound->orig = Origin::BOTTOMUP;
     solver.addConstraint(bound);
   }
 }

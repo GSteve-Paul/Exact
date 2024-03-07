@@ -628,8 +628,8 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   global.stats.NCONSFORMULA += orig == Origin::FORMULA;
   global.stats.NCONSDOMBREAKER += orig == Origin::DOMBREAKER;
   global.stats.NCONSLEARNED += orig == Origin::LEARNED;
-  global.stats.NCONSBOUND += isBound(orig);
-  global.stats.NCONSCOREGUIDED += orig == Origin::COREGUIDED;
+  global.stats.NCONSBOUND += isBound(orig) || orig == Origin::REFORMBOUND;
+  global.stats.NCONSCOREGUIDED += orig == Origin::COREGUIDED || orig == Origin::BOTTOMUP;
   global.stats.NLPGOMORYCUTS += orig == Origin::GOMORY;
   global.stats.NLPDUAL += orig == Origin::DUAL;
   global.stats.NLPFARKAS += orig == Origin::FARKAS;
@@ -724,13 +724,19 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
     case Origin::FORMULA:
       input = global.logger.logInput(ce);
       break;
+    case Origin::BOTTOMUP:
+      input = global.logger.logBottomUp(ce);
+      break;
+    case Origin::UPPERBOUND:
+      input = global.logger.logUpperBound(ce, getLastSolution());
+      break;
       // TODO: reactivate below when VeriPB's redundant rule becomes stronger
-      //      case Origin::PURE:
-      //        input = global.logger.logPure(ce);
-      //        break;
-      //      case Origin::DOMBREAKER:
-      //        input = global.logger.logDomBreaker(ce);
-      //        break;
+      // case Origin::PURE:
+      //   input = global.logger.logPure(ce);
+      //   break;
+      // case Origin::DOMBREAKER:
+      //   input = global.logger.logDomBreaker(ce);
+      //   break;
     default:
       input = global.logger.logAssumption(ce);
   }

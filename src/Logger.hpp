@@ -87,7 +87,9 @@ class Logger {
   bool active;
 
   std::ostream& proofStream();
-  std::ostream& formulaStream();
+
+  std::stringstream formula_constr;
+  std::stringstream formula_obj;
 
  public:
   ID last_formID;
@@ -96,12 +98,12 @@ class Logger {
   explicit Logger(const Stats& stats);
 
   void activate(const std::string& proof_log_name, const bool zip);
-  void deactivate();
   bool isActive() const;
   void flush();
   void logComment([[maybe_unused]] const std::string& comment);
 
   ID logInput(const CeSuper& ce);
+  void logObjective(const CeSuper& ce);
   ID logAssumption(const CeSuper& ce);
   ID logProofLine(const CeSuper& ce);
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
@@ -109,6 +111,8 @@ class Logger {
   void logUnit(const CeSuper& ce);
   ID logRUP(Lit l, Lit ll);
   ID logImpliedUnit(Lit implying, Lit implied);
+  ID logBottomUp(const CeSuper& ce);
+  ID logUpperBound(const CeSuper& ce, const LitVec& lastSol);
   ID logPure(const CeSuper& ce);
   ID logDomBreaker(const CeSuper& ce);  // second lit is the witness
   ID logAtMostOne(const ConstrSimple32& c, const CeSuper& ce);

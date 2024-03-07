@@ -724,6 +724,11 @@ bool ConstrExp<SMALL, LARGE>::isSaturated() const {
 }
 
 template <typename SMALL, typename LARGE>
+bool ConstrExp<SMALL, LARGE>::isSaturated(Lit l) const {
+  return getCoef(l) >= degree;
+}
+
+template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isSaturated(const aux::predicate<Lit>& toWeaken) const {
   SMALL largest = 0;
   LARGE weakenedDeg = degree;

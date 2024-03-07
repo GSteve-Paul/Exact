@@ -212,7 +212,8 @@ enum class Origin {
   INVALIDATOR,  // solution-invalidating constraint
   PURE,         // pure unit literal
   COREGUIDED,   // extension constraints from coreguided optimization
-  REFORMBOUND,  // unit constraint due to upper bound on the objective function
+  BOTTOMUP,     // simple bottom-up optimization constraint
+  REFORMBOUND,  // upper bound on the reformed objective function
   UPPERBOUND,   // upper bound on the objective function
   LOWERBOUND,   // lower bound on the objective function
   LEARNED,      // learned from regular conflict analysis
@@ -244,6 +245,9 @@ inline std::ostream& operator<<(std::ostream& o, enum Origin orig) {
       break;
     case (Origin::COREGUIDED):
       o << "COREGUIDED";
+      break;
+    case (Origin::BOTTOMUP):
+      o << "BOTTOMUP";
       break;
     case (Origin::REFORMBOUND):
       o << "REFORMBOUND";
@@ -291,7 +295,9 @@ inline bool isNonImplied(Origin o) {
   return o == Origin::FORMULA || o == Origin::DOMBREAKER || o == Origin::INVALIDATOR;
 }
 inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
-inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED || o == Origin::REFORMBOUND; }
+inline bool isExternal(Origin o) {
+  return isBound(o) || o == Origin::COREGUIDED || o == Origin::REFORMBOUND || o == Origin::BOTTOMUP;
+}
 inline bool isInput(Origin o) { return o != Origin::UNKNOWN && o < Origin::LEARNED; }
 inline bool isLearned(Origin o) { return o >= Origin::LEARNED; }
 

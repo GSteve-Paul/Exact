@@ -75,18 +75,8 @@ std::ostream& Logger::proofStream() {
     return proof_out;
 }
 
-std::ostream& Logger::formulaStream() {
-#if WITHZLIB
-  if (proof_is_zip)
-    return formula_out_zip;
-  else
-#endif  // WITHZLIB
-    return formula_out;
-}
-
 void Logger::activate(const std::string& proof_log_name, [[maybe_unused]] const bool zip) {
   if (proof_log_name == "") return;
-  flush();
 
   if (zip) {
 #if WITHZLIB
@@ -102,24 +92,24 @@ void Logger::activate(const std::string& proof_log_name, [[maybe_unused]] const 
     proof_out.open(proof_log_name + ".proof");
     formula_out.open(proof_log_name + ".formula");
   }
-  formulaStream() << "* #variable= 0 #constraint= 0\n";
-  formulaStream() << " >= 0 ;\n";
+  formula_constr << "* #variable= 0 #constraint= 0\n";
+  formula_constr << " >= 0 ;\n";
 
   proofStream() << "pseudo-Boolean proof version 1.1\n";
   proofStream() << "l 1\n";
   active = true;
 }
 
-void Logger::deactivate() {
-  flush();
-  active = false;
-}
-
 bool Logger::isActive() const { return active; }
 
 void Logger::flush() {
   if (!active) return;
-  formulaStream().flush();
+#if WITHZLIB
+  if (proof_is_zip)
+    formula_out_zip << formula_obj.str() << formula_constr.str() << std::flush;
+  else
+#endif  // WITHZLIB
+    formula_out << formula_obj.str() << formula_constr.str() << std::flush;
   proofStream().flush();
 }
 
@@ -132,11 +122,20 @@ void Logger::logComment([[maybe_unused]] const std::string& comment) {
 
 ID Logger::logInput(const CeSuper& ce) {
   if (!active) return ++last_proofID;
-  formulaStream() << *ce << "\n";
+  formula_constr << *ce << "\n";
   proofStream() << "l " << ++last_formID << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
+}
+
+void Logger::logObjective(const CeSuper& ce) {
+  if (!active) return;
+  std::stringstream temp;
+  formula_obj.swap(temp);
+  formula_obj << "min: ";
+  ce->toStreamAsOPBlhs(formula_obj, false);
+  formula_obj << ";\n";
 }
 
 ID Logger::logAssumption(const CeSuper& ce) {
@@ -211,9 +210,41 @@ ID Logger::logImpliedUnit(Lit implying, Lit implied) {
   return result;
 }
 
+ID Logger::logBottomUp(const CeSuper& ce) {
+  if (!active) return ++last_proofID;
+#if !NDEBUG
+  logComment("Bottom-up");
+#endif
+  Lit l = 0;
+  for (Var v : ce->vars) {
+    if (v > toVar(l)) l = ce->getLit(v);  // largest variable is the extension variable
+  }
+  assert(l != 0);
+  assert(ce->isSaturated(l));
+  proofStream() << "red " << *ce << " x" << toVar(l) << " " << (l > 0) << "\n";
+  ++last_proofID;
+  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
+}
+
+ID Logger::logUpperBound(const CeSuper& ce, const LitVec& lastSol) {
+  if (!active) return ++last_proofID;
+#if !NDEBUG
+  logComment("Upper bound");
+#endif
+  proofStream() << "soli";
+  for (Lit l : lastSol) {
+    proofStream() << (l < 0 ? " ~x" : " x") << toVar(l);
+  }
+  proofStream() << "\n";
+  ++last_proofID;
+  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
+}
+
 ID Logger::logPure(const CeSuper& ce) {
   if (!active) return ++last_proofID;
-  assert(ce->vars.size() == 1);
+  assert(ce->nVars() == 1);
 #if !NDEBUG
   logComment("Pure");
 #endif
@@ -226,7 +257,7 @@ ID Logger::logPure(const CeSuper& ce) {
 
 ID Logger::logDomBreaker(const CeSuper& ce) {
   if (!active) return ++last_proofID;
-  assert(ce->vars.size() == 2);
+  assert(ce->nVars() == 2);
 #if !NDEBUG
   logComment("Dominance breaking");
 #endif
