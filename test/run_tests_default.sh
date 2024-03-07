@@ -61,12 +61,14 @@ declare -a arr_dec=(
 "opb/dec/stein15.0.u.opb*UNSATISFIABLE"
 )
 
-echo "########## simple #########"
+runtype="default"
+
+echo "########## $runtype #########"
 echo ""
 
 for j in "${arr_dec[@]}"; do
     formula="$(cut -d'*' -f1 <<<$j)"
-    logfile="$logfolder/simple/$formula"
+    logfile="$logfolder/$runtype/$formula"
     mkdir -p `dirname $logfile`
     echo -n "" > $logfile.proof
     echo -n "" > $logfile.formula

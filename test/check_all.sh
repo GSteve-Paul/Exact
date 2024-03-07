@@ -6,12 +6,13 @@ logfolder="/tmp/Exact/$1"
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 declare -a arr_configs=(
-"simple"
+"default"
 "arbitrary"
 "noproof"
 "mindiv"
 "rto"
 "slack+1"
+"optsimple"
 )
 
 for idx in "${!arr_configs[@]}"; do
