@@ -1241,6 +1241,7 @@ void Solver::dominanceBreaking() {
 
 SolveState Solver::solve() {
   if (unsatReached) throw UnsatEncounter();
+  global.logger.flush();  // flush objective and formula, no need to keep in memory
   StatNum lastPropTime = global.stats.PROPTIME.z;
   StatNum lastCATime = global.stats.CATIME.z;
   StatNum lastNProp = global.stats.NPROP.z;
