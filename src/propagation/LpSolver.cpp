@@ -396,7 +396,7 @@ double LpSolver::getScaleFactor(soplex::DVectorReal& mults, bool removeNegatives
   for (int i = 0; i < mults.dim(); ++i) {
     if (std::isnan(mults[i]) || std::isinf(mults[i]) || (removeNegatives && mults[i] < 0)) mults[i] = 0;
     largest = std::max(aux::abs(mults[i]), largest);
-    nonzeros += mults[i] == 0;
+    nonzeros += mults[i] != 0;
   }
   if (largest == 0) return 0;
   assert(nonzeros > 0);
