@@ -738,7 +738,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
       //   input = global.logger.logDomBreaker(ce);
       //   break;
     default:
-      input = global.logger.logAssumption(ce);
+      input = global.logger.logAssumption(ce, global.options.proofAssumps.operator bool());
   }
   ce->strongPostProcess(*this);
   if (ce->isTautology()) {
@@ -1066,8 +1066,8 @@ bool Solver::checkSAT() const {
 void Solver::inProcess() {
   assert(decisionLevel() == 0);
   removeSatisfiedNonImpliedsAtRoot();
-  if (global.options.pureLits) derivePureLits();
-  if (global.options.domBreakLim.get() != 0) dominanceBreaking();
+  if (global.options.pureLits && global.options.proofAssumps) derivePureLits();
+  if (global.options.domBreakLim.get() != 0 && global.options.proofAssumps) dominanceBreaking();
   if (global.options.inpAMO.get() != 0) {
     aux::timeCallVoid([&] { runAtMostOneDetection(); }, global.stats.ATMOSTONETIME);
   }

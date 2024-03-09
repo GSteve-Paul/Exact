@@ -104,7 +104,7 @@ class Logger {
 
   ID logInput(const CeSuper& ce);
   void logObjective(const CeSuper& ce);
-  ID logAssumption(const CeSuper& ce);
+  ID logAssumption(const CeSuper& ce, bool allowed);
   ID logProofLine(const CeSuper& ce);
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
   ID logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position);

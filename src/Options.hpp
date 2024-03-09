@@ -188,6 +188,10 @@ struct Options {
                                   "", "/path/to/file", [](const std::string&) -> bool { return true; }};
   BoolOption proofZip{"proof-zip", "Generate proof file in ZIP format. This can alleviate space and IO constraints.",
                       false};
+  BoolOption proofAssumps{"proof-assumptions",
+                          "Allow advanced solving techniques that generate incomplete proofs with "
+                          "assumption rules. Disabling may reduce performance.",
+                          true};
   ValOption<double> timeout{"timeout", "Timeout in seconds, 0 is infinite ", 0, "0 =< float",
                             [](double x) -> bool { return 0 <= x; }};
   ValOption<long long> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
@@ -241,9 +245,9 @@ struct Options {
                       "mindiv",
                       {"rto", "slack+1", "mindiv"}};
   BoolOption weakenNonImplying{"ca-weaken-nonimplying",
-                               "Weaken non-implying falsified literals from learned constraints", false};
+                               "Weaken non-implying falsified literals from learned constraints", true};
   BoolOption learnedMin{"ca-min", "Minimize learned constraints through generalized self-subsumption.", true};
-  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", false};
+  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", true};
   ValOption<int> bitsOverflow{"bits-overflow",
                               "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
                               "unlimited or greater than 62 may use slower arbitrary precision implementations)",
@@ -304,6 +308,7 @@ struct Options {
       &timeoutDet,
       &proofLog,
       &proofZip,
+      &proofAssumps,
       &lubyBase,
       &lubyMult,
       &varWeight,

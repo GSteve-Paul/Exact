@@ -106,10 +106,12 @@ void Logger::flush() {
   if (!active) return;
 #if WITHZLIB
   if (proof_is_zip)
-    formula_out_zip << formula_obj.str() << formula_constr.str() << std::flush;
+    formula_out_zip << formula_obj.rdbuf() << formula_constr.rdbuf();
   else
 #endif  // WITHZLIB
-    formula_out << formula_obj.str() << formula_constr.str() << std::flush;
+    formula_out << formula_obj.rdbuf() << formula_constr.rdbuf();
+  formula_obj.clear();
+  formula_constr.clear();
   proofStream().flush();
 }
 
@@ -138,7 +140,8 @@ void Logger::logObjective(const CeSuper& ce) {
   formula_obj << ";\n";
 }
 
-ID Logger::logAssumption(const CeSuper& ce) {
+ID Logger::logAssumption(const CeSuper& ce, [[maybe_unused]] bool allowed) {
+  assert(allowed);
   if (!active) return ++last_proofID;
   proofStream() << "a " << *ce << "\n";
   ++last_proofID;

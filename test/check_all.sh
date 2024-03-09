@@ -12,7 +12,7 @@ declare -a arr_configs=(
 "mindiv"
 "rto"
 "slack+1"
-"optsimple"
+"noassumps"
 )
 
 for idx in "${!arr_configs[@]}"; do

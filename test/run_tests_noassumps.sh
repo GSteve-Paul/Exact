@@ -70,7 +70,7 @@ declare -a arr_opt=(
 "opb/opt/knapPI_16_1000_1000_1_-27147.opb*-27147"
 )
 
-runtype="optsimple"
+runtype="noassumps"
 
 echo "########## $runtype ##########"
 echo ""
@@ -86,8 +86,8 @@ for j in "${arr_opt[@]}"; do
         exit 1
     fi
     obj="$(cut -d'*' -f2 <<<$j)"
-    echo "running $binary $formula $options --opt-coreguided=0 --proof-log=$logfile --seed=7"
-    output=`$binary $formula $options --opt-coreguided=0 --proof-log=$logfile --seed=7 2>&1`
+    echo "running $binary $formula $options --proof-assumptions=0 --proof-log=$logfile --seed=7"
+    output=`$binary $formula $options --proof-assumptions=0 --proof-log=$logfile --seed=7 2>&1`
     error=`echo "$output" | awk '/Error:|UNSATISFIABLE|.*Assertion.*/ {print $2}'`
     if [ "$error" != "" ] ; then
         errors=`expr 1000 + $errors`

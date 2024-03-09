@@ -271,7 +271,7 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
     global.stats.NLPADDEDLITERALS += ce->nVars();
     lcc->addUp(ce, aux::abs(factor));
   }
-  global.logger.logAssumption(lcc);
+  global.logger.logAssumption(lcc, global.options.proofAssumps.operator bool());
   // TODO: fix logging for Gomory cuts
 
   lcc->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -556,7 +556,7 @@ CeSuper LpSolver::inProcess(bool overrideHeur) {
   candidateCuts.clear();
   if (global.options.lpGomoryCuts || global.options.lpLearnedCuts) global.logger.logComment("cutting");
   if (global.options.lpLearnedCuts) constructLearnedCandidates();  // first to avoid adding gomory cuts twice
-  if (global.options.lpGomoryCuts) constructGomoryCandidates();
+  if (global.options.lpGomoryCuts && global.options.proofAssumps) constructGomoryCandidates();
   addFilteredCuts();
   pruneCuts();
   return constraint;
