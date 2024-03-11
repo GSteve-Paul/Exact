@@ -33,16 +33,39 @@ int main(int argc, char** argv) {
 
   // Ce32 reason = global.cePools.take32();
 
-  // reason->addLhs(7, 3);
-  // reason->addLhs(4, 2);
-  // reason->addLhs(3, 1);
-  // reason->addRhs(13);
+  // reason->addLhs(10, 1);
+  // reason->addLhs(9, 2);
+  // reason->addLhs(8, 3);
+  // reason->addLhs(7, 4);
+  // reason->addLhs(6, 5);
+  // reason->addRhs(9);
+
+  // IntMap<int> level;
+  // level.resize(6, 0);
+  // level[1] = INF;
+  // level[-1] = INF;
+  // level[2] = INF;
+  // level[-2] = INF;
+  // level[3] = INF;
+  // level[-3] = INF;
+  // level[4] = INF;
+  // level[-4] = INF;
+  // level[5] = INF;
+  // level[-5] = INF;
+
+  // level[-4] = 1;
+
+  // // std::cout << "reason: " << *reason << std::endl;
+
+  // // reason->weakenSuperfluous(5);
 
   // std::cout << "reason: " << *reason << std::endl;
 
   // reason->applyMIR(5, [reason](Var v) { return reason->getLit(v); });
 
   // std::cout << "MIR: " << *reason << std::endl;
+
+  // std::cout << "slack: " << reason->getSlack(level) << std::endl;
 
   // return 0; 
   signal(SIGINT, SIGINT_interrupt);

@@ -337,7 +337,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level);
   void weakenDivideRoundOrderedCanceling(const LARGE& div, const IntMap<int>& level, const std::vector<int>& pos,
                                          const SMALL& mult, const ConstrExp<SMALL, LARGE>& confl);
-  void weakenMIROrdered(const LARGE& d, const IntMap<int>& level, const std::function<Lit(Var)>& toLit);
+  void weakenMIROrdered(const LARGE& d, const IntMap<int>& level, const SMALL& to, const SMALL& reasonCoef);
   void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
   void weakenNonDivisible(const LARGE& div, const IntMap<int>& level);
   void weakenNonDivisibleCanceling(const LARGE& div, const IntMap<int>& level, const SMALL& mult,
@@ -346,10 +346,15 @@ struct ConstrExp final : public ConstrExpSuper {
   void weakenSuperfluous(const LARGE& div, bool sorted, const aux::predicate<Var>& toWeaken);
   void weakenSuperfluous(const LARGE& div);
   void weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos);
+  SMALL weakenSuperfluousMIR(const LARGE& div, SMALL& amount);
+  bool weakenUseless(const LARGE& div, SMALL& amount);
+  void dropDegree(const LARGE& d, SMALL& amount);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
+  void applyMIRalt(const LARGE& d);
 
   bool divideByGCD();
   bool divideTo(double limit, const aux::predicate<Lit>& toWeaken);
+  const SMALL findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult, const SMALL& max);
   AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level
@@ -508,15 +513,16 @@ struct ConstrExp final : public ConstrExpSuper {
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
       if (global.options.division.is("rto")) {
-        reason->weakenDivideRoundOrdered(reasonCoef, level);
-        // reason->applyMIR(reasonCoef, [this](Var v) { return getLit(v); });
+        std::cout << "asserting: " << asserting << std::endl;
+        reason->weakenMIROrdered(reasonCoef, level, conflCoef, reasonCoef);
+        std::cout << "reasonCoef: " << reason->getCoef(asserting) << std::endl;
+        multiply(reason->getCoef(asserting));
         reason->multiply(conflCoef);
         assert(reason->getSlack(level) <= 0);
       } else {
         const LARGE reasonSlack = reason->getSlack(level);
         if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
-          reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
-          // reason->applyMIR(reasonSlack + 1, [this](Var v) { return getLit(v); });
+          reason->weakenMIROrdered(reasonSlack + 1, level, conflCoef, reasonCoef);
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
           assert(reason->getSlack(level) <= 0);
         } else {
@@ -561,10 +567,14 @@ struct ConstrExp final : public ConstrExpSuper {
             reason->multiply(mult);
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
-            // reason->weakenDivideRoundOrdered(bestDiv, level);
-            reason->applyMIR(bestDiv, [this](Var v) { return getLit(v); });
-            // reason->weakenMIROrdered(bestDiv, level, [this](Var v) { return getLit(v); });
-            reason->multiply(mult);
+            std::cout << "bestDiv: " << bestDiv << std::endl;
+            std::cout << "reasonCoef: " << reasonCoef << std::endl;
+            reason->weakenMIROrdered(bestDiv, level, mult, reasonCoef);
+            multiply(reason->getCoef(asserting)); 
+            reason->multiply(conflCoef);
+            std::cout << "asserting: " << asserting << std::endl;
+            std::cout << "reason: " << *reason << std::endl;
+            std::cout << "confl: " << *this << std::endl;
             assert(reason->getSlack(level) <= 0);
           }
         }
@@ -572,8 +582,8 @@ struct ConstrExp final : public ConstrExpSuper {
     }
 
     assert(reason->getCoef(asserting) >= conflCoef);
-    assert(reason->getCoef(asserting) < 2 * conflCoef);
-    assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
+    // assert(reason->getCoef(asserting) < 2 * conflCoef);
+    // assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
     // In most cases, at this point, the reason coefficient is equal to the conflict coefficient
     // and the reason slack is at most zero, so we can safely add the reason to the conflict.

@@ -900,7 +900,9 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(div, level);
-  weakenSuperfluous(div);
+  if (global.options.weakenSuperfluous) {
+    weakenSuperfluous(div);
+  }
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -925,7 +927,9 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisibleCanceling(div, level, mult, confl);
-  weakenSuperfluousCanceling(div, pos);
+  if (global.options.weakenSuperfluous) {
+    weakenSuperfluousCanceling(div, pos);
+  }
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -941,14 +945,27 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
   }
 }
 
-// NOTE: this does not preserve order
+// NOTE: this preserves order
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>& level, const std::function<Lit(Var)>& toLit) {
+void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>& level, const SMALL& to, const SMALL& reasonCoef) {
   assert(isSortedInDecreasingCoefOrder());
   assert(d > 0);
+  assert(reasonCoef % d == 0);
+  const SMALL reasonMult = reasonCoef / d;
+  const SMALL maxmod = to / reasonMult;
   if (d == 1) return;
-  weakenNonDivisible(d, level);
-  // weakenSuperfluous(d, true, [&](Var v) { return !isFalse(level, v); });
+  std::cout << "d: " << d << std::endl;
+  std::cout << "after weakenNonDivisible: " << *this << std::endl;
+  SMALL amount = findWeakenAmount(d, to, reasonMult, maxmod);
+  if (global.options.weakenSuperfluous) {
+    amount = weakenSuperfluousMIR(d, amount);
+    std::cout << "after weakenSuperfluous: " << *this << std::endl;
+  }
+  if (!weakenUseless(d, amount) && amount > 0) {
+    dropDegree(d, amount);
+  }
+
+
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -956,11 +973,16 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   assert(hasNoZeroes());
   if (d >= degree) {
     simplifyToClause();
+    std::cout << "after simplifyToClause: " << *this << std::endl;
   } else if (!vars.empty() && d >= aux::abs(coefs[vars[0]])) {
     simplifyToCardinality(false, getCardinalityDegree());
+    std::cout << "after simplifyToCardinality: " << *this << std::endl;
   } else {
-    applyMIR(d, toLit);
+    std::cout << "bmodd: " << degree % d << std::endl;
+    applyMIRalt(d);
+    std::cout << "after applyMIR: " << *this << std::endl;
     saturate(true, true);
+    std::cout << "after saturate: " << *this << std::endl;
   }
 }
 
@@ -1092,6 +1114,55 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousCanceling(const LARGE& div, const
 }
 
 template <typename SMALL, typename LARGE>
+SMALL ConstrExp<SMALL, LARGE>::weakenSuperfluousMIR(const LARGE& d, SMALL& amount) {
+  assert(d > 1);
+  assert(!isTautology());
+  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, d);
+  LARGE rem = std::min(aux::mod_safe<LARGE>((degree - 1), d), static_cast<LARGE>(amount));
+  for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
+    Var v = vars[i];
+    if (coefs[v] == 0 || saturatedVar(v)) continue;
+    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % d);
+    if (r <= rem) {
+      rem -= r;
+      weaken(coefs[v] < 0 ? r : -r, v);
+      amount -= r;
+    }
+  }
+  assert(quot == aux::ceildiv(degree, d));
+  return amount;
+}
+
+template <typename SMALL, typename LARGE>
+bool ConstrExp<SMALL, LARGE>::weakenUseless(const LARGE& div, SMALL& amount) {
+  assert(div > 1);
+  const LARGE bmodd = (degree % div);
+  assert(bmodd > amount);
+  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
+  for (int i = vars.size() - 1; i >= 0 && amount > 0; --i) {  // going back to front in case the coefficients are sorted
+    Var v = vars[i];
+    if (coefs[v] == 0 || saturatedVar(v)) continue;
+    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
+    if (r >= bmodd) {
+      weaken(coefs[v] < 0 ? amount : -amount, v);
+      assert(quot == aux::ceildiv(degree, div));
+      return true;
+    }
+  }
+
+  return false;
+
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::dropDegree(const LARGE& d, SMALL& amount) {
+  assert(amount > 0);
+  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, d);
+  degree -= amount;
+  assert(quot == aux::ceildiv(degree, d));
+}
+
+template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit) {
   assert(d > 0);
   LARGE tmpRhs = rhs;
@@ -1109,6 +1180,43 @@ void ConstrExp<SMALL, LARGE>::applyMIR(const LARGE& d, const std::function<Lit(V
                                     std::min(aux::mod_safe<LARGE>(coefs[v], d), bmodd));
   }
   degree = calcDegree();
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
+  assert(d > 0);
+  std::cout << "in apply MIR" << std::endl;
+  std::cout << "reason: " << *this << std::endl;
+  std::cout << "d: " << d << std::endl;
+
+  LARGE tmpRhs = rhs;
+  for (Var v : vars)
+    if (getLit(v) < 0) tmpRhs -= coefs[v];
+  LARGE bmodd = aux::mod_safe(tmpRhs, d);
+  rhs = aux::ceildiv_safe(tmpRhs, d);
+  if (bmodd != 0) {
+    rhs *= bmodd;
+  }
+  for (Var v : vars) {
+    if (getLit(v) < 0) {
+      if (bmodd == 0) {
+        coefs[v] = static_cast<SMALL>(aux::ceildiv_safe<LARGE>(-coefs[v], d));
+      } else {
+        coefs[v] = static_cast<SMALL>(
+          -(bmodd * aux::floordiv_safe<LARGE>(-coefs[v], d) + std::min(aux::mod_safe<LARGE>(-coefs[v], d), bmodd)));
+      }
+      rhs += coefs[v];
+    } else {
+      if (bmodd == 0) {
+        coefs[v] = static_cast<SMALL>(aux::ceildiv_safe<LARGE>(coefs[v], d));
+      } else {
+      coefs[v] = static_cast<SMALL>(bmodd * aux::floordiv_safe<LARGE>(coefs[v], d) +
+                                    std::min(aux::mod_safe<LARGE>(coefs[v], d), bmodd));
+      }
+    }
+  }
+  degree = calcDegree();
+  assert(!isTautology());
 }
 
 template <typename SMALL, typename LARGE>
@@ -1138,6 +1246,24 @@ bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& 
   assert(div > 1);
   weakenDivideRound(div, toWeaken);  // TODO: weakenDivideRoundOrdered?
   return true;
+}
+
+template <typename SMALL, typename LARGE>
+const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult, const SMALL& max) {
+  const LARGE b = getDegree();
+  SMALL amount = 0;
+  LARGE postDeg;
+  SMALL bmodd;
+  const SMALL origBmodd = b % d;
+  while (amount < origBmodd) {
+    postDeg = b - static_cast<LARGE>(amount);
+    bmodd = static_cast<SMALL>(postDeg % d);
+    if (to % bmodd == 0) {
+      break;
+    }
+    amount += 1;
+  }
+  return amount;
 }
 
 // NOTE: only equivalence preserving operations over the Bools!
