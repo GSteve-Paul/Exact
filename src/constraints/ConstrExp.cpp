@@ -478,6 +478,7 @@ unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntMap<int>& level) const {
       }
     }
   }
+  std::cout << "i: " << i << std::endl;
   assert(i >= 0);  // constraint is asserting or conflicting
   IntSet& lbdSet = global.isPool.take();
   for (; i >= 0; --i) {  // gather all levels
@@ -955,8 +956,10 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   const SMALL maxmod = to / reasonMult;
   if (d == 1) return;
   std::cout << "d: " << d << std::endl;
+  weakenNonDivisible(d, level);
   std::cout << "after weakenNonDivisible: " << *this << std::endl;
   SMALL amount = findWeakenAmount(d, to, reasonMult, maxmod);
+  std::cout << "amount: " << amount << std::endl;
   if (global.options.weakenSuperfluous) {
     amount = weakenSuperfluousMIR(d, amount);
     std::cout << "after weakenSuperfluous: " << *this << std::endl;
@@ -1137,7 +1140,7 @@ template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::weakenUseless(const LARGE& div, SMALL& amount) {
   assert(div > 1);
   const LARGE bmodd = (degree % div);
-  assert(bmodd > amount);
+  assert((bmodd > amount) || (bmodd == 0));
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, div);
   for (int i = vars.size() - 1; i >= 0 && amount > 0; --i) {  // going back to front in case the coefficients are sorted
     Var v = vars[i];
@@ -1149,9 +1152,7 @@ bool ConstrExp<SMALL, LARGE>::weakenUseless(const LARGE& div, SMALL& amount) {
       return true;
     }
   }
-
   return false;
-
 }
 
 template <typename SMALL, typename LARGE>

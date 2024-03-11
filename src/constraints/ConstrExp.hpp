@@ -567,11 +567,18 @@ struct ConstrExp final : public ConstrExpSuper {
             reason->multiply(mult);
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
+            std::cout << "conflict with assignments: " << std::endl;
+            toStreamWithAssignment(std::cout, level, pos);
+            std::cout << "\n" << std::endl;
             std::cout << "bestDiv: " << bestDiv << std::endl;
             std::cout << "reasonCoef: " << reasonCoef << std::endl;
+            std::cout << "reason with assignments: " << std::endl;
+            reason->toStreamWithAssignment(std::cout, level, pos);
+            std::cout << "\n" << std::endl;
             reason->weakenMIROrdered(bestDiv, level, mult, reasonCoef);
-            multiply(reason->getCoef(asserting)); 
-            reason->multiply(conflCoef);
+            const SMALL newMult = conflCoef / reason->getCoef(asserting);
+            std::cout << "newMult: " << newMult << std::endl;
+            reason->multiply(newMult);
             std::cout << "asserting: " << asserting << std::endl;
             std::cout << "reason: " << *reason << std::endl;
             std::cout << "confl: " << *this << std::endl;
@@ -582,8 +589,8 @@ struct ConstrExp final : public ConstrExpSuper {
     }
 
     assert(reason->getCoef(asserting) >= conflCoef);
-    // assert(reason->getCoef(asserting) < 2 * conflCoef);
-    // assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
+    assert(reason->getCoef(asserting) < 2 * conflCoef);
+    assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
     // In most cases, at this point, the reason coefficient is equal to the conflict coefficient
     // and the reason slack is at most zero, so we can safely add the reason to the conflict.
@@ -609,6 +616,10 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 
+    std::cout << "learned conflict with assignments: " << std::endl;
+    toStreamWithAssignment(std::cout, level, pos);
+    std::cout << "\n" << std::endl;
+    std::cout << "slack: " << getSlack(level) << std::endl;
     return reason->getLBD(level);
   }
 
