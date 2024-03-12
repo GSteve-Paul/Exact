@@ -86,7 +86,7 @@ struct IntConstraint {
 
   static std::vector<IntTerm> zip(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars);
 
-  const bigint getRange() const;
+  bigint getRange() const;
   int64_t size() const;
 
   void toConstrExp(CeArb&, bool useLowerBound) const;
@@ -198,10 +198,10 @@ class ILP {
   OptRes toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& to = {false, 0});
   std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate,
                                                  const TimeOut& to = {false, 0});
-  const std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                         const TimeOut& to = {false, 0});
-  const std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                      const TimeOut& to = {false, 0});
+  std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                   const TimeOut& to = {false, 0});
+  std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                const TimeOut& to = {false, 0});
   std::pair<SolveState, int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
   Core extractMUS(const TimeOut& to = {false, 0});
 

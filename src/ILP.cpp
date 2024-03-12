@@ -207,7 +207,7 @@ std::vector<IntTerm> IntConstraint::zip(const std::vector<bigint>& coefs, const 
   return res;
 }
 
-const bigint IntConstraint::getRange() const {
+bigint IntConstraint::getRange() const {
   bigint res = 0;
   for (const IntTerm& t : lhs) {
     assert(t.v->getRange() >= 0);
@@ -913,8 +913,8 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& t
 }
 
 // NOTE: also throws AsynchronousInterrupt
-const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                            const TimeOut& to) {
+std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                      const TimeOut& to) {
   solver.printHeader();
   auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
   if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
@@ -984,8 +984,7 @@ const std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<In
 }
 
 // NOTE: also throws AsynchronousInterrupt
-const std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                         const TimeOut& to) {
+std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
   for (IntVar* iv : ivs) {
     if (iv->getEncodingVars().size() != 1 && iv->getEncoding() != Encoding::ONEHOT) {
       throw InvalidArgument("Non-Boolean variable " + iv->getName() +
