@@ -25,7 +25,6 @@ or run with the flag --license=AGPLv3. If not, see
 using namespace xct;
 
 int main(int argc, char** argv) {
-
   // Global global;
   // ConstrExp32 ce32(global);
 
@@ -86,7 +85,7 @@ int main(int argc, char** argv) {
 
   // // std::cout << "slack: " << reason->getSlack(level) << std::endl;
 
-  // return 0; 
+  // return 0;
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE
