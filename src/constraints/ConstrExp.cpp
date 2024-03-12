@@ -479,6 +479,7 @@ unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntMap<int>& level) const {
     }
   }
   std::cout << "i: " << i << std::endl;
+  if (i < 0) std::cout << *this << std::endl;
   assert(i >= 0);  // constraint is asserting or conflicting
   IntSet& lbdSet = global.isPool.take();
   for (; i >= 0; --i) {  // gather all levels
@@ -948,12 +949,15 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrderedCanceling(const LARGE& div
 
 // NOTE: this preserves order
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>& level, const SMALL& to, const SMALL& reasonCoef) {
+void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>& level, const SMALL& to,
+                                               const SMALL& reasonCoef) {
   assert(isSortedInDecreasingCoefOrder());
   assert(d > 0);
   assert(reasonCoef % d == 0);
-  const SMALL reasonMult = reasonCoef / d;
+  const SMALL reasonMult = static_cast<SMALL>(reasonCoef / d);
   const SMALL maxmod = to / reasonMult;
+  // JO: hou je rekening met negatieve coëfficiënten? Moet het aux::floordiv(.) zijn ipv standaard deling?
+
   if (d == 1) return;
   std::cout << "d: " << d << std::endl;
   weakenNonDivisible(d, level);
@@ -967,7 +971,6 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   if (!weakenUseless(d, amount) && amount > 0) {
     dropDegree(d, amount);
   }
-
 
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
@@ -1204,15 +1207,15 @@ void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
         coefs[v] = -static_cast<SMALL>(aux::ceildiv_safe<LARGE>(-coefs[v], d));
       } else {
         coefs[v] = static_cast<SMALL>(
-          -(bmodd * aux::floordiv_safe<LARGE>(-coefs[v], d) + std::min(aux::mod_safe<LARGE>(-coefs[v], d), bmodd)));
+            -(bmodd * aux::floordiv_safe<LARGE>(-coefs[v], d) + std::min(aux::mod_safe<LARGE>(-coefs[v], d), bmodd)));
       }
       // rhs += coefs[v];
     } else {
       if (bmodd == 0) {
         coefs[v] = static_cast<SMALL>(aux::ceildiv_safe<LARGE>(coefs[v], d));
       } else {
-      coefs[v] = static_cast<SMALL>(bmodd * aux::floordiv_safe<LARGE>(coefs[v], d) +
-                                    std::min(aux::mod_safe<LARGE>(coefs[v], d), bmodd));
+        coefs[v] = static_cast<SMALL>(bmodd * aux::floordiv_safe<LARGE>(coefs[v], d) +
+                                      std::min(aux::mod_safe<LARGE>(coefs[v], d), bmodd));
       }
     }
   }
@@ -1250,12 +1253,16 @@ bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& 
 }
 
 template <typename SMALL, typename LARGE>
-const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult, const SMALL& max) {
+const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult,
+                                                      const SMALL& max) {
   const LARGE b = getDegree();
   SMALL amount = 0;
   LARGE postDeg;
   SMALL bmodd;
-  const SMALL origBmodd = b % d;
+  assert(d >= 0);
+  assert(b >= 0);  // otherwise the C++ modulo operator does not match the mathematical one
+  const SMALL origBmodd = static_cast<SMALL>(b % d);
+
   while (amount < origBmodd) {
     postDeg = b - static_cast<LARGE>(amount);
     bmodd = static_cast<SMALL>(postDeg % d);

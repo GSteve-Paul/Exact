@@ -244,8 +244,7 @@ struct Options {
                       {"rto", "slack+1", "mindiv"}};
   BoolOption weakenNonImplying{"ca-weaken-nonimplying",
                                "Weaken non-implying falsified literals from learned constraints", true};
-  BoolOption weakenSuperfluous{"ca-weaken-superfluous",
-                               "Weaken superfluous literals before division or MIR", true};
+  BoolOption weakenSuperfluous{"ca-weaken-superfluous", "Weaken superfluous literals before division or MIR", true};
   BoolOption learnedMin{"ca-min", "Minimize learned constraints through generalized self-subsumption.", true};
   BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", false};
   ValOption<int> bitsOverflow{"bits-overflow",
