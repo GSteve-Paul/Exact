@@ -29,43 +29,62 @@ int main(int argc, char** argv) {
   // Global global;
   // ConstrExp32 ce32(global);
 
-  // global.cePools.resize(6);
+  // global.cePools.resize(28);
 
   // Ce32 reason = global.cePools.take32();
 
-  // reason->addLhs(10, 1);
-  // reason->addLhs(9, 2);
-  // reason->addLhs(8, 3);
-  // reason->addLhs(7, 4);
-  // reason->addLhs(6, 5);
-  // reason->addRhs(9);
+  // reason->addLhs(4, 1);
+  // reason->addLhs(12, -2);
+  // reason->addLhs(12, -3);
+  // reason->addLhs(16, 4);
+  // reason->addLhs(20, -5);
+  // reason->addLhs(20, -6);
+  // reason->addLhs(28, -7);
+  // reason->addLhs(32, -8);
+  // reason->addLhs(32, 9);
+  // reason->addLhs(4, 12);
+  // reason->addLhs(8, 13);
+  // reason->addLhs(16, -14);
+  // reason->addLhs(24, 15);
+  // reason->addLhs(24, -16);
+  // reason->addLhs(28, -17);
+  // reason->addLhs(32, 18);
+  // reason->addLhs(32, -19);
+  // reason->addLhs(4, 21);
+  // reason->addLhs(8, 22);
+  // reason->addLhs(16, 23);
+  // reason->addLhs(28, 24);
+  // reason->addLhs(28, 25);
+  // reason->addLhs(28, -26);
+  // reason->addLhs(32, -27);
+  // reason->addRhs(216);
 
-  // IntMap<int> level;
-  // level.resize(6, 0);
-  // level[1] = INF;
-  // level[-1] = INF;
-  // level[2] = INF;
-  // level[-2] = INF;
-  // level[3] = INF;
-  // level[-3] = INF;
-  // level[4] = INF;
-  // level[-4] = INF;
-  // level[5] = INF;
-  // level[-5] = INF;
+  // // IntMap<int> level;
+  // // level.resize(6, 0);
+  // // level[1] = INF;
+  // // level[-1] = INF;
+  // // level[2] = INF;
+  // // level[-2] = INF;
+  // // level[3] = INF;
+  // // level[-3] = INF;
+  // // level[4] = INF;
+  // // level[-4] = INF;
+  // // level[5] = INF;
+  // // level[-5] = INF;
 
-  // level[-4] = 1;
+  // // level[-4] = 1;
+
+  // // // std::cout << "reason: " << *reason << std::endl;
+
+  // // // reason->weakenSuperfluous(5);
 
   // // std::cout << "reason: " << *reason << std::endl;
 
-  // // reason->weakenSuperfluous(5);
-
-  // std::cout << "reason: " << *reason << std::endl;
-
-  // reason->applyMIR(5, [reason](Var v) { return reason->getLit(v); });
+  // reason->applyMIRalt(4);
 
   // std::cout << "MIR: " << *reason << std::endl;
 
-  // std::cout << "slack: " << reason->getSlack(level) << std::endl;
+  // // std::cout << "slack: " << reason->getSlack(level) << std::endl;
 
   // return 0; 
   signal(SIGINT, SIGINT_interrupt);

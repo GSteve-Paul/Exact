@@ -582,7 +582,7 @@ struct ConstrExp final : public ConstrExpSuper {
     fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
-
+    
     return reason->getLBD(level);
   }
 

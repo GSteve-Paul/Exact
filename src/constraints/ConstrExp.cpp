@@ -1190,23 +1190,23 @@ void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
   std::cout << "reason: " << *this << std::endl;
   std::cout << "d: " << d << std::endl;
 
-  LARGE tmpRhs = rhs;
-  for (Var v : vars)
-    if (getLit(v) < 0) tmpRhs -= coefs[v];
-  LARGE bmodd = aux::mod_safe(tmpRhs, d);
-  rhs = aux::ceildiv_safe(tmpRhs, d);
+  // LARGE tmpRhs = rhs;
+  // for (Var v : vars)
+  //   if (getLit(v) < 0) tmpRhs -= coefs[v];
+  LARGE bmodd = aux::mod_safe(degree, d);
+  degree = aux::ceildiv_safe(degree, d);
   if (bmodd != 0) {
-    rhs *= bmodd;
+    degree *= bmodd;
   }
   for (Var v : vars) {
     if (getLit(v) < 0) {
       if (bmodd == 0) {
-        coefs[v] = static_cast<SMALL>(aux::ceildiv_safe<LARGE>(-coefs[v], d));
+        coefs[v] = -static_cast<SMALL>(aux::ceildiv_safe<LARGE>(-coefs[v], d));
       } else {
         coefs[v] = static_cast<SMALL>(
           -(bmodd * aux::floordiv_safe<LARGE>(-coefs[v], d) + std::min(aux::mod_safe<LARGE>(-coefs[v], d), bmodd)));
       }
-      rhs += coefs[v];
+      // rhs += coefs[v];
     } else {
       if (bmodd == 0) {
         coefs[v] = static_cast<SMALL>(aux::ceildiv_safe<LARGE>(coefs[v], d));
@@ -1216,7 +1216,7 @@ void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
       }
     }
   }
-  degree = calcDegree();
+  // degree = calcDegree();
   assert(!isTautology());
 }
 

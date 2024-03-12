@@ -620,6 +620,10 @@ struct ConstrExp final : public ConstrExpSuper {
     toStreamWithAssignment(std::cout, level, pos);
     std::cout << "\n" << std::endl;
     std::cout << "slack: " << getSlack(level) << std::endl;
+
+    std::cout << "end reason with assignments: " << std::endl;
+    reason->toStreamWithAssignment(std::cout, level, pos);
+    std::cout << "\n" << std::endl; 
     return reason->getLBD(level);
   }
 
