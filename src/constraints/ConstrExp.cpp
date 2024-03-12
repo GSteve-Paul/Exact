@@ -479,6 +479,7 @@ unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntMap<int>& level) const {
     }
   }
   std::cout << "i: " << i << std::endl;
+  if (i < 0) std::cout << *this << std::endl;
   assert(i >= 0);  // constraint is asserting or conflicting
   IntSet& lbdSet = global.isPool.take();
   for (; i >= 0; --i) {  // gather all levels
