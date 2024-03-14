@@ -118,7 +118,6 @@ set(source_files
     src/auxiliary.cpp
     src/Optimization.cpp
     src/quit.cpp
-    src/Exact.cpp
     src/propagation/Propagator.cpp
     src/propagation/Equalities.cpp
     src/propagation/Implications.cpp
@@ -169,6 +168,7 @@ set(header_files
 
 set(main_files
     src/main.cpp
+    src/Exact.cpp
 )
 
 set(files_to_format ${main_files} ${source_files} ${test_files} ${header_files})

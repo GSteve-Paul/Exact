@@ -34,7 +34,6 @@ ext_modules = [
             "src/auxiliary.cpp",
             "src/Optimization.cpp",
             "src/quit.cpp",
-            "src/Exact.cpp",
             "src/propagation/Propagator.cpp",
             "src/propagation/Equalities.cpp",
             "src/propagation/Implications.cpp",
@@ -45,7 +44,7 @@ ext_modules = [
             "src/used_licenses/boost.cpp",
             "src/used_licenses/EPL.cpp",
             "src/used_licenses/COPYING.cpp",
-            "src/ExactPybind11.cpp"
+            "src/Exact.cpp"
         ],
         # Example: passing in the version to the compiled code
         # define_macros=[("VERSION_INFO", __version__)],

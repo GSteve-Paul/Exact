@@ -30,6 +30,7 @@ See the file LICENSE or run with the flag --license=MIT.
 
 #pragma once
 
+#include <pybind11/pybind11.h>
 #include <string>
 #include <vector>
 #include "ILP.hpp"
@@ -57,12 +58,8 @@ class Exact {
    * @param lb: lower bound
    * @param ub: upper bound
    * @param encoding: "log" (default), "order" or "onehot"
-   *
-   * Pass arbitrarily large values using the string-based function variant.
    */
-  void addVariable(const std::string& name, int64_t lb, int64_t ub, const std::string& encoding = "");
-  void addVariable(const std::string& name, const std::string& lb, const std::string& ub,
-                   const std::string& encoding = "");
+  void addVariable(const std::string& name, const bigint& lb, const bigint& ub, const std::string& encoding = "");
 
   /**
    * Returns a list of variables added to the solver.
@@ -79,13 +76,9 @@ class Exact {
    * @param lb: the lower bound
    * @param useUB: whether or not the constraint is upper bounded
    * @param ub: the upper bound
-   *
-   * Pass arbitrarily large values using the string-based function variant.
    */
-  void addConstraint(const std::vector<std::pair<int64_t, std::string>>& terms, bool useLB, int64_t lb, bool useUB,
-                     int64_t ub);
-  void addConstraint(const std::vector<std::pair<std::string, std::string>>& terms, bool useLB, const std::string& lb,
-                     bool useUB, const std::string& ub);
+  void addConstraint(const std::vector<std::pair<bigint, std::string>>& terms, bool useLB, const bigint& lb, bool useUB,
+                     const bigint& ub);
 
   /**
    * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.
@@ -137,13 +130,10 @@ class Exact {
    *
    * Fixing the variable to different values will lead to unsatisfiability.
    *
-   * @param iv: the variable to be fixed.
+   * @param var: the variable to be fixed.
    * @param val: the value the variable is fixed to
-   *
-   * Pass arbitrarily large values using the string-based function variant.
    */
-  void fix(const std::string& var, int64_t val);
-  void fix(const std::string& var, const std::string& val);
+  void fix(const std::string& var, const bigint& val);
 
   /**
    * Set assumptions for a single variable under which a(n optimal) solution is found. These assumptions enforce that
@@ -257,7 +247,7 @@ class Exact {
    * - SolveState::INPROCESSED (4): the search process just finished an inprocessing phase. The search process should
    * simply be continued, but control is passed to the caller to, e.g., change assumptions or add constraints.
    */
-  SolveState runOnce(double timeout = 0);
+  SolveState runOnce(double timeout = 0);  // TODO: replace SolveState by string
 
   /**
    * Start / continue the search until an optimal solution or inconsistency is found.
@@ -338,8 +328,9 @@ class Exact {
    *
    * Return arbitrarily large values using the string-based function variant '_arb'.
    */
-  std::pair<int64_t, int64_t> getObjectiveBounds() const;
+  //  std::pair<int64_t, int64_t> getObjectiveBounds() const;
   std::pair<std::string, std::string> getObjectiveBounds_arb() const;
+  std::pair<pybind11::int_, pybind11::int_> getObjectiveBounds() const;
 
   /**
    * Print Exact's internal statistics
