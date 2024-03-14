@@ -96,27 +96,25 @@ std::vector<std::string> Exact::getVariables() const {
   return aux::comprehension(ilp.getVariables(), [](IntVar* iv) { return iv->getName(); });
 }
 
-void Exact::addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
-                          long long lb, bool useUB, long long ub) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
+void Exact::addConstraint(const std::vector<std::pair<int64_t, std::string>>& terms, bool useLB, int64_t lb, bool useUB,
+                          int64_t ub) {
+  if (terms.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
 
   IntConstraint ic = {{}, aux::option(useLB, getCoef(lb)), aux::option(useUB, getCoef(ub))};
-  ic.lhs.resize(coefs.size());
-  for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
-    ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
+  ic.lhs.resize(terms.size());
+  for (const auto& t : terms) {
+    ic.lhs.push_back({getCoef(t.first), getVariable(t.second)});
   }
   ilp.addConstraint(ic);
 }
-void Exact::addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
+void Exact::addConstraint(const std::vector<std::pair<std::string, std::string>>& terms, bool useLB,
                           const std::string& lb, bool useUB, const std::string& ub) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
+  if (terms.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
 
   IntConstraint ic = {{}, aux::option(useLB, getCoef(lb)), aux::option(useUB, getCoef(ub))};
-  ic.lhs.resize(coefs.size());
-  for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
-    ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
+  ic.lhs.reserve(terms.size());
+  for (const auto& t : terms) {
+    ic.lhs.push_back({getCoef(t.first), getVariable(t.second)});
   }
   ilp.addConstraint(ic);
 }

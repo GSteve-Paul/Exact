@@ -74,8 +74,7 @@ class Exact {
   /**
    * Add a linear constraint.
    *
-   * @param coefs: coefficients of the constraint
-   * @param vars: variables of the constraint
+   * @param terms: terms of the linear constraint, each term is represented as a coefficient-variable pair
    * @param useLB: whether or not the constraint is lower bounded
    * @param lb: the lower bound
    * @param useUB: whether or not the constraint is upper bounded
@@ -83,10 +82,10 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void addConstraint(const std::vector<long long>& coefs, const std::vector<std::string>& vars, bool useLB,
-                     long long lb, bool useUB, long long ub);
-  void addConstraint(const std::vector<std::string>& coefs, const std::vector<std::string>& vars, bool useLB,
-                     const std::string& lb, bool useUB, const std::string& ub);
+  void addConstraint(const std::vector<std::pair<int64_t, std::string>>& terms, bool useLB, int64_t lb, bool useUB,
+                     int64_t ub);
+  void addConstraint(const std::vector<std::pair<std::string, std::string>>& terms, bool useLB, const std::string& lb,
+                     bool useUB, const std::string& ub);
 
   /**
    * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.
