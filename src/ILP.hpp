@@ -88,6 +88,7 @@ struct IntConstraint {
 
   bigint getRange() const;
   int64_t size() const;
+  void invert();
 
   void toConstrExp(CeArb&, bool useLowerBound) const;
 };
@@ -114,6 +115,7 @@ class ILP {
 
   std::vector<std::unique_ptr<IntVar>> vars;
   IntConstraint obj;  // NOTE: we could erase this, but then we would not store the untransformed input objective
+  bool minimize;
   unordered_map<std::string, IntVar*> name2var;
   unordered_map<Var, IntVar*> var2var;
 
@@ -150,7 +152,7 @@ class ILP {
   IntVar* getVarFor(const std::string& name) const;  // returns nullptr if it does not exist
   std::vector<IntVar*> getVariables() const;
 
-  void setObjective(const std::vector<IntTerm>& terms, const bigint& offset = 0);
+  void setObjective(const std::vector<IntTerm>& terms, bool min = true, const bigint& offset = 0);
   IntConstraint& getObjective();
   const IntConstraint& getObjective() const;
 
@@ -178,8 +180,8 @@ class ILP {
   void invalidateLastSol();
   void invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag = 0);
 
-  ratio getLowerBound() const;
-  ratio getUpperBound() const;
+  bigint getLowerBound() const;
+  bigint getUpperBound() const;
 
   bigint getLastSolutionFor(IntVar* iv) const;
   std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;

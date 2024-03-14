@@ -47,12 +47,12 @@ TEST_CASE("knapsack") {
         }
         vars.push_back(ilp.addVar("o", -2, 2, Encoding::ONEHOT));
 
-        ilp.setObjective(IntConstraint::zip({3, -4, 1, -2, 3, -4, 1, -2, 3, 4}, vars));
+        ilp.setObjective(IntConstraint::zip({-3, 4, -1, 2, -3, 4, -1, 2, -3, -4}, vars), false, -10);
         ilp.addConstraint({IntConstraint::zip({1, -2, 3, -1, 2, -3, 1, -2, 3, -3}, vars), 7});
         SolveState res = ilp.getOptim()->runFull(true, 0);
 
         CHECK(res == SolveState::UNSAT);
-        CHECK(ilp.getUpperBound() == -14);
+        CHECK(ilp.getUpperBound() == 4);
       }
     }
   }

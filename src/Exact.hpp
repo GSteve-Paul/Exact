@@ -39,7 +39,7 @@ class Exact {
   xct::ILP ilp;
 
   xct::IntVar* getVariable(const std::string& name) const;
-  std::vector<xct::IntVar*> getVariables(const std::vector<std::string>& names) const;
+  std::vector<xct::IntVar*> getVars(const std::vector<std::string>& names) const;
 
  public:
   /**
@@ -56,11 +56,11 @@ class Exact {
    * @param name: name of the variable
    * @param lb: lower bound
    * @param ub: upper bound
-   * @param encoding: none, "log", "order" or "onehot"
+   * @param encoding: "log" (default), "order" or "onehot"
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void addVariable(const std::string& name, long long lb, long long ub, const std::string& encoding = "");
+  void addVariable(const std::string& name, int64_t lb, int64_t ub, const std::string& encoding = "");
   void addVariable(const std::string& name, const std::string& lb, const std::string& ub,
                    const std::string& encoding = "");
 
@@ -97,8 +97,8 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void addReification(const std::string& head, bool sign, const std::vector<long long>& coefs,
-                      const std::vector<std::string>& vars, long long lb);
+  void addReification(const std::string& head, bool sign, const std::vector<int64_t>& coefs,
+                      const std::vector<std::string>& vars, int64_t lb);
   void addReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
                       const std::vector<std::string>& vars, const std::string& lb);
 
@@ -112,8 +112,8 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void addRightReification(const std::string& head, bool sign, const std::vector<long long>& coefs,
-                           const std::vector<std::string>& vars, long long lb);
+  void addRightReification(const std::string& head, bool sign, const std::vector<int64_t>& coefs,
+                           const std::vector<std::string>& vars, int64_t lb);
   void addRightReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
                            const std::vector<std::string>& vars, const std::string& lb);
 
@@ -127,8 +127,8 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void addLeftReification(const std::string& head, bool sign, const std::vector<long long>& coefs,
-                          const std::vector<std::string>& vars, long long lb);
+  void addLeftReification(const std::string& head, bool sign, const std::vector<int64_t>& coefs,
+                          const std::vector<std::string>& vars, int64_t lb);
   void addLeftReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
                           const std::vector<std::string>& vars, const std::string& lb);
 
@@ -142,7 +142,7 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void fix(const std::string& var, long long val);
+  void fix(const std::string& var, int64_t val);
   void fix(const std::string& var, const std::string& val);
 
   /**
@@ -161,7 +161,7 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void setAssumption(const std::string& var, const std::vector<long long>& vals);
+  void setAssumption(const std::string& var, const std::vector<int64_t>& vals);
   void setAssumption(const std::string& var, const std::vector<std::string>& vals);
 
   /**
@@ -194,7 +194,7 @@ class Exact {
    *
    * Return arbitrarily large values using the string-based function variant '_arb'.
    */
-  std::vector<long long> getAssumption(const std::string& var) const;
+  std::vector<int64_t> getAssumption(const std::string& var) const;
   std::vector<std::string> getAssumption_arb(const std::string& var) const;
 
   /**
@@ -208,7 +208,7 @@ class Exact {
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void setSolutionHints(const std::vector<std::string>& vars, const std::vector<long long>& vals);
+  void setSolutionHints(const std::vector<std::string>& vars, const std::vector<int64_t>& vals);
   void setSolutionHints(const std::vector<std::string>& vars, const std::vector<std::string>& vals);
 
   /**
@@ -229,13 +229,15 @@ class Exact {
    * I.e., any bound on x+2y+3z+6a with a assumed to true will have at least 6 as upper bound, and fixing a to false
    * will satisfy any such upper bound, in effect disabling the upper bound constraints.
    *
-   * @param coefs: coefficients of the objective function
-   * @param vars: variables of the objective function
+   * @param terms: terms of the objective, each term is represented as a coefficient-variable pair
+   * @param minimize: whether to minimize the objective (otherwise maximizes)
+   * @param offset: constant value added to the objective
    *
    * Pass arbitrarily large values using the string-based function variant.
    */
-  void setObjective(const std::vector<long long>& coefs, const std::vector<std::string>& vars, long long offset = 0);
-  void setObjective(const std::vector<std::string>& coefs, const std::vector<std::string>& vars,
+  void setObjective(const std::vector<std::pair<int64_t, std::string>>& terms, bool minimize = true,
+                    int64_t offset = 0);
+  void setObjective(const std::vector<std::pair<std::string, std::string>>& terms, bool minimize = true,
                     const std::string& offset = "0");
 
   /**
@@ -298,7 +300,7 @@ class Exact {
    *
    * Return arbitrarily large values using the string-based function variant '_arb'.
    */
-  std::vector<long long> getLastSolutionFor(const std::vector<std::string>& vars) const;
+  std::vector<int64_t> getLastSolutionFor(const std::vector<std::string>& vars) const;
   std::vector<std::string> getLastSolutionFor_arb(const std::vector<std::string>& vars) const;
 
   /**
@@ -336,7 +338,7 @@ class Exact {
    *
    * Return arbitrarily large values using the string-based function variant '_arb'.
    */
-  std::pair<long long, long long> getObjectiveBounds() const;
+  std::pair<int64_t, int64_t> getObjectiveBounds() const;
   std::pair<std::string, std::string> getObjectiveBounds_arb() const;
 
   /**
@@ -373,7 +375,7 @@ class Exact {
    *
    * Return arbitrarily large bounds using the string-based function variant '_arb'.
    */
-  std::vector<std::pair<long long, long long>> propagate(const std::vector<std::string>& vars, double timeout = 0);
+  std::vector<std::pair<int64_t, int64_t>> propagate(const std::vector<std::string>& vars, double timeout = 0);
   std::vector<std::pair<std::string, std::string>> propagate_arb(const std::vector<std::string>& vars,
                                                                  double timeout = 0);
 
@@ -392,7 +394,7 @@ class Exact {
    *
    * Return arbitrarily large domain values using the string-based function variant '_arb'.
    */
-  std::vector<std::vector<long long>> pruneDomains(const std::vector<std::string>& vars, double timeout = 0);
+  std::vector<std::vector<int64_t>> pruneDomains(const std::vector<std::string>& vars, double timeout = 0);
   std::vector<std::vector<std::string>> pruneDomains_arb(const std::vector<std::string>& vars, double timeout = 0);
 
   /**
@@ -404,7 +406,7 @@ class Exact {
    * value of 0 disables the timeout.
    * @return: an integer value
    */
-  long long count(const std::vector<std::string>& vars, double timeout = 0);
+  int64_t count(const std::vector<std::string>& vars, double timeout = 0);
 
   // TODO: void getStat()
 };

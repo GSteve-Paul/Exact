@@ -62,7 +62,7 @@ TEST_CASE("multiplication") {
 
   std::stringstream ss;
   ilp.printInput(ss);
-  CHECK(ss.str() == "OBJ \nz[-1000,1000] =< 1*a[-3,4]*b[-2,5]*c[-1,6]*d[0,1]*e[2,2] =< z[-1000,1000]\n");
+  CHECK(ss.str() == "OBJ MIN \nz[-1000,1000] =< 1*a[-3,4]*b[-2,5]*c[-1,6]*d[0,1]*e[2,2] =< z[-1000,1000]\n");
 
   // Auxiliary variables are only created when needed
   int64_t internal_nvars = ilp.getSolver().getNbVars();

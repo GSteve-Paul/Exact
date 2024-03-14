@@ -218,6 +218,12 @@ bigint IntConstraint::getRange() const {
 
 int64_t IntConstraint::size() const { return lhs.size(); }
 
+void IntConstraint::invert() {
+  if (lowerBound) lowerBound = -lowerBound.value();
+  if (upperBound) upperBound = -upperBound.value();
+  for (IntTerm& it : lhs) it.c = -it.c;
+}
+
 void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   input->orig = Origin::FORMULA;
   if (useLowerBound) {
@@ -255,11 +261,11 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (!useLowerBound) input->invert();
 }
 
-ILP::ILP(const Options& opts, bool keepIn) : global(opts), solver(global), obj(), keepInput(keepIn) {
+ILP::ILP(const Options& opts, bool keepIn) : global(opts), solver(global), keepInput(keepIn) {
   global.stats.startTime = std::chrono::steady_clock::now();
   aux::rng::seed = global.options.randomSeed.get();
   global.logger.activate(global.options.proofLog.get(), (bool)global.options.proofZip);
-  setObjective({}, {});
+  setObjective({}, true, {});
 }
 
 const Solver& ILP::getSolver() const { return solver; }
@@ -294,8 +300,11 @@ std::vector<IntVar*> ILP::getVariables() const {
   return aux::comprehension(name2var, [](auto pair) { return pair.second; });
 }
 
-void ILP::setObjective(const std::vector<IntTerm>& terms, const bigint& offset) {  // TODO: pass IntConstraint?
+void ILP::setObjective(const std::vector<IntTerm>& terms, bool min, const bigint& offset) {
+  // TODO: pass IntConstraint instead of terms?
   obj = {terms, -offset};
+  minimize = min;
+  if (!min) obj.invert();
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 IntConstraint& ILP::getObjective() { return obj; }
@@ -708,7 +717,15 @@ std::ostream& ILP::printFormula(std::ostream& out) {
 
 std::ostream& ILP::printInput(std::ostream& out) const {
   out << "OBJ ";
-  lhs2str(out, obj);
+  if (minimize) {
+    out << "MIN ";
+    lhs2str(out, obj);
+  } else {
+    out << "MAX ";
+    IntConstraint tmpObj = obj;
+    tmpObj.invert();
+    lhs2str(out, tmpObj);
+  }
   out << std::endl;
 
   std::vector<std::string> strs;
@@ -766,8 +783,8 @@ bigint ILP::getSolSpaceSize() const {
   return total;
 };
 
-ratio ILP::getLowerBound() const { return static_cast<ratio>(optim->getLowerBound()); }
-ratio ILP::getUpperBound() const { return static_cast<ratio>(optim->getUpperBound()); }
+bigint ILP::getLowerBound() const { return minimize ? optim->getLowerBound() : -optim->getLowerBound(); }
+bigint ILP::getUpperBound() const { return minimize ? optim->getUpperBound() : -optim->getUpperBound(); }
 
 bigint ILP::getLastSolutionFor(IntVar* iv) const {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to return.");
