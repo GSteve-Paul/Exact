@@ -18,24 +18,23 @@ solver = exact.Exact()
 for v in var_range:
     solver.addVariable(str(v), 0, 1 + v % 2)
 
+print(solver.getVariables())
+
 # Add the knapsack constraint
-solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
+solver.addConstraint(list(zip(coefs_c, vars)), use_lower_bound=True, lower_bound=rhs_c)
 
-# The solver is initialized with the knapsack objective.
-# The first True parameter will make sure an objective upper bound constraint is constructed that enforces the next
-# solution to improve on the last one, and the second True parameter allows the generation of auxiliary constraints that
-# may reduce the set of optimal solutions.
-solver.init(coefs_o, vars)
+solver.setObjective(list(zip(coefs_o, vars)))
 
-# Run the solver
-print("run Exact:")
+# Run the solver to completion
+print("Running Exact...")
 result = solver.runFull(True)
+print("Answer:", result)
 
 # Check that the solution exists.
-assert solver.hasSolution()
+print("Solution found:", solver.hasSolution())
 
-# Print the lower and upper bound on the objective.
-print(list(solver.getObjectiveBounds()))
+# Print the lower and upper bound on the objective (upper bound is the final objective value)
+print(solver.getObjectiveBounds())
 
 # Print the last solution.
 sol = solver.getLastSolutionFor(vars)

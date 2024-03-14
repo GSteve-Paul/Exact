@@ -34,13 +34,13 @@ The easiest way is to use an **x86_64** machine with **Linux** operating system.
 
 To use the Exact Python interface with optimal binaries for your machine (and the option to include SoPlex in the binary), compile as a shared library and install it with your package manager (e.g., `pip`).
 
-On Linux, [this script](https://gitlab.com/JoD/exact/-/blob/main/python/install_package.sh) should do the trick.
+On Linux, `pip3 install .` in Exact's root directory should do the trick.
 On other systems, something similar should work.
 Make sure to have the Boost libraries installed (see dependencies).
 
 ### Documentation
 
-The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/main/src/Exact.hpp) contains the C++ methods exposed to Python via [cppyy](https://cppyy.readthedocs.io/en/latest) as well as their description. This is probably the place to start to learn about Exact's Python usage.
+The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/main/src/Exact.hpp) contains the C++ methods exposed to Python via [Pybind11](https://pybind11.readthedocs.io) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
 Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/main/python/examples) contains instructive, fully commented examples.
 - [`python/examples/knapsack_classic.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_classic.py) showcases how to solve an integer classic knapsack problem with Exact's Python interface.
