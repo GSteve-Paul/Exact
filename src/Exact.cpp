@@ -153,98 +153,63 @@ void Exact::addConstraint(const std::vector<std::pair<bigint, std::string>>& ter
   ilp.addConstraint(ic);
 }
 
-void Exact::addReification(const std::string& head, bool sign, const std::vector<int64_t>& coefs,
-                           const std::vector<std::string>& vars, int64_t lb) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
+void Exact::addReification(const std::string& head, bool sign, const std::vector<std::pair<bigint, std::string>>& terms,
+                           const bigint& lb) {
+  if (terms.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
 
   IntConstraint ic = {{}, bigint(lb)};
-  ic.lhs.resize(coefs.size());
-  for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
-    ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
+  ic.lhs.reserve(terms.size());
+  for (const auto& t : terms) {
+    ic.lhs.push_back({t.first, getVariable(t.second)});
   }
   ilp.addReification(getVariable(head), sign, ic);
 }
-void Exact::addReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
-                           const std::vector<std::string>& vars, const std::string& lb) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
+
+void Exact::addRightReification(const std::string& head, bool sign,
+                                const std::vector<std::pair<bigint, std::string>>& terms, const bigint& lb) {
+  if (terms.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
 
   IntConstraint ic = {{}, bigint(lb)};
-  ic.lhs.resize(coefs.size());
-  for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
-    ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
-  }
-  ilp.addReification(getVariable(head), sign, ic);
-}
-void Exact::addRightReification(const std::string& head, bool sign, const std::vector<int64_t>& coefs,
-                                const std::vector<std::string>& vars, int64_t lb) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
-
-  IntConstraint ic = {{}, bigint(lb)};
-  ic.lhs.resize(coefs.size());
-  for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
-    ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
+  ic.lhs.reserve(terms.size());
+  for (const auto& t : terms) {
+    ic.lhs.push_back({t.first, getVariable(t.second)});
   }
   ilp.addRightReification(getVariable(head), sign, ic);
 }
-void Exact::addRightReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
-                                const std::vector<std::string>& vars, const std::string& lb) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
+
+void Exact::addLeftReification(const std::string& head, bool sign,
+                               const std::vector<std::pair<bigint, std::string>>& terms, const bigint& lb) {
+  if (terms.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
 
   IntConstraint ic = {{}, bigint(lb)};
-  ic.lhs.resize(coefs.size());
-  for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
-    ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
-  }
-  ilp.addRightReification(getVariable(head), sign, ic);
-}
-void Exact::addLeftReification(const std::string& head, bool sign, const std::vector<int64_t>& coefs,
-                               const std::vector<std::string>& vars, int64_t lb) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
-
-  IntConstraint ic = {{}, bigint(lb)};
-  ic.lhs.resize(coefs.size());
-  for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
-    ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
-  }
-  ilp.addLeftReification(getVariable(head), sign, ic);
-}
-void Exact::addLeftReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
-                               const std::vector<std::string>& vars, const std::string& lb) {
-  if (coefs.size() != vars.size()) throw InvalidArgument("Coefficient and variable lists differ in size.");
-  if (coefs.size() >= 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
-
-  IntConstraint ic = {{}, bigint(lb)};
-  ic.lhs.resize(coefs.size());
-  for (int64_t i = 0; i < (int64_t)coefs.size(); ++i) {
-    ic.lhs[i] = {getCoef(coefs[i]), getVariable(vars[i])};
+  ic.lhs.reserve(terms.size());
+  for (const auto& t : terms) {
+    ic.lhs.push_back({t.first, getVariable(t.second)});
   }
   ilp.addLeftReification(getVariable(head), sign, ic);
 }
 
 void Exact::fix(const std::string& var, const bigint& val) { ilp.fix(getVariable(var), val); }
 
-void Exact::setAssumption(const std::string& var, const std::vector<int64_t>& vals) {
-  ilp.setAssumption(getVariable(var), getCoefs(vals));
+void Exact::setAssumptions(const std::vector<std::pair<std::string, bigint>>& varvals) {
+  ilp.setAssumptions(xct::aux::comprehension(varvals, [&](const std::pair<std::string, bigint>& vv) {
+    return std::pair<const IntVar*, bigint>{getVariable(vv.first), vv.second};
+  }));
 }
-void Exact::setAssumption(const std::string& var, const std::vector<std::string>& vals) {
-  ilp.setAssumption(getVariable(var), getCoefs(vals));
+void Exact::setAssumptions(const std::vector<std::pair<std::string, std::vector<bigint>>>& varvals) {
+  ilp.setAssumptions(xct::aux::comprehension(varvals, [&](const std::pair<std::string, std::vector<bigint>>& vv) {
+    return std::pair<const IntVar*, std::vector<bigint>>{getVariable(vv.first), vv.second};
+  }));
 }
 
 void Exact::clearAssumptions() { ilp.clearAssumptions(); }
-void Exact::clearAssumption(const std::string& var) { ilp.clearAssumption(getVariable(var)); }
+void Exact::clearAssumptions(const std::vector<std::string>& vars) { ilp.clearAssumptions(getVars(vars)); }
 
 bool Exact::hasAssumption(const std::string& var) const { return ilp.hasAssumption(getVariable(var)); }
-std::vector<int64_t> Exact::getAssumption(const std::string& var) const {
+
+std::vector<py::int_> Exact::getAssumption(const std::string& var) const {
   return aux::comprehension(ilp.getAssumption(getVariable(var)),
-                            [](const bigint& i) { return static_cast<int64_t>(i); });
-}
-std::vector<std::string> Exact::getAssumption_arb(const std::string& var) const {
-  return aux::comprehension(ilp.getAssumption(getVariable(var)), [](const bigint& i) { return aux::str(i); });
+                            [](const bigint& i) -> py::int_ { return py::cast(i); });
 }
 
 void Exact::setSolutionHints(const std::vector<std::string>& vars, const std::vector<int64_t>& vals) {
@@ -264,59 +229,41 @@ void Exact::printVariables() const { ilp.printVars(std::cout); }
 void Exact::printInput() const { ilp.printInput(std::cout); }
 void Exact::printFormula() { ilp.printFormula(std::cout); }
 
-void Exact::setObjective(const std::vector<std::pair<int64_t, std::string>>& terms, bool minimize, int64_t offset) {
+void Exact::setObjective(const std::vector<std::pair<bigint, std::string>>& terms, bool minimize,
+                         const bigint& offset) {
   if (terms.size() > 1e9) throw InvalidArgument("Objective has more than 1e9 terms.");
 
   std::vector<IntTerm> iterms;
   iterms.reserve(terms.size());
   for (const auto& t : terms) {
-    iterms.push_back({getCoef(t.first), getVariable(t.second)});
+    iterms.push_back({t.first, getVariable(t.second)});
   }
   ilp.setObjective(iterms, minimize, offset);
 }
 
-void Exact::setObjective(const std::vector<std::pair<std::string, std::string>>& terms, bool minimize,
-                         const std::string& offset) {
-  if (terms.size() > 1e9) throw InvalidArgument("Objective has more than 1e9 terms.");
-
-  std::vector<IntTerm> iterms;
-  iterms.reserve(terms.size());
-  for (const auto& t : terms) {
-    iterms.push_back({getCoef(t.first), getVariable(t.second)});
-  }
-  ilp.setObjective(iterms, minimize, getCoef(offset));
-}
-
-SolveState Exact::runOnce(double timeout) {
+std::string Exact::runOnce(double timeout) {
   if (timeout != 0) ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
-  return ilp.getOptim()->run(false, timeout);
+  SolveState res = ilp.getOptim()->run(false, timeout);
+  if (res == SolveState::INCONSISTENT) return "PAUSED";
+  return (std::stringstream() << res).str();
 }
 
-SolveState Exact::runFull(bool optimize, double timeout) {
+std::string Exact::runFull(bool optimize, double timeout) {
   if (timeout != 0) ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
   ilp.getSolver().printHeader();
-  return ilp.getOptim()->runFull(optimize, timeout);
+  return (std::stringstream() << ilp.getOptim()->runFull(optimize, timeout)).str();
 }
 
-// std::pair<int64_t, int64_t> Exact::getObjectiveBounds() const {
-//   return {static_cast<int64_t>(ilp.getLowerBound()), static_cast<int64_t>(ilp.getUpperBound())};
-// }
-std::pair<std::string, std::string> Exact::getObjectiveBounds_arb() const {
-  return {aux::str(ilp.getLowerBound()), aux::str(ilp.getUpperBound())};
-}
 std::pair<py::int_, py::int_> Exact::getObjectiveBounds() const {
   return {py::cast(ilp.getLowerBound()), py::cast(ilp.getUpperBound())};
 }
 
 bool Exact::hasSolution() const { return ilp.getSolver().foundSolution(); }
 
-std::vector<int64_t> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
+std::vector<py::int_> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
   if (!hasSolution()) throw InvalidArgument("No solution can be returned if no solution has been found.");
   return aux::comprehension(ilp.getLastSolutionFor(getVars(vars)),
-                            [](const bigint& i) { return static_cast<int64_t>(i); });
-}
-std::vector<std::string> Exact::getLastSolutionFor_arb(const std::vector<std::string>& vars) const {
-  return aux::comprehension(ilp.getLastSolutionFor(getVars(vars)), [](const bigint& i) { return aux::str(i); });
+                            [](const bigint& i) -> py::int_ { return py::cast(i); });
 }
 
 std::vector<std::string> Exact::getLastCore() {
@@ -361,38 +308,58 @@ int64_t Exact::count(const std::vector<std::string>& vars, double timeout) {
 
 PYBIND11_MODULE(exact, m) {
   m.doc() = "pybind11 Exact plugin";
-
-  py::enum_<SolveState>(m, "SolveState")
-      .value("UNSAT", SolveState::UNSAT)
-      .value("SAT", SolveState::SAT)
-      .value("INCONSISTENT", SolveState::INCONSISTENT)
-      .value("TIMEOUT", SolveState::TIMEOUT)
-      .value("INPROCESSED", SolveState::INPROCESSED)
-      .export_values();
-
   py::class_<Exact>(m, "Exact")
+
       .def(py::init<const std::vector<std::pair<std::string, std::string>>&>(), "Constructor for the Exact solver",
            "options"_a = std::vector<std::pair<std::string, std::string>>{})
+
       .def("addVariable", &Exact::addVariable, "Add a variable", "name"_a, "lower_bound"_a = 0, "upper_bound"_a = 1,
            "encoding"_a = "log")
+
       .def("getVariables", &Exact::getVariables)
+
       .def("addConstraint", &Exact::addConstraint, "Add a linear constraint", "terms"_a, "use_lower_bound"_a = false,
            "lower_bound"_a = 0, "use_upper_bound"_a = false, "upper_bound"_a = 0)
-      .def("setObjective",
-           py::overload_cast<const std::vector<std::pair<int64_t, std::string>>&, bool, int64_t>(&Exact::setObjective),
-           "Set a linear objective", "terms"_a, "minimize"_a = true, "offset"_a = 0)
-      .def("setObjective",
-           py::overload_cast<const std::vector<std::pair<std::string, std::string>>&, bool, const std::string&>(
-               &Exact::setObjective),
-           "Set a linear objective", "terms"_a, "minimize"_a = true, "offset"_a = 0)
+
+      .def("addReification", &Exact::addReification, "Add a reification of a linear constraint", "head"_a, "sign"_a,
+           "terms"_a, "lower_bound"_a)
+
+      .def("addLeftReification", &Exact::addLeftReification, "Add a left reification of a linear constraint", "head"_a,
+           "sign"_a, "terms"_a, "lower_bound"_a)
+
+      .def("addRightReification", &Exact::addRightReification, "Add a right reification of a linear constraint",
+           "head"_a, "sign"_a, "terms"_a, "lower_bound"_a)
+
+      .def("fix", &Exact::fix)
+
+      .def("setAssumptions",
+           py::overload_cast<const std::vector<std::pair<std::string, bigint>>&>(&Exact::setAssumptions),
+           "Assume a given value for given variables", "varvals"_a)
+      .def("setAssumptions",
+           py::overload_cast<const std::vector<std::pair<std::string, std::vector<bigint>>>&>(&Exact::setAssumptions),
+           "Assume a set of allowed values for given variables", "varvals"_a)
+
+      .def("clearAssumptions", py::overload_cast<>(&Exact::clearAssumptions), "Clear any previous assumptions")
+      .def("clearAssumptions", py::overload_cast<const std::vector<std::string>&>(&Exact::clearAssumptions),
+           "Clear any previous assumptions over the given variables", "vars"_a)
+
+      .def("hasAssumption", &Exact::hasAssumption, "Check whether a given variable has assumptions", "var"_a)
+
+      .def("getAssumption", &Exact::getAssumption, "Check which assumptions a given variable has", "var"_a)
+
+      .def("setObjective", &Exact::setObjective, "Set a linear objective", "terms"_a, "minimize"_a = true,
+           "offset"_a = 0)
+
       .def("runFull", &Exact::runFull, "Run solver until completion", "optimize"_a = true, "timeout"_a = 0)
+
       .def("runOnce", &Exact::runOnce, "Run solver until some solve state is reached", "timeout"_a = 0)
+
       .def("hasSolution", &Exact::hasSolution, "Return whether a solution has been found")
+
       .def("getObjectiveBounds", &Exact::getObjectiveBounds, "Return current objective bounds")
-      .def("getObjectiveBounds_arb", &Exact::getObjectiveBounds_arb, "Return current objective bounds")
+
       .def("getLastSolutionFor", &Exact::getLastSolutionFor,
            "Return the values of the given variables in the last solution", "vars"_a)
-      .def("getLastSolutionFor_arb", &Exact::getLastSolutionFor_arb,
-           "Return the values of the given variables in the last solution", "vars"_a)
-      .def("fix", py::overload_cast<const std::string&, const bigint&>(&Exact::fix));
+
+      ;
 }

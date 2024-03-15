@@ -57,7 +57,7 @@ TEST_CASE("toOptimum") {
       CHECK(obj0 == 4);
       CHECK(optcore0->empty());
 
-      ilp.setAssumption(vars[4], true);
+      ilp.setAssumptions({{vars[4], true}});
       auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), false, {false, 0});
       CHECK(state2 == SolveState::SAT);
       CHECK(obj2 == 6);
@@ -84,7 +84,7 @@ TEST_CASE("toOptimum advanced") {
         vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
       }
 
-      ilp.setAssumption(vars[5], false);
+      ilp.setAssumptions({{vars[5], false}});
       auto [state, obj, optcore] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
       CHECK(state == SolveState::SAT);
       CHECK(obj == 0);
@@ -104,7 +104,7 @@ TEST_CASE("toOptimum advanced") {
       CHECK(optcore1->size() == 1);
       CHECK(optcore1->contains(vars[5]));
 
-      ilp.setAssumption(vars[4], true);
+      ilp.setAssumptions({{vars[4], true}});
       auto [state2, obj2, optcore2] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
       CHECK(state2 == SolveState::SAT);
       CHECK(obj2 == 6);
@@ -130,18 +130,16 @@ TEST_CASE("toOptimum advanced") {
       CHECK(obj5 == 0);
       CHECK(optcore5->empty());
 
-      for (int64_t i = 2; i < 6; ++i) {
-        ilp.setAssumption(vars[i], true);
-      }
-      for (int64_t i = 2; i < 6; ++i) {
-        ilp.setAssumption(vars[i], false);
-      }
+      std::vector<std::pair<const IntVar*, bigint>> assumps;
+      for (int64_t i = 2; i < 6; ++i) assumps.push_back({vars[i], true});
+      for (int64_t i = 2; i < 6; ++i) assumps.push_back({vars[i], false});
+      ilp.setAssumptions(assumps);
       auto [state6, obj6, optcore6] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
       CHECK(state6 == SolveState::INCONSISTENT);
       CHECK(obj6 == 0);
       CHECK(optcore6->size() == 4);
 
-      ilp.clearAssumption(vars[2]);
+      ilp.clearAssumptions({vars[2]});
       ilp.addConstraint({IntConstraint::zip({1, 2, 3, 4, 5, 10}, vars), std::nullopt, 5});
       auto [state7, obj7, optcore7] = ilp.toOptimum(ilp.getObjective(), true, {false, 0});
       CHECK(state7 == SolveState::UNSAT);
@@ -194,7 +192,7 @@ TEST_CASE("count advanced") {
           vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
         }
 
-        ilp.setAssumption(vars[4], false);
+        ilp.setAssumptions({{vars[4], false}});
         auto [state0, count0] = ilp.count(vars, true);
         CHECK(state0 == SolveState::SAT);
         CHECK(count0 == 16);
@@ -218,8 +216,7 @@ TEST_CASE("count advanced") {
         CHECK(state4 == SolveState::SAT);
         CHECK(count4 == 1);
 
-        ilp.setAssumption(vars[3], false);
-        ilp.setAssumption(vars[1], false);
+        ilp.setAssumptions({{vars[3], false}, {vars[1], false}});
         auto [state5, count5] = ilp.count(vars, true);
         CHECK(state5 == SolveState::INCONSISTENT);
         CHECK(count5 == 0);
@@ -282,7 +279,7 @@ TEST_CASE("intersect advanced") {
       for (const auto& s : {"a", "b", "c", "d", "e"}) {
         vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
       }
-      ilp.setAssumption(vars[0], false);
+      ilp.setAssumptions({{vars[0], false}});
       auto [state0, invalidator0] = ilp.getSolIntersection(vars, true);
       CHECK(state0 == SolveState::SAT);
       CHECK((std::stringstream() << invalidator0).str() == "+1 x1 >= 1 ;");
@@ -307,14 +304,12 @@ TEST_CASE("intersect advanced") {
       CHECK(state4 == SolveState::SAT);
       CHECK((std::stringstream() << invalidator4).str() == "+1 x1 +1 ~x2 >= 1 ;");
 
-      ilp.setAssumption(vars[3], true);
-      ilp.setAssumption(vars[4], true);
+      ilp.setAssumptions({{vars[3], true}, {vars[4], true}});
       auto [state5, invalidator5] = ilp.getSolIntersection(vars2, true);
       CHECK(state5 == SolveState::INCONSISTENT);
       CHECK(invalidator5 == nullptr);
 
-      ilp.clearAssumption(vars[4]);
-      ilp.clearAssumption(vars[3]);
+      ilp.clearAssumptions({vars[3], vars[4]});
       ilp.fix(vars[4], 1);
       ilp.fix(vars[3], 1);
       auto [state6, invalidator6] = ilp.getSolIntersection(vars2, true);
@@ -388,7 +383,7 @@ TEST_CASE("propagate advanced") {
       }
       vars.push_back(ilp.addVar("o", -1, 2, Encoding::ONEHOT));
 
-      ilp.setAssumption(vars[7], std::vector<bigint>{1});
+      ilp.setAssumptions({{vars[7], std::vector<bigint>{1}}});
       auto propres = ilp.propagate(vars, true);
       CHECK(propres == std::vector<std::pair<bigint, bigint>>{
                            {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {1, 1}, {-1, 2}, {-1, 2}});
@@ -480,7 +475,7 @@ TEST_CASE("pruneDomains advanced") {
         vars.push_back(ilp.addVar(s, -1, 2, Encoding::ONEHOT));
       }
 
-      ilp.setAssumption(vars[9], std::vector<bigint>{0});
+      ilp.setAssumptions({{vars[9], std::vector<bigint>{0}}});
       auto propres = ilp.pruneDomains(vars, true);
       CHECK(
           propres ==
@@ -495,12 +490,12 @@ TEST_CASE("pruneDomains advanced") {
       propres = ilp.pruneDomains(vars, true);
       CHECK(propres == std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {1}, {2}, {-1}, {2}, {0}});
 
-      ilp.setAssumption(vars[9], std::vector<bigint>{0, 2});
+      ilp.setAssumptions({{vars[9], std::vector<bigint>{0, 2}}});
       propres = ilp.pruneDomains(vars, true);
       CHECK(propres ==
             std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {2}});
 
-      ilp.setAssumption(vars[8], std::vector<bigint>{-1, 0});
+      ilp.setAssumptions({{vars[8], std::vector<bigint>{-1, 0}}});
       propres = ilp.pruneDomains(vars, false);
       CHECK(propres == std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {1}, {2}, {-1}, {0}, {2}});
     }

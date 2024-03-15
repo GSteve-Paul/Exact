@@ -63,17 +63,20 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 std::ostream& operator<<(std::ostream& o, enum SolveState state) {
   switch (state) {
-    case (SolveState::UNSAT):
+    case SolveState::UNSAT:
       o << "UNSAT";
       break;
-    case (SolveState::INCONSISTENT):
+    case SolveState::INCONSISTENT:
       o << "INCONSISTENT";
       break;
-    case (SolveState::INPROCESSED):
+    case SolveState::INPROCESSED:
       o << "INPROCESSED";
       break;
-    case (SolveState::SAT):
+    case SolveState::SAT:
       o << "SAT";
+      break;
+    case SolveState::TIMEOUT:
+      o << "TIMEOUT";
       break;
     default:
       assert(false);

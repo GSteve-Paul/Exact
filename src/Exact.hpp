@@ -81,49 +81,40 @@ class Exact {
                      const bigint& ub);
 
   /**
-   * Add a reification of a linear constraint, where the head variable is true iff the constraint holds.
+   * Add a reification of a linear constraint, where the constraint holds iff the head variable takes the given sign
+   * value.
    *
-   * @param head: Boolean variable that should be true iff the constraint holds
-   * @param coefs: coefficients of the constraint
-   * @param vars: variables of the constraint
+   * @param head: Boolean variable that should take the given sign iff the constraint holds
+   * @param sign: value for the head variable
+   * @param terms: terms of the linear constraint, each term is represented as a coefficient-variable pair
    * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
-   *
-   * Pass arbitrarily large values using the string-based function variant.
    */
-  void addReification(const std::string& head, bool sign, const std::vector<int64_t>& coefs,
-                      const std::vector<std::string>& vars, int64_t lb);
-  void addReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
-                      const std::vector<std::string>& vars, const std::string& lb);
+  void addReification(const std::string& head, bool sign, const std::vector<std::pair<bigint, std::string>>& terms,
+                      const bigint& lb);
 
   /**
-   * Add a reification of a linear constraint, where the constraint holds if the head variable is true.
+   * Add a reification of a linear constraint, where the constraint holds if the head variable takes the given sign
+   * value.
    *
-   * @param head: Boolean variable
-   * @param coefs: coefficients of the constraint
-   * @param vars: variables of the constraint
+   * @param head: Boolean variable that, if it takes the given sign value, makes the constraint hold
+   * @param sign: value for the head variable
+   * @param terms: terms of the linear constraint, each term is represented as a coefficient-variable pair
    * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
-   *
-   * Pass arbitrarily large values using the string-based function variant.
    */
-  void addRightReification(const std::string& head, bool sign, const std::vector<int64_t>& coefs,
-                           const std::vector<std::string>& vars, int64_t lb);
-  void addRightReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
-                           const std::vector<std::string>& vars, const std::string& lb);
+  void addRightReification(const std::string& head, bool sign, const std::vector<std::pair<bigint, std::string>>& terms,
+                           const bigint& lb);
 
   /**
-   * Add a reification of a linear constraint, where the head variable is true if the constraint holds.
+   * Add a reification of a linear constraint, where the head variable must take the given sign value if the constraint
+   * holds.
    *
-   * @param head: Boolean variable
-   * @param coefs: coefficients of the constraint
-   * @param vars: variables of the constraint
+   * @param head: Boolean variable that must take the given sign if the constraint holds
+   * @param sign: value for the head variable
+   * @param terms: terms of the linear constraint, each term is represented as a coefficient-variable pair
    * @param lb: lower bound of the constraint (a straightforward conversion exists if the constraint is upper bounded)
-   *
-   * Pass arbitrarily large values using the string-based function variant.
    */
-  void addLeftReification(const std::string& head, bool sign, const std::vector<int64_t>& coefs,
-                          const std::vector<std::string>& vars, int64_t lb);
-  void addLeftReification(const std::string& head, bool sign, const std::vector<std::string>& coefs,
-                          const std::vector<std::string>& vars, const std::string& lb);
+  void addLeftReification(const std::string& head, bool sign, const std::vector<std::pair<bigint, std::string>>& terms,
+                          const bigint& lb);
 
   /**
    * Fix the value of a variable.
@@ -136,35 +127,33 @@ class Exact {
   void fix(const std::string& var, const bigint& val);
 
   /**
-   * Set assumptions for a single variable under which a(n optimal) solution is found. These assumptions enforce that
-   * the given variable can take only the given values, overriding any previous assumed restrictions on this variable.
-   * Assumptions for other variables are left untouched.
+   * Set assumptions for given variables under which a(n optimal) solution is to be found. These assumptions enforce
+   * that the given variables can take only the given values, overriding any previous assumed restrictions on these
+   * variables. Assumptions for other variables are left untouched.
    *
-   * If no such solution exists, a subset of the assumption variables will form a "core" provided by "getLastCore()".
+   * If no solution under the given assumptions exists, a subset of the assumption variables will form a "core" which
+   * can be accessed via  "getLastCore()".
    *
-   * @param var: the variable to assume
-   * @param vals: the possible values remaining for this variable
+   * @param varvals: list of variables and the corresponding (list of) value(s) to allow via assumptions
+   * @pre: the given values are within the bounds of the variable
    * @pre: the set of possible values is not empty
    * @pre: if the number of distinct possible values is larger than one and smaller than the range of the variable, then
    * the variable uses a one-hot encoding. As a consequence, for Boolean variables the encoding does not matter.
-   * @pre: the given values are within the bounds of the variable
-   *
-   * Pass arbitrarily large values using the string-based function variant.
    */
-  void setAssumption(const std::string& var, const std::vector<int64_t>& vals);
-  void setAssumption(const std::string& var, const std::vector<std::string>& vals);
+  void setAssumptions(const std::vector<std::pair<std::string, bigint>>& varvals);
+  void setAssumptions(const std::vector<std::pair<std::string, std::vector<bigint>>>& varvals);
 
   /**
-   * Clears all assumptions.
+   * Clears any previous assumptions.
    */
   void clearAssumptions();
 
   /**
-   * Clears all assumptions for the given variables.
+   * Clears any previous assumptions for the given variables.
    *
-   * @param var: the variable to clear the assumptions for.
+   * @param vars: the variables to clear the assumptions for.
    */
-  void clearAssumption(const std::string& var);
+  void clearAssumptions(const std::vector<std::string>& vars);
 
   /**
    * Check whether a given variable has any assumed restrictions in the possible values it can take.
@@ -175,17 +164,14 @@ class Exact {
   bool hasAssumption(const std::string& var) const;
 
   /**
-   * Get the possible values not restricted by the currently set assumptions for a given variable.
+   * Get the possible values allowed by the currently set assumptions for a given variable.
    *
    * This method is mainly meant for diagnostic purposes and is not very efficient.
    *
    * @param var: the variable under inspection
-   * @return: the values of the variable that are *not* restricted
-   *
-   * Return arbitrarily large values using the string-based function variant '_arb'.
+   * @return: the values of the variable that are allowed by the currently set assumptions
    */
-  std::vector<int64_t> getAssumption(const std::string& var) const;
-  std::vector<std::string> getAssumption_arb(const std::string& var) const;
+  std::vector<pybind11::int_> getAssumption(const std::string& var) const;
 
   /**
    * Set solution hints for a list of variables. These hints guide the solver to prefer a solution with those values.
@@ -222,58 +208,54 @@ class Exact {
    * @param terms: terms of the objective, each term is represented as a coefficient-variable pair
    * @param minimize: whether to minimize the objective (otherwise maximizes)
    * @param offset: constant value added to the objective
-   *
-   * Pass arbitrarily large values using the string-based function variant.
    */
-  void setObjective(const std::vector<std::pair<int64_t, std::string>>& terms, bool minimize = true,
-                    int64_t offset = 0);
-  void setObjective(const std::vector<std::pair<std::string, std::string>>& terms, bool minimize = true,
-                    const std::string& offset = "0");
+  void setObjective(const std::vector<std::pair<bigint, std::string>>& terms, bool minimize = true,
+                    const bigint& offset = 0);
 
   /**
    * Start / continue the search.
    *
-   * @return: one of four values:
+   * @return: one of five values:
    *
-   * - SolveState::UNSAT (0): an inconsistency implied by the constraints has been detected. No more solutions exist,
-   * and the search process is finished. No future calls should be made to this solver.
-   * - SolveState::SAT (1): a solution consistent with the assumptions and the constraints has been found. The search
-   * process can be continued, but to avoid finding the same solution over and over again, change the set of assumptions
-   * or add a constraint invalidating this solution via boundObjByLastSol().
-   * - SolveState::INCONSISTENT (2): no solutions consistent with the assumptions exist and a core has been constructed.
-   * The search process can be continued, but to avoid finding the same core over and over again, change the set of
-   * assumptions.
-   * - SolveState::TIMEOUT (3): the timeout was reached. Solving can be resumed with a later call.
-   * - SolveState::INPROCESSED (4): the search process just finished an inprocessing phase. The search process should
-   * simply be continued, but control is passed to the caller to, e.g., change assumptions or add constraints.
+   * - "UNSAT": an unsatisfiable constraint has been derived. No (more) solution(s) exist. The search process is
+   * finished and all future calls will return this value.
+   * - "SAT": a solution consistent with the assumptions and the constraints has been found. The search process can be
+   * continued, but to avoid finding the same solution over and over again, change the set of assumptions or add a
+   * constraint invalidating this solution via boundObjByLastSol().
+   * - "INCONSISTENT": no solutions consistent with the assumptions exist and a core has been constructed, which can be
+   * accessed via getLastCore(). The search process can be continued, but to avoid finding the same core over and over
+   * again, change the set of assumptions.
+   * - "TIMEOUT": the timeout was reached. Solving can be resumed with a later call.
+   * - "PAUSED": the search process just finished an inprocessing phase and was paused. Control is passed to the caller
+   * to, e.g., change assumptions, add constraints, or do nothing. The search process can simply be continued by another
+   * call to runOnce().
    */
-  SolveState runOnce(double timeout = 0);  // TODO: replace SolveState by string
+  std::string runOnce(double timeout = 0);
 
   /**
    * Start / continue the search until an optimal solution or inconsistency is found.
    *
    * @ param optimize: whether to optimize for the given objective. If optimize is true, SAT answers will be handled
-   * by adding an objective bound constraint, until unsatisfiability is reached, in which case the last found solution
-   * (if it exists) is the optimal one. If optimize is false, control will be handed back to the caller, without an
-   * objective bound constraint being added.
+   * by adding an objective bound constraint, until UNSAT is reached, in which case the last found solution
+   * (if it exists) is the optimal one. If optimize is false, control will be handed back to the caller when a solution
+   * is found, without an objective bound constraint being added.
    * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
    * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
    * value of 0 disables the timeout.
    *
-   * @return: one of three values:
+   * @return: one of four values:
    *
-   * - SolveState::UNSAT (0): an inconsistency implied by the constraints has been detected. No (better) solutions
-   * exist, and the search process is finished. No future calls should be made to this solver. An optimal solution can
-   * be retrieved if one exists via hasSolution() and getLastSolutionFor().
-   * - SolveState::SAT (1): a solution consistent with the assumptions and the constraints has been found. The search
-   * process can be continued, but to avoid finding the same solution over and over again, change the set of assumptions
-   * or add a constraint invalidating this solution. This answer will not be returned if optimize is true.
-   * - SolveState::INCONSISTENT (2): no solutions consistent with the assumptions exist and a core has been constructed.
-   * The search process can be continued, but to avoid finding the same core over and over again, change the set of
-   * assumptions. A core can be retrieved via getLastCore().
-   * - SolveState::TIMEOUT (3): the timeout was reached. Solving can be resumed with a later call.
+   * - "UNSAT": an unsatisfiable constraint has been derived, perhaps by proving that the objective is optimal. No
+   * (more) solution(s) exist. The search process is finished and all future calls will return this value.
+   * - "SAT": a solution consistent with the assumptions and the constraints has been found. The search process can be
+   * continued, but to avoid finding the same solution over and over again, change the set of assumptions or add a
+   * constraint invalidating this solution via boundObjByLastSol().
+   * - "INCONSISTENT": no solutions consistent with the assumptions exist and a core has been constructed, which can be
+   * accessed via getLastCore(). The search process can be continued, but to avoid finding the same core over and over
+   * again, change the set of assumptions.
+   * - "TIMEOUT": the timeout was reached. Solving can be resumed with a later call.
    */
-  SolveState runFull(bool optimize, double timeout = 0);
+  std::string runFull(bool optimize, double timeout = 0);
 
   /**
    * Check whether a solution has been found.
@@ -287,11 +269,8 @@ class Exact {
    *
    * @param vars: the added variables for which the solution values should be returned.
    * @return: the solution values to the variables.
-   *
-   * Return arbitrarily large values using the string-based function variant '_arb'.
    */
-  std::vector<int64_t> getLastSolutionFor(const std::vector<std::string>& vars) const;
-  std::vector<std::string> getLastSolutionFor_arb(const std::vector<std::string>& vars) const;
+  std::vector<pybind11::int_> getLastSolutionFor(const std::vector<std::string>& vars) const;
 
   /**
    * The subset of assumption variables in the core. Their assumed values imply inconsistency under the constraints.
@@ -325,11 +304,7 @@ class Exact {
    * Get the current lower and upper bound on the objective function.
    *
    * @return: the pair of bounds (lower, upper) to the objective.
-   *
-   * Return arbitrarily large values using the string-based function variant '_arb'.
    */
-  //  std::pair<int64_t, int64_t> getObjectiveBounds() const;
-  std::pair<std::string, std::string> getObjectiveBounds_arb() const;
   std::pair<pybind11::int_, pybind11::int_> getObjectiveBounds() const;
 
   /**

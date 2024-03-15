@@ -310,14 +310,6 @@ void ILP::setObjective(const std::vector<IntTerm>& terms, bool min, const bigint
 IntConstraint& ILP::getObjective() { return obj; }
 const IntConstraint& ILP::getObjective() const { return obj; }
 
-void ILP::setAssumption(const IntVar* iv, const std::vector<bigint>& dom) { setAssumptions({{iv, dom}}); }
-
-void ILP::setAssumption(const IntVar* iv, bool val) {
-  assert(iv);
-  assert(iv->isBoolean());
-  setAssumptions({{iv, val}});
-}
-
 void ILP::addSingleAssumption(const IntVar* iv, const bigint& val) {
   if (iv->getEncoding() == Encoding::LOG) {
     log2assumptions(iv->getEncodingVars(), val, iv->getLowerBound(), assumptions);
@@ -439,10 +431,12 @@ void ILP::clearAssumptions() {
   assumptions.clear();
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
-void ILP::clearAssumption(const IntVar* iv) {
-  for (Var v : iv->getEncodingVars()) {
-    assumptions.remove(v);
-    assumptions.remove(-v);
+void ILP::clearAssumptions(const std::vector<IntVar*>& ivs) {
+  for (IntVar* iv : ivs) {
+    for (Var v : iv->getEncodingVars()) {
+      assumptions.remove(v);
+      assumptions.remove(-v);
+    }
   }
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }

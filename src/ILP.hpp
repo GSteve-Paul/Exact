@@ -156,15 +156,12 @@ class ILP {
   IntConstraint& getObjective();
   const IntConstraint& getObjective() const;
 
-  // TODO: keep individual setAssumption() methods?
-  void setAssumption(const IntVar* iv, const std::vector<bigint>& vals);
-  void setAssumption(const IntVar* iv, bool val);
   void setAssumptions(const std::vector<std::pair<const IntVar*, std::vector<bigint>>>& ivs);
   void setAssumptions(const std::vector<std::pair<const IntVar*, bigint>>& ivs);
+  void clearAssumptions();
+  void clearAssumptions(const std::vector<IntVar*>& ivs);
   bool hasAssumption(const IntVar* iv) const;
   std::vector<bigint> getAssumption(const IntVar* iv) const;
-  void clearAssumptions();
-  void clearAssumption(const IntVar* iv);
 
   void setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals);
   void clearSolutionHints(const std::vector<IntVar*>& ivs);
