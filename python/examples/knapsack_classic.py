@@ -42,3 +42,5 @@ print(sol)
 
 # And calculate its optimal value by hand for good measure.
 print(sum([sol[i] * coefs_o[i] for i in range(0, len(coefs_o))]))
+
+print(solver.getStats())

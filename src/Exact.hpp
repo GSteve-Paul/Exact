@@ -41,6 +41,12 @@ class Exact {
 
   xct::IntVar* getVariable(const std::string& name) const;
   std::vector<xct::IntVar*> getVars(const std::vector<std::string>& names) const;
+  template <typename T>
+  std::vector<std::pair<const xct::IntVar*, T>> getVars(const std::vector<std::pair<std::string, T>>& in) {
+    return xct::aux::comprehension(in, [&](const std::pair<std::string, T>& pr) {
+      return std::pair<const xct::IntVar*, T>{getVariable(pr.first), pr.second};
+    });
+  }
 
  public:
   /**
@@ -59,7 +65,8 @@ class Exact {
    * @param ub: upper bound
    * @param encoding: "log" (default), "order" or "onehot"
    */
-  void addVariable(const std::string& name, const bigint& lb, const bigint& ub, const std::string& encoding = "");
+  void addVariable(const std::string& name, const bigint& lb = 0, const bigint& ub = 1,
+                   const std::string& encoding = "");
 
   /**
    * Returns a list of variables added to the solver.
@@ -77,8 +84,8 @@ class Exact {
    * @param useUB: whether or not the constraint is upper bounded
    * @param ub: the upper bound
    */
-  void addConstraint(const std::vector<std::pair<bigint, std::string>>& terms, bool useLB, const bigint& lb, bool useUB,
-                     const bigint& ub);
+  void addConstraint(const std::vector<std::pair<bigint, std::string>>& terms, bool useLB = false, const bigint& lb = 0,
+                     bool useUB = false, const bigint& ub = 0);
 
   /**
    * Add a reification of a linear constraint, where the constraint holds iff the head variable takes the given sign
@@ -132,7 +139,7 @@ class Exact {
    * variables. Assumptions for other variables are left untouched.
    *
    * If no solution under the given assumptions exists, a subset of the assumption variables will form a "core" which
-   * can be accessed via  "getLastCore()".
+   * can be accessed via getLastCore().
    *
    * @param varvals: list of variables and the corresponding (list of) value(s) to allow via assumptions
    * @pre: the given values are within the bounds of the variable
@@ -177,15 +184,10 @@ class Exact {
    * Set solution hints for a list of variables. These hints guide the solver to prefer a solution with those values.
    * Internally, this is done by the search heuristic trying to assign the hinted value when making a search decision.
    *
-   * @param vars: the variables to set the hint for
-   * @param vals: the hinted values for the variables
-   * @pre: vars and vals have the same size
-   * @pre: the given values are within the bounds of the corresponding variables
-   *
-   * Pass arbitrarily large values using the string-based function variant.
+   * @param hints: hints as variable-value pairs
+   * @pre: the given values are within the bounds of their corresponding variable
    */
-  void setSolutionHints(const std::vector<std::string>& vars, const std::vector<int64_t>& vals);
-  void setSolutionHints(const std::vector<std::string>& vars, const std::vector<std::string>& vals);
+  void setSolutionHints(const std::vector<std::pair<std::string, bigint>>& hints);
 
   /**
    * Clears solution hints for the given variables
@@ -281,6 +283,17 @@ class Exact {
   std::vector<std::string> getLastCore();
 
   /**
+   * Calculate a Minimal Unsatisfiable Subset of variables whose assumed values imply inconsistency under the
+   * constraints. When UNSAT is reached, the MUS will be empty.
+   *
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
+   * @return: a set of variable names which consists of "TIMEOUT" if timeout is reached.
+   */
+  std::vector<std::string> extractMUS(double timeout = 0);
+
+  /**
    * Add an upper bound to the objective function based on the objective value of the last found solution.
    */
   void boundObjByLastSol();
@@ -308,9 +321,69 @@ class Exact {
   std::pair<pybind11::int_, pybind11::int_> getObjectiveBounds() const;
 
   /**
-   * Print Exact's internal statistics
+   * Calculate the optimal value of the objective function *without* adding objective bound constraints. This way, the
+   * search can never reach an UNSAT state, and the solver can be fully reused. A typical use case is to add the constraint
+   * that the objective should take the optimal value after calling toOptimum() to restrict the search to consider only
+   * optimal solutions in the next search phase.
+   *
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
+   *
+   * @return: one of four values:
+   *
+   * - "UNSAT": an unsatisfiable constraint has been derived, perhaps by proving that the objective is optimal. No
+   * (more) solution(s) exist. The search process is finished and all future calls will return this value.
+   * - "SAT": a solution consistent with the assumptions and the constraints has been found. The search process can be
+   * continued, but to avoid finding the same solution over and over again, change the set of assumptions or add a
+   * constraint invalidating this solution via boundObjByLastSol().
+   * - "INCONSISTENT": no solutions consistent with the assumptions exist and a core has been constructed, which can be
+   * accessed via getLastCore(). The search process can be continued, but to avoid finding the same core over and over
+   * again, change the set of assumptions.
+   * - "TIMEOUT": the timeout was reached. Solving can be resumed with a later call.
    */
-  void printStats();
+  std::pair<std::string,pybind11::int_> toOptimum(double timeout = 0);
+
+  /**
+   * Under previously set assumptions, return implied lower and upper bound for variables in vars. If no
+   * solution exists under the assumptions, return empty vector.
+   *
+   * @param vars: variables for which to calculate the implied bounds
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
+   * @pre: the problem is not unsatisfiable
+   * @return: a list of pairs of bounds for each variable in vars. This list is empty if timeout is reached or the
+   * problem is unsatisfiable or inconsistent under the current assumptions.
+   */
+  std::vector<std::pair<pybind11::int_, pybind11::int_>> propagate(const std::vector<std::string>& vars,
+                                                                   double timeout = 0);
+
+  /**
+   * Under previously set assumptions, derive domains for the given variables where all impossible values are pruned.
+   * If no solution exists for the given domains under the current assumptions, all returned domains will be empty.
+   *
+   * @param vars: variables for which to calculate the pruned domains
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
+   * @pre: the problem is not unsatisfiable
+   * @pre: all variables use the one-hot encoding or have a domain size of 2
+   * @return: pruned domains for each variable in vars. This list is empty if timeout is reached. This list contains
+   * empty domains for all variables if the problem is unsatisfiable or inconsistent under the current assumptions.
+   */
+  std::vector<std::vector<pybind11::int_>> pruneDomains(const std::vector<std::string>& vars, double timeout = 0);
+
+  /**
+   * Under previously set assumptions, return number of different solutions projected to vars.
+   *
+   * @param vars: variables for which to calculate different solutions
+   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
+   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
+   * value of 0 disables the timeout.
+   * @return: an integer value
+   */
+  int64_t count(const std::vector<std::string>& vars, double timeout = 0);
 
   /**
    * Print variables given to Exact.
@@ -328,51 +401,7 @@ class Exact {
   void printFormula();
 
   /**
-   * Under previously set assumptions, return implied lower and upper bound for variables in vars. If no
-   * solution exists under the assumptions, return empty vector.
-   *
-   * @param vars: variables for which to calculate the implied bounds
-   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
-   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
-   * value of 0 disables the timeout.
-   * @pre: the problem is not unsatisfiable
-   * @return: a list of pairs of bounds for each variable in vars. This list is empty if timeout is reached or the
-   * problem is unsatisfiable or inconsistent under the current assumptions.
-   *
-   * Return arbitrarily large bounds using the string-based function variant '_arb'.
+   * Get Exact's internal statistics
    */
-  std::vector<std::pair<int64_t, int64_t>> propagate(const std::vector<std::string>& vars, double timeout = 0);
-  std::vector<std::pair<std::string, std::string>> propagate_arb(const std::vector<std::string>& vars,
-                                                                 double timeout = 0);
-
-  /**
-   * Under previously set assumptions, derive domains for the given variables where all impossible values are pruned.
-   * If no solution exists for the given domains under the current assumptions, all returned domains will be empty.
-   *
-   * @param vars: variables for which to calculate the pruned domains
-   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
-   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
-   * value of 0 disables the timeout.
-   * @pre: the problem is not unsatisfiable
-   * @pre: all variables use the one-hot encoding or have a domain size of 2
-   * @return: pruned domains for each variable in vars. This list is empty if timeout is reached. This list contains
-   * empty domains for all variables if the problem is unsatisfiable or inconsistent under the current assumptions.
-   *
-   * Return arbitrarily large domain values using the string-based function variant '_arb'.
-   */
-  std::vector<std::vector<int64_t>> pruneDomains(const std::vector<std::string>& vars, double timeout = 0);
-  std::vector<std::vector<std::string>> pruneDomains_arb(const std::vector<std::string>& vars, double timeout = 0);
-
-  /**
-   * Under previously set assumptions, return number of different solutions projected to vars.
-   *
-   * @param vars: variables for which to calculate different solutions
-   * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
-   * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
-   * value of 0 disables the timeout.
-   * @return: an integer value
-   */
-  int64_t count(const std::vector<std::string>& vars, double timeout = 0);
-
-  // TODO: void getStat()
+  std::vector<std::pair<std::string, double>> getStats();
 };

@@ -163,7 +163,7 @@ class ILP {
   bool hasAssumption(const IntVar* iv) const;
   std::vector<bigint> getAssumption(const IntVar* iv) const;
 
-  void setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals);
+  void setSolutionHints(const std::vector<std::pair<const IntVar*, bigint>>& hints);
   void clearSolutionHints(const std::vector<IntVar*>& ivs);
 
   void addConstraint(const IntConstraint& ic);

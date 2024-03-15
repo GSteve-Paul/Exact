@@ -52,7 +52,7 @@ ext_modules = [
 ]
 
 # Optional multithreaded build
-ParallelCompile("NPY_NUM_BUILD_JOBS", default=16, needs_recompile=naive_recompile).install()
+ParallelCompile("NPY_NUM_BUILD_JOBS", default=6, needs_recompile=naive_recompile).install()
 
 setup(
     name="exact",

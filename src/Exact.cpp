@@ -192,14 +192,10 @@ void Exact::addLeftReification(const std::string& head, bool sign,
 void Exact::fix(const std::string& var, const bigint& val) { ilp.fix(getVariable(var), val); }
 
 void Exact::setAssumptions(const std::vector<std::pair<std::string, bigint>>& varvals) {
-  ilp.setAssumptions(xct::aux::comprehension(varvals, [&](const std::pair<std::string, bigint>& vv) {
-    return std::pair<const IntVar*, bigint>{getVariable(vv.first), vv.second};
-  }));
+  ilp.setAssumptions(getVars(varvals));
 }
 void Exact::setAssumptions(const std::vector<std::pair<std::string, std::vector<bigint>>>& varvals) {
-  ilp.setAssumptions(xct::aux::comprehension(varvals, [&](const std::pair<std::string, std::vector<bigint>>& vv) {
-    return std::pair<const IntVar*, std::vector<bigint>>{getVariable(vv.first), vv.second};
-  }));
+  ilp.setAssumptions(getVars(varvals));
 }
 
 void Exact::clearAssumptions() { ilp.clearAssumptions(); }
@@ -212,11 +208,8 @@ std::vector<py::int_> Exact::getAssumption(const std::string& var) const {
                             [](const bigint& i) -> py::int_ { return py::cast(i); });
 }
 
-void Exact::setSolutionHints(const std::vector<std::string>& vars, const std::vector<int64_t>& vals) {
-  ilp.setSolutionHints(getVars(vars), getCoefs(vals));
-}
-void Exact::setSolutionHints(const std::vector<std::string>& vars, const std::vector<std::string>& vals) {
-  ilp.setSolutionHints(getVars(vars), getCoefs(vals));
+void Exact::setSolutionHints(const std::vector<std::pair<std::string, bigint>>& hints) {
+  ilp.setSolutionHints(getVars(hints));
 }
 
 void Exact::clearSolutionHints(const std::vector<std::string>& vars) { ilp.clearSolutionHints(getVars(vars)); }
@@ -275,35 +268,30 @@ std::vector<std::string> Exact::getLastCore() {
   }
 }
 
-void Exact::printStats() { quit::printFinalStats(ilp); }
-
-std::vector<std::pair<int64_t, int64_t>> Exact::propagate(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(
-      ilp.propagate(getVars(vars), true, {true, timeout}), [](const std::pair<bigint, bigint>& x) {
-        return std::pair<int64_t, int64_t>(static_cast<int64_t>(x.first), static_cast<int64_t>(x.second));
-      });
-}
-std::vector<std::pair<std::string, std::string>> Exact::propagate_arb(const std::vector<std::string>& vars,
-                                                                      double timeout) {
+std::vector<std::pair<py::int_, py::int_>> Exact::propagate(const std::vector<std::string>& vars, double timeout) {
   return aux::comprehension(ilp.propagate(getVars(vars), true, {true, timeout}),
-                            [](const std::pair<bigint, bigint>& x) {
-                              return std::pair<std::string, std::string>(aux::str(x.first), aux::str(x.second));
+                            [](const std::pair<bigint, bigint>& x) -> std::pair<py::int_, py::int_> {
+                              return std::pair<py::int_, py::int_>{py::cast(x.first), py::cast(x.second)};
                             });
 }
 
-std::vector<std::vector<int64_t>> Exact::pruneDomains(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.pruneDomains(getVars(vars), true, {true, timeout}), [](const std::vector<bigint>& x) {
-    return aux::comprehension(x, [](const bigint& y) { return static_cast<int64_t>(y); });
-  });
-}
-std::vector<std::vector<std::string>> Exact::pruneDomains_arb(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.pruneDomains(getVars(vars), true, {true, timeout}), [](const std::vector<bigint>& x) {
-    return aux::comprehension(x, [](const bigint& y) { return aux::str(y); });
-  });
+std::vector<std::vector<py::int_>> Exact::pruneDomains(const std::vector<std::string>& vars, double timeout) {
+  return aux::comprehension(ilp.pruneDomains(getVars(vars), true, {true, timeout}),
+                            [](const std::vector<bigint>& x) -> std::vector<py::int_> {
+                              return aux::comprehension(x, [](const bigint& y) -> py::int_ { return py::cast(y); });
+                            });
 }
 
 int64_t Exact::count(const std::vector<std::string>& vars, double timeout) {
   return ilp.count(getVars(vars), true, {true, timeout}).second;
+}
+
+std::vector<std::pair<std::string, double>> Exact::getStats() {
+  ilp.global.stats.setDerivedStats(static_cast<StatNum>(ilp.getLowerBound()),
+                                   static_cast<StatNum>(ilp.getUpperBound()));
+  return aux::comprehension(ilp.global.stats.statsToDisplay, [](Stat* s) {
+    return std::pair<std::string, double>{s->name, static_cast<double>(s->z)};
+  });
 }
 
 PYBIND11_MODULE(exact, m) {
@@ -347,6 +335,10 @@ PYBIND11_MODULE(exact, m) {
 
       .def("getAssumption", &Exact::getAssumption, "Check which assumptions a given variable has", "var"_a)
 
+      .def("setSolutionHints", &Exact::setSolutionHints, "Set solution hints", "hints"_a)
+
+      .def("clearSolutionHints", &Exact::clearSolutionHints, "Clear any solution hints")
+
       .def("setObjective", &Exact::setObjective, "Set a linear objective", "terms"_a, "minimize"_a = true,
            "offset"_a = 0)
 
@@ -356,10 +348,33 @@ PYBIND11_MODULE(exact, m) {
 
       .def("hasSolution", &Exact::hasSolution, "Return whether a solution has been found")
 
-      .def("getObjectiveBounds", &Exact::getObjectiveBounds, "Return current objective bounds")
-
       .def("getLastSolutionFor", &Exact::getLastSolutionFor,
            "Return the values of the given variables in the last solution", "vars"_a)
+
+      .def("getLastCore", &Exact::getLastCore, "Return the last assumption-invalidating core")
+
+      .def("boundObjByLastSol", &Exact::boundObjByLastSol, "Bound the objective by the last found solution")
+
+      .def("invalidateLastSol", py::overload_cast<>(&Exact::invalidateLastSol),
+           "Add a solution-invalidating constraint for the last found solution")
+      .def("invalidateLastSol", py::overload_cast<const std::vector<std::string>&>(&Exact::invalidateLastSol),
+           "Add a solution-invalidating constraint for the last found solution projected to the given variables")
+
+      .def("getObjectiveBounds", &Exact::getObjectiveBounds, "Return current objective bounds")
+
+      .def("propagate", &Exact::propagate, "Find implied lower and upper bound for given variables", "vars"_a,
+           "timeout"_a = 0)
+
+      .def("pruneDomains", &Exact::pruneDomains, "Find smallest possible domains for given variables", "vars"_a,
+           "timeout"_a = 0)
+
+      .def("count", &Exact::count, "Count number of different solutions over given variables", "vars"_a,
+           "timeout"_a = 0)
+
+      .def("printVariables", &Exact::printVariables, "Print variables given to Exact")
+      .def("printInput", &Exact::printInput, "Print objective and constraints given to Exact")
+      .def("printFormula", &Exact::printFormula, "Print Exact's internal formula")
+      .def("getStats", &Exact::getStats, "Get Exact's internal statistics")
 
       ;
 }

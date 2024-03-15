@@ -441,16 +441,13 @@ void ILP::clearAssumptions(const std::vector<IntVar*>& ivs) {
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
-void ILP::setSolutionHints(const std::vector<IntVar*>& ivs, const std::vector<bigint>& vals) {
-  assert(ivs.size() == vals.size());
+void ILP::setSolutionHints(const std::vector<std::pair<const IntVar*, bigint>>& hnts) {
   std::vector<std::pair<Var, Lit>> hints;
-  for (int i = 0; i < (int)ivs.size(); ++i) {
-    IntVar* iv = ivs[i];
-    assert(iv);
-    const bigint& vals_i = vals[i];
-    assert(vals_i >= iv->getLowerBound());
-    assert(vals_i <= iv->getUpperBound());
-    for (Lit l : val2lits(iv, vals_i)) {
+  for (const std::pair<const IntVar*, bigint>& hnt : hnts) {
+    assert(hnt.first);
+    assert(hnt.second >= hnt.first->getLowerBound());
+    assert(hnt.second <= hnt.first->getUpperBound());
+    for (Lit l : val2lits(hnt.first, hnt.second)) {
       assert(l != 0);
       hints.emplace_back(toVar(l), l);
     }
