@@ -107,7 +107,7 @@ set(source_files
     src/constraints/ConstrExpPools.cpp
     src/propagation/LpSolver.cpp
     src/Solver.cpp
-    src/ILP.cpp
+    src/IntProg.cpp
     src/datastructures/SolverStructs.cpp
     src/Logger.cpp
     src/datastructures/IntSet.cpp
@@ -139,7 +139,7 @@ set(header_files
     src/constraints/ConstrExpPools.hpp
     src/propagation/LpSolver.hpp
     src/Solver.hpp
-    src/ILP.hpp
+    src/IntProg.hpp
     src/Logger.hpp
     src/datastructures/IntMap.hpp
     src/datastructures/IntSet.hpp

@@ -28,7 +28,7 @@ You should have received a copy of the MIT License along with Exact.
 See the file LICENSE or run with the flag --license=MIT.
 **********************************************************************/
 
-#include "ILP.hpp"
+#include "IntProg.hpp"
 #include <stdexcept>
 #include "Optimization.hpp"
 
@@ -261,21 +261,21 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (!useLowerBound) input->invert();
 }
 
-ILP::ILP(const Options& opts, bool keepIn) : global(opts), solver(global), keepInput(keepIn) {
+IntProg::IntProg(const Options& opts, bool keepIn) : global(opts), solver(global), keepInput(keepIn) {
   global.stats.startTime = std::chrono::steady_clock::now();
   aux::rng::seed = global.options.randomSeed.get();
   global.logger.activate(global.options.proofLog.get(), (bool)global.options.proofZip);
   setObjective({}, true, {});
 }
 
-const Solver& ILP::getSolver() const { return solver; }
-Solver& ILP::getSolver() { return solver; }
-const Optim& ILP::getOptim() const { return optim; }
-void ILP::setMaxSatVars() { maxSatVars = solver.getNbVars(); }
-int ILP::getMaxSatVars() const { return maxSatVars; }
+const Solver& IntProg::getSolver() const { return solver; }
+Solver& IntProg::getSolver() { return solver; }
+const Optim& IntProg::getOptim() const { return optim; }
+void IntProg::setMaxSatVars() { maxSatVars = solver.getNbVars(); }
+int IntProg::getMaxSatVars() const { return maxSatVars; }
 
-IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, Encoding encoding,
-                    bool nameAsId) {
+IntVar* IntProg::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, Encoding encoding,
+                        bool nameAsId) {
   assert(!getVarFor(name));
   if (upperbound < lowerbound) {
     throw InvalidArgument((std::stringstream() << "Upper bound " << upperbound << " of " << name
@@ -291,26 +291,26 @@ IntVar* ILP::addVar(const std::string& name, const bigint& lowerbound, const big
   return iv;
 }
 
-IntVar* ILP::getVarFor(const std::string& name) const {
+IntVar* IntProg::getVarFor(const std::string& name) const {
   if (auto it = name2var.find(name); it != name2var.end()) return it->second;
   return nullptr;
 }
 
-std::vector<IntVar*> ILP::getVariables() const {
+std::vector<IntVar*> IntProg::getVariables() const {
   return aux::comprehension(name2var, [](auto pair) { return pair.second; });
 }
 
-void ILP::setObjective(const std::vector<IntTerm>& terms, bool min, const bigint& offset) {
+void IntProg::setObjective(const std::vector<IntTerm>& terms, bool min, const bigint& offset) {
   // TODO: pass IntConstraint instead of terms?
   obj = {terms, -offset};
   minimize = min;
   if (!min) obj.invert();
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
-IntConstraint& ILP::getObjective() { return obj; }
-const IntConstraint& ILP::getObjective() const { return obj; }
+IntConstraint& IntProg::getObjective() { return obj; }
+const IntConstraint& IntProg::getObjective() const { return obj; }
 
-void ILP::addSingleAssumption(const IntVar* iv, const bigint& val) {
+void IntProg::addSingleAssumption(const IntVar* iv, const bigint& val) {
   if (iv->getEncoding() == Encoding::LOG) {
     log2assumptions(iv->getEncodingVars(), val, iv->getLowerBound(), assumptions);
   } else {
@@ -330,7 +330,7 @@ void ILP::addSingleAssumption(const IntVar* iv, const bigint& val) {
   }
 }
 
-void ILP::setAssumptions(const std::vector<std::pair<const IntVar*, std::vector<bigint>>>& ivs) {
+void IntProg::setAssumptions(const std::vector<std::pair<const IntVar*, std::vector<bigint>>>& ivs) {
   for (auto [iv, dom] : ivs) {
     assert(iv);
     if (dom.empty()) {
@@ -367,7 +367,7 @@ void ILP::setAssumptions(const std::vector<std::pair<const IntVar*, std::vector<
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
-void ILP::setAssumptions(const std::vector<std::pair<const IntVar*, bigint>>& ivs) {
+void IntProg::setAssumptions(const std::vector<std::pair<const IntVar*, bigint>>& ivs) {
   for (auto [iv, val] : ivs) {
     assert(iv);
     if (val < iv->getLowerBound() || val > iv->getUpperBound())
@@ -382,11 +382,11 @@ void ILP::setAssumptions(const std::vector<std::pair<const IntVar*, bigint>>& iv
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
-bool ILP::hasAssumption(const IntVar* iv) const {
+bool IntProg::hasAssumption(const IntVar* iv) const {
   return std::any_of(iv->getEncodingVars().begin(), iv->getEncodingVars().end(),
                      [&](Var v) { return assumptions.has(v) || assumptions.has(-v); });
 }
-std::vector<bigint> ILP::getAssumption(const IntVar* iv) const {
+std::vector<bigint> IntProg::getAssumption(const IntVar* iv) const {
   if (!hasAssumption(iv)) {
     std::vector<bigint> res;
     res.reserve(size_t(iv->getUpperBound() - iv->getLowerBound() + 1));
@@ -427,11 +427,11 @@ std::vector<bigint> ILP::getAssumption(const IntVar* iv) const {
   return res;
 }
 
-void ILP::clearAssumptions() {
+void IntProg::clearAssumptions() {
   assumptions.clear();
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
-void ILP::clearAssumptions(const std::vector<IntVar*>& ivs) {
+void IntProg::clearAssumptions(const std::vector<IntVar*>& ivs) {
   for (IntVar* iv : ivs) {
     for (Var v : iv->getEncodingVars()) {
       assumptions.remove(v);
@@ -441,7 +441,7 @@ void ILP::clearAssumptions(const std::vector<IntVar*>& ivs) {
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
-void ILP::setSolutionHints(const std::vector<std::pair<const IntVar*, bigint>>& hnts) {
+void IntProg::setSolutionHints(const std::vector<std::pair<const IntVar*, bigint>>& hnts) {
   std::vector<std::pair<Var, Lit>> hints;
   for (const std::pair<const IntVar*, bigint>& hnt : hnts) {
     assert(hnt.first);
@@ -454,7 +454,7 @@ void ILP::setSolutionHints(const std::vector<std::pair<const IntVar*, bigint>>& 
   }
   solver.fixPhase(hints, true);
 }
-void ILP::clearSolutionHints(const std::vector<IntVar*>& ivs) {
+void IntProg::clearSolutionHints(const std::vector<IntVar*>& ivs) {
   std::vector<std::pair<Var, Lit>> hints;
   for (const IntVar* iv : ivs) {
     for (const Var& v : iv->getEncodingVars()) {
@@ -464,7 +464,7 @@ void ILP::clearSolutionHints(const std::vector<IntVar*>& ivs) {
   solver.fixPhase(hints);
 }
 
-void ILP::addConstraint(const IntConstraint& ic) {
+void IntProg::addConstraint(const IntConstraint& ic) {
   if (ic.size() > 1e9) throw InvalidArgument("Constraint has more than 1e9 terms.");
   ++nConstrs;
   if (keepInput) constraints.push_back(ic);
@@ -481,13 +481,13 @@ void ILP::addConstraint(const IntConstraint& ic) {
 }
 
 // head <=> rhs -- head iff rhs
-void ILP::addReification(IntVar* head, bool sign, const IntConstraint& ic) {
+void IntProg::addReification(IntVar* head, bool sign, const IntConstraint& ic) {
   addLeftReification(head, sign, ic);
   addRightReification(head, sign, ic);
 }
 
 // head => rhs -- head implies rhs
-void ILP::addRightReification(IntVar* head, bool sign, const IntConstraint& ic) {
+void IntProg::addRightReification(IntVar* head, bool sign, const IntConstraint& ic) {
   if (ic.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
@@ -508,7 +508,7 @@ void ILP::addRightReification(IntVar* head, bool sign, const IntConstraint& ic) 
 }
 
 // head <= rhs -- rhs implies head
-void ILP::addLeftReification(IntVar* head, bool sign, const IntConstraint& ic) {
+void IntProg::addLeftReification(IntVar* head, bool sign, const IntConstraint& ic) {
   if (ic.size() >= 1e9) throw InvalidArgument("Reification has more than 1e9 terms.");
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
@@ -530,7 +530,7 @@ void ILP::addLeftReification(IntVar* head, bool sign, const IntConstraint& ic) {
   }
 }
 
-void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_bound, IntVar* upper_bound) {
+void IntProg::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_bound, IntVar* upper_bound) {
   if (!lower_bound && !upper_bound) return;
   if (factors.empty()) {
     if (lower_bound) addConstraint({{{1, lower_bound}}, std::nullopt, 1});
@@ -639,9 +639,9 @@ void ILP::addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_b
   }
 }
 
-void ILP::fix(IntVar* iv, const bigint& val) { addConstraint(IntConstraint{{{1, iv}}, val, val}); }
+void IntProg::fix(IntVar* iv, const bigint& val) { addConstraint(IntConstraint{{{1, iv}}, val, val}); }
 
-void ILP::invalidateLastSol() {
+void IntProg::invalidateLastSol() {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to add objective bound.");
 
   VarVec vars;
@@ -652,7 +652,7 @@ void ILP::invalidateLastSol() {
   solver.invalidateLastSol(vars);
 }
 
-void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag) {
+void IntProg::invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag) {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to add objective bound.");
 
   VarVec vars;
@@ -666,9 +666,9 @@ void ILP::invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag) {
   solver.invalidateLastSol(vars);
 }
 
-void ILP::printFormula() { printFormula(std::cout); }
+void IntProg::printFormula() { printFormula(std::cout); }
 
-std::ostream& ILP::printFormula(std::ostream& out) {
+std::ostream& IntProg::printFormula(std::ostream& out) {
   int nbConstraints = 0;
   for (const CRef& cr : solver.getRawConstraints()) {
     const Constr& c = solver.getCA()[cr];
@@ -706,7 +706,7 @@ std::ostream& ILP::printFormula(std::ostream& out) {
   return out;
 }
 
-std::ostream& ILP::printInput(std::ostream& out) const {
+std::ostream& IntProg::printInput(std::ostream& out) const {
   out << "OBJ ";
   if (minimize) {
     out << "MIN ";
@@ -755,18 +755,18 @@ std::ostream& ILP::printInput(std::ostream& out) const {
   return out;
 }
 
-std::ostream& ILP::printVars(std::ostream& out) const {
+std::ostream& IntProg::printVars(std::ostream& out) const {
   for (const auto& v : vars) {
     out << *v << std::endl;
   }
   return out;
 }
 
-long long ILP::getNbVars() const { return vars.size(); }
+long long IntProg::getNbVars() const { return vars.size(); }
 
-long long ILP::getNbConstraints() const { return nConstrs; }
+long long IntProg::getNbConstraints() const { return nConstrs; }
 
-bigint ILP::getSolSpaceSize() const {
+bigint IntProg::getSolSpaceSize() const {
   bigint total = 0;
   for (const std::unique_ptr<IntVar>& v : vars) {
     total += aux::msb(1 + v->getRange());
@@ -774,20 +774,20 @@ bigint ILP::getSolSpaceSize() const {
   return total;
 };
 
-bigint ILP::getLowerBound() const { return minimize ? optim->getLowerBound() : -optim->getLowerBound(); }
-bigint ILP::getUpperBound() const { return minimize ? optim->getUpperBound() : -optim->getUpperBound(); }
+bigint IntProg::getLowerBound() const { return minimize ? optim->getLowerBound() : -optim->getLowerBound(); }
+bigint IntProg::getUpperBound() const { return minimize ? optim->getUpperBound() : -optim->getUpperBound(); }
 
-bigint ILP::getLastSolutionFor(IntVar* iv) const {
+bigint IntProg::getLastSolutionFor(IntVar* iv) const {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to return.");
   return iv->getValue(solver.getLastSolution());
 }
 
-std::vector<bigint> ILP::getLastSolutionFor(const std::vector<IntVar*>& vars) const {
+std::vector<bigint> IntProg::getLastSolutionFor(const std::vector<IntVar*>& vars) const {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to return.");
   return aux::comprehension(vars, [&](IntVar* iv) { return getLastSolutionFor(iv); });
 }
 
-Core ILP::getLastCore() {
+Core IntProg::getLastCore() {
   Core core = emptyCore();
   for (Lit l : assumptions.getKeys()) {
     if (isUnit(solver.getLevel(), -l)) {
@@ -807,7 +807,7 @@ Core ILP::getLastCore() {
   return core;
 }
 
-void ILP::printOrigSol() const {
+void IntProg::printOrigSol() const {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to return.");
   for (const std::unique_ptr<IntVar>& iv : vars) {
     bigint val = iv->getValue(solver.getLastSolution());
@@ -817,7 +817,7 @@ void ILP::printOrigSol() const {
   }
 }
 
-WithState<Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
+WithState<Ce32> IntProg::getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
   auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
   if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
     return {result, CeNull()};
@@ -876,12 +876,12 @@ WithState<Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& ivs, bool ke
   return {SolveState::SAT, invalidator};
 }
 
-IntVar* ILP::addFlag() {
+IntVar* IntProg::addFlag() {
   // TODO: ensure unique variable names
   return addVar("__flag" + std::to_string(solver.getNbVars() + 1), 0, 1, Encoding::ORDER);
 }
 
-OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& to) {
+OptRes IntProg::toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& to) {
   if (to.reinitialize) global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState res = optim->runFull(false, to.limit);
   if (res == SolveState::TIMEOUT || res == SolveState::UNSAT) return {res, 0, emptyCore()};
@@ -920,8 +920,8 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& t
 }
 
 // NOTE: also throws AsynchronousInterrupt
-WithState<std::vector<std::pair<bigint, bigint>>> ILP::propagate(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                                 const TimeOut& to) {
+WithState<std::vector<std::pair<bigint, bigint>>> IntProg::propagate(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                                     const TimeOut& to) {
   solver.printHeader();
   auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
   assert(result != SolveState::INPROCESSED);
@@ -990,8 +990,8 @@ WithState<std::vector<std::pair<bigint, bigint>>> ILP::propagate(const std::vect
 }
 
 // NOTE: also throws AsynchronousInterrupt
-WithState<std::vector<std::vector<bigint>>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                              const TimeOut& to) {
+WithState<std::vector<std::vector<bigint>>> IntProg::pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                                  const TimeOut& to) {
   for (IntVar* iv : ivs) {
     if (iv->getEncodingVars().size() != 1 && iv->getEncoding() != Encoding::ONEHOT) {
       throw InvalidArgument("Non-Boolean variable " + iv->getName() +
@@ -1035,7 +1035,7 @@ WithState<std::vector<std::vector<bigint>>> ILP::pruneDomains(const std::vector<
   return {SolveState::SAT, doms};
 }
 
-Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
+Var IntProg::fixObjective(const IntConstraint& ico, const bigint& optval) {
   IntVar* flag = addFlag();
   Var flag_v = flag->getEncodingVars()[0];
   assumptions.add(flag_v);
@@ -1049,7 +1049,7 @@ Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
   return flag_v;
 }
 
-WithState<int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
+WithState<int64_t> IntProg::count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
   solver.printHeader();
   auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
   if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
@@ -1085,7 +1085,7 @@ WithState<int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, c
   }
 }
 
-WithState<Core> ILP::extractMUS(const TimeOut& to) {
+WithState<Core> IntProg::extractMUS(const TimeOut& to) {
   solver.printHeader();
   if (to.reinitialize) global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = optim->runFull(false, to.limit);
@@ -1142,7 +1142,7 @@ WithState<Core> ILP::extractMUS(const TimeOut& to) {
   return {needed->empty() ? SolveState::UNSAT : SolveState::INCONSISTENT, std::move(needed)};
 }
 
-void ILP::runFromCmdLine() {
+void IntProg::runFromCmdLine() {
   global.stats.startTime = std::chrono::steady_clock::now();
 
   if (global.options.verbosity.get() > 0) {

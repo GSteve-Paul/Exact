@@ -19,7 +19,7 @@ or run with the flag --license=AGPLv3. If not, see
 **********************************************************************/
 
 #include <csignal>
-#include "ILP.hpp"
+#include "IntProg.hpp"
 #include "quit.hpp"
 
 using namespace xct;
@@ -37,16 +37,16 @@ int main(int argc, char** argv) {
     opts.domBreakLim.set(-1);
     opts.verbosity.set(1);
     opts.parseCommandLine(argc, argv);
-    ILP ilp(opts);
+    IntProg intprog(opts);
 
     try {
-      ilp.runFromCmdLine();
-      return quit::exit_SUCCESS(ilp);
+      intprog.runFromCmdLine();
+      return quit::exit_SUCCESS(intprog);
     } catch (const AsynchronousInterrupt& ai) {
       std::cout << "c " << ai.what() << std::endl;
-      return quit::exit_INDETERMINATE(ilp);
+      return quit::exit_INDETERMINATE(intprog);
     } catch (const UnsatEncounter& ue) {
-      return quit::exit_SUCCESS(ilp);
+      return quit::exit_SUCCESS(intprog);
     } catch (const std::invalid_argument& ia) {
       return quit::exit_ERROR(ia.what());
     }

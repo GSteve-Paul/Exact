@@ -62,7 +62,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "parsing.hpp"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/tokenizer.hpp>
-#include "ILP.hpp"
+#include "IntProg.hpp"
 #include "Solver.hpp"
 
 #if WITHCOINUTILS
@@ -94,65 +94,65 @@ bigint read_bigint(const std::string& s, int start) {
   return negate ? -answer : answer;
 }
 
-void file_read(ILP& ilp) {
-  if (ilp.global.options.formulaName.empty()) {
-    if (ilp.global.options.verbosity.get() > 0) {
+void file_read(IntProg& intprog) {
+  if (intprog.global.options.formulaName.empty()) {
+    if (intprog.global.options.verbosity.get() > 0) {
       std::cout << "c No filename given, reading from standard input, expected format is "
-                << ilp.global.options.fileFormat.get() << std::endl;
+                << intprog.global.options.fileFormat.get() << std::endl;
     }
   } else {
-    std::string::size_type dotidx = ilp.global.options.formulaName.rfind('.');
+    std::string::size_type dotidx = intprog.global.options.formulaName.rfind('.');
     if (dotidx != std::string::npos) {
-      std::string ext = ilp.global.options.formulaName.substr(dotidx + 1);
-      if (ilp.global.options.fileFormat.valid(ext)) {
-        ilp.global.options.fileFormat.parse(ext);
+      std::string ext = intprog.global.options.formulaName.substr(dotidx + 1);
+      if (intprog.global.options.fileFormat.valid(ext)) {
+        intprog.global.options.fileFormat.parse(ext);
       }
     }
-    if (ilp.global.options.verbosity.get() > 0) {
-      std::cout << "c Reading input file, expected format is " << ilp.global.options.fileFormat.get() << std::endl;
+    if (intprog.global.options.verbosity.get() > 0) {
+      std::cout << "c Reading input file, expected format is " << intprog.global.options.fileFormat.get() << std::endl;
     }
   }
-  if (ilp.global.options.fileFormat.is("mps")) {
-    mps_read(ilp.global.options.formulaName, ilp);
-  } else if (ilp.global.options.fileFormat.is("lp")) {
-    lp_read(ilp.global.options.formulaName, ilp);
+  if (intprog.global.options.fileFormat.is("mps")) {
+    mps_read(intprog.global.options.formulaName, intprog);
+  } else if (intprog.global.options.fileFormat.is("lp")) {
+    lp_read(intprog.global.options.formulaName, intprog);
   } else {
-    if (ilp.global.options.formulaName.empty()) {
-      if (ilp.global.options.fileFormat.is("opb")) {
-        opb_read(std::cin, ilp);
-      } else if (ilp.global.options.fileFormat.is("cnf")) {
-        cnf_read(std::cin, ilp);
-      } else if (ilp.global.options.fileFormat.is("wcnf")) {
-        wcnf_read(std::cin, ilp);
+    if (intprog.global.options.formulaName.empty()) {
+      if (intprog.global.options.fileFormat.is("opb")) {
+        opb_read(std::cin, intprog);
+      } else if (intprog.global.options.fileFormat.is("cnf")) {
+        cnf_read(std::cin, intprog);
+      } else if (intprog.global.options.fileFormat.is("wcnf")) {
+        wcnf_read(std::cin, intprog);
       } else {
         assert(false);
       }
     } else {
-      std::ifstream fin(ilp.global.options.formulaName);
+      std::ifstream fin(intprog.global.options.formulaName);
       if (!fin) {
-        throw InvalidArgument("Could not open " + ilp.global.options.formulaName);
+        throw InvalidArgument("Could not open " + intprog.global.options.formulaName);
       }
-      if (ilp.global.options.fileFormat.is("opb")) {
-        opb_read(fin, ilp);
-      } else if (ilp.global.options.fileFormat.is("cnf")) {
-        cnf_read(fin, ilp);
-      } else if (ilp.global.options.fileFormat.is("wcnf")) {
-        wcnf_read(fin, ilp);
+      if (intprog.global.options.fileFormat.is("opb")) {
+        opb_read(fin, intprog);
+      } else if (intprog.global.options.fileFormat.is("cnf")) {
+        cnf_read(fin, intprog);
+      } else if (intprog.global.options.fileFormat.is("wcnf")) {
+        wcnf_read(fin, intprog);
       } else {
         assert(false);
       }
       fin.close();
     }
   }
-  ilp.global.logger.logComment("INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW");
+  intprog.global.logger.logComment("INPUT FORMULA ABOVE - AUXILIARY AXIOMS BELOW");
 }
 
-IntVar* indexedBoolVar(ILP& ilp, const std::string& name) {
-  if (IntVar* res = ilp.getVarFor(name); res) return res;
-  return ilp.addVar(name, 0, 1, Encoding::ORDER, true);
+IntVar* indexedBoolVar(IntProg& intprog, const std::string& name) {
+  if (IntVar* res = intprog.getVarFor(name); res) return res;
+  return intprog.addVar(name, 0, 1, Encoding::ORDER, true);
 }
 
-void opb_read(std::istream& in, ILP& ilp) {
+void opb_read(std::istream& in, IntProg& intprog) {
   [[maybe_unused]] bool first_constraint = true;
   std::vector<IntTerm> terms;
   bigint lb;
@@ -203,24 +203,24 @@ void opb_read(std::istream& in, ILP& ilp) {
       if (var.empty()) {
         throw InvalidArgument("Invalid literal token " + var + " at line " + std::to_string(lineNr));
       } else if (var[0] == '~') {
-        terms.push_back({-read_bigint(tokens[i], 0), indexedBoolVar(ilp, var.substr(2))});
+        terms.push_back({-read_bigint(tokens[i], 0), indexedBoolVar(intprog, var.substr(2))});
         lb += terms.back().c;
       } else if (var[0] == 'x') {
-        terms.push_back({read_bigint(tokens[i], 0), indexedBoolVar(ilp, var.substr(1))});
+        terms.push_back({read_bigint(tokens[i], 0), indexedBoolVar(intprog, var.substr(1))});
       } else {
         lb -= read_bigint(tokens[i], 0) * read_bigint(var, 0);
       }
     }
 
     if (opt_line) {
-      ilp.setObjective(terms, true, -lb);
+      intprog.setObjective(terms, true, -lb);
     } else {
-      ilp.addConstraint(IntConstraint{terms, lb, aux::option(!isInequality, lb)});
+      intprog.addConstraint(IntConstraint{terms, lb, aux::option(!isInequality, lb)});
     }
   }
 }
 
-void wcnf_read(std::istream& in, ILP& ilp) {
+void wcnf_read(std::istream& in, IntProg& intprog) {
   std::vector<ConstrSimple32> inputs;
   char dummy;
   std::vector<IntTerm> obj_terms;
@@ -250,46 +250,46 @@ void wcnf_read(std::istream& in, ILP& ilp) {
     Lit l = 0;
     while (is >> l) {
       input.terms.push_back({1, l});
-      ilp.getSolver().setNbVars(toVar(l), true);
+      intprog.getSolver().setNbVars(toVar(l), true);
     }
     if (weight == 0) {  // hard clause
-      ilp.getSolver().addConstraint(input);
+      intprog.getSolver().addConstraint(input);
       inputs.pop_back();
       obj_terms.pop_back();
     }
   }
-  ilp.setMaxSatVars();
+  intprog.setMaxSatVars();
   // NOTE: to avoid using original maxsat variable indices for auxiliary variables,
   // introduce auxiliary variables *after* parsing all the original maxsat variables
   assert(inputs.size() == obj_terms.size());
   for (int64_t i = inputs.size() - 1; i >= 0; --i) {
-    quit::checkInterrupt(ilp.global);
+    quit::checkInterrupt(intprog.global);
     assert(i + 1 == (int64_t)inputs.size());  // each processed input is popped
     ConstrSimple32& input = inputs[i];
     if (input.size() == 1) {  // no need to introduce auxiliary variable
       Lit ll = input.terms[0].l;
-      obj_terms[i].v = indexedBoolVar(ilp, std::to_string(toVar(ll)));
+      obj_terms[i].v = indexedBoolVar(intprog, std::to_string(toVar(ll)));
       if (ll > 0) {
         const bigint& weight = obj_terms[i].c;
         obj_offset += weight;
         obj_terms[i].c = -weight;
       }
     } else {
-      Var aux = ilp.getSolver().addVar(true);
-      ilp.getSolver().setNbVars(aux, true);  // increases n to n+1
-      obj_terms[i].v = indexedBoolVar(ilp, std::to_string(toVar(aux)));
+      Var aux = intprog.getSolver().addVar(true);
+      intprog.getSolver().setNbVars(aux, true);  // increases n to n+1
+      obj_terms[i].v = indexedBoolVar(intprog, std::to_string(toVar(aux)));
       for (const Term32& t : input.terms) {  // reverse implication as binary clauses
-        ilp.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
+        intprog.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
       }
       input.terms.push_back({1, aux});  // implication
-      ilp.getSolver().addConstraint(input);
+      intprog.getSolver().addConstraint(input);
     }
     inputs.pop_back();
   }
-  ilp.setObjective(obj_terms, true, obj_offset);
+  intprog.setObjective(obj_terms, true, obj_offset);
 }
 
-void cnf_read(std::istream& in, ILP& ilp) {
+void cnf_read(std::istream& in, IntProg& intprog) {
   ConstrSimple32 input;
   // NOTE: there are annoying edge cases where two clauses share the same line, or a clause is split on two lines.
   // the following rewrite fixes this.
@@ -300,17 +300,17 @@ void cnf_read(std::istream& in, ILP& ilp) {
   }
   boost::tokenizer<boost::char_separator<char>> lines(all, boost::char_separator<char>("#"));
   for (const std::string& line : lines) {
-    quit::checkInterrupt(ilp.global);
+    quit::checkInterrupt(intprog.global);
     std::istringstream is(line);
     input.reset();
     input.orig = Origin::FORMULA;
     input.rhs = 1;
     Lit l = 0;
     while (is >> l) {
-      ilp.getSolver().setNbVars(toVar(l), true);
+      intprog.getSolver().setNbVars(toVar(l), true);
       input.terms.push_back({1, l});
     }
-    ilp.getSolver().addConstraint(input);
+    intprog.getSolver().addConstraint(input);
   }
 }
 
@@ -329,13 +329,13 @@ ratio parseCoinUtilsFloat(double x, bool& firstFloat) {
 }
 
 template <typename T>
-void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
+void coinutils_read(T& coinutils, IntProg& intprog, bool wasMaximization) {
   // Variables
   for (int c = 0; c < coinutils.getNumCols(); ++c) {
-    quit::checkInterrupt(ilp.global);
+    quit::checkInterrupt(intprog.global);
     const std::string varname = coinutils.columnName(c);
     if (!coinutils.isInteger(c)) {
-      if (ilp.global.options.ilpContinuous) {
+      if (intprog.global.options.intContinuous) {
         std::cout << "c WARNING continuous variable " << varname << " treated as integer" << std::endl;
       } else {
         throw InvalidArgument("No support for continuous variables: " + varname);
@@ -343,8 +343,8 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     }
     double lower = coinutils.getColLower()[c];
     if (aux::abs(lower) == coinutils.getInfinity()) {
-      if (ilp.global.options.ilpUnbounded) {
-        lower = -ilp.global.options.ilpDefaultBound.get();
+      if (intprog.global.options.intUnbounded) {
+        lower = -intprog.global.options.intDefaultBound.get();
         std::cout << "c WARNING default lower bound " << lower << " for unbounded variable " << varname << std::endl;
       } else {
         throw InvalidArgument("No support for unbounded variables: " + varname);
@@ -352,8 +352,8 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     }
     double upper = coinutils.getColUpper()[c];
     if (aux::abs(upper) == coinutils.getInfinity()) {
-      if (ilp.global.options.ilpUnbounded) {
-        upper = ilp.global.options.ilpDefaultBound.get();
+      if (intprog.global.options.intUnbounded) {
+        upper = intprog.global.options.intDefaultBound.get();
         std::cout << "c WARNING default upper bound " << upper << " for unbounded variable " << varname << std::endl;
       } else {
         throw InvalidArgument("No support for unbounded variables: " + varname);
@@ -361,11 +361,11 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     }
     if (std::ceil(upper) < std::floor(upper)) {
       std::cout << "c Conflicting bound on integer variable" << std::endl;
-      ilp.addConstraint(IntConstraint{{}, {}, 1});  // 0>=1 should trigger UNSAT
+      intprog.addConstraint(IntConstraint{{}, {}, 1});  // 0>=1 should trigger UNSAT
     }
     [[maybe_unused]] IntVar* iv =
-        ilp.addVar(varname, static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)),
-                   opt2enc(ilp.global.options.ilpEncoding.get()));
+        intprog.addVar(varname, static_cast<bigint>(std::ceil(lower)), static_cast<bigint>(std::floor(upper)),
+                       opt2enc(intprog.global.options.intEncoding.get()));
   }
 
   std::vector<ratio> ratcoefs;
@@ -378,7 +378,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     double objcoef = coinutils.getObjCoefficients()[c];
     if (objcoef == 0) continue;
     ratcoefs.emplace_back(parseCoinUtilsFloat(objcoef, firstFloat));
-    vars.emplace_back(ilp.getVarFor(coinutils.columnName(c)));
+    vars.emplace_back(intprog.getVarFor(coinutils.columnName(c)));
   }
   ratcoefs.emplace_back(parseCoinUtilsFloat(coinutils.objectiveOffset(), firstFloat));
   bigint cdenom = aux::commonDenominator(ratcoefs);
@@ -388,13 +388,13 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
   }
   bigint offset = coefs.back();
   coefs.pop_back();
-  ilp.setObjective(IntConstraint::zip(coefs, vars), true, offset);
+  intprog.setObjective(IntConstraint::zip(coefs, vars), true, offset);
 
   // Constraints
   const CoinPackedMatrix* cpm = coinutils.getMatrixByRow();
   if (cpm == nullptr) throw InvalidArgument("CoinUtils parsing failed.");
   for (int r = 0; r < coinutils.getNumRows(); ++r) {
-    quit::checkInterrupt(ilp.global);
+    quit::checkInterrupt(intprog.global);
     char rowSense = coinutils.getRowSense()[r];
     if (rowSense == 'N') continue;  // free constraint
 
@@ -405,7 +405,7 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
       double coef = cpm->getElements()[c];
       if (coef == 0) continue;
       ratcoefs.emplace_back(parseCoinUtilsFloat(coef, firstFloat));
-      vars.emplace_back(ilp.getVarFor(coinutils.columnName(cpm->getIndices()[c])));
+      vars.emplace_back(intprog.getVarFor(coinutils.columnName(cpm->getIndices()[c])));
     }
     bool useLB = rowSense == 'G' || rowSense == 'E' || rowSense == 'R';
     ratcoefs.emplace_back(useLB ? parseCoinUtilsFloat(coinutils.getRowLower()[r], firstFloat) : 0);
@@ -419,14 +419,14 @@ void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization) {
     coefs.pop_back();
     bigint lb = coefs.back();
     coefs.pop_back();
-    ilp.addConstraint({IntConstraint::zip(coefs, vars), aux::option(useLB, lb), aux::option(useUB, ub)});
+    intprog.addConstraint({IntConstraint::zip(coefs, vars), aux::option(useLB, lb), aux::option(useUB, ub)});
   }
 }
 
-template void coinutils_read<CoinMpsIO>(CoinMpsIO& coinutils, ILP& ilp, bool wasMaximization);
-template void coinutils_read<CoinLpIO>(CoinLpIO& coinutils, ILP& ilp, bool wasMaximization);
+template void coinutils_read<CoinMpsIO>(CoinMpsIO& coinutils, IntProg& intprog, bool wasMaximization);
+template void coinutils_read<CoinLpIO>(CoinLpIO& coinutils, IntProg& intprog, bool wasMaximization);
 
-void mps_read(const std::string& filename, ILP& ilp) {
+void mps_read(const std::string& filename, IntProg& intprog) {
   CoinMpsIO coinutils;
   coinutils.messageHandler()->setLogLevel(0);
   if (filename == "") {
@@ -434,10 +434,10 @@ void mps_read(const std::string& filename, ILP& ilp) {
   } else {
     coinutils.readMps(filename.c_str(), "");
   }
-  coinutils_read<CoinMpsIO>(coinutils, ilp, false);
+  coinutils_read<CoinMpsIO>(coinutils, intprog, false);
 }
 
-void lp_read(const std::string& filename, ILP& ilp) {
+void lp_read(const std::string& filename, IntProg& intprog) {
   CoinLpIO coinutils;
   coinutils.messageHandler()->setLogLevel(0);
   if (filename == "") {
@@ -445,15 +445,15 @@ void lp_read(const std::string& filename, ILP& ilp) {
   } else {
     coinutils.readLp(filename.c_str());
   }
-  coinutils_read<CoinLpIO>(coinutils, ilp, coinutils.wasMaximization());
+  coinutils_read<CoinLpIO>(coinutils, intprog, coinutils.wasMaximization());
 }
 
 #else
-void mps_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] ILP& ilp) {
+void mps_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] IntProg& intprog) {
   throw InvalidArgument("Please compile with CoinUtils to parse MPS format.");
 }
 
-void lp_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] ILP& ilp) {
+void lp_read([[maybe_unused]] const std::string& filename, [[maybe_unused]] IntProg& intprog) {
   throw InvalidArgument("Please compile with CoinUtils to parse LP format.");
 }
 #endif

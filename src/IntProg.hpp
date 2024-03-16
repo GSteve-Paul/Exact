@@ -76,7 +76,7 @@ std::ostream& operator<<(std::ostream& o, const IntTerm& x);
 using Core = std::unique_ptr<unordered_set<IntVar*>>;
 Core emptyCore();
 
-class ILP;
+class IntProg;
 
 struct IntConstraint {
  public:
@@ -111,7 +111,7 @@ struct TimeOut {
   double limit;
 };
 
-class ILP {
+class IntProg {
  public:
   Global global;
 
@@ -145,7 +145,7 @@ class ILP {
   void addSingleAssumption(const IntVar* iv, const bigint& val);
 
  public:
-  ILP(const Options& opts, bool keepIn = false);
+  IntProg(const Options& opts, bool keepIn = false);
 
   const Solver& getSolver() const;
   Solver& getSolver();
@@ -211,6 +211,6 @@ class ILP {
 
   void runFromCmdLine();
 };
-std::ostream& operator<<(std::ostream& o, const ILP& x);
+std::ostream& operator<<(std::ostream& o, const IntProg& x);
 
 }  // namespace xct

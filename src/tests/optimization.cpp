@@ -19,7 +19,7 @@ or run with the flag --license=AGPLv3. If not, see
 **********************************************************************/
 
 #include "../external/doctest/doctest.h"
-#include "ILP.hpp"
+#include "IntProg.hpp"
 
 using namespace xct;
 
@@ -33,26 +33,26 @@ TEST_CASE("knapsack") {
       opts.optRatio.set(ratio);
       for (int precision : {2, 50, 100}) {
         opts.optPrecision.set(precision);
-        ILP ilp(opts);
+        IntProg intprog(opts);
         std::vector<IntVar*> vars;
         vars.reserve(10);
         for (const auto& s : {"a", "b", "c", "d", "e"}) {
-          vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
+          vars.push_back(intprog.addVar(s, 0, 1, Encoding::ORDER));
         }
         for (const auto& s : {"k", "l"}) {
-          vars.push_back(ilp.addVar(s, -2, 2, Encoding::ORDER));
+          vars.push_back(intprog.addVar(s, -2, 2, Encoding::ORDER));
         }
         for (const auto& s : {"m", "n"}) {
-          vars.push_back(ilp.addVar(s, -2, 2, Encoding::LOG));
+          vars.push_back(intprog.addVar(s, -2, 2, Encoding::LOG));
         }
-        vars.push_back(ilp.addVar("o", -2, 2, Encoding::ONEHOT));
+        vars.push_back(intprog.addVar("o", -2, 2, Encoding::ONEHOT));
 
-        ilp.setObjective(IntConstraint::zip({-3, 4, -1, 2, -3, 4, -1, 2, -3, -4}, vars), false, -10);
-        ilp.addConstraint({IntConstraint::zip({1, -2, 3, -1, 2, -3, 1, -2, 3, -3}, vars), 7});
-        SolveState res = ilp.getOptim()->runFull(true, 0);
+        intprog.setObjective(IntConstraint::zip({-3, 4, -1, 2, -3, 4, -1, 2, -3, -4}, vars), false, -10);
+        intprog.addConstraint({IntConstraint::zip({1, -2, 3, -1, 2, -3, 1, -2, 3, -3}, vars), 7});
+        SolveState res = intprog.getOptim()->runFull(true, 0);
 
         CHECK(res == SolveState::UNSAT);
-        CHECK(ilp.getUpperBound() == 4);
+        CHECK(intprog.getUpperBound() == 4);
       }
     }
   }

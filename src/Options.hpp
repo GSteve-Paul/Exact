@@ -267,16 +267,16 @@ struct Options {
       "Precision of bottom-up optimization (each core will improve the optimality gap by at least 1/x)", 100, "int > 1",
       [](const int32_t& x) -> bool { return x > 1; }};
   BoolOption optCoreguided{"opt-coreguided", "Core-guided bottom up optimization instead of a basic approach", true};
-  EnumOption ilpEncoding{"ilp-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
-  BoolOption ilpContinuous{"ilp-continuous",
+  EnumOption intEncoding{"int-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
+  BoolOption intContinuous{"int-continuous",
                            "Accept continuous variables by treating them as integer variables. This restricts the "
                            "problem and may yield UNSAT when no integer solution exists.",
                            false};
-  BoolOption ilpUnbounded{"ilp-unbounded",
+  BoolOption intUnbounded{"int-unbounded",
                           "Accept unbounded integer variables by imposing default bounds. This restricts the problem "
                           "and may yield UNSAT when no solution within the bounds exists.",
                           true};
-  ValOption<double> ilpDefaultBound{"ilp-defbound", "Default bound used for unbounded integer variables",
+  ValOption<double> intDefaultBound{"int-defbound", "Default bound used for unbounded integer variables",
                                     limitAbs<int, long long>(), "0 < double",
                                     [](const double& x) -> bool { return x > 0; }};
   BoolOption pureLits{"inp-purelits", "Propagate pure literals", false};
@@ -339,10 +339,10 @@ struct Options {
       &optRatio,
       &optPrecision,
       &optCoreguided,
-      &ilpEncoding,
-      &ilpContinuous,
-      &ilpUnbounded,
-      &ilpDefaultBound,
+      &intEncoding,
+      &intContinuous,
+      &intUnbounded,
+      &intDefaultBound,
       &pureLits,
       &domBreakLim,
       &inpProbing,

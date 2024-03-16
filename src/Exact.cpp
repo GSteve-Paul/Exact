@@ -91,7 +91,7 @@ struct type_caster<bigint> {
 }  // namespace pybind11
 
 IntVar* Exact::getVariable(const std::string& name) const {
-  IntVar* res = ilp.getVarFor(name);
+  IntVar* res = intprog.getVarFor(name);
   if (!res) throw InvalidArgument("No variable " + name + " found.");
   return res;
 }
@@ -120,7 +120,7 @@ Options getOptions(const std::vector<std::pair<std::string, std::string>>& optio
   return opts;
 }
 
-Exact::Exact(const std::vector<std::pair<std::string, std::string>>& options) : ilp(getOptions(options), true) {
+Exact::Exact(const std::vector<std::pair<std::string, std::string>>& options) : intprog(getOptions(options), true) {
   signal(SIGINT, SIGINT_interrupt);
   signal(SIGTERM, SIGINT_interrupt);
 #if UNIXLIKE
@@ -129,16 +129,16 @@ Exact::Exact(const std::vector<std::pair<std::string, std::string>>& options) : 
 }
 
 void Exact::addVariable(const std::string& name, const bigint& lb, const bigint& ub, const std::string& encoding) {
-  if (ilp.getVarFor(name)) throw InvalidArgument("Variable " + name + " already exists.");
+  if (intprog.getVarFor(name)) throw InvalidArgument("Variable " + name + " already exists.");
   if (encoding != "" && encoding != "order" && encoding != "log" && encoding != "onehot") {
     throw InvalidArgument("Unknown encoding " + encoding +
                           ". Should be \"log\", \"order\" or \"onehot\", or left unspecified.");
   }
-  ilp.addVar(name, lb, ub, encoding == "" ? Encoding::LOG : opt2enc(encoding));
+  intprog.addVar(name, lb, ub, encoding == "" ? Encoding::LOG : opt2enc(encoding));
 }
 
 std::vector<std::string> Exact::getVariables() const {
-  return aux::comprehension(ilp.getVariables(), [](IntVar* iv) { return iv->getName(); });
+  return aux::comprehension(intprog.getVariables(), [](IntVar* iv) { return iv->getName(); });
 }
 
 void Exact::addConstraint(const std::vector<std::pair<bigint, std::string>>& terms, bool useLB, const bigint& lb,
@@ -150,7 +150,7 @@ void Exact::addConstraint(const std::vector<std::pair<bigint, std::string>>& ter
   for (const auto& t : terms) {
     ic.lhs.push_back({t.first, getVariable(t.second)});
   }
-  ilp.addConstraint(ic);
+  intprog.addConstraint(ic);
 }
 
 void Exact::addReification(const std::string& head, bool sign, const std::vector<std::pair<bigint, std::string>>& terms,
@@ -162,7 +162,7 @@ void Exact::addReification(const std::string& head, bool sign, const std::vector
   for (const auto& t : terms) {
     ic.lhs.push_back({t.first, getVariable(t.second)});
   }
-  ilp.addReification(getVariable(head), sign, ic);
+  intprog.addReification(getVariable(head), sign, ic);
 }
 
 void Exact::addRightReification(const std::string& head, bool sign,
@@ -174,7 +174,7 @@ void Exact::addRightReification(const std::string& head, bool sign,
   for (const auto& t : terms) {
     ic.lhs.push_back({t.first, getVariable(t.second)});
   }
-  ilp.addRightReification(getVariable(head), sign, ic);
+  intprog.addRightReification(getVariable(head), sign, ic);
 }
 
 void Exact::addLeftReification(const std::string& head, bool sign,
@@ -186,41 +186,41 @@ void Exact::addLeftReification(const std::string& head, bool sign,
   for (const auto& t : terms) {
     ic.lhs.push_back({t.first, getVariable(t.second)});
   }
-  ilp.addLeftReification(getVariable(head), sign, ic);
+  intprog.addLeftReification(getVariable(head), sign, ic);
 }
 
-void Exact::fix(const std::string& var, const bigint& val) { ilp.fix(getVariable(var), val); }
+void Exact::fix(const std::string& var, const bigint& val) { intprog.fix(getVariable(var), val); }
 
 void Exact::setAssumptions(const std::vector<std::pair<std::string, bigint>>& varvals) {
-  ilp.setAssumptions(getVars(varvals));
+  intprog.setAssumptions(getVars(varvals));
 }
 void Exact::setAssumptions(const std::vector<std::pair<std::string, std::vector<bigint>>>& varvals) {
-  ilp.setAssumptions(getVars(varvals));
+  intprog.setAssumptions(getVars(varvals));
 }
 
-void Exact::clearAssumptions() { ilp.clearAssumptions(); }
-void Exact::clearAssumptions(const std::vector<std::string>& vars) { ilp.clearAssumptions(getVars(vars)); }
+void Exact::clearAssumptions() { intprog.clearAssumptions(); }
+void Exact::clearAssumptions(const std::vector<std::string>& vars) { intprog.clearAssumptions(getVars(vars)); }
 
-bool Exact::hasAssumption(const std::string& var) const { return ilp.hasAssumption(getVariable(var)); }
+bool Exact::hasAssumption(const std::string& var) const { return intprog.hasAssumption(getVariable(var)); }
 
 std::vector<py::int_> Exact::getAssumption(const std::string& var) const {
-  return aux::comprehension(ilp.getAssumption(getVariable(var)),
+  return aux::comprehension(intprog.getAssumption(getVariable(var)),
                             [](const bigint& i) -> py::int_ { return py::cast(i); });
 }
 
 void Exact::setSolutionHints(const std::vector<std::pair<std::string, bigint>>& hints) {
-  ilp.setSolutionHints(getVars(hints));
+  intprog.setSolutionHints(getVars(hints));
 }
 
-void Exact::clearSolutionHints(const std::vector<std::string>& vars) { ilp.clearSolutionHints(getVars(vars)); }
+void Exact::clearSolutionHints(const std::vector<std::string>& vars) { intprog.clearSolutionHints(getVars(vars)); }
 
-void Exact::boundObjByLastSol() { ilp.getOptim()->boundObjByLastSol(); }
-void Exact::invalidateLastSol() { ilp.invalidateLastSol(); }
-void Exact::invalidateLastSol(const std::vector<std::string>& vars) { ilp.invalidateLastSol(getVars(vars)); }
+void Exact::boundObjByLastSol() { intprog.getOptim()->boundObjByLastSol(); }
+void Exact::invalidateLastSol() { intprog.invalidateLastSol(); }
+void Exact::invalidateLastSol(const std::vector<std::string>& vars) { intprog.invalidateLastSol(getVars(vars)); }
 
-void Exact::printVariables() const { ilp.printVars(std::cout); }
-void Exact::printInput() const { ilp.printInput(std::cout); }
-void Exact::printFormula() { ilp.printFormula(std::cout); }
+void Exact::printVariables() const { intprog.printVars(std::cout); }
+void Exact::printInput() const { intprog.printInput(std::cout); }
+void Exact::printFormula() { intprog.printFormula(std::cout); }
 
 void Exact::setObjective(const std::vector<std::pair<bigint, std::string>>& terms, bool minimize,
                          const bigint& offset) {
@@ -231,35 +231,35 @@ void Exact::setObjective(const std::vector<std::pair<bigint, std::string>>& term
   for (const auto& t : terms) {
     iterms.push_back({t.first, getVariable(t.second)});
   }
-  ilp.setObjective(iterms, minimize, offset);
+  intprog.setObjective(iterms, minimize, offset);
 }
 
 std::string Exact::runOnce(double timeout) {
-  if (timeout != 0) ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
-  SolveState res = ilp.getOptim()->run(false, timeout);
+  if (timeout != 0) intprog.global.stats.runStartTime = std::chrono::steady_clock::now();
+  SolveState res = intprog.getOptim()->run(false, timeout);
   return res == SolveState::INCONSISTENT ? "PAUSED" : aux::str(res);
 }
 
 std::string Exact::runFull(bool optimize, double timeout) {
-  if (timeout != 0) ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
-  ilp.getSolver().printHeader();
-  return aux::str(ilp.getOptim()->runFull(optimize, timeout));
+  if (timeout != 0) intprog.global.stats.runStartTime = std::chrono::steady_clock::now();
+  intprog.getSolver().printHeader();
+  return aux::str(intprog.getOptim()->runFull(optimize, timeout));
 }
 
 std::pair<py::int_, py::int_> Exact::getObjectiveBounds() const {
-  return {py::cast(ilp.getLowerBound()), py::cast(ilp.getUpperBound())};
+  return {py::cast(intprog.getLowerBound()), py::cast(intprog.getUpperBound())};
 }
 
-bool Exact::hasSolution() const { return ilp.getSolver().foundSolution(); }
+bool Exact::hasSolution() const { return intprog.getSolver().foundSolution(); }
 
 std::vector<py::int_> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
   if (!hasSolution()) return {};
-  return aux::comprehension(ilp.getLastSolutionFor(getVars(vars)),
+  return aux::comprehension(intprog.getLastSolutionFor(getVars(vars)),
                             [](const bigint& i) -> py::int_ { return py::cast(i); });
 }
 
 std::vector<std::string> Exact::getLastCore() {
-  Core core = ilp.getLastCore();
+  Core core = intprog.getLastCore();
   if (core) {
     return aux::comprehension(*core, [](IntVar* iv) { return iv->getName(); });
   } else {
@@ -268,7 +268,7 @@ std::vector<std::string> Exact::getLastCore() {
 }
 
 std::pair<std::string, std::vector<std::string>> Exact::extractMUS(double timeout) {
-  auto [state, mus] = ilp.extractMUS({true, timeout});
+  auto [state, mus] = intprog.extractMUS({true, timeout});
   assert(state != SolveState::INPROCESSED);
   if (state != SolveState::INCONSISTENT) return {aux::str(state), {}};
   assert(mus);
@@ -282,14 +282,14 @@ std::pair<std::string, std::vector<std::string>> Exact::extractMUS(double timeou
 }
 
 std::pair<std::string, pybind11::int_> Exact::toOptimum(double timeout) {
-  OptRes optres = ilp.toOptimum(ilp.getObjective(), true, {true, timeout});
+  OptRes optres = intprog.toOptimum(intprog.getObjective(), true, {true, timeout});
   assert(optres.state != SolveState::INPROCESSED);
   return {aux::str(optres.state), py::cast(optres.optval)};
 }
 
 std::pair<std::string, std::vector<std::pair<py::int_, py::int_>>> Exact::propagate(
     const std::vector<std::string>& vars, double timeout) {
-  WithState<std::vector<std::pair<bigint, bigint>>> ws = ilp.propagate(getVars(vars), true, {true, timeout});
+  WithState<std::vector<std::pair<bigint, bigint>>> ws = intprog.propagate(getVars(vars), true, {true, timeout});
   return {aux::str(ws.state),
           aux::comprehension(ws.val, [](const std::pair<bigint, bigint>& x) -> std::pair<py::int_, py::int_> {
             return std::pair<py::int_, py::int_>{py::cast(x.first), py::cast(x.second)};
@@ -298,21 +298,21 @@ std::pair<std::string, std::vector<std::pair<py::int_, py::int_>>> Exact::propag
 
 std::pair<std::string, std::vector<std::vector<py::int_>>> Exact::pruneDomains(const std::vector<std::string>& vars,
                                                                                double timeout) {
-  WithState<std::vector<std::vector<bigint>>> ws = ilp.pruneDomains(getVars(vars), true, {true, timeout});
+  WithState<std::vector<std::vector<bigint>>> ws = intprog.pruneDomains(getVars(vars), true, {true, timeout});
   return {aux::str(ws.state), aux::comprehension(ws.val, [](const std::vector<bigint>& x) -> std::vector<py::int_> {
             return aux::comprehension(x, [](const bigint& y) -> py::int_ { return py::cast(y); });
           })};
 }
 
 std::pair<std::string, int64_t> Exact::count(const std::vector<std::string>& vars, double timeout) {
-  auto [state, cnt] = ilp.count(getVars(vars), true, {true, timeout});
+  auto [state, cnt] = intprog.count(getVars(vars), true, {true, timeout});
   return {aux::str(state), cnt};
 }
 
 std::vector<std::pair<std::string, double>> Exact::getStats() {
-  ilp.global.stats.setDerivedStats(static_cast<StatNum>(ilp.getLowerBound()),
-                                   static_cast<StatNum>(ilp.getUpperBound()));
-  return aux::comprehension(ilp.global.stats.statsToDisplay, [](Stat* s) {
+  intprog.global.stats.setDerivedStats(static_cast<StatNum>(intprog.getLowerBound()),
+                                       static_cast<StatNum>(intprog.getUpperBound()));
+  return aux::comprehension(intprog.global.stats.statsToDisplay, [](Stat* s) {
     return std::pair<std::string, double>{s->name, static_cast<double>(s->z)};
   });
 }

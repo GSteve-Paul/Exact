@@ -33,11 +33,11 @@ See the file LICENSE or run with the flag --license=MIT.
 #include <pybind11/pybind11.h>
 #include <string>
 #include <vector>
-#include "ILP.hpp"
+#include "IntProg.hpp"
 #include "auxiliary.hpp"
 
 class Exact {
-  xct::ILP ilp;
+  xct::IntProg intprog;
 
   xct::IntVar* getVariable(const std::string& name) const;
   std::vector<xct::IntVar*> getVars(const std::vector<std::string>& names) const;

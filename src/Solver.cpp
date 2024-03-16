@@ -60,7 +60,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Solver.hpp"
-#include "ILP.hpp"
+#include "IntProg.hpp"
 #include "auxiliary.hpp"
 #include "constraints/Constr.hpp"
 

@@ -61,7 +61,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Optimization.hpp"
 #include "Global.hpp"
-#include "ILP.hpp"
+#include "IntProg.hpp"
 #include "Solver.hpp"
 #include "constraints/ConstrExp.hpp"
 

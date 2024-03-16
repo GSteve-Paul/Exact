@@ -68,8 +68,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-// TODO: move these methods to ILP?
-class ILP;
+// TODO: move these methods to IntProg?
+class IntProg;
 struct Global;
 
 extern std::atomic<bool> asynch_interrupt;
@@ -77,10 +77,10 @@ extern std::atomic<bool> asynch_interrupt;
 namespace quit {
 
 void printLits(const LitVec& lits, char pre, bool onlyPositive);
-void printLitsMaxsat(const LitVec& lits, const ILP& ilp);
-void printFinalStats(ILP& ilp);
-int exit_SUCCESS(ILP& ilp);
-int exit_INDETERMINATE(ILP& ilp);
+void printLitsMaxsat(const LitVec& lits, const IntProg& intprog);
+void printFinalStats(IntProg& intprog);
+int exit_SUCCESS(IntProg& intprog);
+int exit_INDETERMINATE(IntProg& intprog);
 int exit_ERROR(const std::string& message);
 int exit_EARLY();
 
