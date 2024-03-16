@@ -817,8 +817,7 @@ void ILP::printOrigSol() const {
   }
 }
 
-std::pair<SolveState, Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                    const TimeOut& to) {
+WithState<Ce32> ILP::getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
   auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
   if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
     return {result, CeNull()};
@@ -921,13 +920,12 @@ OptRes ILP::toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& t
 }
 
 // NOTE: also throws AsynchronousInterrupt
-std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                      const TimeOut& to) {
+WithState<std::vector<std::pair<bigint, bigint>>> ILP::propagate(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                                 const TimeOut& to) {
   solver.printHeader();
   auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
-  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
-    return {};
-  }
+  assert(result != SolveState::INPROCESSED);
+  if (result != SolveState::SAT) return {result, {}};
   assert(result == SolveState::SAT);
 
   Var marker = 0;
@@ -950,14 +948,14 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
       auto [lowerstate, lowerbound, optcore1] = toOptimum(varObjPos, true, {false, to.limit});
       if (lowerstate == SolveState::TIMEOUT) {
         assumptions.remove(marker);
-        return {};
+        return {SolveState::TIMEOUT, {}};
       }
       assert(lowerstate == SolveState::SAT);
       IntConstraint varObjNeg = {{{-1, iv}}, 0};
       auto [upperstate, upperbound, optcore2] = toOptimum(varObjNeg, true, {false, to.limit});
       if (upperstate == SolveState::TIMEOUT) {
         assumptions.remove(marker);
-        return {};
+        return {SolveState::TIMEOUT, {}};
       }
       assert(upperstate == SolveState::SAT);
       consequences[i] = {lowerbound, -upperbound};
@@ -975,7 +973,7 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
 
   auto [intersectstate, invalidator] = getSolIntersection(bools, keepstate, {false, to.limit});
   // TODO: getSolIntersection will do double work (e.g., use its own marker literal)
-  if (intersectstate == SolveState::TIMEOUT) return {};
+  if (intersectstate == SolveState::TIMEOUT) return {SolveState::TIMEOUT, {}};
 
   i = -1;
   for (IntVar* iv : ivs) {
@@ -988,11 +986,12 @@ std::vector<std::pair<bigint, bigint>> ILP::propagate(const std::vector<IntVar*>
     assert(consequences[i].first <= consequences[i].second);
   }
 
-  return consequences;
+  return {SolveState::SAT, consequences};
 }
 
 // NOTE: also throws AsynchronousInterrupt
-std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
+WithState<std::vector<std::vector<bigint>>> ILP::pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                              const TimeOut& to) {
   for (IntVar* iv : ivs) {
     if (iv->getEncodingVars().size() != 1 && iv->getEncoding() != Encoding::ONEHOT) {
       throw InvalidArgument("Non-Boolean variable " + iv->getName() +
@@ -1001,11 +1000,11 @@ std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& i
   }
   solver.printHeader();
   auto [result, invalidator] = getSolIntersection(ivs, keepstate, to);
-  if (result == SolveState::TIMEOUT) return {};
-  std::vector<std::vector<bigint>> doms(ivs.size());
-  if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT) return doms;
+  assert(result != SolveState::INPROCESSED);
+  if (result != SolveState::SAT) return {result, {}};
   assert(result == SolveState::SAT);
 
+  std::vector<std::vector<bigint>> doms(ivs.size());
   for (int i = 0; i < (int)ivs.size(); ++i) {
     IntVar* iv = ivs[i];
     if (iv->getEncodingVars().empty()) {
@@ -1033,7 +1032,7 @@ std::vector<std::vector<bigint>> ILP::pruneDomains(const std::vector<IntVar*>& i
       ++val;
     }
   }
-  return doms;
+  return {SolveState::SAT, doms};
 }
 
 Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
@@ -1050,7 +1049,7 @@ Var ILP::fixObjective(const IntConstraint& ico, const bigint& optval) {
   return flag_v;
 }
 
-std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
+WithState<int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
   solver.printHeader();
   auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
   if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
@@ -1086,12 +1085,12 @@ std::pair<SolveState, int64_t> ILP::count(const std::vector<IntVar*>& ivs, bool 
   }
 }
 
-Core ILP::extractMUS(const TimeOut& to) {
+WithState<Core> ILP::extractMUS(const TimeOut& to) {
   solver.printHeader();
   if (to.reinitialize) global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState result = optim->runFull(false, to.limit);
-  if (result == SolveState::SAT || result == SolveState::TIMEOUT) return nullptr;
-  if (result == SolveState::UNSAT) return emptyCore();
+  if (result == SolveState::SAT || result == SolveState::TIMEOUT) return {result, nullptr};
+  if (result == SolveState::UNSAT) return {SolveState::UNSAT, emptyCore()};
   assert(result == SolveState::INCONSISTENT);
 
   Core last_core = getLastCore();
@@ -1120,7 +1119,7 @@ Core ILP::extractMUS(const TimeOut& to) {
     }
     result = opt->runFull(false, to.limit);
     if (result == SolveState::TIMEOUT) {
-      return nullptr;
+      return {SolveState::TIMEOUT, nullptr};
     } else if (result == SolveState::INCONSISTENT) {
       last_core = getLastCore();
       assert(last_core);
@@ -1140,7 +1139,7 @@ Core ILP::extractMUS(const TimeOut& to) {
     }
   }
 
-  return needed;
+  return {needed->empty() ? SolveState::UNSAT : SolveState::INCONSISTENT, std::move(needed)};
 }
 
 void ILP::runFromCmdLine() {

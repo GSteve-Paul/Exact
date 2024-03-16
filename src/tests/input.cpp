@@ -36,9 +36,12 @@ TEST_CASE("multiplication simple") {
 
   ilp.addMultiplication(vars, rhs, rhs);
 
-  CHECK(ilp.count(vars, true).second == 9);
+  auto [state, cnt] = ilp.count(vars, true);
+  CHECK(state == SolveState::SAT);
+  CHECK(cnt == 9);
   auto propres = ilp.propagate({rhs}, true);
-  CHECK(propres == std::vector<std::pair<bigint, bigint>>{{0, 4}});
+  CHECK(propres.state == SolveState::SAT);
+  CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{{0, 4}});
 }
 
 TEST_CASE("multiplication") {
@@ -56,9 +59,12 @@ TEST_CASE("multiplication") {
 
   ilp.addMultiplication(vars, z, z);
 
-  CHECK(ilp.count(vars, true).second == 1024);
+  auto [state, cnt] = ilp.count(vars, true);
+  CHECK(state == SolveState::SAT);
+  CHECK(cnt == 1024);
   auto propres = ilp.propagate({z}, true);
-  CHECK(propres == std::vector<std::pair<bigint, bigint>>{{-180, 240}});
+  CHECK(propres.state == SolveState::SAT);
+  CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{{-180, 240}});
 
   std::stringstream ss;
   ilp.printInput(ss);
@@ -84,7 +90,8 @@ TEST_CASE("multiplication edge cases") {
   ilp.addMultiplication({a}, y, z);
 
   auto propres = ilp.propagate({a, q, r, y, z}, true);
-  CHECK(propres == std::vector<std::pair<bigint, bigint>>{{-2, 2}, {-10, 1}, {1, 10}, {-10, 2}, {-2, 10}});
+  CHECK(propres.state == SolveState::SAT);
+  CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{{-2, 2}, {-10, 1}, {1, 10}, {-10, 2}, {-2, 10}});
 }
 
 TEST_SUITE_END();

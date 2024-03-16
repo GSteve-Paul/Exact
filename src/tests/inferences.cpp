@@ -163,16 +163,16 @@ TEST_CASE("count") {
         vars.push_back(ilp.addVar(s, 0, 1, Encoding::ORDER));
       }
 
-      CHECK(ilp.count(vars, true).second == 32);
+      CHECK(ilp.count(vars, true).val == 32);
 
       ilp.addConstraint({IntConstraint::zip({1, 2, 3, 4, 5}, vars), 6});
-      CHECK(ilp.count(vars, true).second == 22);
+      CHECK(ilp.count(vars, true).val == 22);
 
       ilp.setObjective(IntConstraint::zip({1, 1, 2, 3, 5}, vars));
 
-      CHECK(ilp.count(vars, true).second == 2);
-      CHECK(ilp.count(vars, false).second == 2);
-      CHECK(ilp.count(vars, false).second == 0);
+      CHECK(ilp.count(vars, true).val == 2);
+      CHECK(ilp.count(vars, false).val == 2);
+      CHECK(ilp.count(vars, false).val == 0);
     }
   }
 }
@@ -245,21 +245,21 @@ TEST_CASE("intersect") {
       }
 
       auto [solvestate, invalidator] = ilp.getSolIntersection(vars, true);
-      CHECK((std::stringstream() << invalidator).str() == ">= 1 ;");
+      CHECK(aux::str(invalidator) == ">= 1 ;");
 
       ilp.setObjective(IntConstraint::zip({-1, -4, -3, -5, -5}, vars));
       auto [solvestate0, invalidator0] = ilp.getSolIntersection(vars, true);
-      CHECK((std::stringstream() << invalidator0).str() == "+1 ~x1 +1 ~x2 +1 ~x3 +1 ~x4 +1 ~x5 >= 1 ;");
+      CHECK(aux::str(invalidator0) == "+1 ~x1 +1 ~x2 +1 ~x3 +1 ~x4 +1 ~x5 >= 1 ;");
 
       ilp.addConstraint({IntConstraint::zip({2, 3, 4, 6, 6}, vars), std::nullopt, 10});
       auto [solvestate1, invalidator1] = ilp.getSolIntersection(vars, true);
-      CHECK((std::stringstream() << invalidator1).str() == "+1 x1 +1 ~x2 +1 x3 >= 1 ;");
+      CHECK(aux::str(invalidator1) == "+1 x1 +1 ~x2 +1 x3 >= 1 ;");
 
       SolveState res = ilp.getOptim()->runFull(false, 0);
       CHECK(res == SolveState::SAT);
 
       auto [solvestate2, invalidator2] = ilp.getSolIntersection(vars, false);
-      CHECK((std::stringstream() << invalidator2).str() == "+1 x1 +1 ~x2 +1 x3 >= 1 ;");
+      CHECK(aux::str(invalidator2) == "+1 x1 +1 ~x2 +1 x3 >= 1 ;");
 
       auto [solvestate3, invalidator3] = ilp.getSolIntersection(vars, false);
       CHECK(invalidator3 == nullptr);
@@ -282,17 +282,17 @@ TEST_CASE("intersect advanced") {
       ilp.setAssumptions({{vars[0], false}});
       auto [state0, invalidator0] = ilp.getSolIntersection(vars, true);
       CHECK(state0 == SolveState::SAT);
-      CHECK((std::stringstream() << invalidator0).str() == "+1 x1 >= 1 ;");
+      CHECK(aux::str(invalidator0) == "+1 x1 >= 1 ;");
 
       ilp.addConstraint({IntConstraint::zip({2, 3, 4, 6, 6}, vars), std::nullopt, 10});
       auto [state1, invalidator1] = ilp.getSolIntersection(vars, true);
       CHECK(state1 == SolveState::SAT);
-      CHECK((std::stringstream() << invalidator1).str() == "+1 x1 >= 1 ;");
+      CHECK(aux::str(invalidator1) == "+1 x1 >= 1 ;");
 
       ilp.setObjective(IntConstraint::zip({-1, -4, -3, -5, -5}, vars));
       auto [state2, invalidator2] = ilp.getSolIntersection(vars, true);
       CHECK(state2 == SolveState::SAT);
-      CHECK((std::stringstream() << invalidator2).str() == "+1 x1 +1 ~x2 +1 x3 >= 1 ;");
+      CHECK(aux::str(invalidator2) == "+1 x1 +1 ~x2 +1 x3 >= 1 ;");
 
       auto [state3, invalidator3] = ilp.getSolIntersection(vars, true, {true, timeouttime});
       CHECK(state3 == SolveState::TIMEOUT);
@@ -302,7 +302,7 @@ TEST_CASE("intersect advanced") {
       vars2.resize(2);
       auto [state4, invalidator4] = ilp.getSolIntersection(vars2, true);
       CHECK(state4 == SolveState::SAT);
-      CHECK((std::stringstream() << invalidator4).str() == "+1 x1 +1 ~x2 >= 1 ;");
+      CHECK(aux::str(invalidator4) == "+1 x1 +1 ~x2 >= 1 ;");
 
       ilp.setAssumptions({{vars[3], true}, {vars[4], true}});
       auto [state5, invalidator5] = ilp.getSolIntersection(vars2, true);
@@ -340,25 +340,30 @@ TEST_CASE("propagate") {
       vars.push_back(ilp.addVar("o", -1, 2, Encoding::ONEHOT));
 
       auto propres = ilp.propagate(vars, true);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{
-                           {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{
+                               {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}});
 
       ilp.addConstraint({IntConstraint::zip({1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars), 7});
       propres = ilp.propagate(vars, true);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{
-                           {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{
+                               {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}, {-1, 2}});
 
       ilp.setObjective(IntConstraint::zip({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars));
       propres = ilp.propagate(vars, true);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{
-                           {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{
+                               {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
 
       propres = ilp.propagate(vars, false);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{
-                           {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{
+                               {0, 0}, {1, 1}, {1, 1}, {1, 1}, {0, 0}, {2, 2}, {-1, 2}, {-1, 0}, {1, 2}, {1, 2}});
 
       propres = ilp.propagate(vars, true);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{});
+      CHECK(propres.state == SolveState::UNSAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{});
     }
   }
 }
@@ -385,25 +390,30 @@ TEST_CASE("propagate advanced") {
 
       ilp.setAssumptions({{vars[7], std::vector<bigint>{1}}});
       auto propres = ilp.propagate(vars, true);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{
-                           {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {1, 1}, {-1, 2}, {-1, 2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{
+                               {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {1, 1}, {-1, 2}, {-1, 2}});
 
       ilp.addConstraint({IntConstraint::zip({1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars), 7});
       propres = ilp.propagate(vars, true);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{
-                           {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {1, 1}, {-1, 2}, {-1, 2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{
+                               {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 2}, {-1, 2}, {1, 1}, {-1, 2}, {-1, 2}});
 
       ilp.setObjective(IntConstraint::zip({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars));
       propres = ilp.propagate(vars, true);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{
-                           {0, 0}, {1, 1}, {1, 1}, {0, 1}, {0, 1}, {1, 2}, {0, 2}, {1, 1}, {2, 2}, {2, 2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{
+                               {0, 0}, {1, 1}, {1, 1}, {0, 1}, {0, 1}, {1, 2}, {0, 2}, {1, 1}, {2, 2}, {2, 2}});
 
       propres = ilp.propagate(vars, false);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{
-                           {0, 0}, {1, 1}, {1, 1}, {0, 1}, {0, 1}, {1, 2}, {0, 2}, {1, 1}, {2, 2}, {2, 2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{
+                               {0, 0}, {1, 1}, {1, 1}, {0, 1}, {0, 1}, {1, 2}, {0, 2}, {1, 1}, {2, 2}, {2, 2}});
 
       propres = ilp.propagate(vars, true);
-      CHECK(propres == std::vector<std::pair<bigint, bigint>>{});
+      CHECK(propres.state == SolveState::UNSAT);
+      CHECK(propres.val == std::vector<std::pair<bigint, bigint>>{});
     }
   }
 }
@@ -425,36 +435,42 @@ TEST_CASE("pruneDomains") {
       }
 
       auto propres = ilp.pruneDomains(vars, true);
-      CHECK(propres == std::vector<std::vector<bigint>>{{0, 1},
-                                                        {0, 1},
-                                                        {0, 1},
-                                                        {0, 1},
-                                                        {0, 1},
-                                                        {-1, 0, 1, 2},
-                                                        {-1, 0, 1, 2},
-                                                        {-1, 0, 1, 2},
-                                                        {-1, 0, 1, 2},
-                                                        {-1, 0, 1, 2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::vector<bigint>>{{0, 1},
+                                                            {0, 1},
+                                                            {0, 1},
+                                                            {0, 1},
+                                                            {0, 1},
+                                                            {-1, 0, 1, 2},
+                                                            {-1, 0, 1, 2},
+                                                            {-1, 0, 1, 2},
+                                                            {-1, 0, 1, 2},
+                                                            {-1, 0, 1, 2}});
 
       ilp.setObjective(IntConstraint::zip({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars));
       propres = ilp.pruneDomains(vars, true);
-      CHECK(propres == std::vector<std::vector<bigint>>{{0}, {1}, {0}, {1}, {0}, {2}, {-1}, {2}, {-1}, {-1}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::vector<bigint>>{{0}, {1}, {0}, {1}, {0}, {2}, {-1}, {2}, {-1}, {-1}});
 
       ilp.addConstraint({IntConstraint::zip({1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars), 7});
       propres = ilp.pruneDomains(vars, true);
-      CHECK(propres ==
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val ==
             std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {1, 2}});
 
       propres = ilp.pruneDomains(vars, true);
-      CHECK(propres ==
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val ==
             std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {1, 2}});
 
       propres = ilp.pruneDomains(vars, false);
-      CHECK(propres ==
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val ==
             std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {1, 2}});
 
       propres = ilp.pruneDomains(vars, true);
-      CHECK(propres == std::vector<std::vector<bigint>>{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}});
+      CHECK(propres.state == SolveState::UNSAT);
+      CHECK(propres.val.empty());
     }
   }
 }
@@ -477,27 +493,32 @@ TEST_CASE("pruneDomains advanced") {
 
       ilp.setAssumptions({{vars[9], std::vector<bigint>{0}}});
       auto propres = ilp.pruneDomains(vars, true);
+      CHECK(propres.state == SolveState::SAT);
       CHECK(
-          propres ==
+          propres.val ==
           std::vector<std::vector<bigint>>{
               {0, 1}, {0, 1}, {0, 1}, {0, 1}, {0, 1}, {-1, 0, 1, 2}, {-1, 0, 1, 2}, {-1, 0, 1, 2}, {-1, 0, 1, 2}, {0}});
 
       ilp.setObjective(IntConstraint::zip({3, -4, 1, -2, 3, -4, 1, -2, 3, 3}, vars));
       propres = ilp.pruneDomains(vars, true);
-      CHECK(propres == std::vector<std::vector<bigint>>{{0}, {1}, {0}, {1}, {0}, {2}, {-1}, {2}, {-1}, {0}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::vector<bigint>>{{0}, {1}, {0}, {1}, {0}, {2}, {-1}, {2}, {-1}, {0}});
 
       ilp.addConstraint({IntConstraint::zip({1, -2, 3, -1, 2, -3, 1, -2, 3, 3}, vars), 7});
       propres = ilp.pruneDomains(vars, true);
-      CHECK(propres == std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {1}, {2}, {-1}, {2}, {0}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {1}, {2}, {-1}, {2}, {0}});
 
       ilp.setAssumptions({{vars[9], std::vector<bigint>{0, 2}}});
       propres = ilp.pruneDomains(vars, true);
-      CHECK(propres ==
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val ==
             std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {2}, {-1, 1, 2}, {-1, 0}, {1, 2}, {2}});
 
       ilp.setAssumptions({{vars[8], std::vector<bigint>{-1, 0}}});
       propres = ilp.pruneDomains(vars, false);
-      CHECK(propres == std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {1}, {2}, {-1}, {0}, {2}});
+      CHECK(propres.state == SolveState::SAT);
+      CHECK(propres.val == std::vector<std::vector<bigint>>{{0}, {1}, {1}, {1}, {0}, {1}, {2}, {-1}, {0}, {2}});
     }
   }
 }
@@ -526,27 +547,38 @@ TEST_CASE("extract MUS") {
   ilp.addConstraint({{{1, vars[2]}, {1, vars[0]}, {1, vars[5]}}, 1});
   ilp.addConstraint({IntConstraint::zip({-1, -1, -1}, abc), -1});
 
-  Core core = ilp.extractMUS();
-  CHECK(!core);
+  auto [state, mus] = ilp.extractMUS();
+  CHECK(state == SolveState::SAT);
+  CHECK(!mus);
 
   ilp.setAssumptions({{vars[3], 0}, {vars[4], 0}, {vars[5], 0}, {vars[6], -2}, {vars[7], -2}, {vars[8], -2}});
   SolveState res = ilp.getOptim()->runFull(false, 0);
   CHECK(res == SolveState::INCONSISTENT);
 
-  core = ilp.getLastCore();
-  CHECK(core);
-  CHECK(core->size() == 6);
+  Core core2 = ilp.getLastCore();
+  CHECK(core2);
+  CHECK(core2->size() == 6);
 
-  core = ilp.extractMUS();
-  CHECK(core);
-  CHECK(core->size() == 3);
+  auto [state1, mus1] = ilp.extractMUS();
+  CHECK(state1 == SolveState::INCONSISTENT);
+  CHECK(mus1);
+  CHECK(mus1->size() == 3);
 
-  core = ilp.extractMUS({true, timeouttime});
-  CHECK(!core);
+  auto [state2, mus2] = ilp.extractMUS({true, timeouttime});
+  CHECK(state2 == SolveState::TIMEOUT);
+  CHECK(!mus2);
 
   // check that state has not been altered
+  CHECK(ilp.count(vars, true).val == 0);
   ilp.clearAssumptions();
-  CHECK(ilp.count(vars, true).second == 1625);
+  CHECK(ilp.count(vars, true).val == 1625);
+
+  ilp.setAssumptions({{vars[3], 0}, {vars[4], 0}, {vars[5], 0}, {vars[6], -2}, {vars[7], -2}, {vars[8], -2}});
+  ilp.addConstraint({IntConstraint::zip({1, 1, 1, 1, 1, 1}, defxyz), std::nullopt, -6});
+  auto [state3, mus3] = ilp.extractMUS();
+  CHECK(state3 == SolveState::UNSAT);
+  CHECK(mus3);
+  CHECK(mus3->size() == 0);
 }
 
 TEST_SUITE_END();

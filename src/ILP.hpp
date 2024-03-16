@@ -100,6 +100,12 @@ struct OptRes {
   Core core;
 };
 
+template <typename T>
+struct WithState {
+  SolveState state;
+  T val;
+};
+
 struct TimeOut {
   bool reinitialize;
   double limit;
@@ -195,14 +201,13 @@ class ILP {
   bigint getSolSpaceSize() const;  // in bits
 
   OptRes toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& to = {false, 0});
-  std::pair<SolveState, Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                 const TimeOut& to = {false, 0});
-  std::vector<std::pair<bigint, bigint>> propagate(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                   const TimeOut& to = {false, 0});
-  std::vector<std::vector<bigint>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                const TimeOut& to = {false, 0});
-  std::pair<SolveState, int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
-  Core extractMUS(const TimeOut& to = {false, 0});
+  WithState<Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
+  WithState<std::vector<std::pair<bigint, bigint>>> propagate(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                              const TimeOut& to = {false, 0});
+  WithState<std::vector<std::vector<bigint>>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                           const TimeOut& to = {false, 0});
+  WithState<int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
+  WithState<Core> extractMUS(const TimeOut& to = {false, 0});
 
   void runFromCmdLine();
 };
