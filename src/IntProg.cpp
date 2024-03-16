@@ -62,7 +62,7 @@ std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
   return o;
 }
 
-LitVec val2lits(const IntVar* iv, const bigint& val) {
+LitVec val2lits(IntVar* iv, const bigint& val) {
   const VarVec& encoding = iv->getEncodingVars();
   LitVec res;
   res.reserve(encoding.size());
@@ -310,7 +310,7 @@ void IntProg::setObjective(const std::vector<IntTerm>& terms, bool min, const bi
 IntConstraint& IntProg::getObjective() { return obj; }
 const IntConstraint& IntProg::getObjective() const { return obj; }
 
-void IntProg::addSingleAssumption(const IntVar* iv, const bigint& val) {
+void IntProg::addSingleAssumption(IntVar* iv, const bigint& val) {
   if (iv->getEncoding() == Encoding::LOG) {
     log2assumptions(iv->getEncodingVars(), val, iv->getLowerBound(), assumptions);
   } else {
@@ -330,7 +330,7 @@ void IntProg::addSingleAssumption(const IntVar* iv, const bigint& val) {
   }
 }
 
-void IntProg::setAssumptions(const std::vector<std::pair<const IntVar*, std::vector<bigint>>>& ivs) {
+void IntProg::setAssumptions(const std::vector<std::pair<IntVar*, std::vector<bigint>>>& ivs) {
   for (auto [iv, dom] : ivs) {
     assert(iv);
     if (dom.empty()) {
@@ -367,7 +367,7 @@ void IntProg::setAssumptions(const std::vector<std::pair<const IntVar*, std::vec
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
-void IntProg::setAssumptions(const std::vector<std::pair<const IntVar*, bigint>>& ivs) {
+void IntProg::setAssumptions(const std::vector<std::pair<IntVar*, bigint>>& ivs) {
   for (auto [iv, val] : ivs) {
     assert(iv);
     if (val < iv->getLowerBound() || val > iv->getUpperBound())
@@ -382,11 +382,11 @@ void IntProg::setAssumptions(const std::vector<std::pair<const IntVar*, bigint>>
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
-bool IntProg::hasAssumption(const IntVar* iv) const {
+bool IntProg::hasAssumption(IntVar* iv) const {
   return std::any_of(iv->getEncodingVars().begin(), iv->getEncodingVars().end(),
                      [&](Var v) { return assumptions.has(v) || assumptions.has(-v); });
 }
-std::vector<bigint> IntProg::getAssumption(const IntVar* iv) const {
+std::vector<bigint> IntProg::getAssumption(IntVar* iv) const {
   if (!hasAssumption(iv)) {
     std::vector<bigint> res;
     res.reserve(size_t(iv->getUpperBound() - iv->getLowerBound() + 1));
@@ -441,9 +441,9 @@ void IntProg::clearAssumptions(const std::vector<IntVar*>& ivs) {
   optim = OptimizationSuper::make(obj, solver, assumptions);
 }
 
-void IntProg::setSolutionHints(const std::vector<std::pair<const IntVar*, bigint>>& hnts) {
+void IntProg::setSolutionHints(const std::vector<std::pair<IntVar*, bigint>>& hnts) {
   std::vector<std::pair<Var, Lit>> hints;
-  for (const std::pair<const IntVar*, bigint>& hnt : hnts) {
+  for (const std::pair<IntVar*, bigint>& hnt : hnts) {
     assert(hnt.first);
     assert(hnt.second >= hnt.first->getLowerBound());
     assert(hnt.second <= hnt.first->getUpperBound());
@@ -456,7 +456,7 @@ void IntProg::setSolutionHints(const std::vector<std::pair<const IntVar*, bigint
 }
 void IntProg::clearSolutionHints(const std::vector<IntVar*>& ivs) {
   std::vector<std::pair<Var, Lit>> hints;
-  for (const IntVar* iv : ivs) {
+  for (IntVar* iv : ivs) {
     for (const Var& v : iv->getEncodingVars()) {
       hints.emplace_back(v, 0);
     }

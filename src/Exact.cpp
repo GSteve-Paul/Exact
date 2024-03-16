@@ -275,7 +275,7 @@ std::pair<std::string, std::vector<std::string>> Exact::extractMUS(double timeou
   assert(!mus->empty());
   std::pair<std::string, std::vector<std::string>> res = {"INCONSISTENT", {}};
   res.second.reserve(mus->size());
-  for (const IntVar* iv : *mus) {
+  for (IntVar* iv : *mus) {
     res.second.push_back(iv->getName());
   }
   return res;

@@ -42,9 +42,9 @@ class Exact {
   xct::IntVar* getVariable(const std::string& name) const;
   std::vector<xct::IntVar*> getVars(const std::vector<std::string>& names) const;
   template <typename T>
-  std::vector<std::pair<const xct::IntVar*, T>> getVars(const std::vector<std::pair<std::string, T>>& in) {
+  std::vector<std::pair<xct::IntVar*, T>> getVars(const std::vector<std::pair<std::string, T>>& in) {
     return xct::aux::comprehension(in, [&](const std::pair<std::string, T>& pr) {
-      return std::pair<const xct::IntVar*, T>{getVariable(pr.first), pr.second};
+      return std::pair<xct::IntVar*, T>{getVariable(pr.first), pr.second};
     });
   }
 

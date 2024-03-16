@@ -142,7 +142,7 @@ class IntProg {
 
   IntVar* addFlag();
   Var fixObjective(const IntConstraint& ico, const bigint& opt);
-  void addSingleAssumption(const IntVar* iv, const bigint& val);
+  void addSingleAssumption(IntVar* iv, const bigint& val);
 
  public:
   IntProg(const Options& opts, bool keepIn = false);
@@ -162,14 +162,14 @@ class IntProg {
   IntConstraint& getObjective();
   const IntConstraint& getObjective() const;
 
-  void setAssumptions(const std::vector<std::pair<const IntVar*, std::vector<bigint>>>& ivs);
-  void setAssumptions(const std::vector<std::pair<const IntVar*, bigint>>& ivs);
+  void setAssumptions(const std::vector<std::pair<IntVar*, std::vector<bigint>>>& ivs);
+  void setAssumptions(const std::vector<std::pair<IntVar*, bigint>>& ivs);
   void clearAssumptions();
   void clearAssumptions(const std::vector<IntVar*>& ivs);
-  bool hasAssumption(const IntVar* iv) const;
-  std::vector<bigint> getAssumption(const IntVar* iv) const;
+  bool hasAssumption(IntVar* iv) const;
+  std::vector<bigint> getAssumption(IntVar* iv) const;
 
-  void setSolutionHints(const std::vector<std::pair<const IntVar*, bigint>>& hints);
+  void setSolutionHints(const std::vector<std::pair<IntVar*, bigint>>& hints);
   void clearSolutionHints(const std::vector<IntVar*>& ivs);
 
   void addConstraint(const IntConstraint& ic);

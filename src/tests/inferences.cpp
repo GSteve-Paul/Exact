@@ -130,7 +130,7 @@ TEST_CASE("toOptimum advanced") {
       CHECK(obj5 == 0);
       CHECK(optcore5->empty());
 
-      std::vector<std::pair<const IntVar*, bigint>> assumps;
+      std::vector<std::pair<IntVar*, bigint>> assumps;
       for (int64_t i = 2; i < 6; ++i) assumps.push_back({vars[i], true});
       for (int64_t i = 2; i < 6; ++i) assumps.push_back({vars[i], false});
       intprog.setAssumptions(assumps);
