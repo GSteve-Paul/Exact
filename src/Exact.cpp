@@ -237,14 +237,13 @@ void Exact::setObjective(const std::vector<std::pair<bigint, std::string>>& term
 std::string Exact::runOnce(double timeout) {
   if (timeout != 0) ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState res = ilp.getOptim()->run(false, timeout);
-  if (res == SolveState::INCONSISTENT) return "PAUSED";
-  return (std::stringstream() << res).str();
+  return res == SolveState::INCONSISTENT ? "PAUSED" : aux::str(res);
 }
 
 std::string Exact::runFull(bool optimize, double timeout) {
   if (timeout != 0) ilp.global.stats.runStartTime = std::chrono::steady_clock::now();
   ilp.getSolver().printHeader();
-  return (std::stringstream() << ilp.getOptim()->runFull(optimize, timeout)).str();
+  return aux::str(ilp.getOptim()->runFull(optimize, timeout));
 }
 
 std::pair<py::int_, py::int_> Exact::getObjectiveBounds() const {
@@ -254,7 +253,7 @@ std::pair<py::int_, py::int_> Exact::getObjectiveBounds() const {
 bool Exact::hasSolution() const { return ilp.getSolver().foundSolution(); }
 
 std::vector<py::int_> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
-  if (!hasSolution()) throw InvalidArgument("No solution can be returned if no solution has been found.");
+  if (!hasSolution()) return {};
   return aux::comprehension(ilp.getLastSolutionFor(getVars(vars)),
                             [](const bigint& i) -> py::int_ { return py::cast(i); });
 }
@@ -268,22 +267,46 @@ std::vector<std::string> Exact::getLastCore() {
   }
 }
 
-std::vector<std::pair<py::int_, py::int_>> Exact::propagate(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.propagate(getVars(vars), true, {true, timeout}),
-                            [](const std::pair<bigint, bigint>& x) -> std::pair<py::int_, py::int_> {
-                              return std::pair<py::int_, py::int_>{py::cast(x.first), py::cast(x.second)};
-                            });
+std::pair<std::string, std::vector<std::string>> Exact::extractMUS(double timeout) {
+  auto [state, mus] = ilp.extractMUS({true, timeout});
+  assert(state != SolveState::INPROCESSED);
+  if (state != SolveState::INCONSISTENT) return {aux::str(state), {}};
+  assert(mus);
+  assert(!mus->empty());
+  std::pair<std::string, std::vector<std::string>> res = {"INCONSISTENT", {}};
+  res.second.reserve(mus->size());
+  for (const IntVar* iv : *mus) {
+    res.second.push_back(iv->getName());
+  }
+  return res;
 }
 
-std::vector<std::vector<py::int_>> Exact::pruneDomains(const std::vector<std::string>& vars, double timeout) {
-  return aux::comprehension(ilp.pruneDomains(getVars(vars), true, {true, timeout}),
-                            [](const std::vector<bigint>& x) -> std::vector<py::int_> {
-                              return aux::comprehension(x, [](const bigint& y) -> py::int_ { return py::cast(y); });
-                            });
+std::pair<std::string, pybind11::int_> Exact::toOptimum(double timeout) {
+  OptRes optres = ilp.toOptimum(ilp.getObjective(), true, {true, timeout});
+  assert(optres.state != SolveState::INPROCESSED);
+  return {aux::str(optres.state), py::cast(optres.optval)};
 }
 
-int64_t Exact::count(const std::vector<std::string>& vars, double timeout) {
-  return ilp.count(getVars(vars), true, {true, timeout}).second;
+std::pair<std::string, std::vector<std::pair<py::int_, py::int_>>> Exact::propagate(
+    const std::vector<std::string>& vars, double timeout) {
+  WithState<std::vector<std::pair<bigint, bigint>>> ws = ilp.propagate(getVars(vars), true, {true, timeout});
+  return {aux::str(ws.state),
+          aux::comprehension(ws.val, [](const std::pair<bigint, bigint>& x) -> std::pair<py::int_, py::int_> {
+            return std::pair<py::int_, py::int_>{py::cast(x.first), py::cast(x.second)};
+          })};
+}
+
+std::pair<std::string, std::vector<std::vector<py::int_>>> Exact::pruneDomains(const std::vector<std::string>& vars,
+                                                                               double timeout) {
+  WithState<std::vector<std::vector<bigint>>> ws = ilp.pruneDomains(getVars(vars), true, {true, timeout});
+  return {aux::str(ws.state), aux::comprehension(ws.val, [](const std::vector<bigint>& x) -> std::vector<py::int_> {
+            return aux::comprehension(x, [](const bigint& y) -> py::int_ { return py::cast(y); });
+          })};
+}
+
+std::pair<std::string, int64_t> Exact::count(const std::vector<std::string>& vars, double timeout) {
+  auto [state, cnt] = ilp.count(getVars(vars), true, {true, timeout});
+  return {aux::str(state), cnt};
 }
 
 std::vector<std::pair<std::string, double>> Exact::getStats() {
@@ -353,6 +376,8 @@ PYBIND11_MODULE(exact, m) {
 
       .def("getLastCore", &Exact::getLastCore, "Return the last assumption-invalidating core")
 
+      .def("extractMUS", &Exact::extractMUS, "Calculate a Minimal Unsatisfiable Subset", "timeout"_a = 0)
+
       .def("boundObjByLastSol", &Exact::boundObjByLastSol, "Bound the objective by the last found solution")
 
       .def("invalidateLastSol", py::overload_cast<>(&Exact::invalidateLastSol),
@@ -361,6 +386,8 @@ PYBIND11_MODULE(exact, m) {
            "Add a solution-invalidating constraint for the last found solution projected to the given variables")
 
       .def("getObjectiveBounds", &Exact::getObjectiveBounds, "Return current objective bounds")
+
+      .def("toOptimum", &Exact::toOptimum, "Calculate optimal value without changing state", "timeout"_a = 0)
 
       .def("propagate", &Exact::propagate, "Find implied lower and upper bound for given variables", "vars"_a,
            "timeout"_a = 0)

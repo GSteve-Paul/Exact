@@ -217,9 +217,8 @@ class Exact {
   /**
    * Start / continue the search.
    *
-   * @return: one of five values:
-   *
-   * - "UNSAT": an unsatisfiable constraint has been derived. No (more) solution(s) exist. The search process is
+   * @return: a status string taking the following values:
+   * - "UNSAT": an unsatisfiable constraint has been derived. No (more) solutions exist. The search process is
    * finished and all future calls will return this value.
    * - "SAT": a solution consistent with the assumptions and the constraints has been found. The search process can be
    * continued, but to avoid finding the same solution over and over again, change the set of assumptions or add a
@@ -245,10 +244,9 @@ class Exact {
    * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
    * value of 0 disables the timeout.
    *
-   * @return: one of four values:
-   *
+   * @return: a status string taking the following values:
    * - "UNSAT": an unsatisfiable constraint has been derived, perhaps by proving that the objective is optimal. No
-   * (more) solution(s) exist. The search process is finished and all future calls will return this value.
+   * (more) solutions exist. The search process is finished and all future calls will return this value.
    * - "SAT": a solution consistent with the assumptions and the constraints has been found. The search process can be
    * continued, but to avoid finding the same solution over and over again, change the set of assumptions or add a
    * constraint invalidating this solution via boundObjByLastSol().
@@ -270,7 +268,7 @@ class Exact {
    * Get the values assigned to the given variables in the last solution.
    *
    * @param vars: the added variables for which the solution values should be returned.
-   * @return: the solution values to the variables.
+   * @return: the solution values to the variables. An empty list if no solution was found yet.
    */
   std::vector<pybind11::int_> getLastSolutionFor(const std::vector<std::string>& vars) const;
 
@@ -284,14 +282,20 @@ class Exact {
 
   /**
    * Calculate a Minimal Unsatisfiable Subset of variables whose assumed values imply inconsistency under the
-   * constraints. When UNSAT is reached, the MUS will be empty.
+   * constraints.
    *
    * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
    * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
    * value of 0 disables the timeout.
-   * @return: a set of variable names which consists of "TIMEOUT" if timeout is reached.
+   *
+   * @return: a status string and a set of variable names. The status string can be any of:
+   * - "UNSAT": the problem is unsatisfiable and the MUS will be empty. The search process is finished and all future
+   * calls will return this value.
+   * - "INCONSISTENT": the problem is inconsistent with the assumptions and the MUS will be non-empty.
+   * - "TIMEOUT": the timeout was reached. Solving can be resumed with a later call.
+   * - "SAT": the problem is satisfiable and no MUS exists.
    */
-  std::vector<std::string> extractMUS(double timeout = 0);
+  std::pair<std::string, std::vector<std::string>> extractMUS(double timeout = 0);
 
   /**
    * Add an upper bound to the objective function based on the objective value of the last found solution.
@@ -322,57 +326,64 @@ class Exact {
 
   /**
    * Calculate the optimal value of the objective function *without* adding objective bound constraints. This way, the
-   * search can never reach an UNSAT state, and the solver can be fully reused. A typical use case is to add the constraint
-   * that the objective should take the optimal value after calling toOptimum() to restrict the search to consider only
-   * optimal solutions in the next search phase.
+   * search does not reach UNSAT by proving optimality, and the solver can be fully reused. A typical use case is to add
+   * the constraint that the objective should take the optimal value after calling toOptimum() to restrict the search to
+   * consider only optimal solutions in the next search phase.
    *
    * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
    * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
    * value of 0 disables the timeout.
    *
-   * @return: one of four values:
-   *
-   * - "UNSAT": an unsatisfiable constraint has been derived, perhaps by proving that the objective is optimal. No
-   * (more) solution(s) exist. The search process is finished and all future calls will return this value.
-   * - "SAT": a solution consistent with the assumptions and the constraints has been found. The search process can be
-   * continued, but to avoid finding the same solution over and over again, change the set of assumptions or add a
-   * constraint invalidating this solution via boundObjByLastSol().
+   * @return: a status string and an integer representing the optimal value. The status string can be any of:
+   * - "UNSAT": the problem is unsatisfiable. No solution exists. The search process is finished and all future calls
+   * will return this value.
    * - "INCONSISTENT": no solutions consistent with the assumptions exist and a core has been constructed, which can be
-   * accessed via getLastCore(). The search process can be continued, but to avoid finding the same core over and over
-   * again, change the set of assumptions.
+   * accessed via getLastCore().
    * - "TIMEOUT": the timeout was reached. Solving can be resumed with a later call.
+   * - "SAT": the optimal value has been found. No objective bounding constraints were added and the search process can
+   * be continued as is.
    */
-  std::pair<std::string,pybind11::int_> toOptimum(double timeout = 0);
+  std::pair<std::string, pybind11::int_> toOptimum(double timeout = 0);
 
   /**
-   * Under previously set assumptions, return implied lower and upper bound for variables in vars. If no
-   * solution exists under the assumptions, return empty vector.
+   * Under current assumptions, return implied lower and upper bound for variables in vars.
    *
    * @param vars: variables for which to calculate the implied bounds
    * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
    * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
    * value of 0 disables the timeout.
-   * @pre: the problem is not unsatisfiable
-   * @return: a list of pairs of bounds for each variable in vars. This list is empty if timeout is reached or the
-   * problem is unsatisfiable or inconsistent under the current assumptions.
+   *
+   * @return: a status string and a list of pairs of bounds for each variable in vars. The status string can be any of:
+   * - "UNSAT": the problem is unsatisfiable. No solution exists. The search process is finished and all future calls
+   * will return this value.
+   * - "INCONSISTENT": no solutions consistent with the assumptions exist and a core has been constructed, which can be
+   * accessed via getLastCore().
+   * - "TIMEOUT": the timeout was reached. Solving can be resumed with a later call.
+   * - "SAT": the propagated bounds have been found.
    */
-  std::vector<std::pair<pybind11::int_, pybind11::int_>> propagate(const std::vector<std::string>& vars,
-                                                                   double timeout = 0);
+  std::pair<std::string, std::vector<std::pair<pybind11::int_, pybind11::int_>>> propagate(
+      const std::vector<std::string>& vars, double timeout = 0);
 
   /**
    * Under previously set assumptions, derive domains for the given variables where all impossible values are pruned.
-   * If no solution exists for the given domains under the current assumptions, all returned domains will be empty.
    *
    * @param vars: variables for which to calculate the pruned domains
    * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
    * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
    * value of 0 disables the timeout.
-   * @pre: the problem is not unsatisfiable
+   *
    * @pre: all variables use the one-hot encoding or have a domain size of 2
-   * @return: pruned domains for each variable in vars. This list is empty if timeout is reached. This list contains
-   * empty domains for all variables if the problem is unsatisfiable or inconsistent under the current assumptions.
+   *
+   * @return: a status string and a list of pruned domains for each variable in vars. The status string can be any of:
+   * - "UNSAT": the problem is unsatisfiable. No solution exists. The search process is finished and all future calls
+   * will return this value.
+   * - "INCONSISTENT": no solutions consistent with the assumptions exist and a core has been constructed, which can be
+   * accessed via getLastCore().
+   * - "TIMEOUT": the timeout was reached. Solving can be resumed with a later call.
+   * - "SAT": the pruned domains have been found.
    */
-  std::vector<std::vector<pybind11::int_>> pruneDomains(const std::vector<std::string>& vars, double timeout = 0);
+  std::pair<std::string, std::vector<std::vector<pybind11::int_>>> pruneDomains(const std::vector<std::string>& vars,
+                                                                                double timeout = 0);
 
   /**
    * Under previously set assumptions, return number of different solutions projected to vars.
@@ -381,9 +392,16 @@ class Exact {
    * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
    * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
    * value of 0 disables the timeout.
-   * @return: an integer value
+   *
+   * @return: a status string and the total count. The status string can be any of:
+   * - "UNSAT": the problem is unsatisfiable. No solution exists. The search process is finished and all future calls
+   * will return this value.
+   * - "INCONSISTENT": no solutions consistent with the assumptions exist and a core has been constructed, which can be
+   * accessed via getLastCore().
+   * - "TIMEOUT": the timeout was reached. Solving can be resumed with a later call.
+   * - "SAT": the domains have been counted.
    */
-  int64_t count(const std::vector<std::string>& vars, double timeout = 0);
+  std::pair<std::string, int64_t> count(const std::vector<std::string>& vars, double timeout = 0);
 
   /**
    * Print variables given to Exact.
