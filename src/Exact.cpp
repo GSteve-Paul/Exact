@@ -44,7 +44,7 @@ using namespace pybind11::literals;
 using namespace xct;
 
 /**
- * Below cpp_int to Python int conversion courtesy of tnt:
+ * Below bigint to Python conversion based on
  * https://stackoverflow.com/questions/54738011/pybind11-boostmultiprecisioncpp-int-to-python
  */
 namespace pybind11 {
@@ -62,14 +62,27 @@ struct type_caster<bigint> {
    * second argument indicates whether implicit conversions should be applied.
    */
   bool load(handle src, bool) {
-    // Convert into base 16 string (PyNumber_ToBase prepend '0x')
+    // First try to convert the input to a long long
+    int overflow = 0;
+    value = PyLong_AsLongLongAndOverflow(src.ptr(), &overflow);
+    if (overflow == 0) {
+      // No overflow! Just ensure return code was OK (to avoid out-of-range errors etc)
+      return !PyErr_Occurred();
+    }
+
+    // Convert into base 16 string (PyNumber_ToBase prepends '0x')
     PyObject* tmp = PyNumber_ToBase(src.ptr(), 16);
     if (!tmp) return false;
 
-    std::string s = py::cast<std::string>(tmp);
-    value = bigint{s};
-    // explicit cast from string to bigint don't need a base here because `PyNumber_ToBase` already prepended '0x'
+    // explicit cast from string to bigint, don't need a base here because `PyNumber_ToBase` already prepended '0x'
+    std::string hex = py::cast<std::string>(tmp);
     Py_DECREF(tmp);
+    if (!hex.empty() && hex[0] == '-') {
+      // bigint does not like negative hex strings
+      value = -bigint{hex.c_str() + 1};
+    } else {
+      value = bigint{hex};
+    }
 
     // Ensure return code was OK (to avoid out-of-range errors etc)
     return !PyErr_Occurred();
@@ -81,10 +94,24 @@ struct type_caster<bigint> {
    * and are generally ignored by implicit casters.
    */
   static handle cast(const bigint& src, return_value_policy, handle) {
-    // Convert bigint to base 16 string
+    // First try to use the builtin long long conversion
+    if (src <= std::numeric_limits<long long>::max() && src >= std::numeric_limits<long long>::min()) {
+      return PyLong_FromLongLong(static_cast<long long>(src));
+    }
+
+    // Otherwise convert to hex string and create Python int from there
     std::ostringstream oss;
-    oss << std::hex << src;
-    return PyLong_FromString(oss.str().c_str(), nullptr, 16);
+    if (src < 0) {
+      // bigint does not like negative hex strings
+      oss << std::hex << -src;
+      PyObject* tmp = PyLong_FromString(oss.str().c_str(), nullptr, 16);
+      PyObject* result = PyNumber_Negative(tmp);
+      Py_DECREF(tmp);
+      return result;
+    } else {
+      oss << std::hex << src;
+      return PyLong_FromString(oss.str().c_str(), nullptr, 16);
+    }
   }
 };
 }  // namespace detail
@@ -98,18 +125,6 @@ IntVar* Exact::getVariable(const std::string& name) const {
 
 std::vector<IntVar*> Exact::getVars(const std::vector<std::string>& names) const {
   return aux::comprehension(names, [&](const std::string& name) { return getVariable(name); });
-}
-
-// TODO: reduce below code duplication using templates?
-
-bigint getCoef(int64_t c) { return static_cast<bigint>(c); }
-bigint getCoef(const std::string& c) { return bigint(c); }
-
-std::vector<bigint> getCoefs(const std::vector<int64_t>& cs) {
-  return aux::comprehension(cs, [](int64_t x) { return getCoef(x); });
-}
-std::vector<bigint> getCoefs(const std::vector<std::string>& cs) {
-  return aux::comprehension(cs, [](const std::string& x) { return getCoef(x); });
 }
 
 Options getOptions(const std::vector<std::pair<std::string, std::string>>& options) {
