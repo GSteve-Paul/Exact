@@ -318,11 +318,11 @@ class Exact {
   void invalidateLastSol(const std::vector<std::string>& vars);
 
   /**
-   * Get the current lower and upper bound on the objective function.
+   * Get the best known value so far of the objective function.
    *
-   * @return: the pair of bounds (lower, upper) to the objective.
+   * @return: the best known value
    */
-  std::pair<pybind11::int_, pybind11::int_> getObjectiveBounds() const;
+  pybind11::int_ getBestSoFar() const;
 
   /**
    * Calculate the optimal value of the objective function *without* adding objective bound constraints. This way, the

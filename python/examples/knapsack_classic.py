@@ -33,8 +33,8 @@ print("Answer:", result)
 # Check that the solution exists.
 print("Solution found:", solver.hasSolution())
 
-# Print the lower and upper bound on the objective (upper bound is the final objective value)
-print(solver.getObjectiveBounds())
+# Print the final objective value
+print(solver.getBestSoFar())
 
 # Print the last solution.
 sol = solver.getLastSolutionFor(vars)

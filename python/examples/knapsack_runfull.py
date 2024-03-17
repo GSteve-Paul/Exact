@@ -33,14 +33,6 @@ solver.setObjective(list(zip(coefs_o, vars)))
 
 # Get the optimum value
 print("run Exact:")
-state, optval = solver.toOptimum()
-assert state=="SAT"
-print("optimal", optval)
-# fix the optimum value
-solver.addConstraint(list(zip(coefs_o, vars)), True, optval, True, optval)
-
-# Calculate the variable bounds shared by the set of optimal solutions under the assumptions
-state, propagatedBounds = solver.propagate(vars)
-assert state=="SAT"
-print("Propagated:",
-     {vars[i]: propagatedBounds[i] for i in range(0, len(vars)) if propagatedBounds[i] != (lb(i+1), ub(i+1))})
+state = solver.runFull(True)
+assert state=="UNSAT"
+print("optimal", solver.getBestSoFar())

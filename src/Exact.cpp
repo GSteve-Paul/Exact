@@ -261,9 +261,7 @@ std::string Exact::runFull(bool optimize, double timeout) {
   return aux::str(intprog.getOptim()->runFull(optimize, timeout));
 }
 
-std::pair<py::int_, py::int_> Exact::getObjectiveBounds() const {
-  return {py::cast(intprog.getLowerBound()), py::cast(intprog.getUpperBound())};
-}
+py::int_ Exact::getBestSoFar() const { return py::cast(intprog.getUpperBound()); }
 
 bool Exact::hasSolution() const { return intprog.getSolver().foundSolution(); }
 
@@ -400,7 +398,7 @@ PYBIND11_MODULE(exact, m) {
       .def("invalidateLastSol", py::overload_cast<const std::vector<std::string>&>(&Exact::invalidateLastSol),
            "Add a solution-invalidating constraint for the last found solution projected to the given variables")
 
-      .def("getObjectiveBounds", &Exact::getObjectiveBounds, "Return current objective bounds")
+      .def("getBestSoFar", &Exact::getBestSoFar, "Get the best known value so far of the objective function")
 
       .def("toOptimum", &Exact::toOptimum, "Calculate optimal value without changing state", "timeout"_a = 0)
 
