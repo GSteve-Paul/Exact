@@ -20,36 +20,30 @@ solver = exact.Exact()
 for v in var_range:
     solver.addVariable(str(v), 0, 1 + v % 2)
 
-# Add an auxiliary variable to turn off the objective function when the optimal is found.
-solver.addVariable("aux", 0, 1)
+# Add an auxiliary 0-1 variable to turn off the objective function when the optimal is found.
+solver.addVariable("aux")
 
 # Add the knapsack constraint
-solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
+solver.addConstraint(list(zip(coefs_c, vars)), True, rhs_c)
 
-# Initialize the solver with the knapsack objective, extended with the auxiliary variable.
-solver.init(coefs_o + [1], vars + ["aux"])
-
-# The following settings disable the generation of auxiliary constraints that may reduce the set of optimal solutions,
-# as we are interested in finding the intersection of all optimal solutions - i.e., the implied variable assignments.
-solver.setOption("inp-purelits", "0")
-solver.setOption("inp-dombreaklim", "0")
+# Set the knapsack objective, extended with the auxiliary variable.
+solver.setObjective(list(zip(coefs_o + [1], vars + ["aux"])))
 
 # Assume the auxiliary variable to 1, so that any solution found will have an objective value one higher than the 
 # optimal objective value for the original knapsack problem.
-solver.setAssumption("aux", {1})
+solver.setAssumptions([("aux", 1)])
 
 # Run the solver
 print("run Exact:")
-result = 1
-while result != 0:
+result = "PAUSED"
+while result != "UNSAT":
     result = solver.runOnce()
-    if result == 1:  # Corresponds to SolveState::SAT, so a solution has been found
+    if result == "SAT":
         assert solver.hasSolution()
         # The solution may not be optimal, so add the corresponding objective bound constraint and continue search
         result = solver.boundObjByLastSol()
-    if result == 2:  # Corresponds to SolveState::INCONSISTENT, so no solutions with the assumption "aux"=1 exist.
+    if result == "INCONSISTENT":
         # Check that indeed, the core consists of only the "aux" variable.
-        assert solver.hasCore()
         assert list(solver.getLastCore()) == ["aux"]
         # If no solutions with the assumption "aux"=1 exist, the objective function can only be decreased by setting
         # "aux" to 0. Furthermore, as "aux" occurs only in the objective, but not any constraints, setting "aux"=0
@@ -79,9 +73,10 @@ solver.clearAssumptions()
 
 # Continue the search, forcing the solver to find solutions that reduce the intersection
 solver.invalidateLastSol()
-while result != 0:
+result = "PAUSED"
+while result != "UNSAT":
     result = solver.runOnce()
-    if result == 1:  # Corresponds to SolveState::SAT, so a solution has been found
+    if result == "SAT":
         assert solver.hasSolution()
         # Construct a list of the variables still in the intersection
         varlist = list(intersection.keys())
@@ -90,7 +85,7 @@ while result != 0:
         # Reduce the intersection by only keeping those variables whose value matches that of the last found solution
         intersection = {varlist[i]: sol[i] for i in range(0, len(varlist)) if intersection[varlist[i]] == sol[i]}
         # Invalidate the last solution over the shrunk set of intersection variables
-        solver.invalidateLastSol(intersection.keys())
+        solver.invalidateLastSol(list(intersection.keys()))
 
 # The solver is now in an UNSAT state, meaning that no solution exists that would differ from the current intersection
 # Hence, the intersection is the set of implied assignments.

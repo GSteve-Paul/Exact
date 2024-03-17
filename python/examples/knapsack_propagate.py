@@ -29,53 +29,22 @@ solver = exact.Exact()
 for v in var_range:
     solver.addVariable(str(v), lb(v), ub(v), encoding)
 
-# Add an auxiliary variable to turn off the objective function when the optimal is found.
-solver.addVariable("aux", 0, 1)
-
 # Add the knapsack constraint
-solver.addConstraint(coefs_c, vars, True, rhs_c, False, 0)
+solver.addConstraint(list(zip(coefs_c, vars)), True, rhs_c, False, 0)
 
-# Initialize the solver with the knapsack objective, extended with the auxiliary variable.
-solver.init(coefs_o + [1], vars + ["aux"])
+# Set the knapsack objective
+solver.setObjective(list(zip(coefs_o, vars)))
 
-# The following settings disable the generation of auxiliary constraints that may reduce the set of optimal solutions,
-# as we are interested in finding the intersection of all optimal solutions - i.e., the implied variable assignments.
-solver.setOption("inp-purelits", "0")
-solver.setOption("inp-dombreaklim", "0")
-
-# Assume the auxiliary variable to 1, so that any solution found will have an objective value one higher than the 
-# optimal objective value for the original knapsack problem.
-solver.setAssumption("aux", {1})
-
-# Run the solver
+# Get the optimum value
 print("run Exact:")
-result = 1
-while result != 0:
-    result = solver.runOnce()
-    if result == 1:  # Corresponds to SolveState::SAT, so a solution has been found
-        assert solver.hasSolution()
-        # The solution may not be optimal, so add the corresponding objective bound constraint and continue search
-        result = solver.boundObjByLastSol()
-    if result == 2:  # Corresponds to SolveState::INCONSISTENT, so no solutions with the assumption "aux"=1 exist.
-        # Check that indeed, the core consists of only the "aux" variable.
-        assert solver.hasCore()
-        assert list(solver.getLastCore()) == ["aux"]
-        # If no solutions with the assumption "aux"=1 exist, the objective function can only be decreased by setting
-        # "aux" to 0. Furthermore, as "aux" occurs only in the objective, but not any constraints, setting "aux"=0
-        # will just yield the same solution as last time, which could not be improved except by setting "aux"=0.
-        # Hence, the last solution is optimal, and the objective upper bound in the solver is exactly the optimal value
-        # plus 1 (as "aux"=1 was true).
-        optVal = solver.getObjectiveBounds()[1] - 1
-        print("optimal:", optVal)
-        break
-
-# Clear aux assumption to fix objective to optimal value
-solver.clearAssumptions()
-
-# Propagate under a simple assumption:
-solver.setAssumption("1",{1})
+state, optval = solver.toOptimum()
+assert state=="SAT"
+print("optimal", optval)
+# fix the optimum value
+solver.addConstraint(list(zip(coefs_o, vars)), True, optval, True, optval)
 
 # Calculate the variable bounds shared by the set of optimal solutions under the assumptions
-propagatedBounds = [tuple(b) for b in solver.propagate(vars)]
+state, propagatedBounds = solver.propagate(vars)
+assert state=="SAT"
 print("Propagated:",
      {vars[i]: propagatedBounds[i] for i in range(0, len(vars)) if propagatedBounds[i] != (lb(i+1), ub(i+1))})

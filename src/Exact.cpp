@@ -252,7 +252,7 @@ void Exact::setObjective(const std::vector<std::pair<bigint, std::string>>& term
 std::string Exact::runOnce(double timeout) {
   if (timeout != 0) intprog.global.stats.runStartTime = std::chrono::steady_clock::now();
   SolveState res = intprog.getOptim()->run(false, timeout);
-  return res == SolveState::INCONSISTENT ? "PAUSED" : aux::str(res);
+  return res == SolveState::INPROCESSED ? "PAUSED" : aux::str(res);
 }
 
 std::string Exact::runFull(bool optimize, double timeout) {
