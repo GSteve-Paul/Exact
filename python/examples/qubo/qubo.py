@@ -1,7 +1,5 @@
 # Problem: https://en.wikipedia.org/wiki/Quadratic_unconstrained_binary_optimization
 
-#!/usr/bin/python
-
 import sys
 
 if len(sys.argv)==2:
@@ -10,7 +8,7 @@ else:
     print("Usage: python3 qubo.py <problem file>")
     print("Using default arguments: python3 python/examples/qubo/qubo.py python/examples/qubo/bqp50.1")
     print("More files can be found at https://github.com/rliang/qubo-benchmark-instances")
-    problem = "examples/qubo/bqp50.1"
+    problem = "python/examples/qubo/bqp50.1"
 
 orig_vars = -1
 terms = [] # [coef [vars]]
@@ -41,7 +39,7 @@ import exact
 solver = exact.Exact()
 
 for v in range(1,orig_vars+aux_vars+1):
-    solver.addVariable(str(v),0,1)
+    solver.addVariable(str(v))
 
 objective = []
 aux = orig_vars
@@ -49,15 +47,15 @@ for t in terms:
     nvars = len(t[1])
     if nvars > 1:
         aux += 1
-        objective += [str(aux)]
+        objective += [(t[0],str(aux))]
         varlist = [str(v+1) for v in t[1]]+[str(aux)]
-        solver.addConstraint([-1]*nvars+[1],varlist,True,1-nvars,False,0)
-        solver.addConstraint([1]*nvars+[-nvars],varlist,True,0,False,0)
+        solver.addConstraint(list(zip([-1]*nvars+[1],varlist)),True,1-nvars)
+        solver.addConstraint(list(zip([1]*nvars+[-nvars],varlist)),True,0)
     else:
-        objective += [str(t[1][0])]
+        objective += [(t[0],str(t[1][0]))]
 
-# initialize the solver without an objective function
-solver.init([t[0] for t in terms], objective)
+# set the objective
+solver.setObjective(objective)
 
 printNoSolve = False
 
@@ -71,4 +69,3 @@ else:
         print("SAT")
     else:
         print("UNSAT")
-    solver.printStats()

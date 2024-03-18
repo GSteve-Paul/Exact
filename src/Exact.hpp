@@ -240,6 +240,9 @@ class Exact {
    * by adding an objective bound constraint, until UNSAT is reached, in which case the last found solution
    * (if it exists) is the optimal one. If optimize is false, control will be handed back to the caller when a solution
    * is found, without an objective bound constraint being added.
+   *
+   * CRUCIALLY, IF OPTIMIZE IS SET TO TRUE, THE NUMBER OF SOLUTIONS AFTER A CALL TO RUNFULL MAY BE LESS THAN BEFORE.
+   *
    * @param timeout: a (rough) timeout limit in seconds. The solver state is still valid after hitting timeout. It may
    * happen that an internal routine exceeds timeout without returning for a while, but it should return eventually. A
    * value of 0 disables the timeout.
@@ -323,6 +326,13 @@ class Exact {
    * @return: the best known value
    */
   pybind11::int_ getBestSoFar() const;
+
+  /**
+   * Get the best known value so far of the dual bound of the objective function.
+   *
+   * @return: the dual bound value
+   */
+  pybind11::int_ getDualBound() const;
 
   /**
    * Calculate the optimal value of the objective function *without* adding objective bound constraints. This way, the

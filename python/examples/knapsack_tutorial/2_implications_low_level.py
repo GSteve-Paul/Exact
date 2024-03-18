@@ -2,28 +2,23 @@
 # shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse
 # the existing solver state (containing learned constraints) for optimal performance.
 
-def lb(v):
-    return -(v%3)
-def ub(v):
-    return 1+v%2
-
-# Construct a non-trivial integer knapsack instance
-nvars = 50
-var_range = range(1, nvars + 1)
-vars = [str(x) for x in var_range]
-coefs_o = [5 * x + (x % 4) for x in var_range]
-coefs_c = [5 * x + (x % 5) for x in var_range]
-rhs_c = int(sum(coefs_c) / 3)
-
-# Import the exact package, e.g., from PyPI using poetry or pip
+# Import the exact package, e.g., from PyPI or self-compiled
 import exact
 
 # Create an Exact solver instance
 solver = exact.Exact()
 
+# Construct a non-trivial integer knapsack instance
+nvars = 50
+var_range = range(1, nvars + 1)
+vars = [str(x) for x in var_range]
+coefs_o = [5 * x + (x % 3) for x in var_range]
+coefs_c = [5 * x + (x % 4) for x in var_range]
+rhs_c = int(sum(coefs_c) * 3 / 4)
+
 # Add the variables. All have lower bound 0, but some have an upper bound of 1, others of 2.
 for v in var_range:
-    solver.addVariable(str(v), lb(v), ub(v), "log")
+    solver.addVariable(str(v), 0, 1 + v % 2)
 
 # Add the knapsack constraint
 solver.addConstraint(list(zip(coefs_c, vars)), True, rhs_c)
@@ -56,7 +51,7 @@ while result != "UNSAT":
         # Hence, the last solution is optimal, and the objective upper bound in the solver is exactly the optimal value
         # plus 1 (as "aux"=1 was true).
         optVal = solver.getBestSoFar() - 1
-        print("optimal:", optVal)
+        print("Optimal:", optVal)
         break
 
 # Note that the last objective bound added enforces any new solutions to be optimal. Even the last found solution, after

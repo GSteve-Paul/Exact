@@ -62,7 +62,7 @@ struct type_caster<bigint> {
    * second argument indicates whether implicit conversions should be applied.
    */
   bool load(handle src, bool) {
-    // First try to convert the input to a long long
+    // First try to use the builtin long long conversion
     int overflow = 0;
     value = PyLong_AsLongLongAndOverflow(src.ptr(), &overflow);
     if (overflow == 0) {
@@ -70,15 +70,15 @@ struct type_caster<bigint> {
       return !PyErr_Occurred();
     }
 
-    // Convert into base 16 string (PyNumber_ToBase prepends '0x')
+    // Convert into base 16 string
     PyObject* tmp = PyNumber_ToBase(src.ptr(), 16);
     if (!tmp) return false;
 
-    // explicit cast from string to bigint, don't need a base here because `PyNumber_ToBase` already prepended '0x'
+    // Explicit cast from string to bigint
     std::string hex = py::cast<std::string>(tmp);
     Py_DECREF(tmp);
     if (!hex.empty() && hex[0] == '-') {
-      // bigint does not like negative hex strings
+      // Bigint does not like negative hex strings
       value = -bigint{hex.c_str() + 1};
     } else {
       value = bigint{hex};
@@ -102,16 +102,12 @@ struct type_caster<bigint> {
     // Otherwise convert to hex string and create Python int from there
     std::ostringstream oss;
     if (src < 0) {
-      // bigint does not like negative hex strings
-      oss << std::hex << -src;
-      PyObject* tmp = PyLong_FromString(oss.str().c_str(), nullptr, 16);
-      PyObject* result = PyNumber_Negative(tmp);
-      Py_DECREF(tmp);
-      return result;
+      // Bigint does not like negative hex strings
+      oss << '-' << std::hex << -src;
     } else {
       oss << std::hex << src;
-      return PyLong_FromString(oss.str().c_str(), nullptr, 16);
     }
+    return PyLong_FromString(oss.str().c_str(), nullptr, 16);
   }
 };
 }  // namespace detail
@@ -263,6 +259,8 @@ std::string Exact::runFull(bool optimize, double timeout) {
 
 py::int_ Exact::getBestSoFar() const { return py::cast(intprog.getUpperBound()); }
 
+py::int_ Exact::getDualBound() const { return py::cast(intprog.getLowerBound()); }
+
 bool Exact::hasSolution() const { return intprog.getSolver().foundSolution(); }
 
 std::vector<py::int_> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
@@ -359,7 +357,8 @@ PYBIND11_MODULE(exact, m) {
       .def("setAssumptions",
            py::overload_cast<const std::vector<std::pair<std::string, bigint>>&>(&Exact::setAssumptions),
            "Assume a given value for given variables", "varvals"_a)
-      .def("setAssumptions",
+      // NOTE: renaming this overload to fix disambiguation issue
+      .def("setAssumptionsList",
            py::overload_cast<const std::vector<std::pair<std::string, std::vector<bigint>>>&>(&Exact::setAssumptions),
            "Assume a set of allowed values for given variables", "varvals"_a)
 
@@ -399,6 +398,8 @@ PYBIND11_MODULE(exact, m) {
            "Add a solution-invalidating constraint for the last found solution projected to the given variables")
 
       .def("getBestSoFar", &Exact::getBestSoFar, "Get the best known value so far of the objective function")
+
+      .def("getDualBound", &Exact::getDualBound, "Get the best dual bound of the objective function.")
 
       .def("toOptimum", &Exact::toOptimum, "Calculate optimal value without changing state", "timeout"_a = 0)
 

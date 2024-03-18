@@ -1,6 +1,14 @@
-# This example showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
-# The first part is identical to knapsack_implied.py, generating a state of the solver where all solutions are optimal.
-# The second part consists of the last lines, which calculate the variable bounds that hold for all optimal solutions.
+# This example showcases the builtin toOptimum() and propagate() functions.
+# toOptimum() calculates the optimal value of an optimization problem without turning it unsatisfiable.
+# propagate() calculates implied variable bounds.
+# These greatly simplifies the work we had to do in 2_implications_low_level.py and are more efficient, so
+# we can solve a more complicated knapsack problem.
+
+# Import the exact package, e.g., from PyPI or self-compiled
+import exact
+
+# Create an Exact solver instance
+solver = exact.Exact()
 
 def lb(v):
     return -(v%3)
@@ -15,15 +23,9 @@ coefs_o = [5 * x + (x % 4) for x in var_range]
 coefs_c = [5 * x + (x % 5) for x in var_range]
 rhs_c = int(sum(coefs_c) / 3)
 
-# Import the exact package, e.g., from PyPI using poetry or pip
-import exact
-
-# Create an Exact solver instance
-solver = exact.Exact()
-
-# Add the variables. All have lower bound 0, but some have an upper bound of 1, others of 2.
+# Add the variables with various lower bounds.
 for v in var_range:
-    solver.addVariable(str(v), lb(v), ub(v), "log")
+    solver.addVariable(str(v), lb(v), ub(v))
 
 # Add the knapsack constraint
 solver.addConstraint(list(zip(coefs_c, vars)), True, rhs_c)
@@ -34,13 +36,13 @@ solver.setObjective(list(zip(coefs_o, vars)))
 # Get the optimum value
 print("run Exact:")
 state, optval = solver.toOptimum()
-assert state=="SAT"
-print("optimal", optval)
+assert state == "SAT"
+print("Optimal:", optval)
 # fix the optimum value
 solver.addConstraint(list(zip(coefs_o, vars)), True, optval, True, optval)
 
-# Calculate the variable bounds shared by the set of optimal solutions under the assumptions
+# Calculate the variable bounds shared by the set of optimal solutions
 state, propagatedBounds = solver.propagate(vars)
-assert state=="SAT"
-print("Propagated:",
+assert state == "SAT"
+print("Propagated bounds:",
      {vars[i]: propagatedBounds[i] for i in range(0, len(vars)) if propagatedBounds[i] != (lb(i+1), ub(i+1))})

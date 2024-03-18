@@ -3,7 +3,7 @@
 import sys
 import math
 
-# Import the exact package, e.g., from PyPI using poetry or pip
+# Import the exact package
 import exact
 
 # Fixing Ramsey number instance
@@ -97,26 +97,21 @@ def to_var(v):
 variables = [to_var(v) for v in vars]
 
 for v in vars:
-    solver.addVariable(to_var(v), 0, 1)
+    solver.addVariable(to_var(v))
 
 # Add the constraints
 for diag in diagonals:
-    solver.addConstraint([1]*len(diag), [to_var(v) for v in diag], False, 0, True, 2)
+    solver.addConstraint([(1,to_var(v)) for v in diag], False, 0, True, 2)
 
-solver.addConstraint([1]*len(variables),variables,True,points,True,points)
+solver.addConstraint([(1,v) for v in variables],True,points,True,points)
 
 for sym in shortenedSyms:
-    cfs = []
-    vs = []
+    terms = []
     cf = int(round(pow(2, len(sym))))
     for (v1, v2) in sym:
-        vs += [to_var(v1), to_var(v2)]
-        cfs += [-cf, cf]
+        terms += [(-cf,to_var(v1)), (cf,to_var(v2))]
         cf //= 2
-    solver.addConstraint(cfs,vs,True,0,False,0)
-
-# Initialize Exact
-solver.init([], [])
+    solver.addConstraint(terms,True,0,False,0)
 
 if printFormula:
     solver.printFormula()
@@ -124,12 +119,13 @@ if printFormula:
 
 # Run Exact
 print("run Exact:")
-solver.runFull(False)
+state = solver.runFull(False)
 
-solver.printStats()
+print("RESULT:", state)
+stats = dict(solver.getStats())
+print("SEARCH CONFLICTS:", stats["conflicts"])
 
 if solver.hasSolution():
-    print("SAT")
     sol = solver.getLastSolutionFor(variables)
     for i in range(0,size):
         for j in range(0,size):
@@ -137,5 +133,3 @@ if solver.hasSolution():
             assert(to_var((i,j))==variables[index])
             print("o" if sol[index] else ".",end='')
         print("")
-else:
-    print("UNSAT")

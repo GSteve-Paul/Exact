@@ -2,7 +2,7 @@
 
 import sys
 
-# Import the exact package, e.g., from PyPI using poetry or pip
+# Import the exact package
 import exact
 
 # Fixing Ramsey number instance
@@ -91,7 +91,7 @@ def get_lex_leader(swap1, swap2):
 
 if uselex:
     for i in range(0, nodes):
-        print(i)
+        print("Lex-leader symmetry breaker",i)
         for j in range(i + 1, nodes):
             constraints += [get_lex_leader((i, j), (0, 0))]  # swap only i and j
             for k in range(i + 1, nodes):
@@ -114,21 +114,14 @@ solver = exact.Exact()
 
 # Add the variables
 for e in variables:
-    solver.addVariable(e, 0, 1)
+    solver.addVariable(e)
 # Add the constraints
 for (coefs, vs, uselow, low, useup, up) in constraints:
-    solver.addConstraint(coefs, vs, uselow, low, useup, up)
-
-# Initialize Exact
-solver.init([], [])
-
-# solver.printFormula()
+    solver.addConstraint(list(zip(coefs, vs)), uselow, low, useup, up)
 
 # Run Exact
 print("run Exact:")
 solver.runFull(False)
-
-solver.printStats()
 
 if solver.hasSolution():
     print("SAT")

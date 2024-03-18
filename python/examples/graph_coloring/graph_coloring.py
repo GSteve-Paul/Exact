@@ -10,10 +10,10 @@ if len(sys.argv)==5 or len(sys.argv)==4:
     printNoSolve = bool(int(sys.argv[4])) if len(sys.argv)==5 else False
 else:
     print("Usage: python3 graph_colorying.py <adjacency matrix file> <number of colors> <symmetry file> <print instead of solve>")
-    print("Using default arguments: python3 python/examples/graph_coloring/graph_coloring.py python/examples/graph_coloring/graph_77v-7chrom_adj_matrix.txt 4 python/examples/graph_coloring/graph_77v-7chrom_symmetries.txt 0")
-    adjacencyfile = "examples/graph_coloring/graph_77v-7chrom_adj_matrix.txt"
-    colors = 4
-    symfile = "examples/graph_coloring/graph_77v-7chrom_symmetries.txt"
+    print("Using default arguments: python3 python/examples/graph_coloring/graph_coloring.py python/examples/graph_coloring/graph_77v-7chrom_adj_matrix.txt 5 python/examples/graph_coloring/graph_77v-7chrom_symmetries.txt 0")
+    adjacencyfile = "python/examples/graph_coloring/graph_77v-7chrom_adj_matrix.txt"
+    colors = 5
+    symfile = "python/examples/graph_coloring/graph_77v-7chrom_symmetries.txt"
     printNoSolve = False
 
 nodes = 0
@@ -62,11 +62,11 @@ def toVar(n,c):
 # Add the variables. All have lower bound 0, but some have an upper bound of 1, others of 2.
 for n in range(0,nodes):
     for c in range(0,colors):
-        solver.addVariable(toVar(n,c),0,1)
+        solver.addVariable(toVar(n,c))
 
 # Every node has exactly one color
 for n in range(0,nodes):
-    solver.addConstraint([1]*colors,[toVar(n,c) for c in range(0,colors)],True,1,True,1)
+    solver.addConstraint([(1,toVar(n,c)) for c in range(0,colors)],True,1,True,1)
 
 G = nx.Graph()
 for n1 in range(0,nodes):
@@ -92,25 +92,25 @@ for k in [5]:
     for start in range(0,nodes):
         get_cycles(k,[start],cycles)
 
-print(cycles)
-print(len(cycles))
+# print(cycles)
+# print(len(cycles))
 
 for cycle in cycles:
     for c in range(0,colors):
-        #solver.addConstraint([1]*len(cycle),[toVar(n,c) for n in cycle],False,0,True,len(cycle)//2)
+        #solver.addConstraint([(1,toVar(n,c)) for n in cycle],False,0,True,len(cycle)//2)
         pass
 
 # Instead of adding a clause for each two edges, we add an at-most-one constraint for each maximal clique
 for clique in nx.find_cliques(G):
     for c in range(0,colors):
-        solver.addConstraint([1]*len(clique),[toVar(n,c) for n in clique],False,0,True,1)
+        solver.addConstraint([(1,toVar(n,c)) for n in clique],False,0,True,1)
 
 # If there is an edge between two nodes, at most one of them has a given color c
 # for n1 in range(0,nodes):
 #     for n2 in range(n1+1,nodes):
 #         if edges[n1][n2]:
 #             for c in range(0,colors):
-#                 solver.addConstraint([1,1],[toVar(n1,c),toVar(n2,c)],False,0,True,1)
+#                 solver.addConstraint([(1,toVar(n1,c)),(1,toVar(n2,c))],False,0,True,1)
 
 # Add graph symmetry breakers
 for sym in symmetries:
@@ -122,10 +122,10 @@ for sym in symmetries:
     coefs = []
     cf = int(round(pow(2,len(vs)//2)))
     for i in range(0,len(vs)//2):
-        coefs += [str(-cf),str(cf)]
+        coefs += [-cf,cf]
         cf //= 2
     assert(cf==1)
-    solver.addConstraint(coefs,vs,True,"0",False,"")
+    solver.addConstraint(list(zip(coefs,vs)),True,0)
 
 # Add color symmetry breakers
 for c in range(0,colors-1):
@@ -134,14 +134,10 @@ for c in range(0,colors-1):
     vs = []
     for n in range(0,nodes):
         vs += [toVar(n,c), toVar(n,c+1)]
-        coefs += [str(-cf),str(cf)]
+        coefs += [-cf,cf]
         cf //= 2
     assert(cf==1)
-    solver.addConstraint(coefs,vs,True,"0",False,"")
-
-
-# initialize the solver without an objective function
-solver.init([], [])
+    solver.addConstraint(list(zip(coefs,vs)),True,0)
 
 if printNoSolve:
     solver.printFormula()

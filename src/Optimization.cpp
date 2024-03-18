@@ -492,6 +492,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   try {
     solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
   } catch (const UnsatEncounter& ue) {
+    lower_bound = upper_bound;
     return SolveState::UNSAT;
   }
   while (true) {
@@ -577,6 +578,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       if (solver.getAssumptions().size() > assumptions.size()) {
         if (solver.lastCore->falsifiedBy(assumptions)) {
           solver.clearAssumptions();
+          lower_bound = upper_bound;
           return SolveState::INCONSISTENT;
         } else {
           handleInconsistency(solver.lastCore);
@@ -587,12 +589,16 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       } else {
         assert(solver.getAssumptions().size() == assumptions.size());  // no bottom-up assumptions
         assert(solver.lastCore->falsifiedBy(assumptions));
+        lower_bound = upper_bound;
         return SolveState::INCONSISTENT;
       }
     } else {
       assert(reply == SolveState::INPROCESSED || reply == SolveState::UNSAT);
       if (global.options.printCsvData) {
         global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
+      }
+      if (reply == SolveState::UNSAT) {
+        lower_bound = upper_bound;
       }
       return reply;
     }

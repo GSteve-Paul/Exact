@@ -132,7 +132,7 @@ ID Logger::logInput(const CeSuper& ce) {
 }
 
 void Logger::logObjective(const CeSuper& ce) {
-  if (!active) return;
+  if (!active || ce->nVars() == 0) return;
   std::stringstream temp;
   formula_obj.swap(temp);
   formula_obj << "min: ";
