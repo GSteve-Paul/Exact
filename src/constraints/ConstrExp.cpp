@@ -608,34 +608,26 @@ void ConstrExp<SMALL, LARGE>::removeZeroes() {
 
 // @post: preserves order of vars
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _saturate) {
-  if (_saturate) saturate(true, false);
+void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities) {
   int oldsize = vars.size();  // newly added literals are their own canonical representative
   for (int i = 0; i < oldsize && degree > 0; ++i) {
     Var v = vars[i];
     if (coefs[v] == 0) continue;
     Lit l = getLit(v);
     if (const Repr& repr = equalities.getRepr(l); repr.l != l) {  // literal is not its own canonical representative
-      SMALL mult = _saturate ? static_cast<SMALL>(std::min<LARGE>(degree, aux::abs(coefs[v]))) : aux::abs(coefs[v]);
+      SMALL mult = aux::abs(coefs[v]);
       addLhs(mult, repr.l);
       Var reprv = toVar(repr.l);
-      if (stillFits<SMALL>(coefs[reprv]) ||
-          (_saturate && aux::abs(coefs[reprv]) >= degree && stillFits<SMALL>(static_cast<SMALL>(degree)))) {
+      if (stillFits<SMALL>(coefs[reprv])) {
         addLhs(mult, -l);
         addRhs(mult);
-        if (coefs[v] < 0) rhs -= coefs[v];
-        coefs[v] = 0;
-        // TODO: get this saturation out of here?
-        if (global.logger.isActive()) {
-          Logger::proofMult(proofBuffer << repr.id << " ", mult) << (_saturate ? "+ s " : "+ ");
-        }
-        if (_saturate) saturate(reprv);
+        assert(coefs[v] == 0);
+        if (global.logger.isActive()) Logger::proofMult(proofBuffer << repr.id << " ", mult) << "+ ";
       } else {
         addLhs(-mult, repr.l);  // revert change
       }
     }
   }
-  if (_saturate) saturate(true, false);
 }
 
 template <typename SMALL, typename LARGE>
@@ -1150,7 +1142,7 @@ void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int
 
 void ConstrExpSuper::strongPostProcess(Solver& solver) {
   [[maybe_unused]] int nvars = nNonZeroVars();
-  removeEqualities(solver.getEqualities(), true);
+  removeEqualities(solver.getEqualities());
   selfSubsumeImplications(solver.getImplications());
   postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, solver.getStats());
   assert(hasRhsDegreeInvariant());

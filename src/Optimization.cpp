@@ -153,7 +153,7 @@ Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver, const In
   CeArb obj = solver.global.cePools.takeArb();
   ico.toConstrExp(obj, true);
   obj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  obj->removeEqualities(solver.getEqualities(), false);
+  obj->removeEqualities(solver.getEqualities());
   bigint offs = -obj->getDegree();
   obj->addRhs(offs);
   assert(obj->getDegree() == 0);
@@ -227,7 +227,7 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
   if (global.options.optCoreguided) {
     reformObj = global.cePools.take<SMALL, LARGE>();
     origObj->copyTo(reformObj);
-    reformObj->removeEqualities(solver.getEqualities(), false);
+    reformObj->removeEqualities(solver.getEqualities());
     simplifyAssumps(reformObj, assumptions);
     reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
 
@@ -515,7 +515,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       bool cgSucceeded = global.options.optCoreguided && global.options.proofAssumps;
       if (cgSucceeded) {
         assert(reformObj);
-        reformObj->removeEqualities(solver.getEqualities(), false);
+        reformObj->removeEqualities(solver.getEqualities());
         simplifyAssumps(reformObj, assumptions);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
         if (reformObj->nVars() == 0) {

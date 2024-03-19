@@ -660,7 +660,9 @@ void Solver::learnConstraint(const CeSuper& ce) {
   CeSuper learned = ce->clone(global.cePools);
   // NOTE: below line can cause loops when the equalities are not yet propagated, as the conflict constraint becomes
   // non-falsified
-  // if (orig != Origin::EQUALITY) learned->removeEqualities(getEqualities(), true);
+  // if (orig != Origin::EQUALITY) {
+  // learned->removeEqualities(getEqualities());
+  // }
   learned->selfSubsumeImplications(implications);  // only strengthens the constraint
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   if (learned->isTautology()) return;
