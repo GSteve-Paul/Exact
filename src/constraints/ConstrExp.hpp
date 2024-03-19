@@ -578,10 +578,10 @@ struct ConstrExp final : public ConstrExpSuper {
             std::cout << "Reason slack before MIR: " << reason->getSlack(level) << std::endl;
             reason->weakenMIROrdered(bestDiv, level, mult, reasonCoef);
             std::cout << "Reason slack after MIR: " << reason->getSlack(level) << std::endl;
+            std::cout << "asserting: " << asserting << std::endl;
             const SMALL newMult = conflCoef / reason->getCoef(asserting);
             std::cout << "newMult: " << newMult << std::endl;
             reason->multiply(newMult);
-            std::cout << "asserting: " << asserting << std::endl;
             std::cout << "reason: " << *reason << std::endl;
             std::cout << "confl: " << *this << std::endl;
             assert(reason->getSlack(level) <= 0);

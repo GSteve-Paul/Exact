@@ -970,9 +970,12 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
     amount = weakenSuperfluousMIR(d, amount);
     std::cout << "after weakenSuperfluous: " << *this << std::endl;
   }
-  if (!weakenUseless(d, amount) && amount > 0) {
+  // if (!weakenUseless(d, amount) && amount > 0) {
+  if (amount > 0) {
     dropDegree(d, amount);
   }
+
+  std::cout << "after dropDegree: " << *this << std::endl;
 
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
@@ -987,8 +990,14 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
     std::cout << "after simplifyToCardinality: " << *this << std::endl;
   } else {
     std::cout << "bmodd: " << degree % d << std::endl;
-    applyMIRalt(d);
-    std::cout << "after applyMIR: " << *this << std::endl;
+    if (degree % d <= 1) {
+      std::cout << "before divideRoundUp: " << *this << std::endl;
+      divideRoundUp(d);
+      std::cout << "after divideRoundUp: " << *this << std::endl;
+    } else {
+      applyMIRalt(d);
+      std::cout << "after applyMIR: " << *this << std::endl;
+    }
     saturate(true, true);
     std::cout << "after saturate: " << *this << std::endl;
   }
@@ -1164,7 +1173,8 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::dropDegree(const LARGE& d, SMALL& amount) {
   assert(amount > 0);
   [[maybe_unused]] LARGE quot = aux::ceildiv(degree, d);
-  degree -= amount;
+  rhs -= amount;
+  degree = calcDegree();
   assert(quot == aux::ceildiv(degree, d));
 }
 
@@ -1194,35 +1204,32 @@ void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
   std::cout << "in apply MIR" << std::endl;
   std::cout << "reason: " << *this << std::endl;
   std::cout << "d: " << d << std::endl;
-
-  // LARGE tmpRhs = rhs;
-  // for (Var v : vars)
-  //   if (getLit(v) < 0) tmpRhs -= coefs[v];
-  LARGE bmodd = aux::mod_safe(degree, d);
-  degree = aux::ceildiv_safe(degree, d);
-  if (bmodd != 0) {
-    degree *= bmodd;
-  }
+  LARGE tmpRhs = rhs;
+  for (Var v : vars)
+    if (getLit(v) < 0) {
+      std::cout << "v: " << v << std::endl;
+      std::cout << "coefs[v]: " << coefs[v] << std::endl;
+      tmpRhs -= coefs[v];
+    }
+  std::cout << "rhs: " << rhs << std::endl;
+  std::cout << "tmpRhs: " << tmpRhs << std::endl;
+  std::cout << "reason: " << *this << std::endl;
+  assert(tmpRhs == degree);
+  std::cout << "tmpRhs: " << tmpRhs << std::endl;
+  LARGE bmodd = aux::mod_safe(tmpRhs, d);
+  std::cout << "bmodd: " << bmodd << std::endl;
+  rhs = bmodd * aux::ceildiv_safe(tmpRhs, d);
   for (Var v : vars) {
     if (getLit(v) < 0) {
-      if (bmodd == 0) {
-        coefs[v] = -static_cast<SMALL>(aux::ceildiv_safe<LARGE>(-coefs[v], d));
-      } else {
-        coefs[v] = static_cast<SMALL>(
-            -(bmodd * aux::floordiv_safe<LARGE>(-coefs[v], d) + std::min(aux::mod_safe<LARGE>(-coefs[v], d), bmodd)));
-      }
-      // rhs += coefs[v];
-    } else {
-      if (bmodd == 0) {
-        coefs[v] = static_cast<SMALL>(aux::ceildiv_safe<LARGE>(coefs[v], d));
-      } else {
-        coefs[v] = static_cast<SMALL>(bmodd * aux::floordiv_safe<LARGE>(coefs[v], d) +
-                                      std::min(aux::mod_safe<LARGE>(coefs[v], d), bmodd));
-      }
-    }
+      // coefs[v] = ()
+      coefs[v] = static_cast<SMALL>(
+          -(bmodd * aux::floordiv_safe<LARGE>(-coefs[v], d) + std::min(aux::mod_safe<LARGE>(-coefs[v], d), bmodd)));
+      rhs += coefs[v];
+    } else
+      coefs[v] = static_cast<SMALL>(bmodd * aux::floordiv_safe<LARGE>(coefs[v], d) +
+                                    std::min(aux::mod_safe<LARGE>(coefs[v], d), bmodd));
   }
-  // degree = calcDegree();
-  assert(!isTautology());
+  degree = calcDegree();
 }
 
 template <typename SMALL, typename LARGE>
@@ -1263,11 +1270,11 @@ const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMAL
   SMALL bmodd;
   assert(d >= 0);
   assert(b >= 0);  // otherwise the C++ modulo operator does not match the mathematical one
-  const SMALL origBmodd = static_cast<SMALL>(b % d);
+  const SMALL origBmodd = static_cast<SMALL>(aux::mod_safe(b, d));
 
   while (amount < origBmodd) {
     postDeg = b - static_cast<LARGE>(amount);
-    bmodd = static_cast<SMALL>(postDeg % d);
+    bmodd = static_cast<SMALL>(aux::mod_safe(postDeg, d));
     if (to % bmodd == 0) {
       break;
     }
