@@ -629,6 +629,8 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _sat
           (_saturate && aux::abs(coefs[reprv]) >= degree && stillFits<SMALL>(static_cast<SMALL>(degree)))) {
         addLhs(mult, -l);
         addRhs(mult);
+        if (coefs[v] < 0) rhs -= coefs[v];
+        coefs[v] = 0;
         if (global.logger.isActive())
           Logger::proofMult(proofBuffer << repr.id << " ", mult) << (_saturate ? "+ s " : "+ ");
         if (_saturate) saturate(reprv);
