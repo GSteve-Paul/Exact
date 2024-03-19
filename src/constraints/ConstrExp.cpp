@@ -426,6 +426,7 @@ bool ConstrExp<SMALL, LARGE>::falsified(const IntMap<int>& level, Var v) const {
 
 template <typename SMALL, typename LARGE>
 LARGE ConstrExp<SMALL, LARGE>::getSlack(const IntMap<int>& level) const {
+  assert(calcRhs() == rhs);
   LARGE slack = -rhs;
   for (Var v : vars)
     if (increasesSlack(level, v)) slack += coefs[v];
