@@ -575,7 +575,9 @@ struct ConstrExp final : public ConstrExpSuper {
             std::cout << "reason with assignments: " << std::endl;
             reason->toStreamWithAssignment(std::cout, level, pos);
             std::cout << "\n" << std::endl;
+            std::cout << "Reason slack before MIR: " << reason->getSlack(level) << std::endl;
             reason->weakenMIROrdered(bestDiv, level, mult, reasonCoef);
+            std::cout << "Reason slack after MIR: " << reason->getSlack(level) << std::endl;
             const SMALL newMult = conflCoef / reason->getCoef(asserting);
             std::cout << "newMult: " << newMult << std::endl;
             reason->multiply(newMult);
