@@ -259,11 +259,6 @@ void ConstrExp<SMALL, LARGE>::remove(Var v) {
 }
 
 template <typename SMALL, typename LARGE>
-bool ConstrExp<SMALL, LARGE>::increasesSlack(const IntMap<int>& level, Var v) const {
-  return isTrue(level, v) || (!isFalse(level, v) && coefs[v] > 0);
-}
-
-template <typename SMALL, typename LARGE>
 LARGE ConstrExp<SMALL, LARGE>::calcDegree() const {
   LARGE res = rhs;
   for (Var v : vars) res -= std::min<SMALL>(0, coefs[v]);  // considering negative coefficients
@@ -432,9 +427,11 @@ bool ConstrExp<SMALL, LARGE>::falsified(const IntMap<int>& level, Var v) const {
 
 template <typename SMALL, typename LARGE>
 LARGE ConstrExp<SMALL, LARGE>::getSlack(const IntMap<int>& level) const {
+  assert(calcRhs() == rhs);
   LARGE slack = -rhs;
-  for (Var v : vars)
-    if (increasesSlack(level, v)) slack += coefs[v];
+  for (Var v : vars) {
+    if (isTrue(level, v) || (!isFalse(level, v) && coefs[v] > 0)) slack += coefs[v];
+  }
   return slack;
 }
 
@@ -1181,7 +1178,8 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<in
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
   assert(hasNoUnits(level));
-  assert(litsByPos.empty());
+  litsByPos.clear();
+
   // calculate slack at level 0
   LARGE slack = -degree;
   for (Var v : vars) slack += aux::abs(coefs[v]);
@@ -1205,20 +1203,16 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<in
       ++posIt;
     }
     if (slack < 0) {
-      litsByPos.clear();
       return {assertionLevel - 1, false};  // not asserting, but earliest non-conflicting level
     }
     while (coefIt != vars.cend() && assertionLevel >= level[getLit(*coefIt)]) ++coefIt;
     if (coefIt == vars.cend()) {
-      litsByPos.clear();
       return {INF, false};
     }
     if (slack < aux::abs(coefs[*coefIt])) {
-      litsByPos.clear();
       return {assertionLevel, true};
     }
     if (posIt == litsByPos.cend()) {
-      litsByPos.clear();
       return {INF, false};
     }
     assertionLevel = level[*posIt];
