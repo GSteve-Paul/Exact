@@ -427,7 +427,7 @@ bool ConstrExp<SMALL, LARGE>::falsified(const IntMap<int>& level, Var v) const {
 
 template <typename SMALL, typename LARGE>
 LARGE ConstrExp<SMALL, LARGE>::getSlack(const IntMap<int>& level) const {
-  assert(calcRhs() == rhs);
+  assert(hasRhsDegreeInvariant());
   LARGE slack = -rhs;
   for (Var v : vars) {
     if (isTrue(level, v) || (!isFalse(level, v) && coefs[v] > 0)) slack += coefs[v];
@@ -623,7 +623,9 @@ void ConstrExp<SMALL, LARGE>::removeEqualities(Equalities& equalities, bool _sat
           (_saturate && aux::abs(coefs[reprv]) >= degree && stillFits<SMALL>(static_cast<SMALL>(degree)))) {
         addLhs(mult, -l);
         addRhs(mult);
+        if (coefs[v] < 0) rhs -= coefs[v];
         coefs[v] = 0;
+        // TODO: get this saturation out of here?
         if (global.logger.isActive()) {
           Logger::proofMult(proofBuffer << repr.id << " ", mult) << (_saturate ? "+ s " : "+ ");
         }
@@ -796,11 +798,13 @@ void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverf
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce,
-                                                     Lit asserting) {
+                                                     Lit asserting, bool sorted) {
   assert(hasNoZeroes());
-  SMALL largest = getLargestCoef();
+  assert(!sorted || isSortedInDecreasingCoefOrder());
+  if (vars.empty()) return;
+  SMALL largest = sorted ? aux::abs(coefs[vars[0]]) : getLargestCoef();
   if (largest > degree) {
-    saturate(false, false);
+    saturate(sorted, sorted);
     largest = static_cast<SMALL>(degree);
   }
   fixOverflow(level, bitOverflow, bitReduce, largest, asserting);
@@ -837,6 +841,11 @@ bool ConstrExp<SMALL, LARGE>::fitsInDouble() const {
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::largestCoefFitsIn(int bits) const {
   return (int)aux::msb(getLargestCoef()) < bits;
+}
+
+template <typename SMALL, typename LARGE>
+bool ConstrExp<SMALL, LARGE>::hasRhsDegreeInvariant() const {
+  return degree == calcDegree();
 }
 
 template <typename SMALL, typename LARGE>
@@ -1144,6 +1153,7 @@ void ConstrExpSuper::strongPostProcess(Solver& solver) {
   removeEqualities(solver.getEqualities(), true);
   selfSubsumeImplications(solver.getImplications());
   postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, solver.getStats());
+  assert(hasRhsDegreeInvariant());
   assert(nvars >= nNonZeroVars());
 }
 
@@ -1202,19 +1212,14 @@ std::pair<int, bool> ConstrExp<SMALL, LARGE>::getAssertionStatus(const IntMap<in
       slack -= aux::abs(coefs[aux::abs(*posIt)]);
       ++posIt;
     }
-    if (slack < 0) {
-      return {assertionLevel - 1, false};  // not asserting, but earliest non-conflicting level
-    }
-    while (coefIt != vars.cend() && assertionLevel >= level[getLit(*coefIt)]) ++coefIt;
-    if (coefIt == vars.cend()) {
-      return {INF, false};
-    }
-    if (slack < aux::abs(coefs[*coefIt])) {
-      return {assertionLevel, true};
-    }
-    if (posIt == litsByPos.cend()) {
-      return {INF, false};
-    }
+    if (slack < 0) return {assertionLevel - 1, false};  // not asserting, but earliest non-conflicting level
+
+    // skip all known variables until we get to an unknown one (NOTE: literals can only go from unknown to known)
+    while (coefIt != vars.cend() && (assertionLevel >= level[*coefIt] || assertionLevel >= level[-*coefIt])) ++coefIt;
+
+    if (coefIt == vars.cend()) return {INF, false};
+    if (slack < aux::abs(coefs[*coefIt])) return {assertionLevel, true};
+    if (posIt == litsByPos.cend()) return {INF, false};
     assertionLevel = level[*posIt];
   }
 }
@@ -1642,7 +1647,7 @@ unsigned int ConstrExp<SMALL, LARGE>::resolveWith(const Lit* data, unsigned int 
     }
     fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
   } else {
-    saturateAndFixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0);
+    saturateAndFixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0, false);
   }
   assert(getCoef(-l) == 0);
   assert(hasNegativeSlack(level));

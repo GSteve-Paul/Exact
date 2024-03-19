@@ -393,7 +393,8 @@ CeSuper Solver::analyze(const CeSuper& conflict) {
   global.logger.logComment("Analyze");
   assert(conflict->hasNegativeSlack(level));
   conflict->removeUnitsAndZeroes(level, position);
-  conflict->saturateAndFixOverflow(getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0);
+  conflict->saturateAndFixOverflow(getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0,
+                                   true);
 
   CeSuper confl = getAnalysisCE(conflict);
   confl->orig = Origin::LEARNED;
@@ -527,7 +528,8 @@ CeSuper Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
 
   assert(conflict->hasNegativeSlack(level));
   conflict->removeUnitsAndZeroes(level, position);
-  conflict->saturateAndFixOverflow(getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0);
+  conflict->saturateAndFixOverflow(getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0,
+                                   true);
   assert(conflict->hasNegativeSlack(level));
   CeSuper core = getAnalysisCE(conflict);
   core->orig = Origin::LEARNED;
@@ -662,7 +664,8 @@ void Solver::learnConstraint(const CeSuper& ce) {
   learned->selfSubsumeImplications(implications);  // only strengthens the constraint
   learned->removeUnitsAndZeroes(getLevel(), getPos());
   if (learned->isTautology()) return;
-  learned->saturateAndFixOverflow(getLevel(), global.options.bitsLearned.get(), global.options.bitsLearned.get(), 0);
+  learned->saturateAndFixOverflow(getLevel(), global.options.bitsLearned.get(), global.options.bitsLearned.get(), 0,
+                                  false);
   const std::vector<ActNode>& actList = getHeuristic().getActList();
   learned->sortInDecreasingCoefOrder([&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
   auto [assertionLevel, isAsserting] = learned->getAssertionStatus(level, position, assertionStateMem);
@@ -1095,9 +1098,11 @@ void Solver::sortWatchlists() {
 }
 
 void Solver::presolve() {
-  if (unsatReached) throw UnsatEncounter();
   if (!firstRun) return;
   firstRun = false;
+  global.logger.flush();  // flush objective and formula, no need to keep in memory
+
+  if (unsatReached) throw UnsatEncounter();
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);
@@ -1241,7 +1246,6 @@ void Solver::dominanceBreaking() {
 
 SolveState Solver::solve() {
   if (unsatReached) throw UnsatEncounter();
-  global.logger.flush();  // flush objective and formula, no need to keep in memory
   StatNum lastPropTime = global.stats.PROPTIME.z;
   StatNum lastCATime = global.stats.CATIME.z;
   StatNum lastNProp = global.stats.NPROP.z;

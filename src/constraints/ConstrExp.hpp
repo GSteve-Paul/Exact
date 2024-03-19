@@ -160,10 +160,12 @@ struct ConstrExpSuper {
   virtual bool isSaturated(Lit l) const = 0;
   virtual bool isSaturated(const aux::predicate<Lit>& toWeaken) const = 0;
   virtual void getSaturatedLits(IntSet& out) const = 0;
-  virtual void saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, Lit asserting) = 0;
+  virtual void saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, Lit asserting,
+                                      bool sorted) = 0;
   virtual void saturateAndFixOverflowRational() = 0;
   virtual bool fitsInDouble() const = 0;
   virtual bool largestCoefFitsIn(int bits) const = 0;
+  virtual bool hasRhsDegreeInvariant() const = 0;
 
   virtual bool divideByGCD() = 0;
   virtual bool divideTo(double limit, const aux::predicate<Lit>& toWeaken) = 0;
@@ -315,7 +317,7 @@ struct ConstrExp final : public ConstrExpSuper {
    * @post: the constraint remains conflicting or propagating on asserting
    */
   void fixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, const SMALL& largestCoef, Lit asserting);
-  void saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, Lit asserting);
+  void saturateAndFixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce, Lit asserting, bool sorted);
   /*
    * Fixes overflow for rationals
    * @post: saturated
@@ -324,6 +326,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void saturateAndFixOverflowRational();
   bool fitsInDouble() const;
   bool largestCoefFitsIn(int bits) const;
+  bool hasRhsDegreeInvariant() const;
 
   template <typename S, typename L>
   void addUp(const CePtr<S, L>& c, const SMALL& cmult = 1) {

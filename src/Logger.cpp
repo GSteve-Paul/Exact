@@ -106,12 +106,14 @@ void Logger::flush() {
   if (!active) return;
 #if WITHZLIB
   if (proof_is_zip)
-    formula_out_zip << formula_obj.rdbuf() << formula_constr.rdbuf();
+    formula_out_zip << formula_obj.str() << formula_constr.str();
   else
 #endif  // WITHZLIB
-    formula_out << formula_obj.rdbuf() << formula_constr.rdbuf();
-  formula_obj.clear();
-  formula_constr.clear();
+    formula_out << formula_obj.str() << formula_constr.str();
+  std::stringstream temp1;
+  formula_obj.swap(temp1);
+  std::stringstream temp2;
+  formula_constr.swap(temp2);
   proofStream().flush();
 }
 
@@ -132,7 +134,7 @@ ID Logger::logInput(const CeSuper& ce) {
 }
 
 void Logger::logObjective(const CeSuper& ce) {
-  if (!active || ce->nVars() == 0) return;
+  if (!active) return;
   std::stringstream temp;
   formula_obj.swap(temp);
   formula_obj << "min: ";
