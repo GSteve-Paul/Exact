@@ -354,7 +354,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
   bool divideByGCD();
   bool divideTo(double limit, const aux::predicate<Lit>& toWeaken);
-  const SMALL findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult, const SMALL& max);
+  const SMALL findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult);
   AssertionStatus isAssertingBefore(const IntMap<int>& level, int lvl) const;
   // @return: latest decision level that does not make the constraint inconsistent
   // @return: whether or not the constraint is asserting at that level

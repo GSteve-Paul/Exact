@@ -955,14 +955,16 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   assert(d > 0);
   assert(reasonCoef % d == 0);
   const SMALL reasonMult = static_cast<SMALL>(reasonCoef / d);
-  const SMALL maxmod = to / reasonMult;
+  // assert(reasonMult == to);
+  // assert(to % reasonMult == 0);
+  // const SMALL maxmod = to / reasonMult;
   // JO: hou je rekening met negatieve coëfficiënten? Moet het aux::floordiv(.) zijn ipv standaard deling?
 
   if (d == 1) return;
   std::cout << "d: " << d << std::endl;
   weakenNonDivisible(d, level);
   std::cout << "after weakenNonDivisible: " << *this << std::endl;
-  SMALL amount = findWeakenAmount(d, to, reasonMult, maxmod);
+  SMALL amount = findWeakenAmount(d, to, reasonMult);
   std::cout << "amount: " << amount << std::endl;
   if (global.options.weakenSuperfluous) {
     amount = weakenSuperfluousMIR(d, amount);
@@ -1253,8 +1255,8 @@ bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& 
 }
 
 template <typename SMALL, typename LARGE>
-const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult,
-                                                      const SMALL& max) {
+const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult) {
+  // TODO: dont iterate over full mod if mod is too large, check 2, 3, 5, 7 etc.
   const LARGE b = getDegree();
   SMALL amount = 0;
   LARGE postDeg;

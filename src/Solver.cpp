@@ -648,6 +648,7 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
     global.logger.logInconsistency(learned, getLevel(), getPos());
     throw UnsatEncounter();
   }
+  assert(!learned->isInconsistency());
   assert(learned->hasNegativeSlack(level) == ce->hasNegativeSlack(level));
   learned->toStreamWithAssignment(std::cout, level, position);
   std::cout << std::endl;
