@@ -650,11 +650,11 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   }
   assert(!learned->isInconsistency());
   assert(learned->hasNegativeSlack(level) == ce->hasNegativeSlack(level));
-  learned->toStreamWithAssignment(std::cout, level, position);
-  std::cout << std::endl;
+  // learned->toStreamWithAssignment(std::cout, level, position);
+  // std::cout << std::endl;
   backjumpTo(assertionLevel);
-  learned->toStreamWithAssignment(std::cout, level, position);
-  std::cout << std::endl;
+  // learned->toStreamWithAssignment(std::cout, level, position);
+  // std::cout << std::endl;
   // this assert fails, but why?
   assert(!learned->hasNegativeSlack(level));
   if (isAsserting) learned->heuristicWeakening(level, position);
