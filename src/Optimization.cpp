@@ -380,7 +380,10 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   core->weaken([&](Lit l) { return !assumptions.has(-l) && !reformObj->hasLit(l); });
   if (core->isTautology()) return State::FAIL;
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  assert(!core->isUnsat());
+  if (core->isUnsat()) {
+    solver.addConstraint(core);
+    return State::FAIL;
+  }
   if (!core->hasNegativeSlack(solver.getAssumptions().getIndex())) return State::FAIL;
   core->saturate(true, false);
   Ce32 cardCore = reduceToCardinality(core);
@@ -425,9 +428,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
     solver.addConstraint(cardCore);
   }
 
-  if (lower_bound < -reformObj->getDegree()) {
-    lower_bound = -reformObj->getDegree();
-  }
+  lower_bound = std::max(lower_bound, -reformObj->getDegree());
   return State::SUCCESS;
 }
 
@@ -458,8 +459,10 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
     // only violated unit assumptions were derived
   } else {
     assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
-    [[maybe_unused]] State tmp = reformObjective(core);
-    assert(tmp != State::FAIL);  // TODO do not return State from reformObjective(.)
+    State result = State::SUCCESS;
+    while (result == State::SUCCESS) {
+      result = reformObjective(core);
+    }
     simplifyAssumps(reformObj, assumptions);
     addReformUpperBound(false);
   }
@@ -507,13 +510,13 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
     // - more than only the given assumptions are set (because the previous core-guided step did not finish)
 
     assumps.clear();
+    bool topdown = false;
     if (optimize && lower_bound < upper_bound &&
         (global.options.optRatio.get() >= 1 ||
          global.stats.DETTIMEBOTTOMUP <
              global.options.optRatio.get() * (global.stats.DETTIMETOPDOWN + global.stats.DETTIMEBOTTOMUP))) {
       // figure out and set new bottom-up assumptions
-      bool cgSucceeded = global.options.optCoreguided && global.options.proofAssumps;
-      if (cgSucceeded) {
+      if (global.options.optCoreguided && global.options.proofAssumps) {
         assert(reformObj);
         reformObj->removeEqualities(solver.getEqualities());
         simplifyAssumps(reformObj, assumptions);
@@ -523,20 +526,28 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
         } else {
           assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
           LARGE bnd = (upper_bound - lower_bound) / global.options.optPrecision.get();
+          Var largest = reformObj->vars[0];
+          SMALL largestCoef = aux::abs(reformObj->coefs[largest]);
           for (Var v : reformObj->vars) {
             if (reformObj->coefs[v] >= bnd || reformObj->coefs[v] <= -bnd) assumps.push_back(-reformObj->getLit(v));
+            if (reformObj->coefs[v] >= largestCoef || reformObj->coefs[v] <= -largestCoef) {
+              largest = v;
+              largestCoef = aux::abs(reformObj->coefs[v]);
+            }
           }
-          cgSucceeded = assumps.size() != assumptions.getKeys().size();
+          if (assumps.size() == assumptions.getKeys().size()) {
+            assumps.push_back(-reformObj->getLit(largest));
+          }
           solver.setAssumptions(assumps);
         }
-      }
-      if (!cgSucceeded) {
+      } else {
         boundBottomUp();
         assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
         assumps.push_back(-boundingVar);
         solver.setAssumptions(assumps);
       }
     } else {  // set regular assumptions
+      topdown = true;
       solver.setAssumptions(assumptions.getKeys());
     }
 
@@ -548,20 +559,17 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       solver.lastCore = solver.lastGlobalDual;
     } else {
       try {
-        reply =
-            aux::timeCall<SolveState>([&] { return solver.solve(); },
-                                      assumps.empty() ? global.stats.SOLVETIMETOPDOWN : global.stats.SOLVETIMEBOTTOMUP);
+        reply = aux::timeCall<SolveState>([&] { return solver.solve(); },
+                                          topdown ? global.stats.SOLVETIMETOPDOWN : global.stats.SOLVETIMEBOTTOMUP);
       } catch (const UnsatEncounter& ue) {
         reply = SolveState::UNSAT;
       }
-      if (assumps.empty()) {
+      if (topdown) {
         global.stats.DETTIMETOPDOWN += global.stats.getDetTime() - current_time;
       } else {
         global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
       }
     }
-
-    // TODO: below procedures can take a lot of time that is not measured...
 
     if (reply == SolveState::SAT) {
       assert(solver.foundSolution());
@@ -581,7 +589,9 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           lower_bound = upper_bound;
           return SolveState::INCONSISTENT;
         } else {
-          handleInconsistency(solver.lastCore);
+          current_time = global.stats.getDetTime();
+          aux::timeCallVoid([&] { handleInconsistency(solver.lastCore); }, global.stats.SOLVETIMEBOTTOMUP);
+          global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
           if (global.options.proofAssumps) addLowerBound();
           solver.clearAssumptions();
           printObjBounds();
