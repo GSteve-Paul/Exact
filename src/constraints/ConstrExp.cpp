@@ -1266,6 +1266,7 @@ bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& 
 template <typename SMALL, typename LARGE>
 const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult) {
   // TODO: dont iterate over full mod if mod is too large, check 2, 3, 5, 7 etc.
+  std::vector<SMALL> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71};
   const LARGE b = getDegree();
   SMALL amount = 0;
   LARGE postDeg;
@@ -1274,15 +1275,60 @@ const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMAL
   assert(b >= 0);  // otherwise the C++ modulo operator does not match the mathematical one
   const SMALL origBmodd = static_cast<SMALL>(aux::mod_safe(b, d));
 
-  while (amount < origBmodd) {
-    postDeg = b - static_cast<LARGE>(amount);
-    bmodd = static_cast<SMALL>(aux::mod_safe(postDeg, d));
-    if (to % bmodd == 0) {
+  // keep primes under origBmodd or to
+  for (SMALL p : primes) {
+    if (p > origBmodd || p > to) {
+      primes.resize(primes.size() - 1);
       break;
     }
-    amount += 1;
   }
-  return amount;
+
+  // keep primes that divide into to
+  std::vector<SMALL> primesDividing;
+
+  for (SMALL p : primes) {
+    if (to % p == 0) {
+      while (to % p == 0) {
+        p *= p;
+      }
+      p /= p;
+      primesDividing.push_back(p);
+    }
+  }
+
+  // calc divisor smaller than bmodd backtofront and fronttoback
+  SMALL frontToBack = 1;
+  for (SMALL p : primesDividing) {
+    if (frontToBack * p > origBmodd) {
+      break;
+    }
+    frontToBack *= p;
+  }
+  SMALL backToFront = 1;
+  for (int i = primesDividing.size() - 1; i >= 0; --i) {
+    SMALL p = primesDividing[i];
+    if (backToFront * p > origBmodd) {
+      break;
+    }
+    backToFront *= p;
+  }
+
+  const SMALL bestDivisor = std::max(frontToBack, backToFront);
+
+  // calc amount
+
+  return origBmodd - bestDivisor;
+
+
+  // while (amount < origBmodd) {
+  //   postDeg = b - static_cast<LARGE>(amount);
+  //   bmodd = static_cast<SMALL>(aux::mod_safe(postDeg, d));
+  //   if (to % bmodd == 0) {
+  //     break;
+  //   }
+  //   amount += 1;
+  // }
+  // return amount;
 }
 
 // NOTE: only equivalence preserving operations over the Bools!
