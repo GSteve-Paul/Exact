@@ -1512,6 +1512,10 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
 }
 
+int ConstrExpSuper::nVars() const { return vars.size(); }
+
+bool ConstrExpSuper::empty() const { return vars.empty(); }
+
 int ConstrExpSuper::nNonZeroVars() const {
   int result = 0;
   for (Var v : vars) {
@@ -1519,6 +1523,10 @@ int ConstrExpSuper::nNonZeroVars() const {
   }
   return result;
 }
+
+const VarVec& ConstrExpSuper::getVars() const { return vars; }
+
+bool ConstrExpSuper::used(Var v) const { return index[v] >= 0; }
 
 void ConstrExpSuper::reverseOrder() {
   std::reverse(vars.begin(), vars.end());

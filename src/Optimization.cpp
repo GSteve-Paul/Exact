@@ -391,7 +391,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
   assert(cardCore->hasNoZeroes());
 
   // adjust the lower bound
-  assert(cardCore->nVars() > 0);
+  assert(!cardCore->empty());
   SMALL mult = 0;
   for (Var v : cardCore->getVars()) {
     if (mult == 1) break;
@@ -511,7 +511,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
 
     assumps.clear();
     bool topdown = false;
-    if (optimize && lower_bound < upper_bound &&
+    if (optimize && !origObj->empty() && lower_bound < upper_bound &&
         (global.options.optRatio.get() >= 1 ||
          global.stats.DETTIMEBOTTOMUP <
              global.options.optRatio.get() * (global.stats.DETTIMETOPDOWN + global.stats.DETTIMEBOTTOMUP))) {
@@ -521,7 +521,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
         reformObj->removeEqualities(solver.getEqualities());
         simplifyAssumps(reformObj, assumptions);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-        if (reformObj->nVars() == 0) {
+        if (reformObj->empty()) {
           solver.setAssumptions(assumptions.getKeys());
         } else {
           assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());

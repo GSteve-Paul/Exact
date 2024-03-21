@@ -187,7 +187,7 @@ void LpSolver::setObjective(const CeArb& o) {
   setNbVariables(solver.getNbVars() + 1);
   soplex::DVectorReal objective;
   objective.reDim(getNbCols());  // NOTE: automatically set to zero
-  if (o->nVars() == 0) {
+  if (o->empty()) {
     for (int v = 1; v < getNbCols(); ++v) objective[v] = 1;  // add default objective function
   } else {
     for (Var v : o->getVars()) {

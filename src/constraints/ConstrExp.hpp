@@ -94,10 +94,11 @@ struct ConstrExpSuper {
   void resetBuffer(ID proofID);
   void resetBuffer(const std::string& line);
 
-  int nVars() const { return vars.size(); }
+  int nVars() const;
+  bool empty() const;
   int nNonZeroVars() const;
-  const VarVec& getVars() const { return vars; }
-  bool used(Var v) const { return index[v] >= 0; }
+  const VarVec& getVars() const;
+  bool used(Var v) const;
   void reverseOrder();
 
   void weakenLast();

@@ -580,7 +580,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   assert(constraint->hasNoZeroes());
   assert(constraint->hasNoUnits(getLevel()));
   assert(!constraint->isTautology());
-  assert(constraint->nVars() > 0);
+  assert(!constraint->empty());
   assert(!constraint->hasNegativeSlack(getLevel()));
   assert(constraint->orig != Origin::UNKNOWN);
 

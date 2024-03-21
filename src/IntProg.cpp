@@ -682,7 +682,7 @@ std::ostream& IntProg::printFormula(std::ostream& out) {
     }
     out << "\n";
   }
-  if (optim->getOrigObj()->nVars() > 0) {
+  if (!optim->getOrigObj()->empty()) {
     out << "min: ";
     optim->getOrigObj()->toStreamAsOPBlhs(out, true);
     out << ";\n";
