@@ -266,7 +266,7 @@ struct Options {
       "opt-precision",
       "Precision of bottom-up optimization (each core will improve the optimality gap by at least 1/x)", 100, "int > 1",
       [](const int32_t& x) -> bool { return x > 1; }};
-  BoolOption optCoreguided{"opt-coreguided", "Core-guided bottom up optimization instead of a basic approach", true};
+  BoolOption optCoreguided{"opt-coreguided", "Core-guided bottom up optimization instead of a basic approach", false};
   EnumOption intEncoding{"int-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
   BoolOption intContinuous{"int-continuous",
                            "Accept continuous variables by treating them as integer variables. This restricts the "
@@ -290,6 +290,8 @@ struct Options {
                            "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
                               "0 =< float", [](const DetTime& x) -> bool { return x >= 0; }};
+  BoolOption cgMultiple{"cg-multiple", "Multiple reformulations from one constraint", false};
+  BoolOption firstLBD{"heur-lbd", "Prioritize LBD over constraint strength", true};
 
   const std::vector<Option*> options = {
       &help,
@@ -348,6 +350,8 @@ struct Options {
       &inpProbing,
       &inpAMO,
       &basetime,
+      &cgMultiple,
+      &firstLBD,
   };
   unordered_map<std::string, Option*> name2opt;
 

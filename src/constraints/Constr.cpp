@@ -83,7 +83,7 @@ Origin Constr::getOrigin() const { return (Origin)header.origin; }
 void Constr::decreaseLBD(unsigned int lbd) { header.lbd = std::min(header.lbd, lbd); }
 void Constr::decayLBD(unsigned int decay) { header.lbd = std::min({header.lbd + decay, MAXLBD}); }
 unsigned int Constr::lbd() const { return header.lbd; }
-double Constr::priority() const { return lbd() - strength; }
+double Constr::priority(bool flip) const { return lbd() - (flip * INF * strength + strength); }
 bool Constr::isMarkedForDelete() const { return header.markedfordel; }
 bool Constr::isSeen() const { return header.seen; }
 void Constr::setSeen(bool s) { header.seen = s; }

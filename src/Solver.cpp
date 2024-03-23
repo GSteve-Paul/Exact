@@ -316,7 +316,7 @@ CeSuper Solver::runDatabasePropagation() {
       } else {
         assert(wstat == WatchStatus::KEEPWATCH);
         Constr& c = ca[cr];
-        cPrio = c.priority();
+        cPrio = c.priority(!global.options.firstLBD);
         if (cPrio < prevPrio) {
           assert(it_ws > 0);
           std::swap(ws[it_ws], ws[it_ws - 1]);
@@ -974,7 +974,9 @@ void Solver::reduceDB() {
     }
   }
 
-  std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) { return ca[x].priority() < ca[y].priority(); });
+  std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) {
+    return ca[x].priority(!global.options.firstLBD) < ca[y].priority(!global.options.firstLBD);
+  });
   int64_t limit = global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
@@ -1088,15 +1090,17 @@ void Solver::inProcess() {
 
 void Solver::sortWatchlists() {
   Var first = getHeuristic().firstInActOrder();
-  sort(adj[first].begin(), adj[first].end(),
-       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].priority() < ca[w2.cref].priority(); });
+  sort(adj[first].begin(), adj[first].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+    return ca[w1.cref].priority(!global.options.firstLBD) < ca[w2.cref].priority(!global.options.firstLBD);
+  });
   if (getNbVars() == 0) return;
   nextToSort = (nextToSort % getNbVars()) + 1;
   if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
   assert(nextToSort > 0);
   assert(nextToSort <= getNbVars());
-  sort(adj[nextToSort].begin(), adj[nextToSort].end(),
-       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].priority() < ca[w2.cref].priority(); });
+  sort(adj[nextToSort].begin(), adj[nextToSort].end(), [&](const Watch& w1, const Watch& w2) -> bool {
+    return ca[w1.cref].priority(!global.options.firstLBD) < ca[w2.cref].priority(!global.options.firstLBD);
+  });
 }
 
 void Solver::presolve() {

@@ -98,7 +98,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   void decreaseLBD(unsigned int lbd);
   void decayLBD(unsigned int decay);
   unsigned int lbd() const;
-  double priority() const;  // lower is better
+  double priority(bool flip) const;  // lower is better
   bool isMarkedForDelete() const;
   bool isSeen() const;
   void setSeen(bool s);

@@ -462,6 +462,7 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
     State result = State::SUCCESS;
     while (result == State::SUCCESS) {
       result = reformObjective(core);
+      if (!global.options.cgMultiple) break;
     }
     simplifyAssumps(reformObj, assumptions);
     addReformUpperBound(false);
