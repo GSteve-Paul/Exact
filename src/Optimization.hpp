@@ -162,7 +162,7 @@ class Optimization final : public OptimizationSuper {
   void addReformUpperBound(bool deletePrevious);
 
   Ce32 reduceToCardinality(const CeSuper& core);                            // does not modify core
-  [[nodiscard]] State reformObjective(const CeSuper& core);                 // modifies core
+  State reformObjective(const CeSuper& core);                               // modifies core
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
   void handleInconsistency(const CeSuper& core);                            // modifies core
   void boundObjByLastSol();

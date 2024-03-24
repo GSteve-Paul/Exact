@@ -64,10 +64,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-Constr::Constr(ID i, Origin o, bool lkd, unsigned int lngth, double strngth)
-    : id(i), strength(strngth), size(lngth), header{0, lkd, 0, (unsigned int)o, MAXLBD} {
+Constr::Constr(ID i, Origin o, bool lkd, unsigned int lngth, double strngth, unsigned int maxLBD)
+    : id(i), strength(strngth), size(lngth), header{0, lkd, 0, (unsigned int)o, maxLBD} {
   assert(strength <= 1);
   assert(strength > 0);
+  assert(maxLBD <= MAXLBD);
 }
 
 std::ostream& operator<<(std::ostream& o, const Constr& c) {
@@ -81,9 +82,12 @@ void Constr::setLocked(bool lkd) { header.locked = lkd; }
 bool Constr::isLocked() const { return header.locked; }
 Origin Constr::getOrigin() const { return (Origin)header.origin; }
 void Constr::decreaseLBD(unsigned int lbd) { header.lbd = std::min(header.lbd, lbd); }
-void Constr::decayLBD(unsigned int decay) { header.lbd = std::min({header.lbd + decay, MAXLBD}); }
+void Constr::decayLBD(unsigned int decay, unsigned int maxLBD) {
+  assert(maxLBD <= MAXLBD);
+  header.lbd = std::min({header.lbd + decay, maxLBD});
+}
 unsigned int Constr::lbd() const { return header.lbd; }
-double Constr::priority(bool flip) const { return lbd() - (flip * INF * strength + strength); }
+double Constr::priority() const { return lbd() * 2 - strength; }
 bool Constr::isMarkedForDelete() const { return header.markedfordel; }
 bool Constr::isSeen() const { return header.seen; }
 void Constr::setSeen(bool s) { header.seen = s; }

@@ -214,9 +214,11 @@ struct Options {
                             "0 < float", [](const double& x) -> bool { return 0 < x; }};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
+  ValOption<int> dbMaxLBD{"db-maxlbd", "Constraints with an LBD larger than this are considered to have this LBD", 3,
+                          "1 =< int =< 1e6", [](const int& x) -> bool { return 1 <= x && x <= 1e6; }};
   ValOption<double> propWatched{"prop-watched", "Watched propagation instead of counting propagation", 1,
                                 "0 (always counting) =< float =< 1 (always watched)",
-                                [](const double& x) -> bool { return 0 <= x && x <= 1e9; }};
+                                [](const double& x) -> bool { return 0 <= x && x <= 1; }};
   ValOption<double> lpTimeRatio {
     "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
 #if WITHSOPLEX
@@ -290,8 +292,6 @@ struct Options {
                            "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
                               "0 =< float", [](const DetTime& x) -> bool { return x >= 0; }};
-  BoolOption cgMultiple{"cg-multiple", "Multiple reformulations from one constraint", false};
-  BoolOption firstLBD{"heur-lbd", "Prioritize LBD over constraint strength", true};
 
   const std::vector<Option*> options = {
       &help,
@@ -319,6 +319,7 @@ struct Options {
       &dbExp,
       &dbScale,
       &dbSafeLBD,
+      &dbMaxLBD,
       &propWatched,
 #if WITHSOPLEX
       &lpTimeRatio,
@@ -350,8 +351,6 @@ struct Options {
       &inpProbing,
       &inpAMO,
       &basetime,
-      &cgMultiple,
-      &firstLBD,
   };
   unordered_map<std::string, Option*> name2opt;
 

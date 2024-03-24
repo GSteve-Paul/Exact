@@ -459,11 +459,7 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
     // only violated unit assumptions were derived
   } else {
     assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
-    State result = State::SUCCESS;
-    while (result == State::SUCCESS) {
-      result = reformObjective(core);
-      if (!global.options.cgMultiple) break;
-    }
+    reformObjective(core);
     simplifyAssumps(reformObj, assumptions);
     addReformUpperBound(false);
   }
