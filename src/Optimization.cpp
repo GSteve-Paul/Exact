@@ -457,7 +457,11 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
 
   if (!core->isTautology()) {
     assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
-    reformObjective(core);
+    State result = State::SUCCESS;
+    while (result == State::SUCCESS) {
+      result = reformObjective(core);
+      if (!global.options.optReuseCores) break;
+    }
     simplifyAssumps(reformObj, assumptions);
     addReformUpperBound(false);
   }  // else only violated unit assumptions were derived
@@ -520,21 +524,19 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           solver.setAssumptions(assumptions.getKeys());
         } else {
           assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
-          LARGE bnd = global.options.optPrecision.get() == 0
-                          ? static_cast<LARGE>(0)
-                          : (upper_bound - lower_bound) / global.options.optPrecision.get();
-          Var largest = reformObj->vars[0];
-          SMALL largestCoef = aux::abs(reformObj->coefs[largest]);
+          VarVec& refVars = reformObj->vars;
+          LARGE bnd = 0;
+          if (global.options.optStratification) {
+            const std::vector<SMALL>& refCoefs = reformObj->coefs;
+            std::nth_element(refVars.begin(), refVars.begin() + refVars.size() / 2, refVars.end(),
+                             [&](Var v1, Var v2) { return aux::abs(refCoefs[v1]) < aux::abs(refCoefs[v2]); });
+            bnd = std::min<LARGE>(static_cast<LARGE>(aux::abs(refCoefs[refVars[refVars.size() / 2]])),
+                                  (upper_bound - lower_bound) / global.options.optPrecision.get());
+          }
           for (Var v : reformObj->vars) {
             if (reformObj->coefs[v] >= bnd || reformObj->coefs[v] <= -bnd) assumps.push_back(-reformObj->getLit(v));
-            if (reformObj->coefs[v] >= largestCoef || reformObj->coefs[v] <= -largestCoef) {
-              largest = v;
-              largestCoef = aux::abs(reformObj->coefs[v]);
-            }
           }
-          if (assumps.size() == assumptions.getKeys().size()) {
-            assumps.push_back(-reformObj->getLit(largest));
-          }
+          assert(assumps.size() >= refVars.size() / 2);
           solver.setAssumptions(assumps);
         }
       } else {
@@ -625,7 +627,7 @@ template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::boundBottomUp() {
   assert(lower_bound < upper_bound);
   LARGE bnd = lower_bound + (global.options.optPrecision.get() == 0
-                                 ? static_cast<LARGE>(1)
+                                 ? static_cast<LARGE>(0)
                                  : (upper_bound - lower_bound) / global.options.optPrecision.get());
   assert(bnd < upper_bound);
   assert(bnd >= lower_bound);
