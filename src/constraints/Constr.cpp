@@ -60,37 +60,50 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Constr.hpp"
+#include <cmath>
 #include "../Solver.hpp"
 
 namespace xct {
 
-Constr::Constr(ID i, Origin o, bool lkd, unsigned int lngth, double strngth, unsigned int maxLBD)
-    : id(i), strength(strngth), size(lngth), header{0, lkd, 0, (unsigned int)o, maxLBD} {
-  assert(strength <= 1);
-  assert(strength > 0);
+Constr::Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth, unsigned int maxLBD)
+    : priority(maxLBD + 1 - strngth), header1{0, lkd, lngth}, header2{0, (unsigned int)o, i} {
+  assert(strngth <= 1);
+  assert(strngth > 0);  // so we know that 1-strngth < 1 and it will not interfere with the LBD when stored together
   assert(maxLBD <= MAXLBD);
+  assert(lngth < INF);
 }
 
 std::ostream& operator<<(std::ostream& o, const Constr& c) {
-  for (unsigned int i = 0; i < c.size; ++i) {
+  for (unsigned int i = 0; i < c.size(); ++i) {
     o << c.coef(i) << "x" << c.lit(i) << " ";
   }
   return o << ">= " << c.degree();
 }
 
-void Constr::setLocked(bool lkd) { header.locked = lkd; }
-bool Constr::isLocked() const { return header.locked; }
-Origin Constr::getOrigin() const { return (Origin)header.origin; }
-void Constr::decreaseLBD(unsigned int lbd) { header.lbd = std::min(header.lbd, lbd); }
+unsigned int Constr::size() const { return header1.size; }
+void Constr::setLocked(bool lkd) { header1.locked = lkd; }
+bool Constr::isLocked() const { return header1.locked; }
+Origin Constr::getOrigin() const { return (Origin)header2.origin; }
+void Constr::decreaseLBD(unsigned int lbd) {
+  float integral;
+  float fractional = std::modf(priority, &integral);
+  priority = std::min<float>(lbd, integral) + fractional;
+}
 void Constr::decayLBD(unsigned int decay, unsigned int maxLBD) {
   assert(maxLBD <= MAXLBD);
-  header.lbd = std::min({header.lbd + decay, maxLBD});
+  float integral;
+  float fractional = std::modf(priority, &integral);
+  priority = std::min<float>(integral + decay, maxLBD) + fractional;
 }
-unsigned int Constr::lbd() const { return header.lbd; }
-double Constr::priority() const { return lbd() * 2 - strength; }
-bool Constr::isMarkedForDelete() const { return header.markedfordel; }
-bool Constr::isSeen() const { return header.seen; }
-void Constr::setSeen(bool s) { header.seen = s; }
+unsigned int Constr::lbd() const { return static_cast<unsigned int>(priority); }
+float Constr::strength() const {
+  float tmp;
+  return 1 - std::modf(priority, &tmp);
+}
+bool Constr::isMarkedForDelete() const { return header1.markedfordel; }
+bool Constr::isSeen() const { return header2.seen; }
+void Constr::setSeen(bool s) { header2.seen = s; }
+ID Constr::id() const { return header2.id; }
 
 void Constr::fixEncountered(Stats& stats) const {  // TODO: better as method of Stats?
   const Origin o = getOrigin();
@@ -110,20 +123,20 @@ void Constr::fixEncountered(Stats& stats) const {  // TODO: better as method of 
 }
 
 size_t Clause::getMemSize(unsigned int length) { return aux::ceildiv(sizeof(Clause) + sizeof(Lit) * length, maxAlign); }
-size_t Clause::getMemSize() const { return getMemSize(size); }
+size_t Clause::getMemSize() const { return getMemSize(size()); }
 
 bigint Clause::degree() const { return 1; }
 bigint Clause::coef([[maybe_unused]] unsigned int i) const { return 1; }
 Lit Clause::lit(unsigned int i) const { return data[i]; }
-unsigned int Clause::getUnsaturatedIdx() const { return size; }
+unsigned int Clause::getUnsaturatedIdx() const { return size(); }
 bool Clause::isClauseOrCard() const { return true; }
-bool Clause::isAtMostOne() const { return size == 2; }
+bool Clause::isAtMostOne() const { return size() == 2; }
 
 void Clause::initializeWatches(CRef cr, Solver& solver) {
   auto& level = solver.level;
   auto& adj = solver.adj;
 
-  unsigned int length = size;
+  unsigned int length = size();
   assert(length >= 1);
   if (length == 1) {
     assert(solver.decisionLevel() == 0);
@@ -166,7 +179,7 @@ WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver
 
   assert(idx < 0);
   assert(p == data[0] || p == data[1]);
-  assert(size > 1);
+  assert(size() > 1);
   int widx = 0;
   Lit watch = data[0];
   Lit otherwatch = data[1];
@@ -182,7 +195,7 @@ WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver
     return WatchStatus::KEEPWATCH;  // constraint is satisfied
   }
 
-  const unsigned int length = size;
+  const unsigned int length = size();
   for (unsigned int i = 2; i < length; ++i) {
     Lit l = data[i];
     if (!isFalse(level, l)) {
@@ -213,25 +226,25 @@ WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver
 }
 
 unsigned int Clause::resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(data, size, 1, id, l, solver.getLevel(), solver.getPos(), actSet);
+  return confl->resolveWith(data, size(), 1, id(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 unsigned int Clause::subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size, 1, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(data, size(), 1, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 CeSuper Clause::toExpanded(ConstrExpPools& cePools) const {
   Ce32 result = cePools.take32();
   result->addRhs(1);
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size(); ++i) {
     result->addLhs(1, data[i]);
   }
   result->orig = getOrigin();
-  result->resetBuffer(id);
+  result->resetBuffer(id());
   return result;
 }
 
 bool Clause::isSatisfiedAtRoot(const IntMap<int>& level) const {
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     if (isUnit(level, data[i])) return true;
   }
   return false;
@@ -240,7 +253,7 @@ bool Clause::isSatisfiedAtRoot(const IntMap<int>& level) const {
 bool Clause::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                              IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     Lit l = data[i];
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
@@ -266,14 +279,14 @@ bool Clause::canBeSimplified(const IntMap<int>& level, Equalities& equalities, I
 size_t Cardinality::getMemSize(unsigned int length) {
   return aux::ceildiv(sizeof(Cardinality) + sizeof(Lit) * length, maxAlign);
 }
-size_t Cardinality::getMemSize() const { return getMemSize(size); }
+size_t Cardinality::getMemSize() const { return getMemSize(size()); }
 
 bigint Cardinality::degree() const { return degr; }
 bigint Cardinality::coef([[maybe_unused]] unsigned int i) const { return 1; }
 Lit Cardinality::lit(unsigned int i) const { return data[i]; }
 unsigned int Cardinality::getUnsaturatedIdx() const { return 0; }
 bool Cardinality::isClauseOrCard() const { return true; }
-bool Cardinality::isAtMostOne() const { return degr == size - 1; }
+bool Cardinality::isAtMostOne() const { return degr == size() - 1; }
 
 void Cardinality::initializeWatches(CRef cr, Solver& solver) {
   assert(degr > 1);  // otherwise not a cardinality
@@ -281,7 +294,7 @@ void Cardinality::initializeWatches(CRef cr, Solver& solver) {
   [[maybe_unused]] auto& position = solver.position;
   auto& adj = solver.adj;
 
-  unsigned int length = size;
+  unsigned int length = size();
   if (degr >= length) {
     assert(solver.decisionLevel() == 0);
     for (unsigned int i = 0; i < length; ++i) {
@@ -309,7 +322,7 @@ void Cardinality::initializeWatches(CRef cr, Solver& solver) {
         solver.propagate(data[i], cr);
       }
     }
-    for (unsigned int i = degr + 1; i < size; ++i) {  // ensure last watch is last falsified literal
+    for (unsigned int i = degr + 1; i < size(); ++i) {  // ensure last watch is last falsified literal
       Lit l = data[i];
       assert(isFalse(level, l));
       if (level[-l] > level[-data[degr]]) {
@@ -328,7 +341,7 @@ WatchStatus Cardinality::checkForPropagation(CRef cr, int& idx, [[maybe_unused]]
   assert(idx >= 0);
   assert(idx < INF);
   assert(data[idx] == p);
-  const unsigned int length = size;
+  const unsigned int length = size();
   if (ntrailpops < stats.NTRAILPOPS) {
     ntrailpops = stats.NTRAILPOPS.z;
     watchIdx = degr + 1;
@@ -372,26 +385,26 @@ WatchStatus Cardinality::checkForPropagation(CRef cr, int& idx, [[maybe_unused]]
 }
 
 unsigned int Cardinality::resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), actSet);
+  return confl->resolveWith(data, size(), degr, id(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 unsigned int Cardinality::subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(data, size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 CeSuper Cardinality::toExpanded(ConstrExpPools& cePools) const {
   Ce32 result = cePools.take32();
   result->addRhs(degr);
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size(); ++i) {
     result->addLhs(1, data[i]);
   }
   result->orig = getOrigin();
-  result->resetBuffer(id);
+  result->resetBuffer(id());
   return result;
 }
 
 bool Cardinality::isSatisfiedAtRoot(const IntMap<int>& level) const {
   int eval = -static_cast<int>(degr);
-  for (int i = 0; i < (int)size && eval < 0; ++i) {
+  for (int i = 0; i < (int)size() && eval < 0; ++i) {
     eval += isUnit(level, data[i]);
   }
   return eval >= 0;
@@ -399,7 +412,7 @@ bool Cardinality::isSatisfiedAtRoot(const IntMap<int>& level) const {
 
 bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications&, IntSetPool&) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     Lit l = data[i];
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
@@ -415,7 +428,7 @@ void Counting<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
   auto& qhead = solver.qhead;
 
   slack = -degr;
-  unsigned int length = size;
+  unsigned int length = size();
   for (unsigned int i = 0; i < length; ++i) {
     Lit l = data[i].l;
     adj[l].emplace_back(cr, i + INF);
@@ -440,7 +453,7 @@ WatchStatus Counting<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unu
 
   assert(idx >= INF);
   assert(data[idx - INF].l == p);
-  const unsigned int length = size;
+  const unsigned int length = size();
   const CF& lrgstCf = data[0].c;
   const CF& c = data[idx - INF].c;
 
@@ -482,22 +495,22 @@ void Counting<CF, DG>::undoFalsified(int i) {
 
 template <typename CF, typename DG>
 unsigned int Counting<CF, DG>::resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(data, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
+  return confl->resolveWith(data, size(), degr, id(), getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
 unsigned int Counting<CF, DG>::subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(data, size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
 CePtr<CF, DG> Counting<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size(); ++i) {
     result->addLhs(data[i].c, data[i].l);
   }
   result->orig = getOrigin();
-  result->resetBuffer(id);
+  result->resetBuffer(id());
   return result;
 }
 
@@ -509,7 +522,7 @@ CeSuper Counting<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 template <typename CF, typename DG>
 bool Counting<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -degr;
-  for (int i = 0; i < (int)size && eval < 0; ++i) {
+  for (int i = 0; i < (int)size() && eval < 0; ++i) {
     if (isUnit(level, data[i].l)) eval += data[i].c;
   }
   return eval >= 0;
@@ -519,7 +532,7 @@ template <typename CF, typename DG>
 bool Counting<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                                        IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     Lit l = data[i].l;
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
@@ -550,7 +563,7 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
   auto& qhead = solver.qhead;
 
   watchslack = -degr;
-  unsigned int length = size;
+  unsigned int length = size();
   const CF lrgstCf = aux::abs(data[0].c);
   for (unsigned int i = 0; i < length && watchslack < lrgstCf; ++i) {
     Lit l = data[i].l;
@@ -600,7 +613,7 @@ WatchStatus Watched<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unus
 
   assert(idx >= INF);
   assert(data[idx - INF].l == p);
-  const unsigned int length = size;
+  const unsigned int length = size();
   const CF lrgstCf = aux::abs(data[0].c);
   CF& c = data[idx - INF].c;
 
@@ -667,22 +680,22 @@ void Watched<CF, DG>::undoFalsified(int i) {
 
 template <typename CF, typename DG>
 unsigned int Watched<CF, DG>::resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(data, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
+  return confl->resolveWith(data, size(), degr, id(), getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
 unsigned int Watched<CF, DG>::subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(data, size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
 CePtr<CF, DG> Watched<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size(); ++i) {
     result->addLhs(aux::abs(data[i].c), data[i].l);
   }
   result->orig = getOrigin();
-  result->resetBuffer(id);
+  result->resetBuffer(id());
   return result;
 }
 
@@ -694,7 +707,7 @@ CeSuper Watched<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 template <typename CF, typename DG>
 bool Watched<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -degr;
-  for (int i = 0; i < (int)size && eval < 0; ++i) {
+  for (int i = 0; i < (int)size() && eval < 0; ++i) {
     if (isUnit(level, data[i].l)) eval += aux::abs(data[i].c);
   }
   return eval >= 0;
@@ -704,7 +717,7 @@ template <typename CF, typename DG>
 bool Watched<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                                       IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     Lit l = data[i].l;
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
@@ -736,7 +749,7 @@ void CountingSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 
   DG& slk = slack;
   slk = -degr;
-  unsigned int length = size;
+  unsigned int length = size();
   for (unsigned int i = 0; i < length; ++i) {
     Lit l = terms[i].l;
     adj[l].emplace_back(cr, i + INF);
@@ -763,7 +776,7 @@ WatchStatus CountingSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe
 
   assert(idx >= INF);
   assert(terms[idx - INF].l == p);
-  const unsigned int length = size;
+  const unsigned int length = size();
   const CF& lrgstCf = terms[0].c;
   const CF& c = terms[idx - INF].c;
 
@@ -806,22 +819,22 @@ void CountingSafe<CF, DG>::undoFalsified(int i) {
 
 template <typename CF, typename DG>
 unsigned int CountingSafe<CF, DG>::resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(terms, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
+  return confl->resolveWith(terms, size(), degr, id(), getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
 unsigned int CountingSafe<CF, DG>::subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(terms, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(terms, size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
 CePtr<CF, DG> CountingSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size(); ++i) {
     result->addLhs(terms[i].c, terms[i].l);
   }
   result->orig = getOrigin();
-  result->resetBuffer(id);
+  result->resetBuffer(id());
   return result;
 }
 
@@ -833,7 +846,7 @@ CeSuper CountingSafe<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 template <typename CF, typename DG>
 bool CountingSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -degr;
-  for (int i = 0; i < (int)size && eval < 0; ++i) {
+  for (int i = 0; i < (int)size() && eval < 0; ++i) {
     if (isUnit(level, terms[i].l)) eval += terms[i].c;
   }
   return eval >= 0;
@@ -843,7 +856,7 @@ template <typename CF, typename DG>
 bool CountingSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                                            IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     Lit l = terms[i].l;
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
@@ -875,7 +888,7 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 
   DG& wslk = watchslack;
   wslk = -degr;
-  unsigned int length = size;
+  unsigned int length = size();
   const CF lrgstCf = aux::abs(terms[0].c);
   for (unsigned int i = 0; i < length && wslk < lrgstCf; ++i) {
     Lit l = terms[i].l;
@@ -925,7 +938,7 @@ WatchStatus WatchedSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_
 
   assert(idx >= INF);
   assert(terms[idx - INF].l == p);
-  const unsigned int length = size;
+  const unsigned int length = size();
   const CF lrgstCf = aux::abs(terms[0].c);
   CF& c = terms[idx - INF].c;
 
@@ -993,22 +1006,22 @@ void WatchedSafe<CF, DG>::undoFalsified(int i) {
 
 template <typename CF, typename DG>
 unsigned int WatchedSafe<CF, DG>::resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(terms, size, degr, id, getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
+  return confl->resolveWith(terms, size(), degr, id(), getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
 unsigned int WatchedSafe<CF, DG>::subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(terms, size, degr, id, l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(terms, size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
 CePtr<CF, DG> WatchedSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size(); ++i) {
     result->addLhs(aux::abs(terms[i].c), terms[i].l);
   }
   result->orig = getOrigin();
-  result->resetBuffer(id);
+  result->resetBuffer(id());
   return result;
 }
 
@@ -1020,7 +1033,7 @@ CeSuper WatchedSafe<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 template <typename CF, typename DG>
 bool WatchedSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -degr;
-  for (int i = 0; i < (int)size && eval < 0; ++i) {
+  for (int i = 0; i < (int)size() && eval < 0; ++i) {
     if (isUnit(level, terms[i].l)) eval += aux::abs(terms[i].c);
   }
   return eval >= 0;
@@ -1030,7 +1043,7 @@ template <typename CF, typename DG>
 bool WatchedSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                                           IntSetPool& isp) const {
   bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     Lit l = terms[i].l;
     if (isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) return true;
   }
@@ -1058,7 +1071,7 @@ bool WatchedSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& 
 bool Constr::isCorrectlyConflicting(const Solver& solver) const {
   return true;  // comment to run check
   bigint slack = -degree();
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     slack += isFalse(solver.getLevel(), lit(i)) ? 0 : coef(i);
   }
   return slack < 0;
@@ -1068,14 +1081,14 @@ bool Constr::isCorrectlyPropagating(const Solver& solver, int idx) const {
   return true;  // comment to run check
   assert(isUnknown(solver.getPos(), lit(idx)));
   bigint slack = -degree();
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     slack += isFalse(solver.getLevel(), lit(i)) ? 0 : coef(i);
   }
   return slack < coef(idx);
 }
 
 void Constr::print(const Solver& solver) const {
-  for (size_t i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size(); ++i) {
     int pos = solver.getPos()[toVar(lit(i))];
     std::cout << coef(i) << "x" << lit(i)
               << (pos < solver.qhead ? (isTrue(solver.getLevel(), lit(i)) ? "t" : "f") : "u") << (pos == INF ? -1 : pos)
@@ -1088,7 +1101,7 @@ template <typename CF, typename DG>
 bool Counting<CF, DG>::hasCorrectSlack(const Solver& solver) {
   return true;  // comment to run check
   DG slk = -degr;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     if (solver.getPos()[toVar(lit(i))] >= solver.qhead || !isFalse(solver.getLevel(), lit(i))) {
       slk += data[i].c;
     }
@@ -1100,7 +1113,7 @@ template <typename CF, typename DG>
 bool Watched<CF, DG>::hasCorrectSlack(const Solver& solver) {
   return true;  // comment to run check
   DG slk = -degr;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     if (data[i].c < 0 && (solver.getPos()[toVar(lit(i))] >= solver.qhead || !isFalse(solver.getLevel(), lit(i))))
       slk += aux::abs(data[i].c);
   }
@@ -1111,7 +1124,7 @@ template <typename CF, typename DG>
 bool CountingSafe<CF, DG>::hasCorrectSlack(const Solver& solver) {
   return true;  // comment to run check
   DG slk = -degr;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     if (solver.getPos()[toVar(lit(i))] >= solver.qhead || !isFalse(solver.getLevel(), lit(i))) {
       slk += terms[i].c;
     }
@@ -1123,7 +1136,7 @@ template <typename CF, typename DG>
 bool WatchedSafe<CF, DG>::hasCorrectSlack(const Solver& solver) {
   return true;  // comment to run check
   DG slk = -degr;
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     if (terms[i].c < 0 && (solver.getPos()[toVar(lit(i))] >= solver.qhead || !isFalse(solver.getLevel(), lit(i))))
       slk += aux::abs(terms[i].c);
   }
@@ -1135,7 +1148,7 @@ bool Watched<CF, DG>::hasCorrectWatches(const Solver& solver) {
   return true;  // comment to run check
   if (watchslack >= aux::abs(data[0].c)) return true;
   for (int i = 0; i < (int)watchIdx; ++i) assert(isKnown(solver.getPos(), lit(i)));
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     if (!(data[i].c < 0 || isFalse(solver.getLevel(), data[i].l))) {
       std::cout << i << " " << data[i].c << " " << isFalse(solver.getLevel(), data[i].l) << std::endl;
       print(solver);
@@ -1150,7 +1163,7 @@ bool WatchedSafe<CF, DG>::hasCorrectWatches(const Solver& solver) {
   return true;  // comment to run check
   if (watchslack >= aux::abs(terms[0].c)) return true;
   for (int i = 0; i < (int)watchIdx; ++i) assert(isKnown(solver.getPos(), lit(i)));
-  for (int i = 0; i < (int)size; ++i) {
+  for (int i = 0; i < (int)size(); ++i) {
     if (!(terms[i].c < 0 || isFalse(solver.getLevel(), terms[i].l))) {
       std::cout << i << " " << terms[i].c << " " << isFalse(solver.getLevel(), terms[i].l) << std::endl;
       print(solver);

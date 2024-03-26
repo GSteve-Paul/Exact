@@ -316,7 +316,7 @@ CeSuper Solver::runDatabasePropagation() {
       } else {
         assert(wstat == WatchStatus::KEEPWATCH);
         Constr& c = ca[cr];
-        cPrio = c.priority();
+        cPrio = c.priority;
         if (cPrio < prevPrio) {
           assert(it_ws > 0);
           std::swap(ws[it_ws], ws[it_ws - 1]);
@@ -589,32 +589,32 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   c.initializeWatches(cr, *this);
   constraints.push_back(cr);
   if (isNonImplied(c.getOrigin())) {
-    for (unsigned int i = 0; i < c.size; ++i) {
+    for (unsigned int i = 0; i < c.size(); ++i) {
       Lit l = c.lit(i);
       assert(isOrig(toVar(l)));
       lit2cons[l].insert({cr, i});
     }
   }
-  if (c.isAtMostOne() && c.size > 2) {
-    uint64_t hash = c.size;
-    for (unsigned int i = 0; i < c.size; ++i) {
+  if (c.isAtMostOne() && c.size() > 2) {
+    uint64_t hash = c.size();
+    for (unsigned int i = 0; i < c.size(); ++i) {
       hash ^= aux::hash(c.lit(i));
     }
-    if (auto bestsize = atMostOneHashes.find(hash); bestsize == atMostOneHashes.end() || bestsize->second < c.size) {
-      atMostOneHashes[hash] = c.size;
+    if (auto bestsize = atMostOneHashes.find(hash); bestsize == atMostOneHashes.end() || bestsize->second < c.size()) {
+      atMostOneHashes[hash] = c.size();
     }
   }
 
   Origin orig = c.getOrigin();
   bool learned = isLearned(orig);
   if (learned) {
-    global.stats.LEARNEDLENGTHSUM += c.size;
+    global.stats.LEARNEDLENGTHSUM += c.size();
     global.stats.LEARNEDDEGREESUM += c.degree();
-    global.stats.LEARNEDSTRENGTHSUM += c.strength;
+    global.stats.LEARNEDSTRENGTHSUM += c.strength();
   } else {
-    global.stats.EXTERNLENGTHSUM += c.size;
+    global.stats.EXTERNLENGTHSUM += c.size();
     global.stats.EXTERNDEGREESUM += c.degree();
-    global.stats.EXTERNSTRENGTHSUM += c.strength;
+    global.stats.EXTERNSTRENGTHSUM += c.strength();
   }
   if (c.degree() == 1) {
     global.stats.NCLAUSESLEARNED += learned;
@@ -768,7 +768,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
   try {
     CRef cr = attachConstraint(ce, true);
     assert(cr != CRef_Undef);
-    ID id = ca[cr].id;
+    ID id = ca[cr].id();
     Origin orig = ca[cr].getOrigin();
     if (isExternal(orig)) {
       external[id] = cr;
@@ -828,11 +828,11 @@ void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
   Constr& c = ca[cr];
   assert(override || !c.isLocked());
   assert(!c.isMarkedForDelete());
-  assert(!external.count(c.id));
-  c.header.markedfordel = 1;
+  assert(!external.count(c.id()));
+  c.header1.markedfordel = 1;
   ca.wasted += c.getMemSize();
   if (isNonImplied(c.getOrigin())) {
-    for (unsigned int i = 0; i < c.size; ++i) {
+    for (unsigned int i = 0; i < c.size(); ++i) {
       Lit l = c.lit(i);
       assert(isOrig(toVar(l)));
       assert(lit2cons[l].count(cr));
@@ -915,7 +915,7 @@ void Solver::rebuildLit2Cons() {
   for (const CRef& cr : constraints) {
     Constr& c = ca[cr];
     if (c.isMarkedForDelete() || !isNonImplied(c.getOrigin())) continue;
-    for (unsigned int i = 0; i < c.size; ++i) {
+    for (unsigned int i = 0; i < c.size(); ++i) {
       assert(isOrig(toVar(c.lit(i))));
       lit2cons[c.lit(i)].insert({cr, c.isClauseOrCard() ? INF : i});
     }
@@ -962,7 +962,7 @@ void Solver::reduceDB() {
   removeSatisfiedNonImpliedsAtRoot();
   for (const CRef& cr : constraints) {
     Constr& c = ca[cr];
-    if (c.isMarkedForDelete() || c.isLocked() || external.count(c.id)) {
+    if (c.isMarkedForDelete() || c.isLocked() || external.count(c.id())) {
       continue;
     }
     assert(!isNonImplied(c.getOrigin()));
@@ -974,7 +974,7 @@ void Solver::reduceDB() {
     }
   }
 
-  std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) { return ca[x].priority() < ca[y].priority(); });
+  std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) { return ca[x].priority < ca[y].priority; });
   int64_t limit = global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
@@ -984,7 +984,7 @@ void Solver::reduceDB() {
   for (int64_t i = 0; i < currentConstraints; ++i) {
     CRef cr = constraints[i];
     Constr& c = ca[cr];
-    if (c.isMarkedForDelete() || external.count(c.id) ||
+    if (c.isMarkedForDelete() || external.count(c.id()) ||
         !c.canBeSimplified(level, equalities, implications, global.isPool)) {
       continue;
     }
@@ -1089,14 +1089,14 @@ void Solver::inProcess() {
 void Solver::sortWatchlists() {
   Var first = getHeuristic().firstInActOrder();
   sort(adj[first].begin(), adj[first].end(),
-       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].priority() < ca[w2.cref].priority(); });
+       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].priority < ca[w2.cref].priority; });
   if (getNbVars() == 0) return;
   nextToSort = (nextToSort % getNbVars()) + 1;
   if (nextToSort == first) nextToSort = (nextToSort % getNbVars()) + 1;
   assert(nextToSort > 0);
   assert(nextToSort <= getNbVars());
   sort(adj[nextToSort].begin(), adj[nextToSort].end(),
-       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].priority() < ca[w2.cref].priority(); });
+       [&](const Watch& w1, const Watch& w2) -> bool { return ca[w1.cref].priority < ca[w2.cref].priority; });
 }
 
 void Solver::presolve() {
@@ -1139,7 +1139,8 @@ void Solver::removeSatisfiedNonImpliedsAtRoot() {
     Constr& c = ca[cr];
     assert(c.isSeen());
     c.setSeen(false);
-    if (c.isSatisfiedAtRoot(getLevel()) && external.count(c.id) == 0) {  // upper bound constraints may yet be external
+    if (c.isSatisfiedAtRoot(getLevel()) &&
+        external.count(c.id()) == 0) {  // upper bound constraints may yet be external
       ++global.stats.NSATISFIEDSREMOVED;
       removeConstraint(cr, true);
     }
@@ -1192,7 +1193,7 @@ void Solver::dominanceBreaking() {
         firstUnsatIdx = unsatIdx;
       }
       if (firstUnsatIdx == 0) {
-        for (unsigned int i = 0; i < first->size; ++i) {
+        for (unsigned int i = 0; i < first->size(); ++i) {
           inUnsaturatableConstraint.insert(first->lit(i));
         }
         break;
@@ -1216,7 +1217,7 @@ void Solver::dominanceBreaking() {
       Constr& c = ca[pr.first];
       unsigned int unsatIdx = c.getUnsaturatedIdx();
       if (unsatIdx == 0) {
-        for (unsigned int i = 0; i < c.size; ++i) {
+        for (unsigned int i = 0; i < c.size(); ++i) {
           inUnsaturatableConstraint.insert(c.lit(i));
         }
       }

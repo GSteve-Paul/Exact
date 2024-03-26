@@ -455,14 +455,12 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {  // 
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   core->saturate(true, false);
 
-  if (core->isTautology()) {
-    // only violated unit assumptions were derived
-  } else {
+  if (!core->isTautology()) {
     assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
     reformObjective(core);
     simplifyAssumps(reformObj, assumptions);
     addReformUpperBound(false);
-  }
+  }  // else only violated unit assumptions were derived
 
   checkLazyVariables();
 }

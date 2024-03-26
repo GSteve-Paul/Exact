@@ -333,7 +333,7 @@ void LpSolver::constructLearnedCandidates() {
     const Constr& c = solver.ca[cr];
     if (isLearned(c.getOrigin())) {
       bool containsNewVars = false;
-      for (unsigned int i = 0; i < c.size && !containsNewVars; ++i) {
+      for (unsigned int i = 0; i < c.size() && !containsNewVars; ++i) {
         containsNewVars = toVar(c.lit(i)) >= getNbCols();
       }
       if (containsNewVars) continue;  // for now, LP solver only knows about the initial formula variables

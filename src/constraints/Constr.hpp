@@ -67,8 +67,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace xct {
 
 enum class WatchStatus { DROPWATCH, KEEPWATCH, CONFLICTING };
-const unsigned int LBDBITS = 24;
-const unsigned int MAXLBD = (((unsigned int)1) << LBDBITS) - 1;
 
 class Solver;
 class Equalities;
@@ -77,31 +75,34 @@ struct Stats;
 struct Constr {  // internal solver constraint optimized for fast propagation
   virtual size_t getMemSize() const = 0;
 
-  const ID id;  // NOTE: ID attribute not strictly needed in cache-sensitive Constr, but it did not matter after testing
-  const double strength;  // NOTE: can also be a float, but let's make use of 4 padding bytes left in this struct
-  const uint32_t size;
+  float priority;  // Integer part is LBD (0 to 1e5), fractional part is 1-strength. Lower is better.
   struct {
     unsigned markedfordel : 1;
     unsigned locked : 1;
+    const unsigned size : 30;  // size is never larger than INF, so fits in 30 bits
+  } header1;
+  struct {
     unsigned seen : 1;  // utility bit to avoid hash maps
     const unsigned origin : 5;
-    unsigned lbd : LBDBITS;
-  } header;
+    const unsigned long long id : 58;  // plenty of bits to store ID
+  } header2;
 
-  Constr(ID i, Origin o, bool lkd, unsigned int lngth, double strngth, unsigned int maxLBD);
+  Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth, unsigned int maxLBD);
   virtual ~Constr() {}
   virtual void cleanup() = 0;  // poor man's destructor
 
+  unsigned int size() const;
   void setLocked(bool lkd);
   bool isLocked() const;
   Origin getOrigin() const;
   void decreaseLBD(unsigned int lbd);
   void decayLBD(unsigned int decay, unsigned int maxLBD);
   unsigned int lbd() const;
-  double priority() const;  // lower is better
+  float strength() const;
   bool isMarkedForDelete() const;
   bool isSeen() const;
   void setSeen(bool s);
+  ID id() const;
   void fixEncountered(Stats& stats) const;
 
   // TODO: remove direct uses of these bigint methods, convert to ConstrExp instead
@@ -153,7 +154,7 @@ struct Clause final : public Constr {
     assert(constraint->nVars() < INF);
     assert(constraint->getDegree() == 1);
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       data[i] = constraint->getLit(v);
@@ -204,7 +205,7 @@ struct Cardinality final : public Constr {
     assert(aux::abs(constraint->coefs[constraint->getVars()[0]]) == 1);
     assert(constraint->getDegree() <= (LARGE)constraint->nVars());
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       data[i] = constraint->getLit(v);
@@ -237,7 +238,7 @@ struct Counting final : public Constr {
   static size_t getMemSize(unsigned int length) {
     return aux::ceildiv(sizeof(Counting<CF, DG>) + sizeof(Term<CF>) * length, maxAlign);
   }
-  size_t getMemSize() const { return getMemSize(size); }
+  size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return degr; }
   bigint coef(unsigned int i) const { return data[i].c; }
@@ -265,7 +266,7 @@ struct Counting final : public Constr {
     assert(fitsIn<CF>(constraint->getLargestCoef()));
     assert(strngth == constraint->getStrength());
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
@@ -303,7 +304,7 @@ struct Watched final : public Constr {
   static size_t getMemSize(unsigned int length) {
     return aux::ceildiv(sizeof(Watched<CF, DG>) + sizeof(Term<CF>) * length, maxAlign);
   }
-  size_t getMemSize() const { return getMemSize(size); }
+  size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return degr; }
   bigint coef(unsigned int i) const { return aux::abs(data[i].c); }
@@ -331,7 +332,7 @@ struct Watched final : public Constr {
     assert(fitsIn<CF>(constraint->getLargestCoef()));
     assert(strngth == constraint->getStrength());
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
@@ -370,7 +371,7 @@ struct CountingSafe final : public Constr {
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
     return aux::ceildiv(sizeof(CountingSafe<CF, DG>), maxAlign);
   }
-  size_t getMemSize() const { return getMemSize(size); }
+  size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return bigint(degr); }
   bigint coef(unsigned int i) const { return bigint(terms[i].c); }
@@ -399,7 +400,7 @@ struct CountingSafe final : public Constr {
     assert(fitsIn<CF>(constraint->getLargestCoef()));
     assert(strngth == constraint->getStrength());
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       terms[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
@@ -432,12 +433,12 @@ struct WatchedSafe final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG watchslack;
-  Term<CF>* terms;  // array
+  Term<CF>* terms;  // array // TODO: should point to memory right behind this constraint
 
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
     return aux::ceildiv(sizeof(WatchedSafe<CF, DG>), maxAlign);
   }
-  size_t getMemSize() const { return getMemSize(size); }
+  size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return bigint(degr); }
   bigint coef(unsigned int i) const { return bigint(aux::abs(terms[i].c)); }
@@ -466,7 +467,7 @@ struct WatchedSafe final : public Constr {
     assert(fitsIn<CF>(constraint->getLargestCoef()));
     assert(strngth == constraint->getStrength());
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       terms[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};

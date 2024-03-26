@@ -67,9 +67,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace xct {
 
 using ID = uint64_t;
-const ID ID_Undef = std::numeric_limits<ID>::max();
-const ID ID_Trivial = 1;  // represents constraint 0 >= 0
-inline bool isValid(ID id) { return id > 0 && id < ID_Undef; }
+constexpr ID ID_Undef = 0;
+constexpr ID ID_Trivial = 1;  // represents constraint 0 >= 0
+inline bool isValid(ID id) { return id != ID_Undef; }
+
+constexpr unsigned int MAXLBD = 1e5;
 
 using Var = int32_t;
 using Lit = int32_t;
@@ -77,12 +79,12 @@ inline Var toVar(Lit l) { return std::abs(l); }
 using VarVec = std::vector<Var>;
 using LitVec = std::vector<Lit>;
 
-const int32_t resize_factor = 2;
+constexpr int32_t resize_factor = 2;
 
-const int32_t INF =
+constexpr int32_t INF =
     1e9 + 1;  // 1e9 < 30 bits is the maximum number of variables in the system, anything beyond is infinity
 // NOTE: 31 bits is not possible due to the idx entry in the Watch struct
-const long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long long range captured by double
+constexpr long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long long range captured by double
 
 template <typename CF, typename DG>
 inline double limitAbs() {
