@@ -520,7 +520,9 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           solver.setAssumptions(assumptions.getKeys());
         } else {
           assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
-          LARGE bnd = (upper_bound - lower_bound) / global.options.optPrecision.get();
+          LARGE bnd = global.options.optPrecision.get() == 0
+                          ? static_cast<LARGE>(0)
+                          : (upper_bound - lower_bound) / global.options.optPrecision.get();
           Var largest = reformObj->vars[0];
           SMALL largestCoef = aux::abs(reformObj->coefs[largest]);
           for (Var v : reformObj->vars) {
@@ -622,7 +624,9 @@ SolveState Optimization<SMALL, LARGE>::runFull(bool optimize, double timeout) {
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::boundBottomUp() {
   assert(lower_bound < upper_bound);
-  LARGE bnd = lower_bound + (upper_bound - lower_bound) / global.options.optPrecision.get();
+  LARGE bnd = lower_bound + (global.options.optPrecision.get() == 0
+                                 ? static_cast<LARGE>(1)
+                                 : (upper_bound - lower_bound) / global.options.optPrecision.get());
   assert(bnd < upper_bound);
   assert(bnd >= lower_bound);
   if (boundingVar == 0 || bnd != boundingVal) {

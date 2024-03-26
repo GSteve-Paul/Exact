@@ -265,10 +265,10 @@ struct Options {
       limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
   ValOption<float> optRatio{"opt-ratio", "Ratio of bottom-up optimization time (0 means top-down, 1 fully bottom-up)",
                             0.5, "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
-  ValOption<int32_t> optPrecision{
-      "opt-precision",
-      "Precision of bottom-up optimization (each core will improve the optimality gap by at least 1/x)", 100, "int > 1",
-      [](const int32_t& x) -> bool { return x > 1; }};
+  ValOption<int32_t> optPrecision{"opt-precision",
+                                  "Precision of bottom-up optimization (each core will improve the optimality gap by "
+                                  "at least 1/x, 0 means infinity)",
+                                  100, "0 or int > 1", [](const int32_t& x) -> bool { return x > 1 || x == 0; }};
   BoolOption optCoreguided{"opt-coreguided", "Core-guided bottom up optimization instead of a basic approach", false};
   EnumOption intEncoding{"int-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
   BoolOption intContinuous{"int-continuous",
