@@ -520,23 +520,30 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
         reformObj->removeEqualities(solver.getEqualities());
         simplifyAssumps(reformObj, assumptions);
         reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+        if (!reformObj->isSortedInDecreasingCoefOrder()) {
+          reformObj->sortInDecreasingCoefOrder([](Var v1, Var v2) { return v1 < v2; });
+        }
         if (reformObj->empty()) {
           solver.setAssumptions(assumptions.getKeys());
         } else {
           assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
           VarVec& refVars = reformObj->vars;
-          LARGE bnd = 0;
-          if (global.options.optStratification) {
-            const std::vector<SMALL>& refCoefs = reformObj->coefs;
-            std::nth_element(refVars.begin(), refVars.begin() + refVars.size() / 2, refVars.end(),
-                             [&](Var v1, Var v2) { return aux::abs(refCoefs[v1]) < aux::abs(refCoefs[v2]); });
-            bnd = std::min<LARGE>(static_cast<LARGE>(aux::abs(refCoefs[refVars[refVars.size() / 2]])),
-                                  (upper_bound - lower_bound) / global.options.optPrecision.get());
+          if (global.options.optStratification.get() == 0) {
+            for (const Var v : refVars) assumps.push_back(-reformObj->getLit(v));
+          } else {
+            LARGE allowed =
+                (upper_bound - lower_bound) - (upper_bound - lower_bound) / global.options.optStratification.get();
+            assert(allowed > 0);
+            SMALL lastCoef = 0;
+            SMALL cf = 0;
+            for (const Var v : refVars) {
+              cf = aux::abs(reformObj->coefs[v]);
+              if (allowed <= 0 && cf != lastCoef) break;
+              assumps.push_back(-reformObj->getLit(v));
+              allowed -= cf;
+              lastCoef = cf;
+            }
           }
-          for (Var v : reformObj->vars) {
-            if (reformObj->coefs[v] >= bnd || reformObj->coefs[v] <= -bnd) assumps.push_back(-reformObj->getLit(v));
-          }
-          assert(assumps.size() >= refVars.size() / 2);
           solver.setAssumptions(assumps);
         }
       } else {
