@@ -175,6 +175,8 @@ struct Stats {
   Stat NADDEDLITERALS{0, "literal additions"};
   Stat NSATURATESTEPS{0, "saturation steps"};
   Stat NUNKNOWNROUNDEDUP{0, "unknown literals rounded up"};
+  Stat NMIRWEAKEN{0, "weakened by MIR"};
+  Stat NDIVWEAKEN{0, "weakened by division"};
 
   Stat NCONFL{0, "conflicts"};
   Stat NDECIDE{0, "decisions"};
@@ -295,6 +297,8 @@ struct Stats {
   Stat NCGNONCLAUSALCORES{0, "CG non-clausal cores"};
   Stat NCGCOREREUSES{0, "CG additional cardinalities from a core"};
 
+  Stat TOTALMIRWEAKEN{0, "total normalised weakenings by MIR"};
+
   // derived statistics
   Stat CPUTIME{0, "cpu time"};
   Stat SOLVETIME{0, "solve time"};
@@ -313,6 +317,8 @@ struct Stats {
   Stat LEARNEDDEGREEAVG{0, "learned degree average"};
   Stat LEARNEDSTRENGTHAVG{0, "learned strength average"};
   Stat LEARNEDLBDAVG{0, "learned LBD average"};
+  
+  Stat AVGMIRWEAKEN{0, "average extra normalised weakenings by MIR"};
 
   Stat LASTLB{std::numeric_limits<StatNum>::quiet_NaN(), "best lower bound"};
   Stat LASTUB{std::numeric_limits<StatNum>::quiet_NaN(), "best upper bound"};
@@ -337,6 +343,10 @@ struct Stats {
     LEARNEDDEGREEAVG.z = (learneds == 0 ? 0 : LEARNEDDEGREESUM / learneds);
     LEARNEDSTRENGTHAVG.z = (learneds == 0 ? 0 : LEARNEDSTRENGTHSUM / learneds);
     LEARNEDLBDAVG.z = (learneds == 0 ? 0 : LEARNEDLBDSUM / learneds);
+
+
+    StatNum totalMirWeaken = NMIRWEAKEN + NDIVWEAKEN;
+    AVGMIRWEAKEN.z = (totalMirWeaken == 0 ? 0 : TOTALMIRWEAKEN / totalMirWeaken);
 
     LASTLB.z = lowerbound;
     LASTUB.z = upperbound;
@@ -396,6 +406,8 @@ struct Stats {
       &NCONSREADDED,
       &NWATCHED,
       &NCOUNTING,
+      &NMIRWEAKEN,
+      &NDIVWEAKEN,
       &NSMALL,
       &NLARGE,
       &NARB,

@@ -918,6 +918,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
     simplifyToCardinality(false, getCardinalityDegree());
   } else {
     divideRoundUp(div);
+    // TODO: add MIR (on copied constraint) and compare
     saturate(true, true);
   }
 }
@@ -967,6 +968,9 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   weakenNonDivisible(d, level);
   // std::cout << "after weakenNonDivisible: " << *this << std::endl;
   SMALL amount = findWeakenAmount(d, to, reasonMult);
+
+  global.stats.TOTALMIRWEAKEN += (amount / getDegree());
+
   // std::cout << "amount: " << amount << std::endl;
   if (global.options.weakenSuperfluous) {
     amount = weakenSuperfluousMIR(d, amount);
