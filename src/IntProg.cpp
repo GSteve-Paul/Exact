@@ -492,7 +492,7 @@ void IntProg::addRightReification(IntVar* head, bool sign, const IntConstraint& 
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
   ++nConstrs;
-  if (keepInput) reifications.push_back({head, ic});
+  if (keepInput) reifications.push_back({head, sign, false, ic});
 
   bool run[2] = {ic.upperBound.has_value(), ic.lowerBound.has_value()};
   for (int i = 0; i < 2; ++i) {
@@ -513,7 +513,7 @@ void IntProg::addLeftReification(IntVar* head, bool sign, const IntConstraint& i
   if (!head->isBoolean()) throw InvalidArgument("Head of reification is not Boolean.");
 
   ++nConstrs;
-  if (keepInput) reifications.push_back({head, ic});
+  if (keepInput) reifications.push_back({head, sign, true, ic});
 
   bool run[2] = {ic.upperBound.has_value(), ic.lowerBound.has_value()};
   for (int i = 0; i < 2; ++i) {
@@ -722,7 +722,7 @@ std::ostream& IntProg::printInput(std::ostream& out) const {
   std::vector<std::string> strs;
   for (const auto& pr : reifications) {
     std::stringstream ss;
-    ss << *pr.first << " <=> " << pr.second;
+    ss << (pr.sign ? "!" : "") << *pr.head << (pr.left ? " <- " : " -> ") << pr.body;
     strs.push_back(ss.str());
   }
   std::sort(strs.begin(), strs.end());
@@ -776,6 +776,8 @@ bigint IntProg::getSolSpaceSize() const {
 
 bigint IntProg::getLowerBound() const { return minimize ? optim->getLowerBound() : -optim->getLowerBound(); }
 bigint IntProg::getUpperBound() const { return minimize ? optim->getUpperBound() : -optim->getUpperBound(); }
+
+bool IntProg::hasLastSolution() const { return solver.foundSolution(); }
 
 bigint IntProg::getLastSolutionFor(IntVar* iv) const {
   if (!solver.foundSolution()) throw InvalidArgument("No solution to return.");

@@ -97,7 +97,7 @@ void quit::printFinalStats(IntProg& intprog) {
 int quit::exit_SUCCESS(IntProg& intprog) {
   intprog.global.logger.flush();
   printFinalStats(intprog);
-  if (intprog.getSolver().foundSolution()) {
+  if (intprog.hasLastSolution()) {
     if (intprog.global.options.uniformOut || intprog.global.options.fileFormat.is("opb")) {
       std::cout << "o " << intprog.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
@@ -130,7 +130,7 @@ int quit::exit_SUCCESS(IntProg& intprog) {
 int quit::exit_INDETERMINATE(IntProg& intprog) {
   intprog.global.logger.flush();
   printFinalStats(intprog);
-  if (intprog.getSolver().foundSolution()) {
+  if (intprog.hasLastSolution()) {
     assert(!intprog.global.options.fileFormat.is("cnf"));  // otherwise we would have succesfully terminated
     if (intprog.global.options.uniformOut || intprog.global.options.fileFormat.is("opb")) {
       std::cout << "c best so far " << intprog.getUpperBound() << "\n";

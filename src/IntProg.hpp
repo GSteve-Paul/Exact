@@ -111,6 +111,13 @@ struct TimeOut {
   double limit;
 };
 
+struct ReifInfo {
+  IntVar* head;
+  bool sign;
+  bool left;
+  IntConstraint body;
+};
+
 class IntProg {
  public:
   Global global;
@@ -137,7 +144,7 @@ class IntProg {
   // only for printing purposes:
   const bool keepInput;
   std::vector<IntConstraint> constraints;
-  std::vector<std::pair<IntVar*, IntConstraint>> reifications;
+  std::vector<ReifInfo> reifications;
   std::vector<std::vector<IntVar*>> multiplications;  // last two are bounds
 
   IntVar* addFlag();
@@ -186,6 +193,7 @@ class IntProg {
   bigint getLowerBound() const;
   bigint getUpperBound() const;
 
+  bool hasLastSolution() const;
   bigint getLastSolutionFor(IntVar* iv) const;
   std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;
 

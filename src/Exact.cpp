@@ -261,7 +261,7 @@ py::int_ Exact::getBestSoFar() const { return py::cast(intprog.getUpperBound());
 
 py::int_ Exact::getDualBound() const { return py::cast(intprog.getLowerBound()); }
 
-bool Exact::hasSolution() const { return intprog.getSolver().foundSolution(); }
+bool Exact::hasSolution() const { return intprog.hasLastSolution(); }
 
 std::vector<py::int_> Exact::getLastSolutionFor(const std::vector<std::string>& vars) const {
   if (!hasSolution()) return {};
