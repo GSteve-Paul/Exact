@@ -75,6 +75,7 @@ std::ostream& operator<<(std::ostream& o, const IntTerm& x);
 
 using Core = std::unique_ptr<unordered_set<IntVar*>>;
 Core emptyCore();
+// NOTE: Core is a unique pointer because it is eagerly calculated and ownership is transferred to caller
 
 class IntProg;
 

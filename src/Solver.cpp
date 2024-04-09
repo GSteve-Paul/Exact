@@ -81,7 +81,7 @@ Solver::Solver(Global& g)
       nconfl_to_reduce(1000),
       nconfl_to_restart(global.options.lubyMult.get()),
       nextToSort(0) {
-  ca.capacity(1024 * 1024);  // 4MB
+  ca.capacity(1048576);  // 4MiB
   position.resize(1, INF);
   isorig.resize(1, true);
   objective = std::make_shared<ConstrExpArb>(global);
