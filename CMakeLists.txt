@@ -49,9 +49,10 @@ set(soplex_build "${PROJECT_SOURCE_DIR}/soplex_build"
 
 set(coinutils "OFF"
     CACHE STRING "Coin OR Utils library to parse .mps and .lp files.")
-
 set(zlib "OFF"
     CACHE STRING "Use ZLIB to compress proof certificates.")
+set(mimalloc "OFF"
+        CACHE STRING "Link with faster memory allocator mimalloc")
 
 set(testruns_timeout 1 CACHE STRING "Timeout of scenario test runs.")
 
@@ -70,6 +71,11 @@ if(flto)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -flto")
+endif()
+
+if(mimalloc)
+    find_package(mimalloc 1.4 REQUIRED)
+    target_link_libraries(ManyWorlds mimalloc-static)
 endif()
 
 set(GIT_BRANCH "unknown")
