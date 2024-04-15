@@ -963,6 +963,7 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   // const SMALL maxmod = to / reasonMult;
   // JO: hou je rekening met negatieve coëfficiënten? Moet het aux::floordiv(.) zijn ipv standaard deling?
 
+
   if (d == 1) return;
   // std::cout << "d: " << d << std::endl;
   weakenNonDivisible(d, level);
@@ -981,6 +982,9 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
     dropDegree(d, amount);
   }
 
+  CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
+  copyTo(copy);
+
   // std::cout << "after dropDegree: " << *this << std::endl;
 
   repairOrder();
@@ -998,17 +1002,14 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
     // std::cout << "after simplifyToCardinality: " << *this << std::endl;
   } else {
     // std::cout << "bmodd: " << degree % d << std::endl;
-    if (degree % d <= 1) {
-      // std::cout << "before divideRoundUp: " << *this << std::endl;
-      divideRoundUp(d);
-      ++global.stats.NMIRWEAKEN;
-      // std::cout << "after divideRoundUp: " << *this << std::endl;
-    } else {
-      ++global.stats.NDIVWEAKEN;
-      applyMIRalt(d);
-      // std::cout << "after applyMIR: " << *this << std::endl;
-    }
+    // std::cout << "before divideRoundUp: " << *this << std::endl;
+    ++global.stats.NMIRWEAKEN;
+    copy->divideRoundUp(d);
+    copy->saturate(true, true);
+    applyMIRalt(d);
     saturate(true, true);
+    compare(copy);
+    // std::cout << "after applyMIR: " << *this << std::endl;
     // std::cout << "after saturate: " << *this << std::endl;
   }
 }
@@ -1276,9 +1277,9 @@ const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMAL
   // TODO: dont iterate over full mod if mod is too large, check 2, 3, 5, 7 etc.
   std::vector<SMALL> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71};
   const LARGE b = getDegree();
-  SMALL amount = 0;
-  LARGE postDeg;
-  SMALL bmodd;
+  // SMALL amount = 0;
+  // LARGE postDeg;
+  // SMALL bmodd;
   assert(d >= 0);
   assert(b >= 0);  // otherwise the C++ modulo operator does not match the mathematical one
   const SMALL origBmodd = static_cast<SMALL>(aux::mod_safe(b, d));
@@ -1388,6 +1389,25 @@ AssertionStatus ConstrExp<SMALL, LARGE>::isAssertingBefore(const IntMap<int>& le
     return AssertionStatus::FALSIFIED;
   }
 }
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
+  double division_strength = other->getStrength();
+  double mir_strength = getStrength();
+
+  global.stats.DIVSTRENGTHSUM += division_strength;
+  global.stats.MIRSTRENGTHSUM += mir_strength;
+
+  if (mir_strength > division_strength) {
+    ++global.stats.NMIRSTRONGER;
+  } else if (mir_strength < division_strength) {
+    ++global.stats.NDIVWEAKER;
+  } else {
+    ++global.stats.NEQUAL;
+  }
+}
+
+
 
 // @return: highest decision level that does not make the constraint inconsistent
 // @return: whether or not the constraint is asserting at that level

@@ -177,6 +177,9 @@ struct Stats {
   Stat NUNKNOWNROUNDEDUP{0, "unknown literals rounded up"};
   Stat NMIRWEAKEN{0, "weakened by MIR"};
   Stat NDIVWEAKEN{0, "weakened by division"};
+  Stat NMIRSTRONGER{0, "stronger by MIR"};
+  Stat NDIVWEAKER{0, "stronger by division"};
+  Stat NEQUAL{0, "number of equalities"};
 
   Stat NCONFL{0, "conflicts"};
   Stat NDECIDE{0, "decisions"};
@@ -195,6 +198,10 @@ struct Stats {
   Stat LEARNEDDEGREESUM{0, "learned degree sum"};
   Stat LEARNEDSTRENGTHSUM{0, "learned strength sum"};
   Stat LEARNEDLBDSUM{0, "learned LBD sum"};
+  Stat MIRSTRENGTHSUM{0, "MIR strength sum"};
+  Stat DIVSTRENGTHSUM{0, "division strength sum"};
+  Stat MIRSTRENGTHAVG{0, "MIR strength average"};
+  Stat DIVSTRENGTHAVG{0, "division strength average"};
 
   Stat NUNITS{0, "unit literals derived"};
   Stat NHARDENINGS{0, "hardened literals"};
@@ -347,6 +354,9 @@ struct Stats {
 
     StatNum totalMirWeaken = NMIRWEAKEN + NDIVWEAKEN;
     AVGMIRWEAKEN.z = (totalMirWeaken == 0 ? 0 : TOTALMIRWEAKEN / totalMirWeaken);
+
+    MIRSTRENGTHAVG.z = (totalMirWeaken == 0 ? 0 : MIRSTRENGTHSUM / totalMirWeaken);
+    DIVSTRENGTHAVG.z = (totalMirWeaken == 0 ? 0 : DIVSTRENGTHSUM / totalMirWeaken);
 
     LASTLB.z = lowerbound;
     LASTUB.z = upperbound;
