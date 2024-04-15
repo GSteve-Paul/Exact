@@ -1003,11 +1003,12 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   } else {
     // std::cout << "bmodd: " << degree % d << std::endl;
     // std::cout << "before divideRoundUp: " << *this << std::endl;
-    ++global.stats.NMIRWEAKEN;
     copy->divideRoundUp(d);
     if (degree % d <= 1) {
+      ++global.stats.NDIVWEAKEN;
       divideRoundUp(d);
     } else {
+      ++global.stats.NMIRWEAKEN;
       applyMIRalt(d); 
     }
     copy->saturate(true, true);
@@ -1398,6 +1399,9 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
   double division_strength = other->getStrength();
   double mir_strength = getStrength();
+
+  // std::cout << "this: " << *this << std::endl;
+  // std::cout << "other: " << *other << std::endl;
 
   global.stats.DIVSTRENGTHSUM += division_strength;
   global.stats.MIRSTRENGTHSUM += mir_strength;
