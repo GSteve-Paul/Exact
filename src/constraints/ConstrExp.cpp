@@ -969,7 +969,7 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   // std::cout << "after weakenNonDivisible: " << *this << std::endl;
   SMALL amount = findWeakenAmount(d, to, reasonMult);
 
-  global.stats.TOTALMIRWEAKEN += (amount / getDegree());
+  global.stats.TOTALMIRWEAKEN += aux::divToDouble(static_cast<LARGE>(amount), getDegree());
 
   // std::cout << "amount: " << amount << std::endl;
   if (global.options.weakenSuperfluous) {
