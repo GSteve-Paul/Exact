@@ -1276,9 +1276,9 @@ const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMAL
   // TODO: dont iterate over full mod if mod is too large, check 2, 3, 5, 7 etc.
   std::vector<SMALL> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71};
   const LARGE b = getDegree();
-  SMALL amount = 0;
-  LARGE postDeg;
-  SMALL bmodd;
+  // SMALL amount = 0;
+  // LARGE postDeg;
+  // SMALL bmodd;
   assert(d >= 0);
   assert(b >= 0);  // otherwise the C++ modulo operator does not match the mathematical one
   const SMALL origBmodd = static_cast<SMALL>(aux::mod_safe(b, d));
