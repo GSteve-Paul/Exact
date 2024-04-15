@@ -178,7 +178,7 @@ struct Stats {
   Stat NMIRWEAKEN{0, "weakened by MIR"};
   Stat NDIVWEAKEN{0, "weakened by division"};
   Stat NMIRSTRONGER{0, "stronger by MIR"};
-  Stat NDIVWEAKER{0, "stronger by division"};
+  Stat NDIVSTRONGER{0, "stronger by division"};
   Stat NEQUAL{0, "number of equalities"};
 
   Stat NCONFL{0, "conflicts"};
@@ -468,6 +468,9 @@ struct Stats {
       &LASTUB,
       &LASTLB,
       &DEPLTIME,
+      &NMIRSTRONGER,
+      &NDIVSTRONGER,
+      &NEQUAL,
 #if WITHSOPLEX
       &LPOBJ,
       &NLPADDEDROWS,
