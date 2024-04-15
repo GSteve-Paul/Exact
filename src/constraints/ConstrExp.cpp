@@ -989,9 +989,11 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   }
   assert(hasNoZeroes());
   if (d >= degree) {
+    ++global.stats.NDIVWEAKEN;
     simplifyToClause();
     // std::cout << "after simplifyToClause: " << *this << std::endl;
   } else if (!vars.empty() && d >= aux::abs(coefs[vars[0]])) {
+    ++global.stats.NDIVWEAKEN;
     simplifyToCardinality(false, getCardinalityDegree());
     // std::cout << "after simplifyToCardinality: " << *this << std::endl;
   } else {
@@ -999,8 +1001,10 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
     if (degree % d <= 1) {
       // std::cout << "before divideRoundUp: " << *this << std::endl;
       divideRoundUp(d);
+      ++global.stats.NMIRWEAKEN;
       // std::cout << "after divideRoundUp: " << *this << std::endl;
     } else {
+      ++global.stats.NDIVWEAKEN;
       applyMIRalt(d);
       // std::cout << "after applyMIR: " << *this << std::endl;
     }
