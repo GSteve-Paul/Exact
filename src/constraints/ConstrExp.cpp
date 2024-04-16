@@ -1008,7 +1008,6 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
     if (degree % d <= 1) {
       ++global.stats.NDIVWEAKEN;
       divideRoundUp(d);
-      ++global.stats.NDIVWEAKEN;
       // std::cout << "after divideRoundUp: " << *this << std::endl;
     } else {
       ++global.stats.NMIRWEAKEN;
