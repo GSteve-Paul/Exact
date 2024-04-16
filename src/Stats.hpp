@@ -468,6 +468,8 @@ struct Stats {
       &LASTUB,
       &LASTLB,
       &DEPLTIME,
+      &TOTALMIRWEAKEN,
+      &AVGMIRWEAKEN,
       &NMIRSTRONGER,
       &NDIVSTRONGER,
       &NEQUAL,
