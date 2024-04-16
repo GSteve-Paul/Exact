@@ -983,6 +983,8 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
     dropDegree(d, amount);
   }
 
+  saturate(true, true);
+  
   CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
   copyTo(copy);
 
@@ -1014,8 +1016,6 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
       applyMIRalt(d);
       // std::cout << "after applyMIR: " << *this << std::endl;
     }
-    copy->saturate(true, true);
-    saturate(true, true);
     compare(copy);
     // std::cout << "after applyMIR: " << *this << std::endl;
     // std::cout << "after saturate: " << *this << std::endl;
