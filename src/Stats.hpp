@@ -458,6 +458,8 @@ struct Stats {
       &LASTUB,
       &LASTLB,
       &DEPLTIME,
+      &TOTALMIRWEAKEN,
+      &AVGMIRWEAKEN,
 #if WITHSOPLEX
       &LPOBJ,
       &NLPADDEDROWS,
