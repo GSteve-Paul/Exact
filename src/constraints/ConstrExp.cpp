@@ -898,6 +898,8 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level) {
   assert(isSortedInDecreasingCoefOrder());
   assert(div > 0);
+  // std::cout << "div: " << div << std::endl;
+  // std::cout << "reason start: " << *this << std::endl;
   if (div == 1) return;
   weakenNonDivisible(div, level);
   weakenSuperfluous(div);
@@ -911,19 +913,26 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
     simplifyToCardinality(false, getCardinalityDegree());
   } else {
+    saturate(true, true);
     
     CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
     copyTo(copy);
 
+    // std::cout << "slack+1: " << getSlack(level) + 1 << std::endl;
+    // std::cout << "div: " << div << std::endl;
+    // std::cout << "reason pre cuts: " << *this << std::endl;
+    // assert(getSlack(level) + 1 == div);
     divideRoundUp(div);
-    saturate(true, true);
     if (copy->getDegree() % div > 1) {
       copy->applyMIRalt(div);
     } else {
       copy->divideRoundUp(div);
     }
-    copy->saturate(true, true);
+    // std::cout << "reason post cuts: " << *this << std::endl;
+    // std::cout << "copy post cuts: " << *copy << std::endl;
     compare(copy);
+    assert(isSaturated());
+    assert(copy->isSaturated());
   }
 }
 
@@ -1149,6 +1158,8 @@ void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
 
   if (mir_strength > division_strength) {
     ++global.stats.NMIRSTRONGER;
+    std::cout << "MIR result: " << *other << std::endl;
+    std::cout << "Division result: " << *this << std::endl;
   } else if (mir_strength < division_strength) {
     ++global.stats.NDIVSTRONGER;
   } else {
