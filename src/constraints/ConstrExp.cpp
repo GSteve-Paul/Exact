@@ -957,7 +957,7 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   assert(isSortedInDecreasingCoefOrder());
   assert(d > 0);
   assert(reasonCoef % d == 0);
-  const SMALL reasonMult = static_cast<SMALL>(reasonCoef / d);
+  // const SMALL reasonMult = static_cast<SMALL>(reasonCoef / d);
   // assert(reasonMult == to);
   // assert(to % reasonMult == 0);
   // const SMALL maxmod = to / reasonMult;
@@ -967,7 +967,8 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   // std::cout << "d: " << d << std::endl;
   weakenNonDivisible(d, level);
   // std::cout << "after weakenNonDivisible: " << *this << std::endl;
-  SMALL amount = findWeakenAmount(d, to, reasonMult);
+  // if (getDegree() % d )
+  SMALL amount = findWeakenAmount(d, to);
 
   if ((getDegree() % d)-1 != 0 && getDegree() % d != 0) global.stats.TOTALMIRWEAKEN += aux::divToDouble(static_cast<LARGE>(amount), (getDegree() % d) - 1);
 
@@ -1272,7 +1273,7 @@ bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& 
 }
 
 template <typename SMALL, typename LARGE>
-const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMALL& to, const SMALL& mult) {
+const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMALL& to) {
   // TODO: dont iterate over full mod if mod is too large, check 2, 3, 5, 7 etc.
   std::vector<SMALL> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79,
                                 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167,
@@ -1297,14 +1298,19 @@ const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMAL
   std::vector<SMALL> primesDividing;
 
   for (SMALL p : primes) {
+    SMALL highestP = p;
     if (to % p == 0) {
-      while (to % p == 0) {
-        p *= p;
+      while (to % (highestP*p) == 0) {
+        highestP *= p;
       }
-      p /= p;
       primesDividing.push_back(p);
     }
   }
+
+  // std::cout << "primesDividing: ";
+  // for (SMALL p : primesDividing) {
+  //   std::cout << p << " ";
+  // }
 
   // calc divisor smaller than bmodd backtofront and fronttoback
   SMALL frontToBack = 1;
