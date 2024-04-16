@@ -1311,7 +1311,7 @@ const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMAL
       while (to % (highestP*p) == 0) {
         highestP *= p;
       }
-      primesDividing.push_back(p);
+      primesDividing.push_back(highestP);
     }
   }
 
