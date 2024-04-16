@@ -911,8 +911,19 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
     simplifyToCardinality(false, getCardinalityDegree());
   } else {
+    
+    CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
+    copyTo(copy);
+
     divideRoundUp(div);
     saturate(true, true);
+    if (copy->getDegree() % div > 1) {
+      copy->applyMIRalt(div);
+    } else {
+      copy->divideRoundUp(div);
+    }
+    copy->saturate(true, true);
+    compare(copy);
   }
 }
 
@@ -1087,6 +1098,65 @@ void ConstrExp<SMALL, LARGE>::applyMIR(const LARGE& d, const std::function<Lit(V
   }
   degree = calcDegree();
 }
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
+  assert(d > 0);
+  // std::cout << "in apply MIR" << std::endl;
+  // std::cout << "reason: " << *this << std::endl;
+  // std::cout << "d: " << d << std::endl;
+  LARGE tmpRhs = rhs;
+  for (Var v : vars)
+    if (getLit(v) < 0) {
+      // std::cout << "v: " << v << std::endl;
+      // std::cout << "coefs[v]: " << coefs[v] << std::endl;
+      tmpRhs -= coefs[v];
+    }
+  // std::cout << "rhs: " << rhs << std::endl;
+  // std::cout << "tmpRhs: " << tmpRhs << std::endl;
+  // std::cout << "reason: " << *this << std::endl;
+  assert(tmpRhs == degree);
+  // std::cout << "tmpRhs: " << tmpRhs << std::endl;
+  LARGE bmodd = aux::mod_safe(tmpRhs, d);
+  // std::cout << "bmodd: " << bmodd << std::endl;
+  rhs = bmodd * aux::ceildiv_safe(tmpRhs, d);
+  for (Var v : vars) {
+    if (getLit(v) < 0) {
+      // coefs[v] = ()
+      coefs[v] = static_cast<SMALL>(
+          -(bmodd * aux::floordiv_safe<LARGE>(-coefs[v], d) + std::min(aux::mod_safe<LARGE>(-coefs[v], d), bmodd)));
+      rhs += coefs[v];
+    } else
+      coefs[v] = static_cast<SMALL>(bmodd * aux::floordiv_safe<LARGE>(coefs[v], d) +
+                                    std::min(aux::mod_safe<LARGE>(coefs[v], d), bmodd));
+  }
+  degree = calcDegree();
+}
+
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
+  double division_strength = getStrength();
+  double mir_strength = other->getStrength();
+
+  // std::cout << "comparing" << std::endl;
+
+  // std::cout << "this: " << *this << std::endl;
+  // std::cout << "other: " << *other << std::endl;
+
+  global.stats.DIVSTRENGTHSUM += division_strength;
+  global.stats.MIRSTRENGTHSUM += mir_strength;
+
+  if (mir_strength > division_strength) {
+    ++global.stats.NMIRSTRONGER;
+  } else if (mir_strength < division_strength) {
+    ++global.stats.NDIVSTRONGER;
+  } else {
+    // std::cout << "strength: " << division_strength << std::endl;
+    ++global.stats.NEQUAL;
+  }
+}
+
 
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::divideByGCD() {

@@ -318,6 +318,14 @@ struct Stats {
   Stat LASTUB{std::numeric_limits<StatNum>::quiet_NaN(), "best upper bound"};
   Stat DEPLTIME{-1, "depletion time"};
 
+  Stat NEQUAL{0, "number of times division and MIR are equal"};
+  Stat NMIRSTRONGER{0, "number of times MIR is stronger than division"};
+  Stat NDIVSTRONGER{0, "number of times division is stronger than MIR"};
+  Stat DIVSTRENGTHSUM{0, "running sum of division strength"};
+  Stat MIRSTRENGTHSUM{0, "running sum of MIR strength"};
+  Stat AVGDIVSTRENGTH{0, "average division strength"};
+  Stat AVGMIRSTRENGTH{0, "average MIR strength"};
+
   std::chrono::steady_clock::time_point startTime;
   std::chrono::steady_clock::time_point runStartTime;
 
@@ -340,6 +348,12 @@ struct Stats {
 
     LASTLB.z = lowerbound;
     LASTUB.z = upperbound;
+
+    StatNum totalMirWeaken = NEQUAL + NMIRSTRONGER + NDIVSTRONGER;
+
+    AVGMIRSTRENGTH.z = (totalMirWeaken == 0 ? 0 : MIRSTRENGTHSUM / totalMirWeaken);
+    AVGDIVSTRENGTH.z = (totalMirWeaken == 0 ? 0 : DIVSTRENGTHSUM / totalMirWeaken);
+    
   }
 
   const std::vector<Stat*> statsToDisplay = {
@@ -446,6 +460,11 @@ struct Stats {
       &LASTUB,
       &LASTLB,
       &DEPLTIME,
+      &NEQUAL,
+      &NMIRSTRONGER,
+      &NDIVSTRONGER,
+      &AVGMIRSTRENGTH,
+      &AVGDIVSTRENGTH,
 #if WITHSOPLEX
       &LPOBJ,
       &NLPADDEDROWS,
