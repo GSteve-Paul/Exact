@@ -338,6 +338,8 @@ struct ConstrExp final : public ConstrExpSuper {
   void weakenDivideRoundOrderedCanceling(const LARGE& div, const IntMap<int>& level, const std::vector<int>& pos,
                                          const SMALL& mult, const ConstrExp<SMALL, LARGE>& confl);
   void weakenMIROrdered(const LARGE& d, const IntMap<int>& level, const SMALL& to, const SMALL& reasonCoef);
+  void weakenMIROrderedCanceling(const LARGE& d, const IntMap<int>& level, const SMALL& to, const SMALL& reasonCoef,
+                                 const std::vector<int>& pos, const ConstrExp<SMALL, LARGE>& confl);
   void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
   void weakenNonDivisible(const LARGE& div, const IntMap<int>& level);
   void weakenNonDivisibleCanceling(const LARGE& div, const IntMap<int>& level, const SMALL& mult,
@@ -347,6 +349,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void weakenSuperfluous(const LARGE& div);
   void weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos);
   SMALL weakenSuperfluousMIR(const LARGE& div, SMALL& amount);
+  SMALL weakenSuperfluousMIRCanceling(const LARGE& div, SMALL& amount, const std::vector<int>& pos);
   bool weakenUseless(const LARGE& div, SMALL& amount);
   void dropDegree(const LARGE& d, SMALL& amount);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
@@ -563,8 +566,9 @@ struct ConstrExp final : public ConstrExpSuper {
               Lit l = reason->getLit(v);
               global.stats.NUNKNOWNROUNDEDUP += isUnknown(pos, v) && getCoef(-l) >= mult;
             }
-            reason->weakenDivideRoundOrderedCanceling(bestDiv, level, pos, mult, *this);
-            reason->multiply(mult);
+            reason->weakenMIROrderedCanceling(bestDiv, level, mult, reasonCoef, pos, *this);
+            const SMALL newMult = conflCoef / reason->getCoef(asserting);
+            reason->multiply(newMult);
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
             // std::cout << "conflict with assignments: " << std::endl;

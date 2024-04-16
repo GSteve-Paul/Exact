@@ -1014,6 +1014,70 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   }
 }
 
+// NOTE: this preserves order
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenMIROrderedCanceling(const LARGE& d, const IntMap<int>& level, const SMALL& to,
+                                                        const SMALL& reasonCoef, const std::vector<int>& pos, const ConstrExp<SMALL, LARGE>& confl) {
+  assert(isSortedInDecreasingCoefOrder());
+  assert(d > 0);
+  assert(reasonCoef % d == 0);
+  // const SMALL reasonMult = static_cast<SMALL>(reasonCoef / d);
+  // assert(reasonMult == to);
+  // assert(to % reasonMult == 0);
+  // const SMALL maxmod = to / reasonMult;
+  // JO: hou je rekening met negatieve coëfficiënten? Moet het aux::floordiv(.) zijn ipv standaard deling?
+
+  if (d == 1) return;
+  // std::cout << "d: " << d << std::endl;
+  weakenNonDivisibleCanceling(d, level, to, confl);
+  // std::cout << "after weakenNonDivisible: " << *this << std::endl;
+  // if (getDegree() % d )
+  SMALL amount = findWeakenAmount(d, to);
+
+  if ((getDegree() % d)-1 != 0 && getDegree() % d != 0) global.stats.TOTALMIRWEAKEN += aux::divToDouble(static_cast<LARGE>(amount), (getDegree() % d) - 1);
+
+  // std::cout << "amount: " << amount << std::endl;
+  if (global.options.weakenSuperfluous) {
+    amount = weakenSuperfluousMIRCanceling(d, amount, pos);
+    // std::cout << "after weakenSuperfluous: " << *this << std::endl;
+  }
+  // if (!weakenUseless(d, amount) && amount > 0) {
+  if (amount > 0) {
+    dropDegree(d, amount);
+  }
+
+  // std::cout << "after dropDegree: " << *this << std::endl;
+
+  repairOrder();
+  while (!vars.empty() && coefs[vars.back()] == 0) {
+    popLast();
+  }
+  assert(hasNoZeroes());
+  if (d >= degree) {
+    ++global.stats.NDIVWEAKEN;
+    simplifyToClause();
+    // std::cout << "after simplifyToClause: " << *this << std::endl;
+  } else if (!vars.empty() && d >= aux::abs(coefs[vars[0]])) {
+    ++global.stats.NDIVWEAKEN;
+    simplifyToCardinality(false, getCardinalityDegree());
+    // std::cout << "after simplifyToCardinality: " << *this << std::endl;
+  } else {
+    // std::cout << "bmodd: " << degree % d << std::endl;
+    if (degree % d <= 1) {
+      // std::cout << "before divideRoundUp: " << *this << std::endl;
+      divideRoundUp(d);
+      ++global.stats.NDIVWEAKEN;
+      // std::cout << "after divideRoundUp: " << *this << std::endl;
+    } else {
+      ++global.stats.NMIRWEAKEN;
+      applyMIRalt(d);
+      // std::cout << "after applyMIR: " << *this << std::endl;
+    }
+    saturate(true, true);
+    // std::cout << "after saturate: " << *this << std::endl;
+  }
+}
+
 // NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
 // NOTE: after call to weakenNonDivisible, order can be re repaired by call to repairOrder
 template <typename SMALL, typename LARGE>
@@ -1150,6 +1214,26 @@ SMALL ConstrExp<SMALL, LARGE>::weakenSuperfluousMIR(const LARGE& d, SMALL& amoun
   for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
     Var v = vars[i];
     if (coefs[v] == 0 || saturatedVar(v)) continue;
+    SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % d);
+    if (r <= rem) {
+      rem -= r;
+      weaken(coefs[v] < 0 ? r : -r, v);
+      amount -= r;
+    }
+  }
+  assert(quot == aux::ceildiv(degree, d));
+  return amount;
+}
+
+template <typename SMALL, typename LARGE>
+SMALL ConstrExp<SMALL, LARGE>::weakenSuperfluousMIRCanceling(const LARGE& d, SMALL& amount, const std::vector<int>& pos) {
+  assert(d > 1);
+  assert(!isTautology());
+  [[maybe_unused]] LARGE quot = aux::ceildiv(degree, d);
+  LARGE rem = std::min(aux::mod_safe<LARGE>((degree - 1), d), static_cast<LARGE>(amount));
+  for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
+    Var v = vars[i];
+    if (pos[v] == INF || coefs[v] == 0 || saturatedVar(v)) continue;
     SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % d);
     if (r <= rem) {
       rem -= r;
