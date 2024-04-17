@@ -1158,8 +1158,8 @@ void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
 
   if (mir_strength > division_strength) {
     ++global.stats.NMIRSTRONGER;
-    std::cout << "MIR result: " << *other << std::endl;
-    std::cout << "Division result: " << *this << std::endl;
+    // std::cout << "MIR result: " << *other << std::endl;
+    // std::cout << "Division result: " << *this << std::endl;
   } else if (mir_strength < division_strength) {
     ++global.stats.NDIVSTRONGER;
   } else {
