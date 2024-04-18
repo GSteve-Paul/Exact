@@ -916,7 +916,9 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
     saturate(true, true);
     
     CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
+    CePtr<SMALL, LARGE> startcopy = global.cePools.take<SMALL, LARGE>();
     copyTo(copy);
+    copyTo(startcopy);
 
     // std::cout << "slack+1: " << getSlack(level) + 1 << std::endl;
     // std::cout << "div: " << div << std::endl;
@@ -930,7 +932,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
     }
     // std::cout << "reason post cuts: " << *this << std::endl;
     // std::cout << "copy post cuts: " << *copy << std::endl;
-    compare(copy);
+    compare(copy, startcopy, div);
     assert(isSaturated());
     assert(copy->isSaturated());
   }
@@ -1144,9 +1146,10 @@ void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
 
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
+void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other, const CePtr<SMALL, LARGE>& starting, const LARGE& div) const {
   double division_strength = getStrength();
   double mir_strength = other->getStrength();
+  double delta = 1e-8;
 
   // std::cout << "comparing" << std::endl;
 
@@ -1156,15 +1159,23 @@ void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
   global.stats.DIVSTRENGTHSUM += division_strength;
   global.stats.MIRSTRENGTHSUM += mir_strength;
 
-  if (mir_strength > division_strength) {
+  if (division_strength + delta >= mir_strength && division_strength - delta <= mir_strength) {
+    ++global.stats.NEQUAL;
+  } else if (mir_strength > division_strength) {
     ++global.stats.NMIRSTRONGER;
     // std::cout << "MIR result: " << *other << std::endl;
     // std::cout << "Division result: " << *this << std::endl;
   } else if (mir_strength < division_strength) {
+    // if (div <= 2000) {
+
+      // std::cout << "div: " << div << std::endl;
+      // std::cout << "reason: " << *starting << std::endl;
+      // std::cout << "MIR result: " << *other << std::endl;
+      // std::cout << "Division result: " << *this << std::endl;
+      // std::cout << "MIR strength: " << mir_strength << std::endl;
+      // std::cout << "Division strength: " << division_strength << std::endl;
+    // }
     ++global.stats.NDIVSTRONGER;
-  } else {
-    // std::cout << "strength: " << division_strength << std::endl;
-    ++global.stats.NEQUAL;
   }
 }
 

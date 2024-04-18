@@ -347,7 +347,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void weakenSuperfluousCanceling(const LARGE& div, const std::vector<int>& pos);
   void applyMIR(const LARGE& d, const std::function<Lit(Var)>& toLit);
   void applyMIRalt(const LARGE& d);
-  void compare(const CePtr<SMALL, LARGE>& other) const;
+  void compare(const CePtr<SMALL, LARGE>& other, const CePtr<SMALL, LARGE>& starting, const LARGE& div) const;
 
   bool divideByGCD();
   bool divideTo(double limit, const aux::predicate<Lit>& toWeaken);
