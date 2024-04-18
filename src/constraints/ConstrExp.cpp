@@ -1399,18 +1399,20 @@ void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
   double division_strength = other->getStrength();
   double mir_strength = getStrength();
 
+  double delta = 1e-8;
+
   // std::cout << "this: " << *this << std::endl;
   // std::cout << "other: " << *other << std::endl;
 
   global.stats.DIVSTRENGTHSUM += division_strength;
   global.stats.MIRSTRENGTHSUM += mir_strength;
 
-  if (mir_strength > division_strength) {
-    ++global.stats.NMIRSTRONGER;
-  } else if (mir_strength < division_strength) {
-    ++global.stats.NDIVSTRONGER;
-  } else {
+  if (mir_strength + delta >= division_strength && mir_strength - delta <= division_strength) {
     ++global.stats.NEQUAL;
+  } else if (mir_strength > division_strength) {
+    ++global.stats.NMIRSTRONGER;
+  } else {
+    ++global.stats.NDIVSTRONGER;
   }
 }
 
