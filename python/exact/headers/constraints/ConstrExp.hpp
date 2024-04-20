@@ -563,12 +563,12 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(reason->getCoef(asserting) < 2 * conflCoef);
     assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
 
-    for (Var v : reason->vars) {
-      Lit ll = reason->getLit(v);
-      if (isFalse(level, ll)) {
-        actSet.add(v);
-      }
-    }
+    // for (Var v : reason->vars) {
+    //   Lit ll = reason->getLit(v);
+    //   if (isFalse(level, ll)) {
+    //     actSet.add(v);
+    //   }
+    // }
 
     LARGE oldDegree = getDegree();
     addUp(reason);
