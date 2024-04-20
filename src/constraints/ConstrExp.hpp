@@ -573,12 +573,12 @@ struct ConstrExp final : public ConstrExpSuper {
     // In most cases, at this point, the reason coefficient is equal to the conflict coefficient
     // and the reason slack is at most zero, so we can safely add the reason to the conflict.
 
-    for (Var v : reason->vars) {
-      Lit ll = reason->getLit(v);
-      if (isFalse(level, ll)) {
-        actSet.add(v);
-      }
-    }
+    // for (Var v : reason->vars) {
+    //   Lit ll = reason->getLit(v);
+    //   if (isFalse(level, ll)) {
+    //     actSet.add(v);
+    //   }
+    // }
 
     LARGE oldDegree = getDegree();
     // add reason to conflict
