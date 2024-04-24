@@ -215,8 +215,9 @@ struct Options {
                             "0 < float", [](const double& x) -> bool { return 0 < x; }};
   ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
                            "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
-  ValOption<int> dbMaxLBD{"db-maxlbd", "Constraints with an LBD larger than this are considered to have this LBD", 1e5,
-                          "1 =< int =< 1e5", [](const int& x) -> bool { return 1 <= x && x <= (int32_t)MAXLBD; }};
+  ValOption<int> dbMaxLBD{"db-maxlbd", "Constraints with an LBD larger than this are considered to have this LBD",
+                          static_cast<int32_t>(1e5), "1 =< int =< 1e5",
+                          [](const int& x) -> bool { return 1 <= x && x <= static_cast<int32_t>(MAXLBD); }};
   ValOption<double> propWatched{"prop-watched", "Watched propagation instead of counting propagation", 1,
                                 "0 (always counting) =< float =< 1 (always watched)",
                                 [](const double& x) -> bool { return 0 <= x && x <= 1; }};
