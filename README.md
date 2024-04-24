@@ -143,7 +143,7 @@ The current set of benchmarks which is used to assess performance is available [
 If you use Exact, please **star and cite this repository** and cite the RoundingSat origin paper (which focuses on cutting planes conflict analysis):  
 **[EN18]** J. Elffers, J. Nordström. Divide and Conquer: Towards Faster Pseudo-Boolean Solving. *IJCAI 2018*
 
-Please cite any of the foloowing papers if they are relevant.
+Please cite any of the following papers if they are relevant.
 
 Integration with SoPlex:  
 **[DGN20]** J. Devriendt, A. Gleixner, J. Nordström. Learn to Relax: Integrating 0-1 Integer Linear Programming with Pseudo-Boolean Conflict-Driven Search. *CPAIOR 2020 / Constraints journal*
