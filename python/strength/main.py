@@ -29,6 +29,7 @@ if __name__ == '__main__':
     rows = an.sort_first(rows)
     # print(rows)
     rows = an.norm_second(rows)
+    rows[1] = 1 - rows[1]
     rows[4] = 1 - rows[4]
     rows[6] = 1 - rows[6]
     for i in range(1, len(rows)):
@@ -45,16 +46,20 @@ if __name__ == '__main__':
 
     nb_cut_sols = rows[0]
 
-    measures = ['generalised-slack', 'degree-over-sum-of-constraints', 'length', 'normalised-size', 'min-sat', 'stddev', 'stddev-with-min-sat', 'max-sat', 'stddev-(without-zeros)', 'weighted-avg', 'avg']
+    # measures = ['generalised-slack', 'degree-over-sum-of-constraints', 'normalised-size', 'min-sat', 'stddev', 'max-sat']
+    measures = ['generalised-slack', 'degree-over-sum-of-constraints']
 
+    rows = rows[1:len(measures)+2]
+
+    plt.plot(nb_cut_sols, label='nb_cut_sols')
     for measure in rows[1:]:
-        plt.plot(nb_cut_sols)
-        plt.plot(measure)
         curr = measures.pop(0)
-        plt.title(curr)
-        plt.legend(['nb_cut_sols', curr])
-        plt.savefig(f'/home/orestis/school/exact/python/strength/images/{curr}vstruestrength.png')
-        plt.close()
+        plt.plot(measure, label=curr)
+
+    
+    plt.title("all_measures")
+    plt.savefig(f'/home/orestis/school/exact/python/strength/images/all_strength.png')
+    plt.close()
     # an.plot_cors(cors, lb, ub, stepsize)
 
 
