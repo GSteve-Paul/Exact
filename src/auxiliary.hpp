@@ -316,6 +316,23 @@ template <>
 inline bigint gcd(const bigint& x, const bigint& y) {
   return boost::multiprecision::gcd(x, y);
 }
+template <typename T>
+T lcm(const T& x, const T& y) {
+  return std::lcm(x, y);
+}
+template <>
+inline int128 lcm(const int128& x, const int128& y) {
+  return static_cast<int128>(
+      boost::multiprecision::lcm(boost::multiprecision::int128_t(x), boost::multiprecision::int128_t(y)));
+}
+template <>
+inline int256 lcm(const int256& x, const int256& y) {
+  return boost::multiprecision::lcm(x, y);
+}
+template <>
+inline bigint lcm(const bigint& x, const bigint& y) {
+  return boost::multiprecision::lcm(x, y);
+}
 
 template <typename T>
 double toDouble(const T& x) {
