@@ -221,12 +221,12 @@ struct Options {
   ValOption<double> propWatched{"prop-watched", "Watched propagation instead of counting propagation", 1,
                                 "0 (always counting) =< float =< 1 (always watched)",
                                 [](const double& x) -> bool { return 0 <= x && x <= 1; }};
-  ValOption<double> lpTimeRatio {
-    "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
+  ValOption<double> lpTimeRatio{
+      "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
 #if WITHSOPLEX
-        0.1, "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }
+      0.1, "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }
 #else
-        0, "0", [](const double& x) -> bool { return x == 0; }
+      0, "0", [](const double& x) -> bool { return x == 0; }
 #endif
   };
   ValOption<int> lpPivotBudget{"lp-budget", "Initial LP call pivot budget", 2000, "1 =< int",

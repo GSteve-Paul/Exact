@@ -199,8 +199,8 @@ struct Global;
 class LpSolver {
  public:
   LpSolver([[maybe_unused]] Solver& s){};
-  void setNbVariables([[maybe_unused]] int n){};
-  void setObjective([[maybe_unused]] const CeArb& o){};
+  void setNbVariables([[maybe_unused]] int n) {};
+  void setObjective([[maybe_unused]] const CeArb& o) {};
 
   std::pair<LpStatus, CeSuper> checkFeasibility([[maybe_unused]] bool inProcessing) {
     assert(false);
