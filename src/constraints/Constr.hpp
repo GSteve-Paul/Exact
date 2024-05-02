@@ -366,7 +366,10 @@ struct CountingSafe final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG slack;
-  Term<CF>* terms;  // array
+  std::vector<Term<CF>> terms;
+  // terms used to be Term<CF>* array, but gcc 13.1 lto gave an incorrect warning.
+  // See
+  // https://stackoverflow.com/questions/73047957/gcc-with-lto-warning-argument-1-value-18-615-size-max-exceeds-maximum-ob
 
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
     return aux::ceildiv(sizeof(CountingSafe<CF, DG>), maxAlign);
@@ -394,7 +397,7 @@ struct CountingSafe final : public Constr {
         ntrailpops(-1),
         degr(static_cast<DG>(constraint->getDegree())),
         slack(0),
-        terms(new Term<CF>[constraint->nVars()]) {
+        terms(constraint->nVars()) {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
@@ -409,7 +412,7 @@ struct CountingSafe final : public Constr {
     }
   }
 
-  void cleanup() { delete[] terms; }
+  void cleanup() { /*delete[] terms;*/ }
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
@@ -433,7 +436,10 @@ struct WatchedSafe final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG watchslack;
-  Term<CF>* terms;  // array // TODO: should point to memory right behind this constraint
+  std::vector<Term<CF>> terms;
+  // terms used to be Term<CF>* array, but gcc 13.1 lto gave an incorrect warning.
+  // See
+  // https://stackoverflow.com/questions/73047957/gcc-with-lto-warning-argument-1-value-18-615-size-max-exceeds-maximum-ob
 
   static size_t getMemSize([[maybe_unused]] unsigned int length) {
     return aux::ceildiv(sizeof(WatchedSafe<CF, DG>), maxAlign);
@@ -461,7 +467,7 @@ struct WatchedSafe final : public Constr {
         ntrailpops(-1),
         degr(static_cast<DG>(constraint->getDegree())),
         watchslack(0),
-        terms(new Term<CF>[constraint->nVars()]) {
+        terms(constraint->nVars()) {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
@@ -476,7 +482,7 @@ struct WatchedSafe final : public Constr {
     }
   }
 
-  void cleanup() { delete[] terms; }
+  void cleanup() { /*delete[] terms;*/ }
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
