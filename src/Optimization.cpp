@@ -306,7 +306,8 @@ void Optimization<SMALL, LARGE>::addLowerBound() {
   origObj->copyTo(aux);
   aux->orig = Origin::LOWERBOUND;
   aux->addRhs(lower_bound);
-  assert(aux->getDegree() < static_cast<bigint>(limitAbs<SMALL, LARGE>()));
+  assert(static_cast<bigint>(limitAbs<SMALL, LARGE>()) == 0 ||
+         aux->getDegree() < static_cast<bigint>(limitAbs<SMALL, LARGE>()));
   for (Lit l : assumptions.getKeys()) {
     aux->addLhs(static_cast<SMALL>(aux->getDegree()), -l);  // bound only holds under assumptions
   }

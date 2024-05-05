@@ -70,7 +70,7 @@ class IntProg;
 
 namespace parsing {
 
-bigint read_bigint(const std::string& s, int start);
+bigint read_bigint(const std::string& s, int64_t start);
 void file_read(IntProg& intprog);
 void opb_read(std::istream& in, IntProg& intprog);
 void cnf_read(std::istream& in, IntProg& intprog);

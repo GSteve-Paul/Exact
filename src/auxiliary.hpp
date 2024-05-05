@@ -167,9 +167,13 @@ std::ostream& operator<<(std::ostream& o, const std::optional<T>& m) {
 }
 
 namespace aux {
-
 template <typename T>
-T sto(const std::string& s) {
+T sto(const std::string&) {
+  static_assert(false);
+  return 0;
+}
+template <>
+inline long double sto(const std::string& s) {
   return std::stold(s);
 }
 template <>
@@ -177,8 +181,29 @@ inline double sto(const std::string& s) {
   return std::stod(s);
 }
 template <>
+inline float sto(const std::string& s) {
+  return std::stof(s);
+}
+template <>
 inline std::string sto(const std::string& s) {
   return s;
+}
+template <>
+inline int64_t sto(const std::string& s) {
+  return std::stoll(s);
+}
+template <>
+inline int32_t sto(const std::string& s) {
+  return std::stoi(s);
+}
+template <>
+inline bigint sto(const std::string& s) {
+  // NOTE: boost::cpp_int does not like leading zeroes
+  // https://stackoverflow.com/questions/56153071/cpp-int-boost-runtime-error-unexpected-content-found-while-parsing-character
+  const bool minus = !s.empty() && s[0] == '-';
+  int64_t i = minus;
+  while (i < std::ssize(s) && s[i] == '0') ++i;
+  return minus ? -boost::multiprecision::cpp_int(s.c_str() + i) : boost::multiprecision::cpp_int(s.c_str() + i);
 }
 
 template <typename T, typename S>

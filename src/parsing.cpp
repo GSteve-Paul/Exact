@@ -74,24 +74,10 @@ namespace xct::parsing {
 
 // TODO: check efficiency of parsing with a .opb-file that takes long to parse, according to experiments
 
-bigint read_bigint(const std::string& s, int start) {
-  int length = s.size();
-  while (start < length && iswspace(s[start])) {
-    ++start;
-  }
-  start += (start < length && s[start] == '+');
-  bool negate = (start < length && s[start] == '-');
-  bigint answer = 0;
-  for (int i = start + negate; i < length; ++i) {
-    char c = s[i];
-    if ('0' <= c && c <= '9') {
-      answer *= 10;
-      answer += c - '0';
-    } else {
-      break;
-    }
-  }
-  return negate ? -answer : answer;
+bigint read_bigint(const std::string& s, int64_t start) {
+  while (start < std::ssize(s) && iswspace(s[start])) ++start;
+  start += (start < std::ssize(s) && s[start] == '+');
+  return aux::sto<bigint>(s.substr(start));
 }
 
 void file_read(IntProg& intprog) {

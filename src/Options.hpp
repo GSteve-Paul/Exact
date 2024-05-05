@@ -173,8 +173,8 @@ struct Options {
                              "ZIB",
 #endif
                          }};
-  ValOption<long long> randomSeed{"seed", "Seed for the pseudo-random number generator", 1, "1 =< int",
-                                  [](long long x) -> bool { return 1 <= x; }};
+  ValOption<int64_t> randomSeed{"seed", "Seed for the pseudo-random number generator", 1, "1 =< int",
+                                [](int64_t x) -> bool { return 1 <= x; }};
   VoidOption noSolve{"onlyparse", "Quit after parsing file"};
   EnumOption fileFormat{
       "format", "File format (overridden by corresponding file extension)", "opb", {"opb", "cnf", "wcnf", "mps", "lp"}};
@@ -195,8 +195,8 @@ struct Options {
                           true};
   ValOption<double> timeout{"timeout", "Timeout in seconds, 0 is infinite ", 0, "0 =< float",
                             [](double x) -> bool { return 0 <= x; }};
-  ValOption<long long> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
-                                  [](long long x) -> bool { return 0 <= x; }};
+  ValOption<int64_t> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
+                                [](int64_t x) -> bool { return 0 <= x; }};
   ValOption<double> lubyBase{"luby-base", "Base of the Luby restart sequence", 2, "1 =< float",
                              [](double x) -> bool { return 1 <= x; }};
   ValOption<int> lubyMult{"luby-mult", "Multiplier of the Luby restart sequence", 100, "1 =< int",
@@ -290,7 +290,7 @@ struct Options {
                                     limitAbs<int, long long>(), "0 < double",
                                     [](const double& x) -> bool { return x > 0; }};
   BoolOption pureLits{"inp-purelits", "Propagate pure literals", false};
-  ValOption<long long> domBreakLim{
+  ValOption<int64_t> domBreakLim{
       "inp-dombreaklim",
       "Maximum limit of queried constraints for dominance breaking (0 means no dominance breaking, -1 is unlimited)", 0,
       "-1 =< int", [](const int& x) -> bool { return x >= -1; }};
