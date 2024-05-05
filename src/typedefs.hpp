@@ -88,7 +88,8 @@ constexpr long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long l
 
 template <typename CF, typename DG>
 inline double limitAbs() {
-  static_assert(false);
+  // static_assert(false);
+  assert(false);
   return 0;
 }
 template <>
@@ -118,7 +119,8 @@ inline double limitAbs<int256, bigint>() {
 
 template <typename CF, typename DG>
 inline int limitBit() {
-  static_assert(false);
+  // static_assert(false);
+  assert(false);
   return -1;
 }
 template <>
