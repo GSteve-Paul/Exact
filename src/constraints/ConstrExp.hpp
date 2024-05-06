@@ -544,9 +544,9 @@ struct ConstrExp final : public ConstrExpSuper {
             bestDiv = reasonCoef;
             SMALL tmp;
             SMALL pp;
-            for (int p : {5, 3, 2}) {
+            for (int p : {7, 5, 3, 2}) {
               pp = 1;
-              while ((gcd % p) == 0) {
+              while (gcd % p == 0) {
                 gcd /= p;
                 tmp = reasonCoef / gcd;
                 if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;

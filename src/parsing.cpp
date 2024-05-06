@@ -76,8 +76,10 @@ namespace xct::parsing {
 
 bigint read_bigint(const std::string& s, int64_t start) {
   while (start < std::ssize(s) && iswspace(s[start])) ++start;
-  start += (start < std::ssize(s) && s[start] == '+');
-  return aux::sto<bigint>(s.substr(start));
+  start += start < std::ssize(s) && s[start] == '+';
+  int64_t end = s.size();
+  while (end > start && iswspace(s[end - 1])) --end;
+  return aux::sto<bigint>(s.substr(start, end - start));
 }
 
 void file_read(IntProg& intprog) {

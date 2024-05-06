@@ -86,6 +86,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if UNIXLIKE
 namespace xct {
+
 inline std::ostream& operator<<(std::ostream& o, const __int128& x) {
   if (x == std::numeric_limits<__int128>::min()) return o << "-170141183460469231731687303715884105728";
   if (x < 0) return o << "-" << -x;
@@ -167,6 +168,9 @@ std::ostream& operator<<(std::ostream& o, const std::optional<T>& m) {
 }
 
 namespace aux {
+
+extern std::ostream& cout;
+
 template <typename T>
 T sto(const std::string&) {
   // static_assert(false);

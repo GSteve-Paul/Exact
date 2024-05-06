@@ -86,6 +86,8 @@ std::ostream& operator<<(std::ostream& o, enum SolveState state) {
 
 namespace xct::aux {
 
+std::ostream& cout = std::cout;  // to easily find debugging prints
+
 bigint commonDenominator(const std::vector<ratio>& ratios) {
   bigint cdenom = 1;
   for (const ratio& r : ratios) {
