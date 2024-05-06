@@ -31,6 +31,8 @@ set(profile_flags "OFF"
 
 set(flto "OFF"
     CACHE STRING "Build with link-time optimization (-flto).")
+set(singlesource "OFF"
+        CACHE STRING "Build with a single source file to simulate link-time optimization. Warning: slow!")
 
 if(WIN32)
     set(unixlike "OFF"
@@ -175,13 +177,18 @@ set(header_files
 set(main_files
     src/main.cpp
     src/Exact.cpp
+    src/singlesource.cpp
 )
 
 set(files_to_format ${main_files} ${source_files} ${test_files} ${header_files})
-set(files_to_compile ${source_files})
+if(singlesource)
+    set(files_to_compile src/singlesource.cpp)
+else()
+    set(files_to_compile ${source_files})
+endif()
 
 if(build_result STREQUAL "Executable")
-    add_executable(Exact src/main.cpp ${files_to_compile})
+    add_executable(Exact ${files_to_compile} src/main.cpp)
     install(TARGETS Exact RUNTIME DESTINATION bin)
     add_custom_target(
             testruns
