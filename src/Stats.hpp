@@ -326,6 +326,9 @@ struct Stats {
   Stat AVGDIVSTRENGTH{0, "average division strength"};
   Stat AVGMIRSTRENGTH{0, "average MIR strength"};
 
+  Stat NDIVCUTS{0, "number of division cuts"};
+  Stat NMIRCUTS{0, "number of MIR cuts"};
+
   std::chrono::steady_clock::time_point startTime;
   std::chrono::steady_clock::time_point runStartTime;
 
@@ -465,6 +468,8 @@ struct Stats {
       &NDIVSTRONGER,
       &AVGMIRSTRENGTH,
       &AVGDIVSTRENGTH,
+      &NDIVCUTS,
+      &NMIRCUTS,
 #if WITHSOPLEX
       &LPOBJ,
       &NLPADDEDROWS,

@@ -926,8 +926,10 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
     // assert(getSlack(level) + 1 == div);
     divideRoundUp(div);
     if (copy->getDegree() % div > 1) {
+      ++global.stats.NDIVCUTS;
       copy->applyMIRalt(div);
     } else {
+      ++global.stats.NMIRCUTS;
       copy->divideRoundUp(div);
     }
     // std::cout << "reason post cuts: " << *this << std::endl;
@@ -1147,9 +1149,18 @@ void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other, const CePtr<SMALL, LARGE>& starting, const LARGE& div) const {
-  double division_strength = getStrength();
-  double mir_strength = other->getStrength();
-  double delta = 1e-8;
+  ratio div_coefsum = 0;
+  for (Var v : other->vars) {
+    div_coefsum += aux::abs(other->coefs[v]);
+  }
+  ratio mir_coefsum = 0;
+  for (Var v : vars) {
+    mir_coefsum += aux::abs(coefs[v]);
+  }
+  ratio division_strength = other->getDegree() / div_coefsum;
+  ratio mir_strength = getDegree() / mir_coefsum;
+
+  double delta = 0;
 
   // std::cout << "comparing" << std::endl;
 
