@@ -15,9 +15,9 @@ if __name__ == '__main__':
     # gen.generate(nb, max_vars, filename, lb, ub, stepsize)
 
     rows = an.read_csv(filename)
-    rows = an.add_max_sat_std_dev_without_zeros(rows, max_vars)
-    rows = an.add_w_average(rows)
-    rows = an.add_avg(rows)
+    # rows = an.add_max_sat_std_dev_without_zeros(rows, max_vars)
+    # rows = an.add_w_average(rows)
+    # rows = an.add_avg(rows)
     # print(rows)
     rows = an.transform_rows(rows)
     # print(rows[0])
@@ -46,20 +46,22 @@ if __name__ == '__main__':
 
     nb_cut_sols = rows[0]
 
-    # measures = ['generalised-slack', 'degree-over-sum-of-constraints', 'normalised-size', 'min-sat', 'stddev', 'max-sat']
-    measures = ['generalised-slack', 'degree-over-sum-of-constraints']
+    measures = ['generalised-slack', 'degree-over-sum-of-constraints', 'normalised-size', 'min-sat', 'stddev', 'max-sat']
+    # measures = ['generalised-slack', 'degree-over-sum-of-constraints']
 
-    rows = rows[1:len(measures)+2]
+    # rows = rows[1:len(measures)+2]
 
-    plt.plot(nb_cut_sols, label='nb_cut_sols')
-    for measure in rows[1:]:
+    for measure in rows[1:len(measures)+1]:
+        plt.plot(nb_cut_sols, label='nb_cut_sols')
         curr = measures.pop(0)
+        print(curr)
         plt.plot(measure, label=curr)
 
     
-    plt.title("all_measures")
-    plt.savefig(f'/home/orestis/school/exact/python/strength/images/all_strength.png')
-    plt.close()
+        plt.title(f"{curr} compared to true logical strength")
+        plt.legend()
+        plt.savefig(f'/home/orestis/school/exact/python/strength/images/{curr}_strength.png')
+        plt.close()
     # an.plot_cors(cors, lb, ub, stepsize)
 
 

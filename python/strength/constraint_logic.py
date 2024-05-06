@@ -164,7 +164,6 @@ if __name__ == '__main__':
     consts = [const0, const1, const2]
 
     functions = [sols_cut, heuristic, get_stddev, lambda x: len(np.nonzero(x)[0]) - 1, lambda x: x[1]/x[0], min_vars_to_satisfy, get_stddev_with_min_sat, get_stddev_with_length]
-
     
 
     for const in consts:

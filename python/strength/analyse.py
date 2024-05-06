@@ -107,13 +107,7 @@ def convert_to_constraint(row):
 
 
 if __name__ == '__main__':
-    np.array([[1, 2, 3], [4, 5, 6]])
-
-    appendable = np.array([9, 9])
-
-    np.append(np.array([[1, 2, 3], [4, 5, 6]]), np.array([[9, 9]]).T, axis=1)
-
-
+    np.array([1, 2, 3])
     
 
 
