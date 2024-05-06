@@ -971,7 +971,7 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   // if (getDegree() % d )
   SMALL amount = findWeakenAmount(d, to);
 
-  if ((getDegree() % d)-1 != 0 && getDegree() % d != 0) global.stats.TOTALMIRWEAKEN += aux::divToDouble(static_cast<LARGE>(amount), (getDegree() % d) - 1);
+  if ((getDegree() % d) > 1) global.stats.TOTALMIRWEAKEN += aux::divToDouble(static_cast<LARGE>(amount), (getDegree() % d) - 1);
 
   // std::cout << "amount: " << amount << std::endl;
   if (global.options.weakenSuperfluous) {
@@ -996,11 +996,11 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   }
   assert(hasNoZeroes());
   if (d >= degree) {
-    ++global.stats.NDIVWEAKEN;
+    ++global.stats.NCLAUSES;
     simplifyToClause();
     // std::cout << "after simplifyToClause: " << *this << std::endl;
   } else if (!vars.empty() && d >= aux::abs(coefs[vars[0]])) {
-    ++global.stats.NDIVWEAKEN;
+    ++global.stats.NCARDS;
     simplifyToCardinality(false, getCardinalityDegree());
     // std::cout << "after simplifyToCardinality: " << *this << std::endl;
   } else {
@@ -1396,10 +1396,18 @@ AssertionStatus ConstrExp<SMALL, LARGE>::isAssertingBefore(const IntMap<int>& le
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
-  double division_strength = other->getStrength();
-  double mir_strength = getStrength();
+  ratio div_coefsum = 0;
+  for (Var v : other->vars) {
+    div_coefsum += aux::abs(other->coefs[v]);
+  }
+  ratio mir_coefsum = 0;
+  for (Var v : vars) {
+    mir_coefsum += aux::abs(coefs[v]);
+  }
+  ratio division_strength = other->getDegree() / div_coefsum;
+  ratio mir_strength = getDegree() / mir_coefsum;
 
-  double delta = 1e-8;
+  double delta = 0;
 
   // std::cout << "this: " << *this << std::endl;
   // std::cout << "other: " << *other << std::endl;

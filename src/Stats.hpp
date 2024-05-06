@@ -177,6 +177,8 @@ struct Stats {
   Stat NUNKNOWNROUNDEDUP{0, "unknown literals rounded up"};
   Stat NMIRWEAKEN{0, "weakened by MIR"};
   Stat NDIVWEAKEN{0, "weakened by division"};
+  Stat NCLAUSES{0, "clauses"};
+  Stat NCARDS{0, "cardinalities"};
   Stat NMIRSTRONGER{0, "stronger by MIR"};
   Stat NDIVSTRONGER{0, "stronger by division"};
   Stat NEQUAL{0, "number of equalities"};
@@ -418,6 +420,8 @@ struct Stats {
       &NCOUNTING,
       &NMIRWEAKEN,
       &NDIVWEAKEN,
+      &NCLAUSES,
+      &NCARDS,
       &NSMALL,
       &NLARGE,
       &NARB,
