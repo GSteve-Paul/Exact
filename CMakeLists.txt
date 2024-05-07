@@ -210,10 +210,7 @@ if(build_result STREQUAL "StaticLib")
 endif()
 
 if(build_result STREQUAL "UnitTests")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf-4") # fixes clang valgrind issue
-    find_package(doctest REQUIRED)
     add_executable(Exact src/external/doctest/main.cpp ${files_to_compile} ${test_files})
-    target_link_libraries(Exact doctest::doctest)
 else()
     target_compile_definitions(Exact PUBLIC DOCTEST_CONFIG_DISABLE=1)
 endif()

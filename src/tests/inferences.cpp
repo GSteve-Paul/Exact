@@ -57,7 +57,7 @@ TEST_CASE("toOptimum") {
       CHECK(obj0 == 4);
       CHECK(optcore0->empty());
 
-      intprog.setAssumptions({{vars[4], true}});
+      intprog.setAssumptions(std::vector<std::pair<IntVar*, bigint>>{{vars[4], true}});
       auto [state2, obj2, optcore2] = intprog.toOptimum(intprog.getObjective(), false, {false, 0});
       CHECK(state2 == SolveState::SAT);
       CHECK(obj2 == 6);
@@ -84,7 +84,7 @@ TEST_CASE("toOptimum advanced") {
         vars.push_back(intprog.addVar(s, 0, 1, Encoding::ORDER));
       }
 
-      intprog.setAssumptions({{vars[5], false}});
+      intprog.setAssumptions(std::vector<std::pair<IntVar*, bigint>>{{vars[5], false}});
       auto [state, obj, optcore] = intprog.toOptimum(intprog.getObjective(), true, {false, 0});
       CHECK(state == SolveState::SAT);
       CHECK(obj == 0);
@@ -104,7 +104,7 @@ TEST_CASE("toOptimum advanced") {
       CHECK(optcore1->size() == 1);
       CHECK(optcore1->contains(vars[5]));
 
-      intprog.setAssumptions({{vars[4], true}});
+      intprog.setAssumptions(std::vector<std::pair<IntVar*, bigint>>{{vars[4], true}});
       auto [state2, obj2, optcore2] = intprog.toOptimum(intprog.getObjective(), true, {false, 0});
       CHECK(state2 == SolveState::SAT);
       CHECK(obj2 == 6);
@@ -192,7 +192,7 @@ TEST_CASE("count advanced") {
           vars.push_back(intprog.addVar(s, 0, 1, Encoding::ORDER));
         }
 
-        intprog.setAssumptions({{vars[4], false}});
+        intprog.setAssumptions(std::vector<std::pair<IntVar*, bigint>>{{vars[4], false}});
         auto [state0, count0] = intprog.count(vars, true);
         CHECK(state0 == SolveState::SAT);
         CHECK(count0 == 16);
@@ -216,7 +216,7 @@ TEST_CASE("count advanced") {
         CHECK(state4 == SolveState::SAT);
         CHECK(count4 == 1);
 
-        intprog.setAssumptions({{vars[3], false}, {vars[1], false}});
+        intprog.setAssumptions(std::vector<std::pair<IntVar*, bigint>>{{vars[3], false}, {vars[1], false}});
         auto [state5, count5] = intprog.count(vars, true);
         CHECK(state5 == SolveState::INCONSISTENT);
         CHECK(count5 == 0);
@@ -279,7 +279,7 @@ TEST_CASE("intersect advanced") {
       for (const auto& s : {"a", "b", "c", "d", "e"}) {
         vars.push_back(intprog.addVar(s, 0, 1, Encoding::ORDER));
       }
-      intprog.setAssumptions({{vars[0], false}});
+      intprog.setAssumptions(std::vector<std::pair<IntVar*, bigint>>{{vars[0], false}});
       auto [state0, invalidator0] = intprog.getSolIntersection(vars, true);
       CHECK(state0 == SolveState::SAT);
       CHECK(aux::str(invalidator0) == "+1 x1 >= 1 ;");
@@ -304,7 +304,7 @@ TEST_CASE("intersect advanced") {
       CHECK(state4 == SolveState::SAT);
       CHECK(aux::str(invalidator4) == "+1 x1 +1 ~x2 >= 1 ;");
 
-      intprog.setAssumptions({{vars[3], true}, {vars[4], true}});
+      intprog.setAssumptions(std::vector<std::pair<IntVar*, bigint>>{{vars[3], true}, {vars[4], true}});
       auto [state5, invalidator5] = intprog.getSolIntersection(vars2, true);
       CHECK(state5 == SolveState::INCONSISTENT);
       CHECK(invalidator5 == nullptr);
@@ -551,7 +551,8 @@ TEST_CASE("extract MUS") {
   CHECK(state == SolveState::SAT);
   CHECK(!mus);
 
-  intprog.setAssumptions({{vars[3], 0}, {vars[4], 0}, {vars[5], 0}, {vars[6], -2}, {vars[7], -2}, {vars[8], -2}});
+  intprog.setAssumptions(std::vector<std::pair<IntVar*, bigint>>{
+      {vars[3], 0}, {vars[4], 0}, {vars[5], 0}, {vars[6], -2}, {vars[7], -2}, {vars[8], -2}});
   SolveState res = intprog.getOptim()->runFull(false, 0);
   CHECK(res == SolveState::INCONSISTENT);
 
@@ -573,7 +574,8 @@ TEST_CASE("extract MUS") {
   intprog.clearAssumptions();
   CHECK(intprog.count(vars, true).val == 1625);
 
-  intprog.setAssumptions({{vars[3], 0}, {vars[4], 0}, {vars[5], 0}, {vars[6], -2}, {vars[7], -2}, {vars[8], -2}});
+  intprog.setAssumptions(std::vector<std::pair<IntVar*, bigint>>{
+      {vars[3], 0}, {vars[4], 0}, {vars[5], 0}, {vars[6], -2}, {vars[7], -2}, {vars[8], -2}});
   intprog.addConstraint({IntConstraint::zip({1, 1, 1, 1, 1, 1}, defxyz), std::nullopt, -6});
   auto [state3, mus3] = intprog.extractMUS();
   CHECK(state3 == SolveState::UNSAT);
