@@ -610,7 +610,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
             largestCF = static_cast<SMALL>(indirectConfl->getDegree());
           }
           indirectConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
-                                     largestCF, 0);
+                                     indirectConfl->getLargestCoef(varsToCheckIndirect), 0);
           if (indirectConfl->getSlack(level) < 0) {
             flagIndirect = true;
           }
@@ -649,7 +649,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           // directConfl->toStreamPure(std::cout);
           // std::cout << "\n" << std::endl;
           directConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
-                                   largestCF, 0);
+                                   directConfl->getLargestCoef(varsToCheckDirect), 0);
           if (directConfl->getSlack(level) < 0) {
             flagDirect = true;
           }
@@ -662,14 +662,14 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           addAndCleanUp(indirectReason, level, mu);
           returnval = indirectReason->getLBD(level);
           ++global.stats.NINDIRECTWEAKEN;
-          std::cout << "real: " << std::endl;
-          toStreamPure(std::cout);
-          std::cout << "\n" << std::endl;
-          std::cout << "indirectConfl: " << std::endl;
-          indirectConfl->toStreamPure(std::cout);
-          std::cout << "\n" << std::endl;
-          std::cout << "real slack: " << getSlack(level) << std::endl;
-          std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
+          // std::cout << "real: " << std::endl;
+          // toStreamPure(std::cout);
+          // std::cout << "\n" << std::endl;
+          // std::cout << "indirectConfl: " << std::endl;
+          // indirectConfl->toStreamPure(std::cout);
+          // std::cout << "\n" << std::endl;
+          // std::cout << "real slack: " << getSlack(level) << std::endl;
+          // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
         } else {
           cond = false;
         }
@@ -787,7 +787,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
       saturate(varsToCheck, false, false);
       largestCF = static_cast<SMALL>(getDegree());
     }
-    fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
+    fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), getLargestCoef(varsToCheck), 0);
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 
