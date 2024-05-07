@@ -975,7 +975,12 @@ void Solver::reduceDB() {
   }
 
   std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) { return ca[x].priority < ca[y].priority; });
-  int64_t limit = global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
+  int64_t limit = global.options.dbScale.get() *
+                  std::pow(std::log(static_cast<double>(global.stats.NCONFL.z)), global.options.dbExp.get());
+  // NOTE: cast to double to avoid an issue with GCC13/14 giving NaN after std::log with -03 and single source on
+  // commit 3f9584893afe38dfe30dc9c4a1322a903a231859 with SoPlex
+  // NOTE 2: does not matter, we get long double errors in boost::multiprecision::cpp_int...
+  // Let's go with Clang for now.
   for (size_t i = limit; i < learnts.size(); ++i) {
     removeConstraint(learnts[i]);
   }
@@ -1270,7 +1275,7 @@ SolveState Solver::solve() {
       long long nconfl = static_cast<long long>(global.stats.NCONFL.z);
       if (nconfl % 1000 == 0 && global.options.verbosity.get() > 0) {
         std::cout << "c " << nconfl << " confls " << constraints.size() << " constrs "
-                  << getNbVars() - (long long)(global.stats.NUNITS.z + global.stats.NPROBINGEQS.z) << " vars"
+                  << getNbVars() - static_cast<int64_t>(global.stats.NUNITS.z + global.stats.NPROBINGEQS.z) << " vars"
                   << std::endl;
         if (global.options.verbosity.get() > 2) {
           // memory usage
@@ -1306,7 +1311,12 @@ SolveState Solver::solve() {
       if (global.stats.NCONFL >= nconfl_to_reduce) {
         ++global.stats.NCLEANUP;
         nconfl_to_reduce +=
-            1 + global.options.dbScale.get() * std::pow(std::log(global.stats.NCONFL.z), global.options.dbExp.get());
+            1 + global.options.dbScale.get() *
+                    std::pow(std::log(static_cast<double>(global.stats.NCONFL.z)), global.options.dbExp.get());
+        // NOTE: cast to double to avoid an issue with GCC13/14 giving NaN after std::log with -03 and single source on
+        // commit 3f9584893afe38dfe30dc9c4a1322a903a231859 with SoPlex
+        // NOTE 2: does not matter, we get long double errors in boost::multiprecision::cpp_int...
+        // Let's go with Clang for now.
         if (global.options.verbosity.get() > 0) {
           StatNum propDiff = global.stats.PROPTIME.z - lastPropTime;
           StatNum cADiff = global.stats.CATIME.z - lastCATime;
