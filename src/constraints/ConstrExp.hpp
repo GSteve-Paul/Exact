@@ -657,46 +657,8 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
 
         int returnval;
 
-        if (flagIndirect && flagDirect) {
-          if (indirectConfl->getStrength() >= directConfl->getStrength()) {
-            addAndCleanUp(indirectReason, level, mu);
-            returnval = indirectReason->getLBD(level);
-            ++global.stats.NINDIRECTWEAKEN;
-            // std::cout << "real: " << std::endl;
-            // toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "indirectConfl: " << std::endl;
-            // indirectConfl->toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "real slack: " << getSlack(level) << std::endl;
-            // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
-
-          } else {
-            addAndCleanUp(directReason, level, mu);
-            returnval = directReason->getLBD(level);
-            ++global.stats.NDIRECTWEAKEN;
-            // std::cout << "real: " << std::endl;
-            // toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "directConfl: " << std::endl;
-            // directConfl->toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "real slack: " << getSlack(level) << std::endl;
-            // std::cout << "direct slack: " << directConfl->getSlack(level) << std::endl;
-          }
-        } else if (flagIndirect) {
-          addAndCleanUp(indirectReason, level, mu);
-          returnval = indirectReason->getLBD(level);
-          ++global.stats.NINDIRECTWEAKEN;
-          // std::cout << "real: " << std::endl;
-          // toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          // std::cout << "indirectConfl: " << std::endl;
-          // indirectConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          // std::cout << "real slack: " << getSlack(level) << std::endl;
-          // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
-        } else if (flagDirect) {
+       
+        if (flagDirect) {
           addAndCleanUp(directReason, level, mu);
           returnval = directReason->getLBD(level);
           ++global.stats.NDIRECTWEAKEN;
