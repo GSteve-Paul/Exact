@@ -169,7 +169,7 @@ ID Logger::logProofLine(const CeSuper& ce) {
     id = std::stoll(buffer);
   }
 #if !NDEBUG
-  proofStream() << "e " << id << " : " << *ce << "\n";
+  proofStream() << "e " << *ce << " " << id << "\n";
 #endif
   return id;
 }
@@ -210,7 +210,7 @@ ID Logger::logImpliedUnit(Lit implying, Lit implied) {
 #endif
   ID result = logResolvent(logRUP(implying, implied), logRUP(-implying, implied));
 #if !NDEBUG
-  proofStream() << "e " << result << " : " << (std::pair<int, Lit>{1, implied}) << " >= 1 ;\n";
+  proofStream() << "e " << std::pair<int, Lit>{1, implied} << " >= 1 ; " << result << "\n";
 #endif
   return result;
 }
@@ -294,15 +294,15 @@ ID Logger::logAtMostOne(const ConstrSimple32& c, const CeSuper& ce) {
     previous = ++last_proofID;
   }
 #if !NDEBUG
-  proofStream() << "e " << last_proofID << " : ";
+  proofStream() << "e ";
   c.toStreamAsOPB(proofStream());
-  proofStream() << "\n";
+  proofStream() << " " << last_proofID << "\n";
 #endif
   ce->resetBuffer(last_proofID);
   return last_proofID;
 }
 
-ID Logger::logResolvent(ID id1, ID id2) {  // should be clauses
+ID Logger::logResolvent(const ID id1, const ID id2) {  // should be clauses
   if (!active) return ++last_proofID;
   assert(isValid(id1));
   assert(isValid(id2));
@@ -328,15 +328,15 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
   proofStream() << "pol " << reprAImplA << " " << aImpliesB << " + " << bImpReprB << " + s\n";
   ID reprAImpReprB = ++last_proofID;
 #if !NDEBUG
-  proofStream() << "e " << reprAImpReprB << " : " << (std::pair<int, Lit>{1, -reprA}) << " "
-                << (std::pair<int, Lit>{1, reprB}) << " >= 1 ;\n";
+  proofStream() << "e " << std::pair<int, Lit>{1, -reprA} << " " << std::pair<int, Lit>{1, reprB} << " >= 1 ; "
+                << reprAImpReprB << "\n";
 #endif
   ID bImpliesA = logRUP(-b, a);
   proofStream() << "pol " << reprBImplB << " " << bImpliesA << " + " << aImpReprA << " + s\n";
   ID reprBImpReprA = ++last_proofID;
 #if !NDEBUG
-  proofStream() << "e " << reprBImpReprA << " : " << (std::pair<int, Lit>{1, -reprB}) << " "
-                << (std::pair<int, Lit>{1, reprA}) << " >= 1 ;\n";
+  proofStream() << "e " << std::pair<int, Lit>{1, -reprB} << " " << std::pair<int, Lit>{1, reprA} << " >= 1 ; "
+                << reprBImpReprA << "\n";
 #endif
   return {reprAImpReprB, reprBImpReprA};
 }

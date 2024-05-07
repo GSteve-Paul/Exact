@@ -95,7 +95,7 @@ class Logger {
   ID last_formID;
   ID last_proofID;
 
-  explicit Logger(const Stats& stats);
+  explicit Logger(const Stats&);
 
   void activate(const std::string& proof_log_name, const bool zip);
   bool isActive() const;
