@@ -913,6 +913,7 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
     simplifyToCardinality(false, getCardinalityDegree());
   } else {
+    // std::cout << "final block" << std::endl;
     saturate(true, true);
     
     CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
