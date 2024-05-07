@@ -106,6 +106,7 @@ set(test_files
     src/tests/inferences.cpp
     src/tests/input.cpp
     src/tests/optimization.cpp
+    src/tests/memory.cpp
 )
 
 set(source_files
