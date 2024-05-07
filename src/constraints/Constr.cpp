@@ -66,7 +66,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace xct {
 
 Constr::Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth, unsigned int maxLBD)
-    : priority(maxLBD + 1 - strngth), header1{0, lkd, lngth}, header2{0, (unsigned int)o, i} {
+    : priority(maxLBD + 1 - strngth), header{0, 0, lkd, (unsigned int)o, i}, sze(lngth) {
   assert(strngth <= 1);
   assert(strngth > 0);  // so we know that 1-strngth < 1 and it will not interfere with the LBD when stored together
   assert(maxLBD <= MAXLBD);
@@ -80,10 +80,10 @@ std::ostream& operator<<(std::ostream& o, const Constr& c) {
   return o << ">= " << c.degree();
 }
 
-unsigned int Constr::size() const { return header1.size; }
-void Constr::setLocked(bool lkd) { header1.locked = lkd; }
-bool Constr::isLocked() const { return header1.locked; }
-Origin Constr::getOrigin() const { return (Origin)header2.origin; }
+uint32_t Constr::size() const { return sze; }
+void Constr::setLocked(bool lkd) { header.locked = lkd; }
+bool Constr::isLocked() const { return header.locked; }
+Origin Constr::getOrigin() const { return (Origin)header.origin; }
 void Constr::decreaseLBD(unsigned int lbd) {
   float integral;
   float fractional = std::modf(priority, &integral);
@@ -100,10 +100,10 @@ float Constr::strength() const {
   float tmp;
   return 1 - std::modf(priority, &tmp);
 }
-bool Constr::isMarkedForDelete() const { return header1.markedfordel; }
-bool Constr::isSeen() const { return header2.seen; }
-void Constr::setSeen(bool s) { header2.seen = s; }
-ID Constr::id() const { return header2.id; }
+bool Constr::isMarkedForDelete() const { return header.markedfordel; }
+bool Constr::isSeen() const { return header.seen; }
+void Constr::setSeen(bool s) { header.seen = s; }
+ID Constr::id() const { return header.id; }
 
 void Constr::fixEncountered(Stats& stats) const {  // TODO: better as method of Stats?
   const Origin o = getOrigin();
@@ -133,7 +133,7 @@ bool Clause::isClauseOrCard() const { return true; }
 bool Clause::isAtMostOne() const { return size() == 2; }
 
 void Clause::initializeWatches(CRef cr, Solver& solver) {
-  auto& level = solver.level;
+  const auto& level = solver.level;
   auto& adj = solver.adj;
 
   unsigned int length = size();
@@ -174,7 +174,7 @@ void Clause::initializeWatches(CRef cr, Solver& solver) {
 }
 
 WatchStatus Clause::checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats) {
-  auto& level = solver.level;
+  const auto& level = solver.level;
   auto& adj = solver.adj;
 
   assert(idx < 0);
@@ -290,8 +290,8 @@ bool Cardinality::isAtMostOne() const { return degr == size() - 1; }
 
 void Cardinality::initializeWatches(CRef cr, Solver& solver) {
   assert(degr > 1);  // otherwise not a cardinality
-  auto& level = solver.level;
-  [[maybe_unused]] auto& position = solver.position;
+  const auto& level = solver.level;
+  [[maybe_unused]] const auto& position = solver.position;
   auto& adj = solver.adj;
 
   unsigned int length = size();
@@ -335,7 +335,7 @@ void Cardinality::initializeWatches(CRef cr, Solver& solver) {
 }
 
 WatchStatus Cardinality::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats) {
-  auto& level = solver.level;
+  const auto& level = solver.level;
   auto& adj = solver.adj;
 
   assert(idx >= 0);
@@ -422,10 +422,10 @@ bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equaliti
 
 template <typename CF, typename DG>
 void Counting<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
-  auto& level = solver.level;
-  auto& position = solver.position;
+  const auto& level = solver.level;
+  const auto& position = solver.position;
   auto& adj = solver.adj;
-  auto& qhead = solver.qhead;
+  const auto& qhead = solver.qhead;
 
   slack = -degr;
   unsigned int length = size();
@@ -449,7 +449,7 @@ void Counting<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 template <typename CF, typename DG>
 WatchStatus Counting<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
                                                   Stats& stats) {
-  auto& position = solver.position;
+  const auto& position = solver.position;
 
   assert(idx >= INF);
   assert(data[idx - INF].l == p);
@@ -557,10 +557,10 @@ bool Counting<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equ
 
 template <typename CF, typename DG>
 void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
-  auto& level = solver.level;
-  auto& position = solver.position;
+  const auto& level = solver.level;
+  const auto& position = solver.position;
   auto& adj = solver.adj;
-  auto& qhead = solver.qhead;
+  const auto& qhead = solver.qhead;
 
   watchslack = -degr;
   unsigned int length = size();
@@ -607,8 +607,8 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 template <typename CF, typename DG>
 WatchStatus Watched<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
                                                  Stats& stats) {
-  auto& level = solver.level;
-  auto& position = solver.position;
+  const auto& level = solver.level;
+  const auto& position = solver.position;
   auto& adj = solver.adj;
 
   assert(idx >= INF);
@@ -742,10 +742,10 @@ bool Watched<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equa
 
 template <typename CF, typename DG>
 void CountingSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
-  auto& level = solver.level;
-  auto& position = solver.position;
+  const auto& level = solver.level;
+  const auto& position = solver.position;
   auto& adj = solver.adj;
-  auto& qhead = solver.qhead;
+  const auto& qhead = solver.qhead;
 
   DG& slk = slack;
   slk = -degr;
@@ -772,7 +772,7 @@ void CountingSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 template <typename CF, typename DG>
 WatchStatus CountingSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
                                                       Stats& stats) {
-  auto& position = solver.position;
+  const auto& position = solver.position;
 
   assert(idx >= INF);
   assert(terms[idx - INF].l == p);
@@ -882,10 +882,10 @@ bool CountingSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities&
 
 template <typename CF, typename DG>
 void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
-  auto& level = solver.level;
-  auto& position = solver.position;
+  const auto& level = solver.level;
+  const auto& position = solver.position;
   auto& adj = solver.adj;
-  auto& qhead = solver.qhead;
+  const auto& qhead = solver.qhead;
 
   DG& wslk = watchslack;
   wslk = -degr;
@@ -933,8 +933,8 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 template <typename CF, typename DG>
 WatchStatus WatchedSafe<CF, DG>::checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver,
                                                      Stats& stats) {
-  auto& level = solver.level;
-  auto& position = solver.position;
+  const auto& level = solver.level;
+  const auto& position = solver.position;
   auto& adj = solver.adj;
 
   assert(idx >= INF);

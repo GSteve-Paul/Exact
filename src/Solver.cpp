@@ -829,7 +829,7 @@ void Solver::removeConstraint(const CRef& cr, [[maybe_unused]] bool override) {
   assert(override || !c.isLocked());
   assert(!c.isMarkedForDelete());
   assert(!external.count(c.id()));
-  c.header1.markedfordel = 1;
+  c.header.markedfordel = 1;
   ca.wasted += c.getMemSize();
   if (isNonImplied(c.getOrigin())) {
     for (unsigned int i = 0; i < c.size(); ++i) {

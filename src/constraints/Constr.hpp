@@ -77,21 +77,19 @@ struct Constr {  // internal solver constraint optimized for fast propagation
 
   float priority;  // Integer part is LBD (0 to 1e5), fractional part is 1-strength. Lower is better.
   struct {
+    unsigned seen : 1;  // utility bit to avoid hash maps
     unsigned markedfordel : 1;
     unsigned locked : 1;
-    const unsigned size : 30;  // size is never larger than INF, so fits in 30 bits
-  } header1;
-  struct {
-    unsigned seen : 1;  // utility bit to avoid hash maps
     const unsigned origin : 5;
-    const unsigned long long id : 58;  // plenty of bits to store ID
-  } header2;
+    const unsigned long long id : 56;  // plenty of bits to store ID
+  } header;
+  const uint32_t sze;
 
   Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth, unsigned int maxLBD);
   virtual ~Constr() {}
   virtual void cleanup() = 0;  // poor man's destructor
 
-  unsigned int size() const;
+  uint32_t size() const;
   void setLocked(bool lkd);
   bool isLocked() const;
   Origin getOrigin() const;
