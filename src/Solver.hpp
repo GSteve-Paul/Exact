@@ -81,11 +81,7 @@ class Solver {
   friend struct Clause;
   friend struct Cardinality;
   template <typename CF, typename DG>
-  friend struct Counting;
-  template <typename CF, typename DG>
   friend struct Watched;
-  template <typename CF, typename DG>
-  friend struct CountingSafe;
   template <typename CF, typename DG>
   friend struct WatchedSafe;
   friend class Propagator;

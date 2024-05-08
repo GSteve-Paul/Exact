@@ -230,9 +230,6 @@ struct Stats {
   Stat NLARGE{0, "large coef constraints"};
   Stat NARB{0, "arbitrary coef constraints"};
 
-  Stat NWATCHED{0, "watched constraints"};
-  Stat NCOUNTING{0, "counting constraints"};
-
   Stat NCLEANUP{0, "inprocessing phases"};
   Stat NRESTARTS{0, "restarts"};
   Stat NCORES{0, "cores"};
@@ -390,8 +387,6 @@ struct Stats {
       &NPURELITS,
       &NSATISFIEDSREMOVED,
       &NCONSREADDED,
-      &NWATCHED,
-      &NCOUNTING,
       &NSMALL,
       &NLARGE,
       &NARB,

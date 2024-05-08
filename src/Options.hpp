@@ -218,9 +218,6 @@ struct Options {
   ValOption<int> dbMaxLBD{"db-maxlbd", "Constraints with an LBD larger than this are considered to have this LBD",
                           static_cast<int32_t>(1e5), "1 =< int =< 1e5",
                           [](const int& x) -> bool { return 1 <= x && x <= static_cast<int32_t>(MAXLBD); }};
-  ValOption<double> propWatched{"prop-watched", "Watched propagation instead of counting propagation", 1,
-                                "0 (always counting) =< float =< 1 (always watched)",
-                                [](const double& x) -> bool { return 0 <= x && x <= 1; }};
   ValOption<double> lpTimeRatio{
       "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
 #if WITHSOPLEX
@@ -328,7 +325,6 @@ struct Options {
       &dbScale,
       &dbSafeLBD,
       &dbMaxLBD,
-      &propWatched,
 #if WITHSOPLEX
       &lpTimeRatio,
       &lpPivotBudget,

@@ -341,16 +341,6 @@ struct Clause;
 struct Cardinality;
 
 template <typename CF, typename DG>
-struct Counting;
-using Counting32 = Counting<int, long long>;
-using Counting64 = Counting<long long, int128>;
-using Counting96 = Counting<int128, int128>;
-using Counting128 = Counting<int128, int256>;
-template <typename CF, typename DG>
-struct CountingSafe;
-using CountingArb = CountingSafe<bigint, bigint>;
-
-template <typename CF, typename DG>
 struct Watched;
 using Watched32 = Watched<int, long long>;
 using Watched64 = Watched<long long, int128>;

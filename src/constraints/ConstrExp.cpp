@@ -165,44 +165,21 @@ CRef ConstrExp<SMALL, LARGE>::toConstr(ConstraintAllocator& ca, bool locked, ID 
     new (ca.alloc<Cardinality>(vars.size())) Cardinality(this, locked, id);
   } else {
     double strngth = getStrength();
-    bool useCounting = strngth > global.options.propWatched.get();
-    global.stats.NCOUNTING += useCounting;
-    global.stats.NWATCHED += !useCounting;
     if (maxCoef <= static_cast<LARGE>(limitAbs<int, long long>())) {
       global.stats.NSMALL += 1;
-      if (useCounting) {
-        new (ca.alloc<Counting32>(vars.size())) Counting32(this, locked, id, strngth);
-      } else {
-        new (ca.alloc<Watched32>(vars.size())) Watched32(this, locked, id, strngth);
-      }
+      new (ca.alloc<Watched32>(vars.size())) Watched32(this, locked, id, strngth);
     } else if (maxCoef <= static_cast<LARGE>(limitAbs<long long, int128>())) {
       global.stats.NLARGE += 1;
-      if (useCounting) {
-        new (ca.alloc<Counting64>(vars.size())) Counting64(this, locked, id, strngth);
-      } else {
-        new (ca.alloc<Watched64>(vars.size())) Watched64(this, locked, id, strngth);
-      }
+      new (ca.alloc<Watched64>(vars.size())) Watched64(this, locked, id, strngth);
     } else if (maxCoef <= static_cast<LARGE>(limitAbs<int128, int128>())) {
       global.stats.NLARGE += 1;
-      if (useCounting) {
-        new (ca.alloc<Counting96>(vars.size())) Counting96(this, locked, id, strngth);
-      } else {
-        new (ca.alloc<Watched96>(vars.size())) Watched96(this, locked, id, strngth);
-      }
+      new (ca.alloc<Watched96>(vars.size())) Watched96(this, locked, id, strngth);
     } else if (maxCoef <= static_cast<LARGE>(limitAbs<int128, int256>())) {
       global.stats.NLARGE += 1;
-      if (useCounting) {
-        new (ca.alloc<Counting128>(vars.size())) Counting128(this, locked, id, strngth);
-      } else {
-        new (ca.alloc<Watched128>(vars.size())) Watched128(this, locked, id, strngth);
-      }
+      new (ca.alloc<Watched128>(vars.size())) Watched128(this, locked, id, strngth);
     } else {
       global.stats.NARB += 1;
-      if (useCounting) {
-        new (ca.alloc<CountingArb>(vars.size())) CountingArb(this, locked, id, strngth);
-      } else {
-        new (ca.alloc<WatchedArb>(vars.size())) WatchedArb(this, locked, id, strngth);
-      }
+      new (ca.alloc<WatchedArb>(vars.size())) WatchedArb(this, locked, id, strngth);
     }
   }
   return result;

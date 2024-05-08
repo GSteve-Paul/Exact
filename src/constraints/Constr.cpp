@@ -415,145 +415,14 @@ bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equaliti
 }
 
 template <typename CF, typename DG>
-void Counting<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
-  const auto& level = solver.level;
-  const auto& position = solver.position;
-  auto& adj = solver.adj;
-  const auto& qhead = solver.qhead;
-
-  slack = -degr;
-  for (unsigned int i = 0; i < size(); ++i) {
-    const Lit l = lit(i);
-    adj[l].emplace_back(cr, i + INF);
-    if (!isFalse(level, l) || position[toVar(l)] >= qhead) slack += _c(i);
-  }
-
-  assert(slack >= 0);
-  assert(hasCorrectSlack(solver));
-  if (slack < _c(0)) {  // propagate
-    for (unsigned int i = 0; i < size() && _c(i) > slack; ++i)
-      if (isUnknown(position, lit(i))) {
-        assert(isCorrectlyPropagating(solver, i));
-        solver.propagate(lit(i), cr);
-      }
-  }
-}
-
-template <typename CF, typename DG>
-WatchStatus Counting<CF, DG>::checkForPropagation(const CRef cr, int& idx, [[maybe_unused]] const Lit p, Solver& solver,
-                                                  Stats& stats) {
-  const auto& position = solver.position;
-
-  assert(idx >= INF);
-  assert(lit(idx - INF) == p);
-  const CF& lrgstCf = _c(0);
-  const CF& c = _c(idx - INF);
-
-  slack -= c;
-  assert(hasCorrectSlack(solver));
-
-  if (slack < 0) {
-    assert(isCorrectlyConflicting(solver));
-    return WatchStatus::CONFLICTING;
-  }
-  if (slack < lrgstCf) {
-    if (ntrailpops < stats.NTRAILPOPS) {
-      ntrailpops = static_cast<long long>(stats.NTRAILPOPS.z);
-      watchIdx = 0;
-    }
-    int countingprops = 0;
-    stats.NPROPCHECKS -= watchIdx;
-    while (watchIdx < size() && _c(watchIdx) > slack) {
-      if (const Lit l = lit(watchIdx); isUnknown(position, l)) {
-        stats.NPROPCLAUSE += (degr == 1);
-        stats.NPROPCARD += (degr != 1 && lrgstCf == 1);
-        ++countingprops;
-        assert(isCorrectlyPropagating(solver, watchIdx));
-        solver.propagate(l, cr);
-      }
-      ++watchIdx;
-    }
-    stats.NPROPCHECKS += watchIdx;
-    stats.NPROPCOUNTING += countingprops;
-  }
-  return WatchStatus::KEEPWATCH;
-}
-
-template <typename CF, typename DG>
-void Counting<CF, DG>::undoFalsified(const int i) {
-  assert(i >= INF);
-  slack += _c(i - INF);
-}
-
-template <typename CF, typename DG>
-unsigned int Counting<CF, DG>::resolveWith(CeSuper& confl, const Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(data, size(), degr, id(), getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
-}
-template <typename CF, typename DG>
-unsigned int Counting<CF, DG>::subsumeWith(CeSuper& confl, const Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
-}
-
-template <typename CF, typename DG>
-CePtr<CF, DG> Counting<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<CF, DG> result = cePools.take<CF, DG>();
-  result->addRhs(degr);
-  for (size_t i = 0; i < size(); ++i) {
-    result->addLhs(_c(i), lit(i));
-  }
-  result->orig = getOrigin();
-  result->resetBuffer(id());
-  return result;
-}
-
-template <typename CF, typename DG>
-CeSuper Counting<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
-  return expandTo(cePools);
-}
-
-template <typename CF, typename DG>
-bool Counting<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
-  DG eval = -degr;
-  for (unsigned int i = 0; i < size() && eval < 0; ++i) {
-    if (isUnit(level, lit(i))) eval += _c(i);
-  }
-  return eval >= 0;
-}
-
-template <typename CF, typename DG>
-bool Counting<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
-                                       IntSetPool& isp) const {
-  const bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (unsigned int i = 0; i < size(); ++i) {
-    if (const Lit l = lit(i); isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) {
-      return true;
-    }
-  }
-  if (!isEquality) {
-    IntSet& hasImplieds = isp.take();
-    for (unsigned int i = 0; i < getUnsaturatedIdx(); ++i) {
-      if (const Lit l = lit(i); implications.hasImplieds(l)) hasImplieds.add(-l);
-    }
-    if (!hasImplieds.isEmpty()) {
-      for (unsigned int i = 0; i < getUnsaturatedIdx(); ++i) {
-        if (hasImplieds.has(lit(i))) {
-          isp.release(hasImplieds);
-          return true;
-        }
-      }
-    }
-    isp.release(hasImplieds);
-  }
-  return false;
-}
-
-template <typename CF, typename DG>
 bool Watched<CF, DG>::hasWatch(unsigned int i) const {
   return data[i].c < 0;
+  // return data[i].l & 1;
 }
 template <typename CF, typename DG>
 void Watched<CF, DG>::flipWatch(unsigned int i) {
   data[i].c = -data[i].c;
+  // data[i].l = data[i].l ^ 1;
 }
 
 template <typename CF, typename DG>
@@ -713,142 +582,6 @@ bool Watched<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
 template <typename CF, typename DG>
 bool Watched<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                                       IntSetPool& isp) const {
-  const bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (unsigned int i = 0; i < size(); ++i) {
-    if (const Lit l = lit(i); isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l)))
-      return true;
-  }
-  if (!isEquality) {
-    IntSet& hasImplieds = isp.take();
-    for (unsigned int i = 0; i < getUnsaturatedIdx(); ++i) {
-      if (const Lit l = lit(i); implications.hasImplieds(l)) hasImplieds.add(-l);
-    }
-    if (!hasImplieds.isEmpty()) {
-      for (unsigned int i = 0; i < getUnsaturatedIdx(); ++i) {
-        if (hasImplieds.has(lit(i))) {
-          isp.release(hasImplieds);
-          return true;
-        }
-      }
-    }
-    isp.release(hasImplieds);
-  }
-  return false;
-}
-
-template <typename CF, typename DG>
-void CountingSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
-  const auto& level = solver.level;
-  const auto& position = solver.position;
-  auto& adj = solver.adj;
-  const auto& qhead = solver.qhead;
-
-  DG& slk = slack;
-  slk = -degr;
-  for (unsigned int i = 0; i < size(); ++i) {
-    const Lit l = lit(i);
-    adj[l].emplace_back(cr, i + INF);
-    if (!isFalse(level, l) || position[toVar(l)] >= qhead) slk += _c(i);
-  }
-
-  assert(slk >= 0);
-  assert(hasCorrectSlack(solver));
-  if (slk < _c(0)) {  // propagate
-    for (unsigned int i = 0; i < size() && _c(i) > slk; ++i) {
-      if (const Lit l = lit(i); isUnknown(position, l)) {
-        assert(isCorrectlyPropagating(solver, i));
-        solver.propagate(l, cr);
-      }
-    }
-  }
-}
-
-template <typename CF, typename DG>
-WatchStatus CountingSafe<CF, DG>::checkForPropagation(const CRef cr, int& idx, [[maybe_unused]] const Lit p,
-                                                      Solver& solver, Stats& stats) {
-  const auto& position = solver.position;
-
-  assert(idx >= INF);
-  assert(lit(idx - INF) == p);
-  const CF& lrgstCf = _c(0);
-  const CF& c = _c(idx - INF);
-
-  DG& slk = slack;
-  slk -= c;
-  assert(hasCorrectSlack(solver));
-
-  if (slk < 0) {
-    assert(isCorrectlyConflicting(solver));
-    return WatchStatus::CONFLICTING;
-  }
-  if (slk < lrgstCf) {
-    if (ntrailpops < stats.NTRAILPOPS) {
-      ntrailpops = static_cast<long long>(stats.NTRAILPOPS.z);
-      watchIdx = 0;
-    }
-    int countingprops = 0;
-    stats.NPROPCHECKS -= watchIdx;
-    for (; watchIdx < size() && _c(watchIdx) > slk; ++watchIdx) {
-      if (const Lit l = lit(watchIdx); isUnknown(position, l)) {
-        stats.NPROPCLAUSE += (degr == 1);
-        stats.NPROPCARD += (degr != 1 && lrgstCf == 1);
-        ++countingprops;
-        assert(isCorrectlyPropagating(solver, watchIdx));
-        solver.propagate(l, cr);
-      }
-    }
-    stats.NPROPCHECKS += watchIdx;
-    stats.NPROPCOUNTING += countingprops;
-  }
-  return WatchStatus::KEEPWATCH;
-}
-
-template <typename CF, typename DG>
-void CountingSafe<CF, DG>::undoFalsified(const int i) {
-  assert(i >= INF);
-  slack += _c(i - INF);
-}
-
-template <typename CF, typename DG>
-unsigned int CountingSafe<CF, DG>::resolveWith(CeSuper& confl, const Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(terms.data(), size(), degr, id(), getOrigin(), l, solver.getLevel(), solver.getPos(),
-                            actSet);
-}
-template <typename CF, typename DG>
-unsigned int CountingSafe<CF, DG>::subsumeWith(CeSuper& confl, const Lit l, Solver& solver,
-                                               IntSet& saturatedLits) const {
-  return confl->subsumeWith(terms.data(), size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
-}
-
-template <typename CF, typename DG>
-CePtr<CF, DG> CountingSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
-  CePtr<CF, DG> result = cePools.take<CF, DG>();
-  result->addRhs(degr);
-  for (size_t i = 0; i < size(); ++i) {
-    result->addLhs(_c(i), lit(i));
-  }
-  result->orig = getOrigin();
-  result->resetBuffer(id());
-  return result;
-}
-
-template <typename CF, typename DG>
-CeSuper CountingSafe<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
-  return expandTo(cePools);
-}
-
-template <typename CF, typename DG>
-bool CountingSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
-  DG eval = -degr;
-  for (unsigned int i = 0; i < size() && eval < 0; ++i) {
-    if (isUnit(level, lit(i))) eval += _c(i);
-  }
-  return eval >= 0;
-}
-
-template <typename CF, typename DG>
-bool CountingSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
-                                           IntSetPool& isp) const {
   const bool isEquality = getOrigin() == Origin::EQUALITY;
   for (unsigned int i = 0; i < size(); ++i) {
     if (const Lit l = lit(i); isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l)))
@@ -1095,18 +828,6 @@ void Constr::print(const Solver& solver) const {
 }
 
 template <typename CF, typename DG>
-bool Counting<CF, DG>::hasCorrectSlack(const Solver& solver) {
-  return true;  // comment to run check
-  DG slk = -degr;
-  for (int i = 0; i < (int)size(); ++i) {
-    if (solver.getPos()[toVar(lit(i))] >= solver.qhead || !isFalse(solver.getLevel(), lit(i))) {
-      slk += _c(i);
-    }
-  }
-  return (slk == slack);
-}
-
-template <typename CF, typename DG>
 bool Watched<CF, DG>::hasCorrectSlack(const Solver& solver) {
   return true;  // comment to run check
   DG slk = -degr;
@@ -1115,18 +836,6 @@ bool Watched<CF, DG>::hasCorrectSlack(const Solver& solver) {
       slk += aux::abs(_c(i));
   }
   return (slk == watchslack);
-}
-
-template <typename CF, typename DG>
-bool CountingSafe<CF, DG>::hasCorrectSlack(const Solver& solver) {
-  return true;  // comment to run check
-  DG slk = -degr;
-  for (int i = 0; i < (int)size(); ++i) {
-    if (solver.getPos()[toVar(lit(i))] >= solver.qhead || !isFalse(solver.getLevel(), lit(i))) {
-      slk += _c(i);
-    }
-  }
-  return (slk == slack);
 }
 
 template <typename CF, typename DG>
@@ -1169,12 +878,6 @@ bool WatchedSafe<CF, DG>::hasCorrectWatches(const Solver& solver) {
   }
   return true;
 }
-
-template struct Counting<int, long long>;
-template struct Counting<long long, int128>;
-template struct Counting<int128, int128>;
-template struct Counting<int128, int256>;
-template struct CountingSafe<bigint, bigint>;
 
 template struct Watched<int, long long>;
 template struct Watched<long long, int128>;
