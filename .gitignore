@@ -20,3 +20,6 @@
 /python/cmake*
 /python/libExact.so
 /python/Makefile
+
+# superfluous test files
+/test/instances/mps_troublesome*
