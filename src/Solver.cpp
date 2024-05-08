@@ -605,8 +605,8 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
     }
   }
 
-  Origin orig = c.getOrigin();
-  bool learned = isLearned(orig);
+  const Origin orig = c.getOrigin();
+  const bool learned = isLearned(orig);
   if (learned) {
     global.stats.LEARNEDLENGTHSUM += c.size();
     global.stats.LEARNEDDEGREESUM += c.degree();
@@ -619,7 +619,7 @@ CRef Solver::attachConstraint(const CeSuper& constraint, bool locked) {
   if (c.degree() == 1) {
     global.stats.NCLAUSESLEARNED += learned;
     global.stats.NCLAUSESEXTERN += !learned;
-  } else if (c.largestCoef() == 1) {
+  } else if (c.isClauseOrCard()) {
     global.stats.NCARDINALITIESLEARNED += learned;
     global.stats.NCARDINALITIESEXTERN += !learned;
   } else {

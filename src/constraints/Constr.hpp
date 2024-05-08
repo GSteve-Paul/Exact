@@ -107,7 +107,6 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   // NOTE: useful for debugging though!
   virtual bigint degree() const = 0;
   virtual bigint coef(unsigned int i) const = 0;
-  bigint largestCoef() const { return coef(0); };
   virtual Lit lit(unsigned int i) const = 0;
   virtual unsigned int getUnsaturatedIdx() const = 0;
   virtual bool isClauseOrCard() const = 0;
@@ -138,7 +137,8 @@ struct Clause final : public Constr {
   size_t getMemSize() const;
 
   bigint degree() const;
-  bigint coef([[maybe_unused]] unsigned int i) const;
+  bigint coef(unsigned int) const;
+  Lit& _l(unsigned int i);
   Lit lit(unsigned int i) const;
   unsigned int getUnsaturatedIdx() const;
   bool isClauseOrCard() const;
@@ -183,7 +183,8 @@ struct Cardinality final : public Constr {
   size_t getMemSize() const;
 
   bigint degree() const;
-  bigint coef([[maybe_unused]] unsigned int i) const;
+  bigint coef(unsigned int) const;
+  Lit& _l(unsigned int i);
   Lit lit(unsigned int i) const;
   unsigned int getUnsaturatedIdx() const;
   bool isClauseOrCard() const;
@@ -239,15 +240,18 @@ struct Counting final : public Constr {
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return degr; }
-  bigint coef(unsigned int i) const { return data[i].c; }
+  CF& _c(unsigned int i) { return data[i].c; }
+  const CF& _c(unsigned int i) const { return data[i].c; }
+  bigint coef(unsigned int i) const { return _c(i); }
+  Lit& _l(unsigned int i) { return data[i].l; }
   Lit lit(unsigned int i) const { return data[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
-    assert(largestCoef() > 1);
+    assert(_c(0) > 1);
     return false;
   }
   bool isAtMostOne() const {
-    assert(largestCoef() > 1);
+    assert(!isClauseOrCard());
     return false;
   }
 
@@ -268,8 +272,8 @@ struct Counting final : public Constr {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += data[i].c >= degr;
-      assert(data[i].c <= degr);
+      unsaturatedIdx += _c(i) >= degr;
+      assert(_c(i) <= degr);
     }
   }
 
@@ -305,15 +309,18 @@ struct Watched final : public Constr {
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return degr; }
-  bigint coef(unsigned int i) const { return aux::abs(data[i].c); }
+  CF& _c(unsigned int i) { return data[i].c; }
+  const CF& _c(unsigned int i) const { return data[i].c; }
+  bigint coef(unsigned int i) const { return aux::abs(_c(i)); }
+  Lit& _l(unsigned int i) { return data[i].l; }
   Lit lit(unsigned int i) const { return data[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
-    assert(largestCoef() > 1);
+    assert(aux::abs(_c(0)) > 1);
     return false;
   }
   bool isAtMostOne() const {
-    assert(largestCoef() > 1);
+    assert(!isClauseOrCard());
     return false;
   }
 
@@ -334,8 +341,8 @@ struct Watched final : public Constr {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += data[i].c >= degr;
-      assert(data[i].c <= degr);
+      unsaturatedIdx += _c(i) >= degr;
+      assert(_c(i) <= degr);
     }
   }
 
@@ -375,15 +382,18 @@ struct CountingSafe final : public Constr {
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return bigint(degr); }
-  bigint coef(unsigned int i) const { return bigint(terms[i].c); }
+  CF& _c(unsigned int i) { return terms[i].c; }
+  const CF& _c(unsigned int i) const { return terms[i].c; }
+  bigint coef(unsigned int i) const { return _c(i); }
+  Lit& _l(unsigned int i) { return terms[i].l; }
   Lit lit(unsigned int i) const { return terms[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
-    assert(largestCoef() > 1);
+    assert(_c(0) > 1);
     return false;
   }
   bool isAtMostOne() const {
-    assert(largestCoef() > 1);
+    assert(!isClauseOrCard());
     return false;
   }
 
@@ -405,8 +415,8 @@ struct CountingSafe final : public Constr {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       terms[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += terms[i].c >= degr;
-      assert(terms[i].c <= degr);
+      unsaturatedIdx += _c(i) >= degr;
+      assert(_c(i) <= degr);
     }
   }
 
@@ -445,15 +455,18 @@ struct WatchedSafe final : public Constr {
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return bigint(degr); }
-  bigint coef(unsigned int i) const { return bigint(aux::abs(terms[i].c)); }
+  CF& _c(unsigned int i) { return terms[i].c; }
+  const CF& _c(unsigned int i) const { return terms[i].c; }
+  bigint coef(unsigned int i) const { return aux::abs(_c(i)); }
+  Lit& _l(unsigned int i) { return terms[i].l; }
   Lit lit(unsigned int i) const { return terms[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
-    assert(largestCoef() > 1);
+    assert(aux::abs(_c(0)) > 1);
     return false;
   }
   bool isAtMostOne() const {
-    assert(largestCoef() > 1);
+    assert(!isClauseOrCard());
     return false;
   }
 
@@ -475,8 +488,8 @@ struct WatchedSafe final : public Constr {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       terms[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += terms[i].c >= degr;
-      assert(terms[i].c <= degr);
+      unsaturatedIdx += _c(i) >= degr;
+      assert(_c(i) <= degr);
     }
   }
 
