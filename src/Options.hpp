@@ -246,9 +246,9 @@ struct Options {
                       "mindiv",
                       {"rto", "slack+1", "mindiv"}};
   BoolOption weakenNonImplying{"ca-weaken-nonimplying",
-                               "Weaken non-implying falsified literals from learned constraints", true};
+                               "Weaken non-implying falsified literals from learned constraints", false};
   BoolOption learnedMin{"ca-min", "Minimize learned constraints through generalized self-subsumption.", true};
-  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", true};
+  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", false};
   ValOption<int> bitsOverflow{"bits-overflow",
                               "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
                               "unlimited or greater than 62 may use slower arbitrary precision implementations)",
