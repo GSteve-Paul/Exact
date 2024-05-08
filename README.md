@@ -98,7 +98,7 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 
 ## Dependencies
 
-- A reasonably recent C++ compiler (GCC, Clang or MSVC should do)
+- A recent C++20 compiler (GCC, Clang or MSVC should do)
 - [Boost](https://www.boost.org) library.
   On a Debian/Ubuntu system, install with `sudo apt install libboost-dev`.
 - Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
