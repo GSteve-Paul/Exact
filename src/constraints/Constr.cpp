@@ -416,11 +416,11 @@ bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equaliti
 
 template <typename CF, typename DG>
 bool Watched<CF, DG>::hasWatch(unsigned int i) const {
-  return data[i].l & 1;
+  return data[i] & 1;
 }
 template <typename CF, typename DG>
 void Watched<CF, DG>::flipWatch(unsigned int i) {
-  data[i].l = data[i].l ^ 1;
+  data[i] = data[i] ^ 1;
 }
 
 template <typename CF, typename DG>
@@ -544,11 +544,13 @@ void Watched<CF, DG>::undoFalsified(const int i) {
 
 template <typename CF, typename DG>
 unsigned int Watched<CF, DG>::resolveWith(CeSuper& confl, const Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(data, size(), degr, id(), getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
+  return confl->resolveWith(data, (CF*)data + size(), size(), degr, id(), getOrigin(), l, solver.getLevel(),
+                            solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
 unsigned int Watched<CF, DG>::subsumeWith(CeSuper& confl, const Lit l, Solver& solver, IntSet& saturatedLits) const {
-  return confl->subsumeWith(data, size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(data, (CF*)data + size(), size(), degr, id(), l, solver.getLevel(), solver.getPos(),
+                            saturatedLits);
 }
 
 template <typename CF, typename DG>
@@ -560,6 +562,7 @@ CePtr<CF, DG> Watched<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   }
   result->orig = getOrigin();
   result->resetBuffer(id());
+  assert(result->isSortedInDecreasingCoefOrder());
   return result;
 }
 
@@ -605,11 +608,11 @@ bool Watched<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equa
 
 template <typename CF, typename DG>
 bool WatchedSafe<CF, DG>::hasWatch(unsigned int i) const {
-  return data[i].l & 1;
+  return lits[i] & 1;
 }
 template <typename CF, typename DG>
 void WatchedSafe<CF, DG>::flipWatch(unsigned int i) {
-  data[i].l = data[i].l ^ 1;
+  lits[i] = lits[i] ^ 1;
 }
 
 template <typename CF, typename DG>
@@ -733,13 +736,12 @@ void WatchedSafe<CF, DG>::undoFalsified(const int i) {
 
 template <typename CF, typename DG>
 unsigned int WatchedSafe<CF, DG>::resolveWith(CeSuper& confl, const Lit l, Solver& solver, IntSet& actSet) const {
-  return confl->resolveWith(data.data(), size(), degr, id(), getOrigin(), l, solver.getLevel(), solver.getPos(),
-                            actSet);
+  return confl->resolveWith(lits, cfs, size(), degr, id(), getOrigin(), l, solver.getLevel(), solver.getPos(), actSet);
 }
 template <typename CF, typename DG>
 unsigned int WatchedSafe<CF, DG>::subsumeWith(CeSuper& confl, const Lit l, Solver& solver,
                                               IntSet& saturatedLits) const {
-  return confl->subsumeWith(data.data(), size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
+  return confl->subsumeWith(lits, cfs, size(), degr, id(), l, solver.getLevel(), solver.getPos(), saturatedLits);
 }
 
 template <typename CF, typename DG>
@@ -751,6 +753,7 @@ CePtr<CF, DG> WatchedSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   }
   result->orig = getOrigin();
   result->resetBuffer(id());
+  assert(result->isSortedInDecreasingCoefOrder());
   return result;
 }
 
@@ -878,9 +881,10 @@ bool WatchedSafe<CF, DG>::hasCorrectWatches(const Solver& solver) {
 }
 
 template struct Watched<int, long long>;
-template struct Watched<long long, int128>;
-template struct Watched<int128, int128>;
-template struct Watched<int128, int256>;
+
+template struct WatchedSafe<long long, int128>;
+template struct WatchedSafe<int128, int128>;
+template struct WatchedSafe<int128, int256>;
 template struct WatchedSafe<bigint, bigint>;
 
 }  // namespace xct

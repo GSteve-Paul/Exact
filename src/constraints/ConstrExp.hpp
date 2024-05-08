@@ -197,28 +197,38 @@ struct ConstrExpSuper {
 
   virtual unsigned int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l,
                                    const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual unsigned int resolveWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Origin o,
-                                   Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual unsigned int resolveWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual unsigned int resolveWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual unsigned int resolveWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
-                                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
-  virtual unsigned int resolveWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
-                                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) = 0;
+  virtual unsigned int resolveWith(const Lit* lits, const int* coefs, unsigned int size, const long long& degr, ID id,
+                                   Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& actSet) = 0;
+  virtual unsigned int resolveWith(const Lit* lits, const long long* coefs, unsigned int size, const int128& degr,
+                                   ID id, Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& actSet) = 0;
+  virtual unsigned int resolveWith(const Lit* lits, const int128* coefs, unsigned int size, const int128& degr, ID id,
+                                   Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& actSet) = 0;
+  virtual unsigned int resolveWith(const Lit* lits, const int128* coefs, unsigned int size, const int256& degr, ID id,
+                                   Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& actSet) = 0;
+  virtual unsigned int resolveWith(const Lit* lits, const bigint* coefs, unsigned int size, const bigint& degr, ID id,
+                                   Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& actSet) = 0;
   virtual unsigned int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l,
                                    const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
-  virtual unsigned int subsumeWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Lit l,
-                                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
-  virtual unsigned int subsumeWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
-  virtual unsigned int subsumeWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Lit l,
-                                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
-  virtual unsigned int subsumeWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Lit l,
-                                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
-  virtual unsigned int subsumeWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Lit l,
-                                   const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) = 0;
+  virtual unsigned int subsumeWith(const Lit* lits, const int* coefs, unsigned int size, const long long& degr, ID id,
+                                   Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& saturatedLits) = 0;
+  virtual unsigned int subsumeWith(const Lit* lits, const long long* coefs, unsigned int size, const int128& degr,
+                                   ID id, Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& saturatedLits) = 0;
+  virtual unsigned int subsumeWith(const Lit* lits, const int128* coefs, unsigned int size, const int128& degr, ID id,
+                                   Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& saturatedLits) = 0;
+  virtual unsigned int subsumeWith(const Lit* lits, const int128* coefs, unsigned int size, const int256& degr, ID id,
+                                   Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& saturatedLits) = 0;
+  virtual unsigned int subsumeWith(const Lit* lits, const bigint* coefs, unsigned int size, const bigint& degr, ID id,
+                                   Lit l, const IntMap<int>& level, const std::vector<int>& pos,
+                                   IntSet& saturatedLits) = 0;
 };
 std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce);
 std::ostream& operator<<(std::ostream& o, const CeSuper& ce);
@@ -412,32 +422,32 @@ struct ConstrExp final : public ConstrExpSuper {
 
   unsigned int resolveWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                            const std::vector<int>& pos, IntSet& actSet);
-  unsigned int resolveWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Origin o, Lit l,
-                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
-  unsigned int resolveWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
-  unsigned int resolveWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Origin o, Lit l,
-                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
-  unsigned int resolveWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Origin o, Lit l,
-                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
-  unsigned int resolveWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Origin o, Lit l,
-                           const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
+  unsigned int resolveWith(const Lit* lits, const int* coefs, unsigned int size, const long long& degr, ID id, Origin o,
+                           Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
+  unsigned int resolveWith(const Lit* lits, const long long* coefs, unsigned int size, const int128& degr, ID id,
+                           Origin o, Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
+  unsigned int resolveWith(const Lit* lits, const int128* coefs, unsigned int size, const int128& degr, ID id, Origin o,
+                           Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
+  unsigned int resolveWith(const Lit* lits, const int128* coefs, unsigned int size, const int256& degr, ID id, Origin o,
+                           Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
+  unsigned int resolveWith(const Lit* lits, const bigint* coefs, unsigned int size, const bigint& degr, ID id, Origin o,
+                           Lit l, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet);
   unsigned int subsumeWith(const Lit* data, unsigned int size, unsigned int deg, ID id, Lit l, const IntMap<int>& level,
                            const std::vector<int>& pos, IntSet& saturatedLits);
-  unsigned int subsumeWith(const Term32* terms, unsigned int size, const long long& degr, ID id, Lit l,
+  unsigned int subsumeWith(const Lit* lits, const int* coefs, unsigned int size, const long long& degr, ID id, Lit l,
                            const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits);
-  unsigned int subsumeWith(const Term64* terms, unsigned int size, const int128& degr, ID id, Lit l,
+  unsigned int subsumeWith(const Lit* lits, const long long* coefs, unsigned int size, const int128& degr, ID id, Lit l,
                            const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits);
-  unsigned int subsumeWith(const Term128* terms, unsigned int size, const int128& degr, ID id, Lit l,
+  unsigned int subsumeWith(const Lit* lits, const int128* coefs, unsigned int size, const int128& degr, ID id, Lit l,
                            const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits);
-  unsigned int subsumeWith(const Term128* terms, unsigned int size, const int256& degr, ID id, Lit l,
+  unsigned int subsumeWith(const Lit* lits, const int128* coefs, unsigned int size, const int256& degr, ID id, Lit l,
                            const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits);
-  unsigned int subsumeWith(const TermArb* terms, unsigned int size, const bigint& degr, ID id, Lit l,
+  unsigned int subsumeWith(const Lit* lits, const bigint* coefs, unsigned int size, const bigint& degr, ID id, Lit l,
                            const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits);
 
  private:
   template <typename CF, typename DG>
-  void initFixOverflow(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o,
+  void initFixOverflow(const Lit* lits, const CF* cfs, unsigned int size, const DG& degr, ID id, Origin o,
                        const IntMap<int>& level, const std::vector<int>& pos, Lit asserting) {
     orig = o;
     assert(size > 0);
@@ -447,27 +457,27 @@ struct ConstrExp final : public ConstrExpSuper {
     if (bitOverflow > 0) {
       DG _rhs = degr;
       for (unsigned int i = 0; i < size; ++i) {
-        Lit l = terms[i].l >> 1;
-        _rhs -= l < 0 ? aux::abs(terms[i].c) : 0;
+        Lit l = lits[i] >> 1;
+        _rhs -= l < 0 ? cfs[i] : 0;
       }
-      DG maxVal =
-          std::max<DG>(aux::abs(terms[0].c), std::max<DG>(degr, aux::abs(_rhs)) / INF);  // largest coef in front
+      DG maxVal = std::max<DG>(cfs[0], std::max<DG>(degr, aux::abs(_rhs)) / INF);
+      // largest coef in front
       if (maxVal > 0 && (int)aux::msb(maxVal) >= bitOverflow) {
         div = aux::ceildiv<DG>(maxVal, aux::powtwo<DG>(bitReduce) - 1);
       }
     }
     if (div == 1) {
       for (unsigned int i = 0; i < size; ++i) {
-        assert(bitOverflow == 0 || (int)aux::msb(aux::ceildiv<DG>(aux::abs(terms[i].c), div)) < bitOverflow);
-        addLhs(static_cast<SMALL>(aux::abs(terms[i].c)), terms[i].l >> 1);
+        assert(bitOverflow == 0 || (int)aux::msb(aux::ceildiv<DG>(cfs[i], div)) < bitOverflow);
+        addLhs(static_cast<SMALL>(cfs[i]), lits[i] >> 1);
       }
       addRhs(static_cast<LARGE>(degr));
     } else {
       assert(div > 1);
       DG weakenedDegree = degr;
       for (unsigned int i = 0; i < size; ++i) {
-        Lit l = terms[i].l >> 1;
-        CF cf = aux::abs(terms[i].c);
+        Lit l = lits[i] >> 1;
+        const CF& cf = cfs[i];
         if (!isFalse(level, l) && l != asserting) {
           addLhs(static_cast<SMALL>(cf / div), l);  // partial weakening
           weakenedDegree -= cf % div;
@@ -482,9 +492,9 @@ struct ConstrExp final : public ConstrExpSuper {
       resetBuffer(id);
       if (div > 1) {
         for (unsigned int i = 0; i < size; ++i) {
-          Lit l = terms[i].l >> 1;
-          if (!isFalse(level, l) && l != asserting && aux::abs(terms[i].c) % div != 0) {
-            Logger::proofWeaken(proofBuffer, l, -(aux::abs(terms[i].c) % div));
+          Lit l = lits[i] >> 1;
+          if (!isFalse(level, l) && l != asserting && cfs[i] % div != 0) {
+            Logger::proofWeaken(proofBuffer, l, -(cfs[i] % div));
           }
         }
         Logger::proofDiv(proofBuffer, div);
@@ -496,8 +506,8 @@ struct ConstrExp final : public ConstrExpSuper {
   }
 
   template <typename CF, typename DG>
-  unsigned int genericResolve(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Origin o, Lit asserting,
-                              const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
+  unsigned int genericResolve(const Lit* lits, const CF* cfs, unsigned int size, const DG& degr, ID id, Origin o,
+                              Lit asserting, const IntMap<int>& level, const std::vector<int>& pos, IntSet& actSet) {
     // "this" is the conflict constraint.
     // The terms, degree, and other information from the reason constraint are in the arguments.
     assert(getCoef(-asserting) > 0);
@@ -506,7 +516,7 @@ struct ConstrExp final : public ConstrExpSuper {
     // take an empty reason CE
     CePtr<SMALL, LARGE> reason = global.cePools.take<SMALL, LARGE>();
     // add its data
-    reason->initFixOverflow(terms, size, degr, id, o, level, pos, asserting);
+    reason->initFixOverflow(lits, cfs, size, degr, id, o, level, pos, asserting);
     // asserting literal has positive coefficient in reason
     assert(reason->getCoef(asserting) > 0);
     assert(reason->getCoef(asserting) > reason->getSlack(level));
@@ -616,7 +626,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
   //@post: variable vector vars is not changed, but coefs[toVar(toSubsume)] may become 0
   template <typename CF, typename DG>
-  unsigned int genericSubsume(const Term<CF>* terms, unsigned int size, const DG& degr, ID id, Lit toSubsume,
+  unsigned int genericSubsume(const Lit* lits, const CF* cfs, unsigned int size, const DG& degr, ID id, Lit toSubsume,
                               const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits) {
     assert(getCoef(-toSubsume) > 0);
     assert(isSaturated());
@@ -624,9 +634,9 @@ struct ConstrExp final : public ConstrExpSuper {
     DG weakenedDeg = degr;
     assert(weakenedDeg > 0);
     for (unsigned int i = 0; i < size; ++i) {
-      Lit l = terms[i].l >> 1;
+      Lit l = lits[i] >> 1;
       if (l != toSubsume && !saturatedLits.has(l) && !isUnit(level, -l)) {
-        weakenedDeg -= aux::abs(terms[i].c);
+        weakenedDeg -= cfs[i];
         if (weakenedDeg <= 0) {
           return 0;
         }
@@ -645,12 +655,12 @@ struct ConstrExp final : public ConstrExpSuper {
     if (global.logger.isActive()) {
       proofBuffer << id << " ";
       for (unsigned int i = 0; i < size; ++i) {
-        Lit l = terms[i].l >> 1;
+        Lit l = lits[i] >> 1;
         if (isUnit(level, -l)) {
           assert(l != toSubsume);
-          Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(l, pos), -aux::abs(terms[i].c));
+          Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(l, pos), -cfs[i]);
         } else if (l != toSubsume && !saturatedLits.has(l) && !isUnit(level, -l)) {
-          Logger::proofWeaken(proofBuffer, l, -aux::abs(terms[i].c));
+          Logger::proofWeaken(proofBuffer, l, -cfs[i]);
         }
       }
       // saturate, divide, multiply, add, saturate
@@ -659,7 +669,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
     IntSet& lbdSet = global.isPool.take();
     for (unsigned int i = 0; i < size; ++i) {
-      Lit l = terms[i].l >> 1;
+      Lit l = lits[i] >> 1;
       if (l == toSubsume || saturatedLits.has(l)) {
         lbdSet.add(level[-l] % INF);
       }

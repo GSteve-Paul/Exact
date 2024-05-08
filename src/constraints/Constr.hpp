@@ -230,20 +230,19 @@ struct Watched final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG watchslack;
-  Term<CF> data[0];  // Flexible Array Member - gcc complains about destruction when using the proper syntax '[]'
+  Lit data[0];  // Flexible Array Member - gcc complains about destruction when using the proper syntax '[]'
+  // WARNING: Watched only works for int coefficients for now (they take up the same bytes as Lit)
+  // use WatchedSafe for other coefficient types
 
   static size_t getMemSize(unsigned int length) {
-    return aux::ceildiv(sizeof(Watched<CF, DG>) + sizeof(Term<CF>) * length, maxAlign);
+    return aux::ceildiv(sizeof(Watched<CF, DG>) + sizeof(Lit) * length * 2, maxAlign);
   }
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return degr; }
-  const CF& _c(unsigned int i) const {
-    assert(data[i].c > 0);
-    return data[i].c;
-  }
+  const CF& _c(unsigned int i) const { return data[sze + i]; }
   bigint coef(unsigned int i) const { return _c(i); }
-  Lit lit(unsigned int i) const { return data[i].l >> 1; }
+  Lit lit(unsigned int i) const { return data[i] >> 1; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
     assert(_c(0) > 1);
@@ -270,7 +269,8 @@ struct Watched final : public Constr {
     for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
-      data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v) << 1};
+      data[i] = constraint->getLit(v) << 1;
+      data[i + size()] = static_cast<CF>(aux::abs(constraint->coefs[v]));
       unsaturatedIdx += _c(i) >= degr;
       assert(_c(i) <= degr);
     }
@@ -304,23 +304,18 @@ struct WatchedSafe final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG watchslack;
-  std::vector<Term<CF>> data;
-  // data used to be Term<CF>* array, but gcc 13.1 lto gave an incorrect warning.
-  // See
-  // https://stackoverflow.com/questions/73047957/gcc-with-lto-warning-argument-1-value-18-615-size-max-exceeds-maximum-ob
+  CF* cfs;
+  Lit lits[0];
 
-  static size_t getMemSize([[maybe_unused]] unsigned int length) {
-    return aux::ceildiv(sizeof(WatchedSafe<CF, DG>), maxAlign);
+  static size_t getMemSize(unsigned int length) {
+    return aux::ceildiv(sizeof(WatchedSafe<CF, DG>) + sizeof(Lit) * length, maxAlign);
   }
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return bigint(degr); }
-  const CF& _c(unsigned int i) const {
-    assert(data[i].c > 0);
-    return data[i].c;
-  }
+  const CF& _c(unsigned int i) const { return cfs[i]; }
   bigint coef(unsigned int i) const { return _c(i); }
-  Lit lit(unsigned int i) const { return data[i].l >> 1; }
+  Lit lit(unsigned int i) const { return lits[i] >> 1; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
     assert(_c(0) > 1);
@@ -339,7 +334,7 @@ struct WatchedSafe final : public Constr {
         ntrailpops(-1),
         degr(static_cast<DG>(constraint->getDegree())),
         watchslack(0),
-        data(constraint->nVars()) {
+        cfs(new CF[sze]) {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
@@ -348,13 +343,14 @@ struct WatchedSafe final : public Constr {
     for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
-      data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v) << 1};
+      cfs[i] = static_cast<CF>(aux::abs(constraint->coefs[v]));
+      lits[i] = constraint->getLit(v) << 1;
       unsaturatedIdx += _c(i) >= degr;
       assert(_c(i) <= degr);
     }
   }
 
-  void cleanup() { /*delete[] data;*/ }
+  void cleanup() { delete[] cfs; }
 
   bool hasWatch(unsigned int) const;
   void flipWatch(unsigned int);
