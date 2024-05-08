@@ -360,10 +360,12 @@ struct ConstrExp final : public ConstrExpSuper {
   void divideRoundDown(const LARGE& d);
   void weakenDivideRound(const LARGE& div, const aux::predicate<Lit>& toWeaken);
   void weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level);
+  void weakenDivideRoundOrdered(const SMALL& div, const IntMap<int>& level, SMALL& slackdiff);
   void weakenDivideRoundOrderedCanceling(const LARGE& div, const IntMap<int>& level, const std::vector<int>& pos,
                                          const SMALL& mult, const ConstrExp<SMALL, LARGE>& confl);
   void weakenNonDivisible(const aux::predicate<Lit>& toWeaken, const LARGE& div);
   void weakenNonDivisible(const LARGE& div, const IntMap<int>& level);
+  void weakenNonDivisible(const SMALL& div, const IntMap<int>& level, SMALL& slackdiff);
   void weakenNonDivisibleCanceling(const LARGE& div, const IntMap<int>& level, const SMALL& mult,
                                    const ConstrExp<SMALL, LARGE>& confl);
   void repairOrder();
@@ -538,7 +540,7 @@ struct ConstrExp final : public ConstrExpSuper {
         reason->multiply(conflCoef);
         assert(reason->getSlack(level) <= 0);
       } else {
-        const LARGE reasonSlack = reason->getSlack(level);
+        const SMALL reasonSlack = static_cast<SMALL>(reason->getSlack(level));  // possible because slack < reasonCoef
         if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
           reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
           reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
@@ -585,7 +587,9 @@ struct ConstrExp final : public ConstrExpSuper {
             reason->multiply(mult);
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
-            reason->weakenDivideRoundOrdered(bestDiv, level);
+            assert(bestDiv <= reasonCoef);
+            SMALL diff = bestDiv - aux::max<SMALL>(0, reasonSlack);
+            reason->weakenDivideRoundOrdered(bestDiv, level, diff);
             reason->multiply(mult);
             assert(reason->getSlack(level) <= 0);
           }

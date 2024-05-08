@@ -873,14 +873,36 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRound(const LARGE& div, const aux::pre
 
 // NOTE: preserves ordered-ness
 // div is a divisor
-// toWeaken tells how to weaken the non-divisible literals
-// toWeakenSuperfluous tells how to weaken superfluous literals (if any, if needed)
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level) {
   assert(isSortedInDecreasingCoefOrder());
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(div, level);
+  weakenSuperfluous(div);
+  repairOrder();
+  while (!vars.empty() && coefs[vars.back()] == 0) {
+    popLast();
+  }
+  assert(hasNoZeroes());
+  if (div >= degree) {
+    simplifyToClause();
+  } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
+    simplifyToCardinality(false, getCardinalityDegree());
+  } else {
+    divideRoundUp(div);
+    saturate(true, true);
+  }
+}
+
+// NOTE: preserves ordered-ness
+// div is a divisor
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const SMALL& div, const IntMap<int>& level, SMALL& slackdiff) {
+  assert(isSortedInDecreasingCoefOrder());
+  assert(div > 0);
+  if (div == 1) return;
+  weakenNonDivisible(div, level, slackdiff);
   weakenSuperfluous(div);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
@@ -944,6 +966,23 @@ void ConstrExp<SMALL, LARGE>::weakenNonDivisible(const LARGE& div, const IntMap<
   for (Var v : vars) {
     if (coefs[v] % div != 0 && !isFalse(level, getLit(v))) {
       weaken(-static_cast<SMALL>(coefs[v] % div), v);
+    }
+  }
+}
+
+// NOTE: does not preserve order, as the asserting literal is skipped and some literals are partially weakened
+// NOTE: after call to weakenNonDivisible, order can be re repaired by call to repairOrder
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenNonDivisible(const SMALL& div, const IntMap<int>& level, SMALL& slackdiff) {
+  assert(div > 0);
+  if (div == 1) return;
+  for (Var v : vars) {
+    if (SMALL mod = coefs[v] % div; mod != 0 && !isFalse(level, getLit(v))) {
+      if (slackdiff - div + mod >= 1) {  // we can safely round up non-falsified
+        slackdiff -= div - mod;
+      } else {
+        weaken(-static_cast<SMALL>(coefs[v] % div), v);
+      }
     }
   }
 }
@@ -1021,7 +1060,8 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div) {
   LARGE rem = (degree - 1) % div;
   for (int i = vars.size() - 1; i >= 0 && rem > 0; --i) {  // going back to front in case the coefficients are sorted
     Var v = vars[i];
-    if (coefs[v] == 0 || saturatedVar(v)) continue;
+    if (coefs[v] == 0) continue;
+    if (saturatedVar(v)) break;
     SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
     if (r <= rem) {
       rem -= r;
