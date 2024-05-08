@@ -138,7 +138,6 @@ struct Clause final : public Constr {
 
   bigint degree() const;
   bigint coef(unsigned int) const;
-  Lit& _l(unsigned int i);
   Lit lit(unsigned int i) const;
   unsigned int getUnsaturatedIdx() const;
   bool isClauseOrCard() const;
@@ -184,7 +183,6 @@ struct Cardinality final : public Constr {
 
   bigint degree() const;
   bigint coef(unsigned int) const;
-  Lit& _l(unsigned int i);
   Lit lit(unsigned int i) const;
   unsigned int getUnsaturatedIdx() const;
   bool isClauseOrCard() const;
@@ -240,10 +238,8 @@ struct Counting final : public Constr {
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return degr; }
-  CF& _c(unsigned int i) { return data[i].c; }
   const CF& _c(unsigned int i) const { return data[i].c; }
   bigint coef(unsigned int i) const { return _c(i); }
-  Lit& _l(unsigned int i) { return data[i].l; }
   Lit lit(unsigned int i) const { return data[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
@@ -309,10 +305,8 @@ struct Watched final : public Constr {
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return degr; }
-  CF& _c(unsigned int i) { return data[i].c; }
   const CF& _c(unsigned int i) const { return data[i].c; }
-  bigint coef(unsigned int i) const { return aux::abs(_c(i)); }
-  Lit& _l(unsigned int i) { return data[i].l; }
+  bigint coef(unsigned int i) const { return aux::abs(data[i].c); }
   Lit lit(unsigned int i) const { return data[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
@@ -348,6 +342,9 @@ struct Watched final : public Constr {
 
   void cleanup() {}
 
+  bool hasWatch(unsigned int) const;
+  void flipWatch(unsigned int);
+
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
@@ -382,10 +379,8 @@ struct CountingSafe final : public Constr {
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return bigint(degr); }
-  CF& _c(unsigned int i) { return terms[i].c; }
   const CF& _c(unsigned int i) const { return terms[i].c; }
   bigint coef(unsigned int i) const { return _c(i); }
-  Lit& _l(unsigned int i) { return terms[i].l; }
   Lit lit(unsigned int i) const { return terms[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
@@ -458,7 +453,6 @@ struct WatchedSafe final : public Constr {
   CF& _c(unsigned int i) { return terms[i].c; }
   const CF& _c(unsigned int i) const { return terms[i].c; }
   bigint coef(unsigned int i) const { return aux::abs(_c(i)); }
-  Lit& _l(unsigned int i) { return terms[i].l; }
   Lit lit(unsigned int i) const { return terms[i].l; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
@@ -494,6 +488,9 @@ struct WatchedSafe final : public Constr {
   }
 
   void cleanup() { /*delete[] terms;*/ }
+
+  bool hasWatch(unsigned int) const;
+  void flipWatch(unsigned int);
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
