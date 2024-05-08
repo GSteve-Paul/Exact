@@ -238,12 +238,15 @@ struct Watched final : public Constr {
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return degr; }
-  const CF& _c(unsigned int i) const { return data[i].c; }
-  bigint coef(unsigned int i) const { return aux::abs(data[i].c); }
-  Lit lit(unsigned int i) const { return data[i].l; }
+  const CF& _c(unsigned int i) const {
+    assert(data[i].c > 0);
+    return data[i].c;
+  }
+  bigint coef(unsigned int i) const { return _c(i); }
+  Lit lit(unsigned int i) const { return data[i].l >> 1; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
-    assert(aux::abs(_c(0)) > 1);
+    assert(_c(0) > 1);
     return false;
   }
   bool isAtMostOne() const {
@@ -267,7 +270,7 @@ struct Watched final : public Constr {
     for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
-      data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
+      data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v) << 1};
       unsaturatedIdx += _c(i) >= degr;
       assert(_c(i) <= degr);
     }
@@ -301,8 +304,8 @@ struct WatchedSafe final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG watchslack;
-  std::vector<Term<CF>> terms;
-  // terms used to be Term<CF>* array, but gcc 13.1 lto gave an incorrect warning.
+  std::vector<Term<CF>> data;
+  // data used to be Term<CF>* array, but gcc 13.1 lto gave an incorrect warning.
   // See
   // https://stackoverflow.com/questions/73047957/gcc-with-lto-warning-argument-1-value-18-615-size-max-exceeds-maximum-ob
 
@@ -312,13 +315,15 @@ struct WatchedSafe final : public Constr {
   size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return bigint(degr); }
-  CF& _c(unsigned int i) { return terms[i].c; }
-  const CF& _c(unsigned int i) const { return terms[i].c; }
-  bigint coef(unsigned int i) const { return aux::abs(_c(i)); }
-  Lit lit(unsigned int i) const { return terms[i].l; }
+  const CF& _c(unsigned int i) const {
+    assert(data[i].c > 0);
+    return data[i].c;
+  }
+  bigint coef(unsigned int i) const { return _c(i); }
+  Lit lit(unsigned int i) const { return data[i].l >> 1; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
-    assert(aux::abs(_c(0)) > 1);
+    assert(_c(0) > 1);
     return false;
   }
   bool isAtMostOne() const {
@@ -334,7 +339,7 @@ struct WatchedSafe final : public Constr {
         ntrailpops(-1),
         degr(static_cast<DG>(constraint->getDegree())),
         watchslack(0),
-        terms(constraint->nVars()) {
+        data(constraint->nVars()) {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
@@ -343,13 +348,13 @@ struct WatchedSafe final : public Constr {
     for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
-      terms[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
+      data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v) << 1};
       unsaturatedIdx += _c(i) >= degr;
       assert(_c(i) <= degr);
     }
   }
 
-  void cleanup() { /*delete[] terms;*/ }
+  void cleanup() { /*delete[] data;*/ }
 
   bool hasWatch(unsigned int) const;
   void flipWatch(unsigned int);

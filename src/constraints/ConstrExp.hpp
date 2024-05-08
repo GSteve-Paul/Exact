@@ -447,7 +447,8 @@ struct ConstrExp final : public ConstrExpSuper {
     if (bitOverflow > 0) {
       DG _rhs = degr;
       for (unsigned int i = 0; i < size; ++i) {
-        _rhs -= terms[i].l < 0 ? aux::abs(terms[i].c) : 0;
+        Lit l = terms[i].l >> 1;
+        _rhs -= l < 0 ? aux::abs(terms[i].c) : 0;
       }
       DG maxVal =
           std::max<DG>(aux::abs(terms[0].c), std::max<DG>(degr, aux::abs(_rhs)) / INF);  // largest coef in front
@@ -458,14 +459,14 @@ struct ConstrExp final : public ConstrExpSuper {
     if (div == 1) {
       for (unsigned int i = 0; i < size; ++i) {
         assert(bitOverflow == 0 || (int)aux::msb(aux::ceildiv<DG>(aux::abs(terms[i].c), div)) < bitOverflow);
-        addLhs(static_cast<SMALL>(aux::abs(terms[i].c)), terms[i].l);
+        addLhs(static_cast<SMALL>(aux::abs(terms[i].c)), terms[i].l >> 1);
       }
       addRhs(static_cast<LARGE>(degr));
     } else {
       assert(div > 1);
       DG weakenedDegree = degr;
       for (unsigned int i = 0; i < size; ++i) {
-        Lit l = terms[i].l;
+        Lit l = terms[i].l >> 1;
         CF cf = aux::abs(terms[i].c);
         if (!isFalse(level, l) && l != asserting) {
           addLhs(static_cast<SMALL>(cf / div), l);  // partial weakening
@@ -481,7 +482,7 @@ struct ConstrExp final : public ConstrExpSuper {
       resetBuffer(id);
       if (div > 1) {
         for (unsigned int i = 0; i < size; ++i) {
-          Lit l = terms[i].l;
+          Lit l = terms[i].l >> 1;
           if (!isFalse(level, l) && l != asserting && aux::abs(terms[i].c) % div != 0) {
             Logger::proofWeaken(proofBuffer, l, -(aux::abs(terms[i].c) % div));
           }
@@ -623,7 +624,7 @@ struct ConstrExp final : public ConstrExpSuper {
     DG weakenedDeg = degr;
     assert(weakenedDeg > 0);
     for (unsigned int i = 0; i < size; ++i) {
-      Lit l = terms[i].l;
+      Lit l = terms[i].l >> 1;
       if (l != toSubsume && !saturatedLits.has(l) && !isUnit(level, -l)) {
         weakenedDeg -= aux::abs(terms[i].c);
         if (weakenedDeg <= 0) {
@@ -644,7 +645,7 @@ struct ConstrExp final : public ConstrExpSuper {
     if (global.logger.isActive()) {
       proofBuffer << id << " ";
       for (unsigned int i = 0; i < size; ++i) {
-        Lit l = terms[i].l;
+        Lit l = terms[i].l >> 1;
         if (isUnit(level, -l)) {
           assert(l != toSubsume);
           Logger::proofWeakenFalseUnit(proofBuffer, global.logger.getUnitID(l, pos), -aux::abs(terms[i].c));
@@ -658,7 +659,7 @@ struct ConstrExp final : public ConstrExpSuper {
 
     IntSet& lbdSet = global.isPool.take();
     for (unsigned int i = 0; i < size; ++i) {
-      Lit l = terms[i].l;
+      Lit l = terms[i].l >> 1;
       if (l == toSubsume || saturatedLits.has(l)) {
         lbdSet.add(level[-l] % INF);
       }
