@@ -102,24 +102,26 @@ void Equalities::setNbVars(int nvars) {
 }
 
 State Equalities::propagate() {
-  while (nextTrailPos < (int)solver.trail.size()) {
+  while (nextTrailPos < std::ssize(solver.trail)) {
     Lit l = solver.trail[nextTrailPos];
     ++nextTrailPos;
     assert(isTrue(solver.getLevel(), l));
     const Repr& repr = getRepr(l);
+    if (repr.l == l && repr.equals.empty()) continue;
     bool added = false;
-    if (!isTrue(solver.getLevel(), repr.l) || solver.getLevel()[l] < solver.getLevel()[repr.l]) {
+    const int lvl_l = solver.getLevel()[l];
+    if (lvl_l < solver.getLevel()[repr.l]) {
       solver.learnClause(-l, repr.l, Origin::EQUALITY, repr.id);
       added = true;
     }
-    assert(solver.getLevel()[l] >= solver.getLevel()[repr.l]);
+    assert(lvl_l >= solver.getLevel()[repr.l]);
     for (Lit ll : repr.equals) {
-      if (!isTrue(solver.getLevel(), ll) || solver.getLevel()[l] < solver.getLevel()[ll]) {
+      if (lvl_l < solver.getLevel()[ll]) {
         assert(getRepr(ll).l == l);
         solver.learnClause(-l, ll, Origin::EQUALITY, getRepr(-ll).id);
         added = true;
       }
-      assert(solver.getLevel()[l] >= solver.getLevel()[ll]);
+      assert(lvl_l >= solver.getLevel()[ll]);
     }
     if (added) return State::FAIL;
   }

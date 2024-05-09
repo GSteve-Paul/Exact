@@ -676,7 +676,6 @@ void Solver::learnConstraint(const CeSuper& ce) {
     assert(learned->isUnsat());
     reportUnsat(learned);  // throws  UnsatEncounter
   }
-  assert(learned->hasNegativeSlack(level) == ce->hasNegativeSlack(level));
   backjumpTo(assertionLevel);
   assert(!learned->hasNegativeSlack(level));
   if (isAsserting) learned->heuristicWeakening(level, position);

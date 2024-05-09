@@ -54,20 +54,26 @@ bool Implications::hasImplieds(Lit a) const { return !implieds[a].empty(); }
 long long Implications::nImpliedsInMemory() const { return implInMem; }
 
 State Implications::propagate() {
-  for (; nextTrailPos < (int)solver.trail.size(); ++nextTrailPos) {
+  for (; nextTrailPos < std::ssize(solver.trail); ++nextTrailPos) {
     Lit a = solver.trail[nextTrailPos];
     assert(isTrue(solver.getLevel(), a));
-    bool added = false;
+    if (implieds[a].empty()) continue;
+    int lvl_a = solver.getLevel()[a];
+    Lit found = 0;
     for (Lit b : implieds[a]) {
-      if (!isTrue(solver.getLevel(), b) || solver.getLevel()[a] < solver.getLevel()[b]) {
+      if (lvl_a < solver.getLevel()[b]) {
         ++solver.getStats().NPROBINGIMPLS;
         ID id = solver.getLogger().logRUP(-a, b);
         solver.learnClause(-a, b, Origin::IMPLICATION, id);
-        added = true;
+        found = b;
+        break;
       }
-      assert(solver.getLevel()[a] >= solver.getLevel()[b]);
+      assert(lvl_a >= solver.getLevel()[b]);
     }
-    if (added) return State::FAIL;
+    if (found != 0) {
+      implieds[a].erase(found);
+      return State::FAIL;
+    }
   }
   return State::SUCCESS;
 }
