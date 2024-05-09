@@ -601,16 +601,14 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           indirectReason->saturate(true, false);
           indirectConfl->addUp(indirectReason);
 
-          std::vector<Var>& varsToCheckIndirect =
-              oldDegree <= indirectConfl->getDegree() ? indirectReason->vars : indirectConfl->vars;
-          largestCF = indirectConfl->getLargestCoef(varsToCheckIndirect);
+          largestCF = indirectConfl->getLargestCoef();
           if (largestCF > indirectConfl->getDegree()) {
             // std::cout << "indirect sat" << std::endl;
-            indirectConfl->saturate(varsToCheckIndirect, false, false);
+            indirectConfl->saturate(false, false);
             largestCF = static_cast<SMALL>(indirectConfl->getDegree());
           }
           indirectConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
-                                     indirectConfl->getLargestCoef(varsToCheckIndirect), 0);
+                                     largestCF, 0);
           if (indirectConfl->getSlack(level) < 0) {
             flagIndirect = true;
           }
@@ -632,12 +630,10 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           // directConfl->toStreamPure(std::cout);
           // std::cout << "\n" << std::endl;
 
-          std::vector<Var>& varsToCheckDirect =
-              oldDegree <= directConfl->getDegree() ? directReason->vars : directConfl->vars;
-          largestCF = directConfl->getLargestCoef(varsToCheckDirect);
+          largestCF = directConfl->getLargestCoef();
           if (largestCF > directConfl->getDegree()) {
             // std::cout << "direct sat" << std::endl;
-            directConfl->saturate(varsToCheckDirect, false, false);
+            directConfl->saturate(false, false);
             // std::cout << "post direct sat: " << std::endl;
             // std::cout << "directConfl: " << std::endl;
             // directConfl->toStreamPure(std::cout);
@@ -649,7 +645,7 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           // directConfl->toStreamPure(std::cout);
           // std::cout << "\n" << std::endl;
           directConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
-                                   directConfl->getLargestCoef(varsToCheckDirect), 0);
+                                   largestCF, 0);
           if (directConfl->getSlack(level) < 0) {
             flagDirect = true;
           }
