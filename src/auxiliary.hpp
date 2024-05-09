@@ -584,6 +584,10 @@ auto comprehension(CONTAINER&& container, LAM_MAP&& map, LAM_FILTER&& filter) {
   return w;
 }
 
+struct IntVecHash {
+  size_t operator()(const std::vector<int>& t) const { return xct::aux::hashForList<int>(t); }
+};
+
 }  // namespace aux
 
 }  // namespace xct

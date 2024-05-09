@@ -141,9 +141,24 @@ IntVar* indexedBoolVar(IntProg& intprog, const std::string& name) {
 }
 
 void opb_read(std::istream& in, IntProg& intprog) {
-  [[maybe_unused]] bool first_constraint = true;
-  std::vector<IntTerm> terms;
-  bigint lb;
+  unordered_map<LitVec,Var,aux::IntVecHash> auxiliaries;
+  std::string line;
+  getline(in, line);
+  const std::string vartoken = "#variable=";
+  size_t idx = line.find(vartoken);
+  if(idx==std::string::npos) {
+    throw InvalidArgument("First line did not contain "+vartoken + ":\n" + line);
+  }
+  idx+=vartoken.size();
+  while(idx<line.size() && iswspace(line[idx])) ++idx;
+  int64_t nvars = aux::sto<int64_t>(line.substr(idx,line.find(' ',idx)-idx));
+  if(nvars<1) throw InvalidArgument("Parsed number of variables is zero or less "+aux::str(nvars) + ":\n" + line);
+  if(nvars>=INF) throw InvalidArgument("Parsed number of variables is larger than Exact's limit of "+aux::str(INF-1) + ":\n" + line);
+  intprog.getSolver().setNbVars(nvars, true);
+  intprog.setOrigVarLimit();
+
+  ConstrSimpleArb constr;
+  std::vector<Lit> subTerms;
   long long lineNr = -1;
   for (std::string line; getline(in, line);) {
     ++lineNr;
@@ -152,10 +167,9 @@ void opb_read(std::istream& in, IntProg& intprog) {
       if (c == ';') c = ' ';
     }
     bool opt_line = line.substr(0, 4) == "min:";
-    lb = 0;
+    constr.rhs= 0;
     bool isInequality = false;
     if (opt_line) {
-      assert(first_constraint);
       line = line.substr(4);
       if (std::all_of(line.begin(), line.end(), isspace)) {
         std::cout << "c WARNING objective function is empty" << std::endl;
@@ -166,16 +180,36 @@ void opb_read(std::istream& in, IntProg& intprog) {
       if (eqpos == std::string::npos || eqpos == 0) {
         throw InvalidArgument("Incorrect constraint at line " + std::to_string(lineNr) + ":\n" + line);
       }
-      lb += read_bigint(line, eqpos + 1);
+      constr.rhs += read_bigint(line, eqpos + 1);
       isInequality = line[eqpos - 1] == '>';
       line = line.substr(0, eqpos - isInequality);
     }
-    first_constraint = false;
+    line += " *";
     std::istringstream is(line);
 
     std::vector<std::string> tokens;
     std::string tmp;
     while (is >> tmp) tokens.push_back(tmp);
+    constr.terms.clear();
+    subTerms.clear();
+    for(const std::string& s: tokens) {
+      if(s.empty()) throw InvalidArgument("Invalid token at line " + std::to_string(lineNr));
+      if(s.find('x')==std::string::npos) {
+        if(!constr.terms.empty()) {
+          if(subTerms.empty()) throw InvalidArgument("Invalid subterm at line " + std::to_string(lineNr));
+          if(subTerms.size()==1) {
+            constr.terms.back().l = subTerms[0];
+          }else {
+            // create reified conjunction
+          }
+          subTerms.clear();
+          // create new subterm when needed
+        }
+      }
+    }
+
+
+
     if (tokens.size() % 2 != 0) {
       throw InvalidArgument("No support for non-linear constraint at line " + std::to_string(lineNr));
     }
@@ -185,8 +219,8 @@ void opb_read(std::istream& in, IntProg& intprog) {
       }
     }
 
-    terms.clear();
-    for (int i = 0; i < (long long)tokens.size(); i += 2) {
+
+    for (int64_t i = 0; i < std::ssize(tokens); i += 2) {
       const std::string& var = tokens[i + 1];
       if (var.empty()) {
         throw InvalidArgument("Invalid literal token " + var + " at line " + std::to_string(lineNr));
@@ -246,7 +280,7 @@ void wcnf_read(std::istream& in, IntProg& intprog) {
       obj_terms.pop_back();
     }
   }
-  intprog.setMaxSatVars();
+  intprog.setOrigVarLimit();
   // NOTE: to avoid using original maxsat variable indices for auxiliary variables,
   // introduce auxiliary variables *after* parsing all the original maxsat variables
   assert(inputs.size() == obj_terms.size());
@@ -263,8 +297,7 @@ void wcnf_read(std::istream& in, IntProg& intprog) {
         obj_terms[i].c = -weight;
       }
     } else {
-      Var aux = intprog.getSolver().addVar(true);
-      intprog.getSolver().setNbVars(aux, true);  // increases n to n+1
+      Var aux = intprog.getSolver().addVar(true); // increases n to n+1
       obj_terms[i].v = indexedBoolVar(intprog, std::to_string(toVar(aux)));
       for (const Term32& t : input.terms) {  // reverse implication as binary clauses
         intprog.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
