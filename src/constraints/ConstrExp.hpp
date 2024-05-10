@@ -345,13 +345,13 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     // assert(isSortedInDecreasingCoefOrder());
     assert(other->isSortedInDecreasingCoefOrder());
     multiply(mult);
-    LARGE oldDegree = degree;
+    // LARGE oldDegree = degree;
     addUp(other);
-    std::vector<Var>& varsToCheck = oldDegree <= getDegree() ? other->vars : vars;
-    SMALL largestCF = getLargestCoef(varsToCheck);
+    // std::vector<Var>& varsToCheck = oldDegree <= getDegree() ? other->vars : vars;
+    SMALL largestCF = getLargestCoef();
     if (largestCF > getDegree()) {
       // std::cout << "in clean up" << std::endl;
-      saturate(varsToCheck, false, false);
+      saturate(false, false);
       largestCF = static_cast<SMALL>(getDegree());
     }
     fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
@@ -544,253 +544,295 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
       // std::cout << "reason start: " << std::endl;
       // reason->toStreamPure(std::cout);
       // std::cout << "\n" << std::endl;
-      bool cond = true;
-      if (global.options.multWeaken) {
-        // std::cout << "reason start: " << std::endl;
-        // reason->toStreamWithAssignment(std::cout, level, pos);
-        // std::cout << "\n" << std::endl;
-        // std::cout << "conflict start: " << std::endl;
-        // toStreamWithAssignment(std::cout, level, pos);
-        // std::cout << "\n" << std::endl;
+      // std::cout << "reason start: " << std::endl;
+      // reason->toStreamWithAssignment(std::cout, level, pos);
+      // std::cout << "\n" << std::endl;
+      // std::cout << "conflict start: " << std::endl;
+      // toStreamWithAssignment(std::cout, level, pos);
+      // std::cout << "\n" << std::endl;
 
-        SMALL reasonCoef = reason->getCoef(asserting);
+      SMALL reasonCoef = reason->getCoef(asserting);
 
-        SMALL mu = 1;
-        SMALL nu = 1;
-        if (reasonCoef > conflCoef) {
-          mu = aux::floordiv(reasonCoef, conflCoef);
-        } else if (reasonCoef < conflCoef) {
-          nu = aux::ceildiv(conflCoef, reasonCoef);
+      SMALL mu = 1;
+      SMALL nu = 1;
+      if (reasonCoef > conflCoef) {
+        mu = aux::floordiv(reasonCoef, conflCoef);
+      } else if (reasonCoef < conflCoef) {
+        nu = aux::ceildiv(conflCoef, reasonCoef);
+      }
+
+      assert(nu * reasonCoef >= mu * conflCoef);
+
+      CePtr<SMALL, LARGE> indirectReason = global.cePools.take<SMALL, LARGE>();
+      CePtr<SMALL, LARGE> directReason = global.cePools.take<SMALL, LARGE>();
+      reason->copyTo(indirectReason);
+      reason->copyTo(directReason);
+
+      CePtr<SMALL, LARGE> directConfl = global.cePools.take<SMALL, LARGE>();
+      CePtr<SMALL, LARGE> indirectConfl = global.cePools.take<SMALL, LARGE>();
+      copyTo(directConfl);
+      copyTo(indirectConfl);
+
+      indirectReason->multiply(nu);
+      directReason->multiply(nu);
+      directConfl->multiply(mu);
+      indirectConfl->multiply(mu);
+
+      reasonCoef *= nu;
+      const SMALL newConflCoef = conflCoef * mu;
+
+      SMALL amountIndirect = static_cast<SMALL>(indirectReason->getDegree() - newConflCoef);
+      SMALL amountDirect = reasonCoef - newConflCoef;
+
+      LARGE reasonSlack = nu * (reason->getSlack(level));
+      // LARGE conflSlack = getSlack(level);
+
+      bool flagIndirect = false;
+      bool flagDirect = false;
+
+      LARGE oldDegree = directConfl->getDegree();
+      SMALL largestCF;
+
+      if (reasonSlack - reasonCoef + newConflCoef >= 0) {
+        // std::cout << "doing indirect \n" << std::endl;
+        indirectReason->weakenNonFalsified(level, amountIndirect, asserting);
+        indirectReason->saturate(true, false);
+        indirectConfl->addUp(indirectReason);
+
+        largestCF = indirectConfl->getLargestCoef();
+        if (largestCF > indirectConfl->getDegree()) {
+          // std::cout << "indirect sat" << std::endl;
+          indirectConfl->saturate(false, false);
+          largestCF = static_cast<SMALL>(indirectConfl->getDegree());
         }
-
-        assert(nu * reasonCoef >= mu * conflCoef);
-
-        CePtr<SMALL, LARGE> indirectReason = global.cePools.take<SMALL, LARGE>();
-        CePtr<SMALL, LARGE> directReason = global.cePools.take<SMALL, LARGE>();
-        reason->copyTo(indirectReason);
-        reason->copyTo(directReason);
-
-        CePtr<SMALL, LARGE> directConfl = global.cePools.take<SMALL, LARGE>();
-        CePtr<SMALL, LARGE> indirectConfl = global.cePools.take<SMALL, LARGE>();
-        copyTo(directConfl);
-        copyTo(indirectConfl);
-
-        indirectReason->multiply(nu);
-        directReason->multiply(nu);
-        directConfl->multiply(mu);
-        indirectConfl->multiply(mu);
-
-        reasonCoef *= nu;
-        const SMALL newConflCoef = conflCoef * mu;
-
-        SMALL amountIndirect = static_cast<SMALL>(indirectReason->getDegree() - newConflCoef);
-        SMALL amountDirect = reasonCoef - newConflCoef;
-
-        LARGE reasonSlack = nu * (reason->getSlack(level));
-        // LARGE conflSlack = getSlack(level);
-
-        bool flagIndirect = false;
-        bool flagDirect = false;
-
-        LARGE oldDegree = directConfl->getDegree();
-        SMALL largestCF;
-
-        if (reasonSlack - reasonCoef + newConflCoef >= 0) {
-          // std::cout << "doing indirect \n" << std::endl;
-          indirectReason->weakenNonFalsified(level, amountIndirect, asserting);
-          indirectReason->saturate(true, false);
-          indirectConfl->addUp(indirectReason);
-
-          largestCF = indirectConfl->getLargestCoef();
-          if (largestCF > indirectConfl->getDegree()) {
-            // std::cout << "indirect sat" << std::endl;
-            indirectConfl->saturate(false, false);
-            largestCF = static_cast<SMALL>(indirectConfl->getDegree());
-          }
-          indirectConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
-                                     largestCF, 0);
-          if (indirectConfl->getSlack(level) < 0) {
-            flagIndirect = true;
-          }
-        }
-
-        if (newConflCoef > reasonSlack) {
-          // std::cout << "doing direct \n" << std::endl;
-          directReason->weaken(asserting < 0 ? amountDirect : -amountDirect, toVar(asserting));
-          directReason->fixOrderOfVar(toVar(asserting));
-          directReason->saturate(true, false);
-          // std::cout << "pre add: " << std::endl;
-          // std::cout << "directConfl: " << std::endl;
-          // directConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          directConfl->addUp(directReason);
-
-          // std::cout << "post direct add: " << std::endl;
-          // std::cout << "directConfl: " << std::endl;
-          // directConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-
-          std::vector<Var>& varsToCheckDirect =
-              oldDegree <= directConfl->getDegree() ? directReason->vars : directConfl->vars;
-          largestCF = directConfl->getLargestCoef(varsToCheckDirect);
-          if (largestCF > directConfl->getDegree()) {
-            // std::cout << "direct sat" << std::endl;
-            directConfl->saturate(varsToCheckDirect, false, false);
-            // std::cout << "post direct sat: " << std::endl;
-            // std::cout << "directConfl: " << std::endl;
-            // directConfl->toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            largestCF = static_cast<SMALL>(directConfl->getDegree());
-          }
-          // std::cout << "largestCF: " << largestCF << std::endl;
-          // std::cout << "directConfl: " << std::endl;
-          // directConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          directConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
-                                   largestCF, 0);
-          if (directConfl->getSlack(level) < 0) {
-            flagDirect = true;
-          }
-        }
-
-        int returnval;
-
-        if (flagIndirect && flagDirect) {
-          if (indirectConfl->getStrength() >= directConfl->getStrength()) {
-            addAndCleanUp(indirectReason, level, mu);
-            returnval = indirectReason->getLBD(level);
-            ++global.stats.NINDIRECTWEAKEN;
-            // std::cout << "real: " << std::endl;
-            // toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "indirectConfl: " << std::endl;
-            // indirectConfl->toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "real slack: " << getSlack(level) << std::endl;
-            // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
-
-          } else {
-            addAndCleanUp(directReason, level, mu);
-            returnval = directReason->getLBD(level);
-            ++global.stats.NDIRECTWEAKEN;
-            // std::cout << "real: " << std::endl;
-            // toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "directConfl: " << std::endl;
-            // directConfl->toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "real slack: " << getSlack(level) << std::endl;
-            // std::cout << "direct slack: " << directConfl->getSlack(level) << std::endl;
-          }
-        } else if (flagIndirect) {
-          addAndCleanUp(indirectReason, level, mu);
-          returnval = indirectReason->getLBD(level);
-          ++global.stats.NINDIRECTWEAKEN;
-          // std::cout << "real: " << std::endl;
-          // toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          // std::cout << "indirectConfl: " << std::endl;
-          // indirectConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          // std::cout << "real slack: " << getSlack(level) << std::endl;
-          // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
-        } else if (flagDirect) {
-          addAndCleanUp(directReason, level, mu);
-          returnval = directReason->getLBD(level);
-          ++global.stats.NDIRECTWEAKEN;
-          // std::cout << "real: " << std::endl;
-          // toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          // std::cout << "directConfl: " << std::endl;
-          // directConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          // std::cout << "real slack: " << getSlack(level) << std::endl;
-          // std::cout << "direct slack: " << directConfl->getSlack(level) << std::endl;
-        } else {
-          cond = false;
-        }
-
-        if (cond) {
-          assert(hasNegativeSlack(level));
-          // std::cout << "exiting mws" << std::endl;
-          return returnval;
+        // std::cout << "pre indirect" << std::endl;
+        indirectConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
+                                    largestCF, 0);
+        // std::cout << "post indirect" << std::endl;
+        if (indirectConfl->getSlack(level) < 0) {
+          flagIndirect = true;
         }
       }
-      if (!cond || !global.options.multWeaken) {
-        // std::cout << "conflict after abort: " << std::endl;
-        // toStreamPure(std::cout);
+
+      if (newConflCoef > reasonSlack) {
+        // std::cout << "doing direct \n" << std::endl;
+        directReason->weaken(asserting < 0 ? amountDirect : -amountDirect, toVar(asserting));
+        directReason->fixOrderOfVar(toVar(asserting));
+        directReason->saturate(true, false);
+        // std::cout << "pre add: " << std::endl;
+        // std::cout << "directConfl: " << std::endl;
+        // directConfl->toStreamPure(std::cout);
         // std::cout << "\n" << std::endl;
-        // std::cout << "reason after abort: " << std::endl;
-        // reason->toStreamPure(std::cout);
+        directConfl->addUp(directReason);
+
+        // std::cout << "post direct add: " << std::endl;
+        // std::cout << "directConfl: " << std::endl;
+        // directConfl->toStreamPure(std::cout);
         // std::cout << "\n" << std::endl;
 
-        ++global.stats.NNONMULTWEAKEN;
-
-        if (global.options.multBeforeDiv) {
-          reason->multiply(conflCoef);
+        // std::vector<Var>& varsToCheckDirect =
+        //     oldDegree <= directConfl->getDegree() ? directReason->vars : directConfl->vars;
+        largestCF = directConfl->getLargestCoef();
+        if (largestCF > directConfl->getDegree()) {
+          // std::cout << "direct sat" << std::endl;
+          directConfl->saturate(false, false);
+          // std::cout << "post direct sat: " << std::endl;
+          // std::cout << "directConfl: " << std::endl;
+          // directConfl->toStreamPure(std::cout);
+          // std::cout << "\n" << std::endl;
+          largestCF = static_cast<SMALL>(directConfl->getDegree());
         }
-        const SMALL reasonCoef = reason->getCoef(asserting);
-        assert(reasonCoef > 0);
-        if (global.options.division.is("rto")) {
-          reason->weakenDivideRoundOrdered(reasonCoef, level);
-          reason->multiply(conflCoef);
+        // std::cout << "largestCF: " << largestCF << std::endl;
+        // std::cout << "directConfl: " << std::endl;
+        // directConfl->toStreamPure(std::cout);
+        // std::cout << "\n" << std::endl;
+        // std::cout << "pre direct" << std::endl;
+        directConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
+                                  largestCF, 0);
+        // std::cout << "post direct" << std::endl;
+        if (directConfl->getSlack(level) < 0) {
+          flagDirect = true;
+        }
+      }
+
+      // int returnval;
+
+      // if (flagIndirect && flagDirect) {
+      //   if (indirectConfl->getStrength() >= directConfl->getStrength()) {
+      //     addAndCleanUp(indirectReason, level, mu);
+      //     returnval = indirectReason->getLBD(level);
+      //     ++global.stats.NINDIRECTWEAKEN;
+      //     // std::cout << "real: " << std::endl;
+      //     // toStreamPure(std::cout);
+      //     // std::cout << "\n" << std::endl;
+      //     // std::cout << "indirectConfl: " << std::endl;
+      //     // indirectConfl->toStreamPure(std::cout);
+      //     // std::cout << "\n" << std::endl;
+      //     // std::cout << "real slack: " << getSlack(level) << std::endl;
+      //     // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
+
+      //   } else {
+      //     addAndCleanUp(directReason, level, mu);
+      //     returnval = directReason->getLBD(level);
+      //     ++global.stats.NDIRECTWEAKEN;
+      //     // std::cout << "real: " << std::endl;
+      //     // toStreamPure(std::cout);
+      //     // std::cout << "\n" << std::endl;
+      //     // std::cout << "directConfl: " << std::endl;
+      //     // directConfl->toStreamPure(std::cout);
+      //     // std::cout << "\n" << std::endl;
+      //     // std::cout << "real slack: " << getSlack(level) << std::endl;
+      //     // std::cout << "direct slack: " << directConfl->getSlack(level) << std::endl;
+      //   }
+      // } else if (flagIndirect) {
+      //   addAndCleanUp(indirectReason, level, mu);
+      //   returnval = indirectReason->getLBD(level);
+      //   ++global.stats.NINDIRECTWEAKEN;
+      //   // std::cout << "real: " << std::endl;
+      //   // toStreamPure(std::cout);
+      //   // std::cout << "\n" << std::endl;
+      //   // std::cout << "indirectConfl: " << std::endl;
+      //   // indirectConfl->toStreamPure(std::cout);
+      //   // std::cout << "\n" << std::endl;
+      //   // std::cout << "real slack: " << getSlack(level) << std::endl;
+      //   // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
+      // } else if (flagDirect) {
+      //   addAndCleanUp(directReason, level, mu);
+      //   returnval = directReason->getLBD(level);
+      //   ++global.stats.NDIRECTWEAKEN;
+      //   // std::cout << "real: " << std::endl;
+      //   // toStreamPure(std::cout);
+      //   // std::cout << "\n" << std::endl;
+      //   // std::cout << "directConfl: " << std::endl;
+      //   // directConfl->toStreamPure(std::cout);
+      //   // std::cout << "\n" << std::endl;
+      //   // std::cout << "real slack: " << getSlack(level) << std::endl;
+      //   // std::cout << "direct slack: " << directConfl->getSlack(level) << std::endl;
+      // } else {
+      //   cond = false;
+      // }
+      // std::cout << "conflict after abort: " << std::endl;
+      // toStreamPure(std::cout);
+      // std::cout << "\n" << std::endl;
+      // std::cout << "reason after abort: " << std::endl;
+      // reason->toStreamPure(std::cout);
+      // std::cout << "\n" << std::endl;
+
+      // ++global.stats.NNONMULTWEAKEN;
+
+      if (global.options.multBeforeDiv) {
+        reason->multiply(conflCoef);
+      }
+      reasonCoef = reason->getCoef(asserting);
+      assert(reasonCoef > 0);
+      if (global.options.division.is("rto")) {
+        reason->weakenDivideRoundOrdered(reasonCoef, level);
+        reason->multiply(conflCoef);
+        assert(reason->getSlack(level) <= 0);
+      } else {
+        const LARGE reasonSlack = reason->getSlack(level);
+        if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
+          reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
+          reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
           assert(reason->getSlack(level) <= 0);
         } else {
-          const LARGE reasonSlack = reason->getSlack(level);
-          if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
-            reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
-            reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
-            assert(reason->getSlack(level) <= 0);
-          } else {
-            assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
-                   reasonCoef / (reasonSlack + 1) >= conflCoef);
-            assert(!global.options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
-            SMALL gcd = global.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
-            const SMALL minDiv = reasonCoef / gcd;
-            SMALL bestDiv = minDiv;
-            if (bestDiv <= reasonSlack) {
-              // quick heuristic search for small divisor larger than slack
-              bestDiv = reasonCoef;
-              SMALL tmp;
-              SMALL pp;
-              for (int p : {5, 3, 2}) {
-                pp = 1;
-                while ((gcd % p) == 0) {
-                  gcd /= p;
-                  tmp = reasonCoef / gcd;
-                  if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                  tmp = minDiv * gcd;
-                  if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                  pp *= p;
-                  tmp = reasonCoef / pp;
-                  if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                  tmp = minDiv * pp;
-                  if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                }
+          assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
+                  reasonCoef / (reasonSlack + 1) >= conflCoef);
+          assert(!global.options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
+          SMALL gcd = global.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
+          const SMALL minDiv = reasonCoef / gcd;
+          SMALL bestDiv = minDiv;
+          if (bestDiv <= reasonSlack) {
+            // quick heuristic search for small divisor larger than slack
+            bestDiv = reasonCoef;
+            SMALL tmp;
+            SMALL pp;
+            for (int p : {5, 3, 2}) {
+              pp = 1;
+              while ((gcd % p) == 0) {
+                gcd /= p;
+                tmp = reasonCoef / gcd;
+                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                tmp = minDiv * gcd;
+                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                pp *= p;
+                tmp = reasonCoef / pp;
+                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+                tmp = minDiv * pp;
+                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
               }
-            }
-
-            assert(bestDiv > reasonSlack);
-            assert(reasonCoef % bestDiv == 0);
-            assert(conflCoef % (reasonCoef / bestDiv) == 0);
-            const SMALL mult = conflCoef / (reasonCoef / bestDiv);
-            if (global.options.caCancelingUnkns) {
-              for (Var v : reason->vars) {
-                Lit l = reason->getLit(v);
-                global.stats.NUNKNOWNROUNDEDUP += isUnknown(pos, v) && getCoef(-l) >= mult;
-              }
-              reason->weakenDivideRoundOrderedCanceling(bestDiv, level, pos, mult, *this);
-              reason->multiply(mult);
-              // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
-            } else {
-              reason->weakenDivideRoundOrdered(bestDiv, level);
-              reason->multiply(mult);
-              assert(reason->getSlack(level) <= 0);
             }
           }
+
+          assert(bestDiv > reasonSlack);
+          assert(reasonCoef % bestDiv == 0);
+          assert(conflCoef % (reasonCoef / bestDiv) == 0);
+          const SMALL mult = conflCoef / (reasonCoef / bestDiv);
+          if (global.options.caCancelingUnkns) {
+            for (Var v : reason->vars) {
+              Lit l = reason->getLit(v);
+              global.stats.NUNKNOWNROUNDEDUP += isUnknown(pos, v) && getCoef(-l) >= mult;
+            }
+            reason->weakenDivideRoundOrderedCanceling(bestDiv, level, pos, mult, *this);
+            reason->multiply(mult);
+            // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
+          } else {
+            reason->weakenDivideRoundOrdered(bestDiv, level);
+            reason->multiply(mult);
+            assert(reason->getSlack(level) <= 0);
+          }
+        }
+      }
+
+      CePtr<SMALL, LARGE> divConfl = global.cePools.take<SMALL, LARGE>();
+      copyTo(divConfl);
+
+      oldDegree = divConfl->getDegree();
+      // add reason to conflict
+      divConfl->addUp(reason);
+
+      std::vector<Var>& varsToCheck = oldDegree <= divConfl->getDegree() ? reason->vars : divConfl->vars;
+      largestCF = divConfl->getLargestCoef(varsToCheck);
+
+      if (largestCF > divConfl->getDegree()) {
+        divConfl->saturate(varsToCheck, false, false);
+        largestCF = static_cast<SMALL>(divConfl->getDegree());
+      }
+      // std::cout << "pre div" << std::endl;
+      divConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
+      // std::cout << "post div" << std::endl;
+      assert(divConfl->getCoef(-asserting) <= 0);
+      assert(divConfl->hasNegativeSlack(level));
+
+      double divStrength = divConfl->getStrength();
+      double directStrength = directConfl->getStrength();
+      double indirectStrength = indirectConfl->getStrength();
+
+      if (flagDirect && flagIndirect) {
+        if (indirectStrength >= directStrength && indirectStrength >= divStrength) {
+          addAndCleanUp(indirectReason, level, mu);
+          return indirectReason->getLBD(level);
+          ++global.stats.NINDIRECTWEAKEN;
+        } else if (directStrength >= indirectStrength && directStrength >= divStrength) {
+          addAndCleanUp(directReason, level, mu);
+          return directReason->getLBD(level);
+          ++global.stats.NDIRECTWEAKEN;
+        }
+      } else if (flagIndirect) {
+        if (indirectStrength >= divStrength) {
+          addAndCleanUp(indirectReason, level, mu);
+          return indirectReason->getLBD(level);
+          ++global.stats.NINDIRECTWEAKEN;
+        }
+      } else if (flagDirect) {
+        if (directStrength >= divStrength) {
+          addAndCleanUp(directReason, level, mu);
+          return directReason->getLBD(level);
+          ++global.stats.NDIRECTWEAKEN;
         }
       }
     }
+    
 
     // std::cout << "reason out: " << std::endl;
     // reason->toStreamPure(std::cout);
@@ -807,12 +849,18 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     // In most cases, at this point, the reason coefficient is equal to the conflict coefficient
     // and the reason slack is at most zero, so we can safely add the reason to the conflict.
 
+
+
+
+
     for (Var v : reason->vars) {
       Lit ll = reason->getLit(v);
       if (isFalse(level, ll)) {
         actSet.add(v);
       }
     }
+
+
 
     LARGE oldDegree = getDegree();
     // add reason to conflict
@@ -824,7 +872,9 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
       saturate(varsToCheck, false, false);
       largestCF = static_cast<SMALL>(getDegree());
     }
+    // std::cout << "pre final" << std::endl;
     fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(), largestCF, 0);
+    // std::cout << "post final" << std::endl;
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 

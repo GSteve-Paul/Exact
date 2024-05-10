@@ -333,10 +333,13 @@ LARGE ConstrExp<SMALL, LARGE>::getDegree() const {
 
 template <typename SMALL, typename LARGE>
 double ConstrExp<SMALL, LARGE>::getStrength() const {
+  if (degree <= 0) return 0;
   LARGE coefsum = 0;
   for (Var v : vars) {
     coefsum += aux::abs(coefs[v]);
   }
+  // toStreamPure(std::cout);
+  // std::cout << std::endl;
   return aux::divToDouble(degree, coefsum);
 }
 
@@ -787,6 +790,7 @@ void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverf
   assert(hasNoZeroes());
   // std::cout << "fixOverflow" << std::endl;
   // toStreamPure(std::cout);
+  // std::cout << std::endl;
   assert(isSaturated());
   if (bitOverflow == 0) {
     return;
