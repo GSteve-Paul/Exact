@@ -601,12 +601,10 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           indirectReason->saturate(true, false);
           indirectConfl->addUp(indirectReason);
 
-          std::vector<Var>& varsToCheckIndirect =
-              oldDegree <= indirectConfl->getDegree() ? indirectReason->vars : indirectConfl->vars;
-          largestCF = indirectConfl->getLargestCoef(varsToCheckIndirect);
+          largestCF = indirectConfl->getLargestCoef();
           if (largestCF > indirectConfl->getDegree()) {
             // std::cout << "indirect sat" << std::endl;
-            indirectConfl->saturate(varsToCheckIndirect, false, false);
+            indirectConfl->saturate(false, false);
             largestCF = static_cast<SMALL>(indirectConfl->getDegree());
           }
           indirectConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
