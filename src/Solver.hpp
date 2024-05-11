@@ -174,6 +174,7 @@ class Solver {
   std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c);
   std::pair<ID, ID> addUnitConstraint(Lit l, Origin orig);
   std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
+  std::pair<ID, ID> addClauseConstraint(const LitVec& clause, Origin orig);
   void invalidateLastSol(const VarVec& vars);
 
   void dropExternal(ID id, bool erasable, bool forceDelete);

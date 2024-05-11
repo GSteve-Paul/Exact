@@ -140,24 +140,42 @@ IntVar* indexedBoolVar(IntProg& intprog, const std::string& name) {
   return intprog.addVar(name, 0, 1, Encoding::ORDER, true);
 }
 
+Lit reifyConjunction(Solver& solver, LitVec& input) {
+  assert(!input.empty());
+  if (input.size() == 1) {  // no need to introduce auxiliary variable
+    return input[0];
+  }
+  Var aux = solver.addVar(true);  // increases n to n+1
+  for (Lit& l : input) {          // reverse implication as binary clauses
+    solver.addBinaryConstraint(-aux, l, Origin::FORMULA);
+    l = -l;
+  }
+  input.emplace_back(aux);  // implication
+  solver.addClauseConstraint(input, Origin::FORMULA);
+  return aux;
+}
+
 void opb_read(std::istream& in, IntProg& intprog) {
-  unordered_map<LitVec,Var,aux::IntVecHash> auxiliaries;
+  unordered_map<LitVec, Var, aux::IntVecHash> auxiliaries;
   std::string line;
   getline(in, line);
   const std::string vartoken = "#variable=";
   size_t idx = line.find(vartoken);
-  if(idx==std::string::npos) {
-    throw InvalidArgument("First line did not contain "+vartoken + ":\n" + line);
+  if (idx == std::string::npos) {
+    throw InvalidArgument("First line did not contain " + vartoken + ":\n" + line);
   }
-  idx+=vartoken.size();
-  while(idx<line.size() && iswspace(line[idx])) ++idx;
-  int64_t nvars = aux::sto<int64_t>(line.substr(idx,line.find(' ',idx)-idx));
-  if(nvars<1) throw InvalidArgument("Parsed number of variables is zero or less "+aux::str(nvars) + ":\n" + line);
-  if(nvars>=INF) throw InvalidArgument("Parsed number of variables is larger than Exact's limit of "+aux::str(INF-1) + ":\n" + line);
+  idx += vartoken.size();
+  while (idx < line.size() && iswspace(line[idx])) ++idx;
+  int64_t nvars = aux::sto<int64_t>(line.substr(idx, line.find(' ', idx) - idx));
+  if (nvars < 1) throw InvalidArgument("Parsed number of variables is zero or less " + aux::str(nvars) + ":\n" + line);
+  if (nvars >= INF)
+    throw InvalidArgument("Parsed number of variables is larger than Exact's limit of " + aux::str(INF - 1) + ":\n" +
+                          line);
   intprog.getSolver().setNbVars(nvars, true);
   intprog.setOrigVarLimit();
 
   ConstrSimpleArb constr;
+  constr.orig = Origin::FORMULA;
   std::vector<Lit> subTerms;
   long long lineNr = -1;
   for (std::string line; getline(in, line);) {
@@ -167,7 +185,7 @@ void opb_read(std::istream& in, IntProg& intprog) {
       if (c == ';') c = ' ';
     }
     bool opt_line = line.substr(0, 4) == "min:";
-    constr.rhs= 0;
+    constr.rhs = 0;
     bool isInequality = false;
     if (opt_line) {
       line = line.substr(4);
@@ -184,66 +202,50 @@ void opb_read(std::istream& in, IntProg& intprog) {
       isInequality = line[eqpos - 1] == '>';
       line = line.substr(0, eqpos - isInequality);
     }
-    line += " *";
     std::istringstream is(line);
 
     std::vector<std::string> tokens;
     std::string tmp;
     while (is >> tmp) tokens.push_back(tmp);
     constr.terms.clear();
-    subTerms.clear();
-    for(const std::string& s: tokens) {
-      if(s.empty()) throw InvalidArgument("Invalid token at line " + std::to_string(lineNr));
-      if(s.find('x')==std::string::npos) {
-        if(!constr.terms.empty()) {
-          if(subTerms.empty()) throw InvalidArgument("Invalid subterm at line " + std::to_string(lineNr));
-          if(subTerms.size()==1) {
-            constr.terms.back().l = subTerms[0];
-          }else {
-            // create reified conjunction
-          }
-          subTerms.clear();
-          // create new subterm when needed
+    for (int64_t i = 0; i < std::ssize(tokens); ++i) {
+      const std::string& coef = tokens[i];
+      assert(coef.find('x') == std::string::npos);
+      constr.terms.emplace_back(read_bigint(coef, 0), 0);
+      subTerms.clear();
+      ++i;
+      for (; i < std::ssize(tokens) && tokens[i].find('x') != std::string::npos; ++i) {
+        if (tokens[i][0] == '~') {
+          subTerms.push_back(-std::stoi(tokens[i].c_str() + 2));
+        } else {
+          subTerms.push_back(std::stoi(tokens[i].c_str() + 1));
         }
       }
-    }
-
-
-
-    if (tokens.size() % 2 != 0) {
-      throw InvalidArgument("No support for non-linear constraint at line " + std::to_string(lineNr));
-    }
-    for (int i = 0; i < (long long)tokens.size(); i += 2) {
-      if (find(tokens[i].cbegin(), tokens[i].cend(), 'x') != tokens[i].cend()) {
-        throw InvalidArgument("No support for non-linear constraint at line " + std::to_string(lineNr));
-      }
-    }
-
-
-    for (int64_t i = 0; i < std::ssize(tokens); i += 2) {
-      const std::string& var = tokens[i + 1];
-      if (var.empty()) {
-        throw InvalidArgument("Invalid literal token " + var + " at line " + std::to_string(lineNr));
-      } else if (var[0] == '~') {
-        terms.push_back({-read_bigint(tokens[i], 0), indexedBoolVar(intprog, var.substr(2))});
-        lb += terms.back().c;
-      } else if (var[0] == 'x') {
-        terms.push_back({read_bigint(tokens[i], 0), indexedBoolVar(intprog, var.substr(1))});
-      } else {
-        lb -= read_bigint(tokens[i], 0) * read_bigint(var, 0);
-      }
+      --i;
+      constr.terms.back().l = reifyConjunction(intprog.getSolver(), subTerms);
     }
 
     if (opt_line) {
-      intprog.setObjective(terms, true, -lb);
+      std::vector<IntTerm> obj(constr.size());
+      for (int64_t i = 0; i < std::ssize(constr); ++i) {
+        constr.toNormalFormVar();
+        assert(constr.terms[i].l > 0);
+        obj[i].v = indexedBoolVar(intprog, std::to_string(constr.terms[i].l));
+        obj[i].c = constr.terms[i].c;
+      }
+      intprog.setObjective(obj, true, -constr.rhs);
     } else {
-      intprog.addConstraint(IntConstraint{terms, lb, aux::option(!isInequality, lb)});
+      intprog.getSolver().addConstraint(constr);
+      if (!isInequality) {
+        constr.flip();
+        intprog.getSolver().addConstraint(constr);
+      }
     }
   }
 }
 
 void wcnf_read(std::istream& in, IntProg& intprog) {
-  std::vector<ConstrSimple32> inputs;
+  std::vector<LitVec> inputs;
   char dummy;
   std::vector<IntTerm> obj_terms;
   bigint obj_offset = 0;
@@ -265,17 +267,15 @@ void wcnf_read(std::istream& in, IntProg& intprog) {
       if (weight <= 0) throw InvalidArgument("Non-positive clause weight: " + line);
     }
     inputs.emplace_back();
-    ConstrSimple32& input = inputs.back();
-    input.orig = Origin::FORMULA;
-    input.rhs = 1;
+    LitVec& input = inputs.back();
     obj_terms.push_back({weight, nullptr});
     Lit l = 0;
     while (is >> l) {
-      input.terms.push_back({1, l});
+      input.emplace_back(l);
       intprog.getSolver().setNbVars(toVar(l), true);
     }
     if (weight == 0) {  // hard clause
-      intprog.getSolver().addConstraint(input);
+      intprog.getSolver().addClauseConstraint(input, Origin::FORMULA);
       inputs.pop_back();
       obj_terms.pop_back();
     }
@@ -287,9 +287,9 @@ void wcnf_read(std::istream& in, IntProg& intprog) {
   for (int64_t i = inputs.size() - 1; i >= 0; --i) {
     quit::checkInterrupt(intprog.global);
     assert(i + 1 == (int64_t)inputs.size());  // each processed input is popped
-    ConstrSimple32& input = inputs[i];
+    LitVec& input = inputs[i];
     if (input.size() == 1) {  // no need to introduce auxiliary variable
-      Lit ll = input.terms[0].l;
+      Lit ll = input[0];
       obj_terms[i].v = indexedBoolVar(intprog, std::to_string(toVar(ll)));
       if (ll > 0) {
         const bigint& weight = obj_terms[i].c;
@@ -297,13 +297,13 @@ void wcnf_read(std::istream& in, IntProg& intprog) {
         obj_terms[i].c = -weight;
       }
     } else {
-      Var aux = intprog.getSolver().addVar(true); // increases n to n+1
-      obj_terms[i].v = indexedBoolVar(intprog, std::to_string(toVar(aux)));
-      for (const Term32& t : input.terms) {  // reverse implication as binary clauses
-        intprog.getSolver().addBinaryConstraint(-aux, -t.l, Origin::FORMULA);
+      Var aux = intprog.getSolver().addVar(true);  // increases n to n+1
+      obj_terms[i].v = indexedBoolVar(intprog, std::to_string(aux));
+      for (Lit l : input) {  // reverse implication as binary clauses
+        intprog.getSolver().addBinaryConstraint(-aux, -l, Origin::FORMULA);
       }
-      input.terms.push_back({1, aux});  // implication
-      intprog.getSolver().addConstraint(input);
+      input.emplace_back(aux);  // implication
+      intprog.getSolver().addClauseConstraint(input, Origin::FORMULA);
     }
     inputs.pop_back();
   }
@@ -311,7 +311,7 @@ void wcnf_read(std::istream& in, IntProg& intprog) {
 }
 
 void cnf_read(std::istream& in, IntProg& intprog) {
-  ConstrSimple32 input;
+  LitVec input;
   // NOTE: there are annoying edge cases where two clauses share the same line, or a clause is split on two lines.
   // the following rewrite fixes this.
   std::string all = "";
@@ -323,24 +323,17 @@ void cnf_read(std::istream& in, IntProg& intprog) {
   for (const std::string& line : lines) {
     quit::checkInterrupt(intprog.global);
     std::istringstream is(line);
-    input.reset();
-    input.orig = Origin::FORMULA;
-    input.rhs = 1;
+    input.clear();
     Lit l = 0;
     while (is >> l) {
       intprog.getSolver().setNbVars(toVar(l), true);
-      input.terms.push_back({1, l});
+      input.emplace_back(l);
     }
-    intprog.getSolver().addConstraint(input);
+    intprog.getSolver().addClauseConstraint(input, Origin::FORMULA);
   }
 }
 
 #if WITHCOINUTILS
-bigint lcm(const bigint& x, const bigint& y) {
-  assert(x != 0);
-  return y == 0 ? x : boost::multiprecision::lcm(x, y);
-}
-
 ratio parseCoinUtilsFloat(double x, bool& firstFloat) {
   if (firstFloat && std::floor(x) != x) {
     std::cout << "c WARNING floating point values may not be exactly represented by double" << std::endl;

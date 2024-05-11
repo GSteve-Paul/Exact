@@ -100,6 +100,12 @@ void ConstrSimple<CF, DG>::toNormalFormVar() {
 }
 
 template <typename CF, typename DG>
+void ConstrSimple<CF, DG>::flip() {
+  rhs = -rhs;
+  for (auto& t : terms) t.c = -t.c;
+}
+
+template <typename CF, typename DG>
 void ConstrSimple<CF, DG>::reset() {
   orig = Origin::UNKNOWN;
   terms.clear();

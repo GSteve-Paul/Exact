@@ -97,6 +97,7 @@ struct ConstrSimple final : public ConstrSimpleSuper {
 
   void toNormalFormLit();
   void toNormalFormVar();
+  void flip();
   void reset();
 
   void toStreamAsOPB(std::ostream& o) const;

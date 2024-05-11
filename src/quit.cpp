@@ -72,7 +72,7 @@ std::atomic<bool> asynch_interrupt(false);
 void quit::printLits(const LitVec& lits, char pre, bool onlyPositive, int origVarLimit) {
   std::cout << pre;
   for (Lit l : lits) {
-    if (l == 0 || (onlyPositive && l < 0) ||toVar(l)>origVarLimit) continue;
+    if (l == 0 || (onlyPositive && l < 0) || toVar(l) > origVarLimit) continue;
     std::cout << " " << l;
   }
   std::cout << std::endl;
@@ -87,7 +87,8 @@ void quit::printLitsMaxsat(const LitVec& lits, int origVarLimit) {
 }
 
 void quit::printFinalStats(IntProg& intprog) {
-  if (intprog.global.options.printUnits) printLits(intprog.getSolver().getUnits(), 'u', false, intprog.getOrigVarLimit());
+  if (intprog.global.options.printUnits)
+    printLits(intprog.getSolver().getUnits(), 'u', false, intprog.getOrigVarLimit());
   StatNum lb = static_cast<StatNum>(intprog.getLowerBound());
   StatNum ub = static_cast<StatNum>(intprog.getUpperBound());
   if (intprog.global.options.verbosity.get() > 0) intprog.global.stats.print(lb, ub);
@@ -101,11 +102,13 @@ int quit::exit_SUCCESS(IntProg& intprog) {
     if (intprog.global.options.uniformOut || intprog.global.options.fileFormat.is("opb")) {
       std::cout << "o " << intprog.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
-      if (intprog.global.options.printSol) printLits(intprog.getSolver().getLastSolution(), 'v', true, intprog.getOrigVarLimit());
+      if (intprog.global.options.printSol)
+        printLits(intprog.getSolver().getLastSolution(), 'v', true, intprog.getOrigVarLimit());
     } else if (intprog.global.options.fileFormat.is("wcnf") || intprog.global.options.fileFormat.is("cnf")) {
       std::cout << "o " << intprog.getUpperBound() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
-      if (intprog.global.options.printSol) printLitsMaxsat(intprog.getSolver().getLastSolution(), intprog.getOrigVarLimit());
+      if (intprog.global.options.printSol)
+        printLitsMaxsat(intprog.getSolver().getLastSolution(), intprog.getOrigVarLimit());
     } else {
       assert(intprog.global.options.fileFormat.is("mps") || intprog.global.options.fileFormat.is("lp"));
       std::cout << "=obj= " << intprog.getUpperBound() << std::endl;
@@ -135,11 +138,13 @@ int quit::exit_INDETERMINATE(IntProg& intprog) {
     if (intprog.global.options.uniformOut || intprog.global.options.fileFormat.is("opb")) {
       std::cout << "c best so far " << intprog.getUpperBound() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;
-      if (intprog.global.options.printSol) printLits(intprog.getSolver().getLastSolution(), 'v', true, intprog.getOrigVarLimit());
+      if (intprog.global.options.printSol)
+        printLits(intprog.getSolver().getLastSolution(), 'v', true, intprog.getOrigVarLimit());
     } else if (intprog.global.options.fileFormat.is("wcnf")) {
       std::cout << "o " << intprog.getUpperBound() << "\n";
       std::cout << "s UNKNOWN" << std::endl;
-      if (intprog.global.options.printSol) printLitsMaxsat(intprog.getSolver().getLastSolution(), intprog.getOrigVarLimit());
+      if (intprog.global.options.printSol)
+        printLitsMaxsat(intprog.getSolver().getLastSolution(), intprog.getOrigVarLimit());
     } else {
       assert(intprog.global.options.fileFormat.is("mps") || intprog.global.options.fileFormat.is("lp"));
       std::cout << "=obj= " << intprog.getUpperBound() << std::endl;

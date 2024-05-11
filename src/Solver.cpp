@@ -811,6 +811,14 @@ std::pair<ID, ID> Solver::addBinaryConstraint(Lit l1, Lit l2, Origin orig) {
   return addInputConstraint(ce);
 }
 
+std::pair<ID, ID> Solver::addClauseConstraint(const LitVec& clause, Origin orig) {
+  Ce32 ce = global.cePools.take32();
+  ce->addRhs(1);
+  ce->orig = orig;
+  for (Lit l : clause) ce->addLhs(1, l);
+  return addInputConstraint(ce);
+}
+
 void Solver::invalidateLastSol(const VarVec& vars) {
   assert(foundSolution());
   ConstrSimple32 invalidator;

@@ -582,8 +582,7 @@ void IntProg::addMultiplication(const std::vector<IntVar*>& factors, IntVar* low
     terms = std::move(terms_new);
   }
 
-  ConstrSimple32 clause;
-  clause.orig = Origin::FORMULA;
+  LitVec clause;
   std::vector<TermArb> lhs;
   lhs.reserve(terms.size());
   for (std::pair<bigint, VarVec>& t : terms) {
@@ -597,15 +596,13 @@ void IntProg::addMultiplication(const std::vector<IntVar*>& factors, IntVar* low
       multAuxs[t.second] = aux;
     }
     lhs.emplace_back(t.first, aux);
-    clause.reset();
-    clause.rhs = 1;
-    clause.orig = Origin::FORMULA;
-    clause.terms.push_back({1, aux});
+    clause.clear();
+    clause.emplace_back(aux);
     for (Var v : t.second) {
-      clause.terms.push_back({1, -v});
+      clause.emplace_back(-v);
       solver.addBinaryConstraint(-aux, v, Origin::FORMULA);
     }
-    solver.addConstraint(clause);
+    solver.addClauseConstraint(clause, Origin::FORMULA);
   }
 
   std::array<IntVar*, 2> bounds = {lower_bound, upper_bound};
