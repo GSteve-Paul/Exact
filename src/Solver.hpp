@@ -105,6 +105,7 @@ class Solver {
   std::vector<bool> isorig;
   bool firstRun;
   bool unsatReached;
+  bool objectiveSet;
 
   ConstraintAllocator ca;
   Heuristic heur;
@@ -149,6 +150,8 @@ class Solver {
   Solver(Global& g);
   ~Solver();
   void setObjective(const CeArb& obj);
+  void ignoreLastObjective();
+  bool objectiveIsSet() const;
   void reportUnsat(const CeSuper& confl);
 
   int getNbVars() const;

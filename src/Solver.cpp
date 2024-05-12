@@ -75,6 +75,7 @@ Solver::Solver(Global& g)
       n(0),
       firstRun(true),
       unsatReached(false),
+      objectiveSet(false),
       assumptions_lim({0}),
       equalities(*this),
       implications(*this),
@@ -138,9 +139,14 @@ bool Solver::isOrig(Var v) const {
 }
 
 void Solver::setObjective(const CeArb& obj) {
+  objectiveSet = true;
   objective = obj;
   if (lpSolver) lpSolver->setObjective(obj);
 }
+
+void Solver::ignoreLastObjective() { objectiveSet = false; }
+
+bool Solver::objectiveIsSet() const { return objectiveSet; }
 
 void Solver::reportUnsat(const CeSuper& confl) {
   assert(!unsatReached);  // not a problem, but should not occur

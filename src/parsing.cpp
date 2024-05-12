@@ -163,6 +163,7 @@ Var reify(bool asConjunction, Solver& solver, LitVec& input, unordered_map<LitVe
 }
 
 void opb_read(std::istream& in, IntProg& intprog) {
+  intprog.getSolver().ignoreLastObjective();
   std::string line;
   getline(in, line);
   const std::string vartoken = "#variable=";
@@ -368,6 +369,7 @@ void wcnf_read(std::istream& in, IntProg& intprog) {
 }
 
 void cnf_read(std::istream& in, IntProg& intprog) {
+  intprog.getSolver().ignoreLastObjective();
   LitVec input;
   // NOTE: there are annoying edge cases where two clauses share the same line, or a clause is split on two lines.
   // the following rewrite fixes this.

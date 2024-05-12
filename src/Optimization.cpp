@@ -258,6 +258,12 @@ CeSuper Optimization<SMALL, LARGE>::getOrigObj() const {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::printObjBounds() {
+  if (!solver.objectiveIsSet()) return;
+  if (!global.options.uniformOut && (global.options.fileFormat.is("opb") || global.options.fileFormat.is("wbo") ||
+                                     global.options.fileFormat.is("wcnf"))) {
+    std::cout << "o " << getUpperBound() << std::endl;
+    return;
+  }
   if (global.options.verbosity.get() == 0) return;
   std::cout << "c     bounds ";
   if (solver.foundSolution()) {

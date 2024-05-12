@@ -180,9 +180,9 @@ struct Options {
                         "File format (overridden by corresponding file extension)",
                         "opb",
                         {"opb", "wbo", "cnf", "wcnf", "mps", "lp"}};
-  BoolOption uniformOut{"out-uniform", "Use the default opb output style even for other file formats", false};
   VoidOption printOpb{"print-opb", "Print OPB of the parsed problem"};
-  VoidOption printSol{"print-sol", "Print the solution if found"};
+  BoolOption uniformOut{"print-uniform", "Use a default output style for all file formats", true};
+  VoidOption printSol{"print-sol", "Print the solution if found (style can be uniform or non-uniform)"};
   VoidOption printUnits{"print-units", "Print unit literals"};
   VoidOption printCsvData{"print-csv", "Print statistics in a comma-separated value format"};
   ValOption<int> verbosity{"verbosity", "Verbosity of the output", 0, "0 =< int",
@@ -307,8 +307,8 @@ struct Options {
       &randomSeed,
       &noSolve,
       &fileFormat,
-      &uniformOut,
       &printOpb,
+      &uniformOut,
       &printSol,
       &printUnits,
       &printCsvData,

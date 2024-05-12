@@ -77,6 +77,7 @@ extern std::atomic<bool> asynch_interrupt;
 namespace quit {
 
 void printLits(const LitVec& lits, char pre, bool onlyPositive, int inputVarLimit);
+void printLitsPBcomp(const LitVec& lits, int inputVarLimit);
 void printLitsMaxsat(const LitVec& lits, int inputVarLimit);
 void printFinalStats(IntProg& intprog);
 int exit_SUCCESS(IntProg& intprog);
