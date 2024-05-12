@@ -176,8 +176,10 @@ struct Options {
   ValOption<int64_t> randomSeed{"seed", "Seed for the pseudo-random number generator", 1, "1 =< int",
                                 [](int64_t x) -> bool { return 1 <= x; }};
   VoidOption noSolve{"onlyparse", "Quit after parsing file"};
-  EnumOption fileFormat{
-      "format", "File format (overridden by corresponding file extension)", "opb", {"opb", "cnf", "wcnf", "mps", "lp"}};
+  EnumOption fileFormat{"format",
+                        "File format (overridden by corresponding file extension)",
+                        "opb",
+                        {"opb", "wbo", "cnf", "wcnf", "mps", "lp"}};
   BoolOption uniformOut{"out-uniform", "Use the default opb output style even for other file formats", false};
   VoidOption printOpb{"print-opb", "Print OPB of the parsed problem"};
   VoidOption printSol{"print-sol", "Print the solution if found"};

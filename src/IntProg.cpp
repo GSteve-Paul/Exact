@@ -271,8 +271,8 @@ IntProg::IntProg(const Options& opts, bool keepIn) : global(opts), solver(global
 const Solver& IntProg::getSolver() const { return solver; }
 Solver& IntProg::getSolver() { return solver; }
 const Optim& IntProg::getOptim() const { return optim; }
-void IntProg::setOrigVarLimit() { origVarLimit = solver.getNbVars(); }
-int IntProg::getOrigVarLimit() const { return origVarLimit; }
+void IntProg::setInputVarLimit() { inputVarLimit = solver.getNbVars(); }
+int IntProg::getInputVarLimit() const { return inputVarLimit; }
 
 IntVar* IntProg::addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, Encoding encoding,
                         bool nameAsId) {

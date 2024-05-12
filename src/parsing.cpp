@@ -107,7 +107,7 @@ void file_read(IntProg& intprog) {
     lp_read(intprog.global.options.formulaName, intprog);
   } else {
     if (intprog.global.options.formulaName.empty()) {
-      if (intprog.global.options.fileFormat.is("opb")) {
+      if (intprog.global.options.fileFormat.is("opb") || intprog.global.options.fileFormat.is("wbo")) {
         opb_read(std::cin, intprog);
       } else if (intprog.global.options.fileFormat.is("cnf")) {
         cnf_read(std::cin, intprog);
@@ -121,7 +121,7 @@ void file_read(IntProg& intprog) {
       if (!fin) {
         throw InvalidArgument("Could not open " + intprog.global.options.formulaName);
       }
-      if (intprog.global.options.fileFormat.is("opb")) {
+      if (intprog.global.options.fileFormat.is("opb") || intprog.global.options.fileFormat.is("wbo")) {
         opb_read(fin, intprog);
       } else if (intprog.global.options.fileFormat.is("cnf")) {
         cnf_read(fin, intprog);
@@ -141,15 +141,21 @@ IntVar* indexedBoolVar(IntProg& intprog, const std::string& name) {
   return intprog.addVar(name, 0, 1, Encoding::ORDER, true);
 }
 
-Lit reifyConjunction(Solver& solver, LitVec& input) {
-  assert(!input.empty());
-  if (input.size() == 1) {  // no need to introduce auxiliary variable
-    return input[0];
-  }
-  Var aux = solver.addVar(true);  // increases n to n+1
-  for (Lit& l : input) {          // reverse implication as binary clauses
-    solver.addBinaryConstraint(-aux, l, Origin::FORMULA);
-    l = -l;
+// @post: asConjunction ==  true: result is equivalent to the conjunction in input
+// @post: asConjunction == false: result == false implies the disjunction in input
+Var reify(bool asConjunction, Solver& solver, LitVec& input, unordered_map<LitVec, Var, aux::IntVecHash>& auxiliaries) {
+  assert(input.size() > 1);
+  std::ranges::sort(input);
+  const auto [first, last] = std::ranges::unique(input);
+  input.erase(first, last);
+  Var& aux = auxiliaries[input];
+  if (aux != 0) return aux;
+  aux = solver.addVar(true);  // increases n to n+1
+  if (asConjunction) {
+    for (Lit& l : input) {  // reverse implication as binary clauses
+      solver.addBinaryConstraint(-aux, l, Origin::FORMULA);
+      l = -l;
+    }
   }
   input.emplace_back(aux);  // implication
   solver.addClauseConstraint(input, Origin::FORMULA);
@@ -157,7 +163,6 @@ Lit reifyConjunction(Solver& solver, LitVec& input) {
 }
 
 void opb_read(std::istream& in, IntProg& intprog) {
-  unordered_map<LitVec, Var, aux::IntVecHash> auxiliaries;
   std::string line;
   getline(in, line);
   const std::string vartoken = "#variable=";
@@ -169,33 +174,40 @@ void opb_read(std::istream& in, IntProg& intprog) {
   while (idx < line.size() && iswspace(line[idx])) ++idx;
   int64_t nvars = aux::sto<int64_t>(line.substr(idx, line.find(' ', idx) - idx));
   if (nvars < 1) throw InvalidArgument("Parsed number of variables is zero or less " + aux::str(nvars) + ":\n" + line);
-  if (nvars >= INF)
+  if (nvars >= INF) {
     throw InvalidArgument("Parsed number of variables is larger than Exact's limit of " + aux::str(INF - 1) + ":\n" +
                           line);
+  }
   intprog.getSolver().setNbVars(nvars, true);
-  intprog.setOrigVarLimit();
+  intprog.setInputVarLimit();
 
+  unordered_map<LitVec, Var, aux::IntVecHash> auxiliaries;
   ConstrSimpleArb constr;
   constr.orig = Origin::FORMULA;
   std::vector<Lit> subTerms;
   long long lineNr = -1;
   bool wbo = false;
+  std::optional<bigint> topcost;
   std::vector<IntTerm> obj;
   std::optional<bigint> weight;
   for (std::string line; getline(in, line);) {
     ++lineNr;
     if (line.empty() || line[0] == '*') continue;
-    if(line[0]=='s') {
-      assert(line.substr(0,5) == "soft:");
+    for (char& c : line)
+      if (c == ';') c = ' ';
+    if (line[0] == 's') {
+      assert(line.substr(0, 5) == "soft:");
       wbo = true;
+      line = line.substr(5);
+      while (!line.empty() && line.back() == ' ') line.pop_back();
+      if (!line.empty()) topcost = read_bigint(line, 0, std::ssize(line));
       continue;
     }
-    for (char& c : line) if (c == ';') c = ' ';
     weight = std::nullopt;
     constr.rhs = 0;
     bool isInequality = false;
-    bool opt_line = line[0]=='m';
-    if(opt_line) {
+    bool opt_line = line[0] == 'm';
+    if (opt_line) {
       assert(line.substr(0, 4) == "min:");
       line = line.substr(4);
       if (std::all_of(line.begin(), line.end(), isspace)) {
@@ -211,11 +223,11 @@ void opb_read(std::istream& in, IntProg& intprog) {
       isInequality = line[eqpos - 1] == '>';
       line = line.substr(0, eqpos - isInequality);
     }
-    if(line[0]=='[') {
-      int64_t closingbracket = line.find(']');
-      assert(closingbracket!=std::string::npos);
-      weight = read_bigint(line,1,closingbracket);
-      line = line.substr(closingbracket+1);
+    if (line[0] == '[') {
+      size_t closingbracket = line.find(']');
+      assert(closingbracket != std::string::npos);
+      weight = read_bigint(line, 1, closingbracket);
+      line = line.substr(closingbracket + 1);
     }
 
     std::istringstream is(line);
@@ -238,7 +250,8 @@ void opb_read(std::istream& in, IntProg& intprog) {
         }
       }
       --i;
-      constr.terms.back().l = reifyConjunction(intprog.getSolver(), subTerms);
+      constr.terms.back().l =
+          subTerms.size() == 1 ? subTerms[0] : reify(true, intprog.getSolver(), subTerms, auxiliaries);
     }
 
     if (opt_line) {
@@ -252,29 +265,44 @@ void opb_read(std::istream& in, IntProg& intprog) {
       }
       intprog.setObjective(obj, true, -constr.rhs);
     } else {
-      if(weight) {
+      if (weight) {
         assert(wbo);
-        assert(weight>0);
+        assert(weight > 0);
         Var aux = intprog.getSolver().addVar(true);
-        obj.emplace_back(weight.value(),indexedBoolVar(intprog, std::to_string(aux)));
-        // if aux is true, const should be false;
+        obj.emplace_back(weight.value(), indexedBoolVar(intprog, std::to_string(aux)));
+        // if aux is false, constraint should be true;
         constr.toNormalFormLit();
-        bigint coeffsum = 0;
-        for(const Term<bigint>& t: constr.terms) {
-          assert(t.c > 0);
-          coeffsum += t.c;
-        }
-
-
-      }
-      intprog.getSolver().addConstraint(constr);
-      if (!isInequality) {
-        constr.flip();
+        constr.terms.emplace_back(constr.rhs, aux);
         intprog.getSolver().addConstraint(constr);
+        if (!isInequality) {
+          constr.terms.pop_back();
+          constr.flip();
+          constr.toNormalFormLit();
+          constr.terms.emplace_back(constr.rhs, aux);
+          intprog.getSolver().addConstraint(constr);
+        }
+      } else {
+        intprog.getSolver().addConstraint(constr);
+        if (!isInequality) {
+          constr.flip();
+          intprog.getSolver().addConstraint(constr);
+        }
       }
     }
   }
-  if(wbo) intprog.setObjective(obj, true, 0);
+  if (wbo) {
+    intprog.setObjective(obj, true, 0);
+    if (topcost) {
+      constr.terms.clear();
+      for (const IntTerm& it : obj) {
+        assert(it.v->getEncodingVars().size() == 1);
+        constr.terms.emplace_back(it.c, it.v->getEncodingVars()[0]);
+      }
+      constr.rhs = topcost.value() - 1;  // strict limit
+      constr.flip();
+      intprog.getSolver().addConstraint(constr);
+    }
+  }
 }
 
 void wcnf_read(std::istream& in, IntProg& intprog) {
@@ -313,13 +341,14 @@ void wcnf_read(std::istream& in, IntProg& intprog) {
       obj_terms.pop_back();
     }
   }
-  intprog.setOrigVarLimit();
+  intprog.setInputVarLimit();
   // NOTE: to avoid using original maxsat variable indices for auxiliary variables,
   // introduce auxiliary variables *after* parsing all the original maxsat variables
   assert(inputs.size() == obj_terms.size());
+  unordered_map<LitVec, Var, aux::IntVecHash> auxiliaries;
   for (int64_t i = inputs.size() - 1; i >= 0; --i) {
     quit::checkInterrupt(intprog.global);
-    assert(i + 1 == (int64_t)inputs.size());  // each processed input is popped
+    assert(i + 1 == std::ssize(inputs));  // each processed input is popped
     LitVec& input = inputs[i];
     if (input.size() == 1) {  // no need to introduce auxiliary variable
       Lit ll = input[0];
@@ -330,13 +359,8 @@ void wcnf_read(std::istream& in, IntProg& intprog) {
         obj_terms[i].c = -weight;
       }
     } else {
-      Var aux = intprog.getSolver().addVar(true);  // increases n to n+1
+      Var aux = reify(false, intprog.getSolver(), input, auxiliaries);
       obj_terms[i].v = indexedBoolVar(intprog, std::to_string(aux));
-      for (Lit l : input) {  // reverse implication as binary clauses
-        intprog.getSolver().addBinaryConstraint(-aux, -l, Origin::FORMULA);
-      }
-      input.emplace_back(aux);  // implication
-      intprog.getSolver().addClauseConstraint(input, Origin::FORMULA);
     }
     inputs.pop_back();
   }

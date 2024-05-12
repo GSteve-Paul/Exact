@@ -110,7 +110,7 @@ void ConstrSimple<CF, DG>::reset() {
   orig = Origin::UNKNOWN;
   terms.clear();
   rhs = 0;
-  proofLine = (std::to_string(ID_Trivial) + " ");
+  proofLine = std::to_string(ID_Trivial) + " ";
 }
 
 template <typename CF, typename DG>

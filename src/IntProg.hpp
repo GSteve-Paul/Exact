@@ -133,7 +133,7 @@ class IntProg {
   unordered_map<std::string, IntVar*> name2var;
   unordered_map<Var, IntVar*> var2var;
 
-  int origVarLimit = INF;
+  int inputVarLimit = INF;
   int64_t nConstrs = 0;
 
   xct::IntSet assumptions;
@@ -158,8 +158,8 @@ class IntProg {
   const Solver& getSolver() const;
   Solver& getSolver();
   const Optim& getOptim() const;
-  void setOrigVarLimit();
-  int getOrigVarLimit() const;
+  void setInputVarLimit();
+  int getInputVarLimit() const;
 
   IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, Encoding encoding,
                  bool nameAsId = false);

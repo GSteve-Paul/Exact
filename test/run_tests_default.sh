@@ -59,6 +59,8 @@ declare -a arr_dec=(
 "opb/dec/stein9.0.u.opb*UNSATISFIABLE"
 "opb/dec/stein15.0.s.opb*OPTIMUM"
 "opb/dec/stein15.0.u.opb*UNSATISFIABLE"
+"opb/opt/testnlc.opb*UNSATISFIABLE"
+"wbo/example3.wbo*UNSATISFIABLE"
 )
 
 runtype="default"
