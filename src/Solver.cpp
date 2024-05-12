@@ -1139,7 +1139,7 @@ void Solver::removeSatisfiedNonImpliedsAtRoot() {
   for (int i = lastRemoveSatisfiedsTrail; i < (int)trail.size(); ++i) {
     Lit l = trail[i];
     if (!isOrig(toVar(l))) continue;  // no column view for auxiliary variables for now
-    for (const std::pair<CRef, int>& pr : lit2cons[l]) {
+    for (const std::pair<const CRef, int>& pr : lit2cons[l]) {
       Constr& c = ca[pr.first];
       assert(!c.isMarkedForDelete());  // should be erased from lit2cons when marked for delete
       if (c.isSeen()) continue;
@@ -1197,7 +1197,7 @@ void Solver::dominanceBreaking() {
     lit2consOldSize[-l] = col.size();
     Constr* first = &ca[col.cbegin()->first];
     unsigned int firstUnsatIdx = first->getUnsaturatedIdx();
-    for (const std::pair<CRef, int>& pr : col) {
+    for (const std::pair<const CRef, int>& pr : col) {
       Constr& c = ca[pr.first];
       unsigned int unsatIdx = c.getUnsaturatedIdx();
       if (unsatIdx < firstUnsatIdx) {  // smaller number of starting lits
@@ -1224,7 +1224,7 @@ void Solver::dominanceBreaking() {
     for (auto it = range.first; it != range.second; ++it) {
       saturating.remove(-it->second);  // not interested in anything that already implies l TODO: is this needed?
     }
-    for (const std::pair<CRef, int>& pr : col) {
+    for (const std::pair<const CRef, int>& pr : col) {
       if (saturating.isEmpty()) break;
       Constr& c = ca[pr.first];
       unsigned int unsatIdx = c.getUnsaturatedIdx();
