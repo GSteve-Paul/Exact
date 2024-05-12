@@ -74,11 +74,12 @@ namespace xct::parsing {
 
 // TODO: check efficiency of parsing with a .opb-file that takes long to parse, according to experiments
 
-bigint read_bigint(const std::string& s, int64_t start) {
-  while (start < std::ssize(s) && iswspace(s[start])) ++start;
-  start += start < std::ssize(s) && s[start] == '+';
-  int64_t end = s.size();
+bigint read_bigint(const std::string& s, int64_t start, int64_t end) {
+  assert(start >= 0);
+  assert(end <= std::ssize(s));
   while (end > start && iswspace(s[end - 1])) --end;
+  while (start < end && iswspace(s[start])) ++start;
+  start += start < std::ssize(s) && s[start] == '+';
   return aux::sto<bigint>(s.substr(start, end - start));
 }
 
@@ -178,16 +179,24 @@ void opb_read(std::istream& in, IntProg& intprog) {
   constr.orig = Origin::FORMULA;
   std::vector<Lit> subTerms;
   long long lineNr = -1;
+  bool wbo = false;
+  std::vector<IntTerm> obj;
+  std::optional<bigint> weight;
   for (std::string line; getline(in, line);) {
     ++lineNr;
     if (line.empty() || line[0] == '*') continue;
-    for (char& c : line) {
-      if (c == ';') c = ' ';
+    if(line[0]=='s') {
+      assert(line.substr(0,5) == "soft:");
+      wbo = true;
+      continue;
     }
-    bool opt_line = line.substr(0, 4) == "min:";
+    for (char& c : line) if (c == ';') c = ' ';
+    weight = std::nullopt;
     constr.rhs = 0;
     bool isInequality = false;
-    if (opt_line) {
+    bool opt_line = line[0]=='m';
+    if(opt_line) {
+      assert(line.substr(0, 4) == "min:");
       line = line.substr(4);
       if (std::all_of(line.begin(), line.end(), isspace)) {
         std::cout << "c WARNING objective function is empty" << std::endl;
@@ -198,10 +207,17 @@ void opb_read(std::istream& in, IntProg& intprog) {
       if (eqpos == std::string::npos || eqpos == 0) {
         throw InvalidArgument("Incorrect constraint at line " + std::to_string(lineNr) + ":\n" + line);
       }
-      constr.rhs += read_bigint(line, eqpos + 1);
+      constr.rhs += read_bigint(line, eqpos + 1, std::ssize(line));
       isInequality = line[eqpos - 1] == '>';
       line = line.substr(0, eqpos - isInequality);
     }
+    if(line[0]=='[') {
+      int64_t closingbracket = line.find(']');
+      assert(closingbracket!=std::string::npos);
+      weight = read_bigint(line,1,closingbracket);
+      line = line.substr(closingbracket+1);
+    }
+
     std::istringstream is(line);
 
     std::vector<std::string> tokens;
@@ -211,7 +227,7 @@ void opb_read(std::istream& in, IntProg& intprog) {
     for (int64_t i = 0; i < std::ssize(tokens); ++i) {
       const std::string& coef = tokens[i];
       assert(coef.find('x') == std::string::npos);
-      constr.terms.emplace_back(read_bigint(coef, 0), 0);
+      constr.terms.emplace_back(read_bigint(coef, 0, std::ssize(coef)), 0);
       subTerms.clear();
       ++i;
       for (; i < std::ssize(tokens) && tokens[i].find('x') != std::string::npos; ++i) {
@@ -226,7 +242,8 @@ void opb_read(std::istream& in, IntProg& intprog) {
     }
 
     if (opt_line) {
-      std::vector<IntTerm> obj(constr.size());
+      assert(obj.empty());
+      obj.resize(constr.size());
       for (int64_t i = 0; i < std::ssize(constr); ++i) {
         constr.toNormalFormVar();
         assert(constr.terms[i].l > 0);
@@ -235,6 +252,21 @@ void opb_read(std::istream& in, IntProg& intprog) {
       }
       intprog.setObjective(obj, true, -constr.rhs);
     } else {
+      if(weight) {
+        assert(wbo);
+        assert(weight>0);
+        Var aux = intprog.getSolver().addVar(true);
+        obj.emplace_back(weight.value(),indexedBoolVar(intprog, std::to_string(aux)));
+        // if aux is true, const should be false;
+        constr.toNormalFormLit();
+        bigint coeffsum = 0;
+        for(const Term<bigint>& t: constr.terms) {
+          assert(t.c > 0);
+          coeffsum += t.c;
+        }
+
+
+      }
       intprog.getSolver().addConstraint(constr);
       if (!isInequality) {
         constr.flip();
@@ -242,6 +274,7 @@ void opb_read(std::istream& in, IntProg& intprog) {
       }
     }
   }
+  if(wbo) intprog.setObjective(obj, true, 0);
 }
 
 void wcnf_read(std::istream& in, IntProg& intprog) {
