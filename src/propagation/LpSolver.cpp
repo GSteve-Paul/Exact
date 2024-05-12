@@ -143,7 +143,7 @@ LpSolver::LpSolver(Solver& s) : solver(s), global(s.global) {
   lp.setIntParam(soplex::SoPlex::CHECKMODE, soplex::SoPlex::CHECKMODE_REAL);
   lp.setIntParam(soplex::SoPlex::SIMPLIFIER, soplex::SoPlex::SIMPLIFIER_OFF);
   lp.setIntParam(soplex::SoPlex::OBJSENSE, soplex::SoPlex::OBJSENSE_MINIMIZE);
-  lp.setIntParam(soplex::SoPlex::VERBOSITY, global.options.verbosity.get());
+  lp.setIntParam(soplex::SoPlex::VERBOSITY, 0);  // only errors, no warnings
   lp.setRandomSeed(global.options.randomSeed.get());
 
   // add two empty rows for objective bound constraints
