@@ -64,7 +64,8 @@ or pass the file as a parameter
 Use the flag `--help` to display a list of runtime parameters.
 
 Exact supports five input formats (described in more detail in [`InputFormats.md`](https://gitlab.com/JoD/exact/-/blob/main/InputFormats.md)):
-- `.opb` pseudo-Boolean PBO (only linear objective and constraints)
+- `.opb` pseudo-Boolean decision and optimization (equivalent to 0-1 integer linear programming)
+- `.wbo` weighted pseudo-Boolean optimization (0-1 integer linear programming with weighted soft constraints)
 - `.cnf` DIMACS Conjunctive Normal Form (CNF)
 - `.wcnf` Weighted Conjunctive Normal Form (WCNF)
 - `.mps` Mathematical Programming System (MPS) via the optional CoinUtils library
@@ -99,7 +100,7 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 ## Dependencies
 
 - A recent C++20 compiler (GCC, Clang or MSVC should do)
-- [Boost](https://www.boost.org) library.
+- [Boost](https://www.boost.org) library, minimal version 1.81.
   On a Debian/Ubuntu system, install with `sudo apt install libboost-dev`.
 - Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
   Use CMake option `-Dcoinutils=ON` after [installing the library](https://github.com/coin-or/CoinUtils#binaries).

@@ -248,7 +248,7 @@ if(zlib)
     target_compile_definitions(Exact PUBLIC WITHZLIB=1)
 endif()
 
-find_package(Boost REQUIRED)
+find_package(Boost 1.81.0 REQUIRED)
 target_include_directories(Exact PUBLIC ${Boost_INCLUDE_DIRS})
 
 FIND_PROGRAM(CLANG_FORMAT "clang-format")

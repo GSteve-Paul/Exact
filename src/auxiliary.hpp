@@ -68,6 +68,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
 #include <cassert>
 #include <chrono>
 #include <cstdlib>
@@ -108,19 +110,18 @@ static_assert(alignof(int256) <= maxAlign);
 static_assert(alignof(bigint) <= maxAlign);
 
 template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
-using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;  // TODO: switch to this once Boost 1.81 is in Ubuntu
+// using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;
 // using unordered_map = std::unordered_map<K, V, H, KE>;
-// using unordered_map = boost::container::unordered_flat_map<K, V, H, KE>;
+using unordered_map = boost::unordered::unordered_flat_map<K, V, H, KE>;
 
 template <typename K, typename V, typename Comp = std::less<K>>
 // using ordered_map = std::map<K,V,Comp>;
 using ordered_map = boost::container::flat_map<K, V, Comp>;
 
 template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
-using unordered_set = ankerl::unordered_dense::set<K, H, KE>;
+// using unordered_set = ankerl::unordered_dense::set<K, H, KE>;
 // using unordered_set = std::unordered_set<K, H, KE>;
-// using unordered_set = boost::container::unordered_flat_set<K, V, H, KE>; // TODO: switch to this once Boost 1.81 is
-// in Ubuntu
+using unordered_set = boost::unordered::unordered_flat_set<K, H, KE>;
 
 template <typename K, typename Comp = std::less<K>>
 // using ordered_set = std::set<K,Comp>;
