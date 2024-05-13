@@ -261,7 +261,8 @@ void IntConstraint::toConstrExp(CeArb& input, bool useLowerBound) const {
   if (!useLowerBound) input->invert();
 }
 
-IntProg::IntProg(const Options& opts, bool keepIn) : global(opts), solver(global), keepInput(keepIn) {
+IntProg::IntProg(const Options& opts, bool keepIn)
+    : global(opts), obj_denominator(1), solver(global), keepInput(keepIn) {
   global.stats.startTime = std::chrono::steady_clock::now();
   aux::rng::seed = global.options.randomSeed.get();
   global.logger.activate(global.options.proofLog.get(), (bool)global.options.proofZip);
@@ -773,6 +774,7 @@ bigint IntProg::getSolSpaceSize() const {
 
 bigint IntProg::getLowerBound() const { return minimize ? optim->getLowerBound() : -optim->getLowerBound(); }
 bigint IntProg::getUpperBound() const { return minimize ? optim->getUpperBound() : -optim->getUpperBound(); }
+ratio IntProg::getUpperBoundRatio() const { return ratio{getUpperBound(), obj_denominator}; }
 
 bool IntProg::hasLastSolution() const { return solver.foundSolution(); }
 

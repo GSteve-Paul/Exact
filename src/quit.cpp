@@ -110,7 +110,7 @@ int quit::exit_SUCCESS(IntProg& intprog) {
   printFinalStats(intprog);
   if (intprog.hasLastSolution()) {
     if (intprog.global.options.uniformOut) {
-      std::cout << "o " << intprog.getUpperBound() << "\n";
+      std::cout << "o " << intprog.getUpperBoundRatio() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
       if (intprog.global.options.printSol) {
         printLits(intprog.getSolver().getLastSolution(), 'v', true, intprog.getInputVarLimit());
@@ -132,7 +132,7 @@ int quit::exit_SUCCESS(IntProg& intprog) {
       }
     } else {
       assert(intprog.global.options.fileFormat.is("mps") || intprog.global.options.fileFormat.is("lp"));
-      std::cout << "=obj= " << intprog.getUpperBound() << std::endl;
+      std::cout << "=obj= " << intprog.getUpperBoundRatio() << std::endl;
       if (intprog.global.options.printSol) intprog.printOrigSol();
     }
     std::cout.flush();
@@ -157,7 +157,7 @@ int quit::exit_INDETERMINATE(IntProg& intprog) {
   if (intprog.hasLastSolution()) {
     assert(!intprog.global.options.fileFormat.is("cnf"));  // otherwise we would have succesfully terminated
     if (intprog.global.options.uniformOut) {
-      std::cout << "c best so far " << intprog.getUpperBound() << "\n";
+      std::cout << "c best so far " << intprog.getUpperBoundRatio() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;
       if (intprog.global.options.printSol) {
         printLits(intprog.getSolver().getLastSolution(), 'v', true, intprog.getInputVarLimit());
@@ -174,7 +174,7 @@ int quit::exit_INDETERMINATE(IntProg& intprog) {
       }
     } else {
       assert(intprog.global.options.fileFormat.is("mps") || intprog.global.options.fileFormat.is("lp"));
-      std::cout << "=obj= " << intprog.getUpperBound() << std::endl;
+      std::cout << "=obj= " << intprog.getUpperBoundRatio() << std::endl;
       if (intprog.global.options.printSol) intprog.printOrigSol();
     }
     std::cout.flush();

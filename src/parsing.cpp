@@ -454,13 +454,19 @@ void coinutils_read(T& coinutils, IntProg& intprog, bool wasMaximization) {
     vars.emplace_back(intprog.getVarFor(coinutils.columnName(c)));
   }
   ratcoefs.emplace_back(parseCoinUtilsFloat(coinutils.objectiveOffset(), firstFloat));
-  bigint cdenom = aux::commonDenominator(ratcoefs);
-  if (wasMaximization) cdenom = -cdenom;
+  bigint& cdenom = intprog.obj_denominator;
+  cdenom = aux::commonDenominator(ratcoefs);
   for (const ratio& r : ratcoefs) {
     coefs.emplace_back(r * cdenom);
   }
   bigint offset = coefs.back();
   coefs.pop_back();
+  if (wasMaximization) {
+    cdenom = -cdenom;
+    offset = -offset;
+  }
+  // NOTE: CoinUtils seems to flip the coefficients but not the offset when turning a maximization problem into a
+  // minimization one...
   intprog.setObjective(IntConstraint::zip(coefs, vars), true, offset);
 
   // Constraints
@@ -484,7 +490,7 @@ void coinutils_read(T& coinutils, IntProg& intprog, bool wasMaximization) {
     ratcoefs.emplace_back(useLB ? parseCoinUtilsFloat(coinutils.getRowLower()[r], firstFloat) : 0);
     bool useUB = rowSense == 'L' || rowSense == 'E' || rowSense == 'R';
     ratcoefs.emplace_back(useUB ? parseCoinUtilsFloat(coinutils.getRowUpper()[r], firstFloat) : 0);
-    bigint cdenom = aux::commonDenominator(ratcoefs);
+    const bigint cdenom = aux::commonDenominator(ratcoefs);
     for (const ratio& rat : ratcoefs) {
       coefs.emplace_back(rat * cdenom);
     }

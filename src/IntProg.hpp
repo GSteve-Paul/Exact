@@ -122,6 +122,7 @@ struct ReifInfo {
 class IntProg {
  public:
   Global global;
+  bigint obj_denominator;  // denominator for rational objectives arising from LP/MPS files
 
  private:
   Solver solver;
@@ -193,6 +194,7 @@ class IntProg {
 
   bigint getLowerBound() const;
   bigint getUpperBound() const;
+  ratio getUpperBoundRatio() const;
 
   bool hasLastSolution() const;
   bigint getLastSolutionFor(IntVar* iv) const;
