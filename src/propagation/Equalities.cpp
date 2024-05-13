@@ -109,10 +109,12 @@ State Equalities::propagate() {
     const Repr& repr = getRepr(l);
     if (repr.l == l && repr.equals.empty()) continue;
     bool added = false;
-    const int lvl_l = solver.getLevel()[l];
+    int lvl_l = solver.getLevel()[l];
     if (lvl_l < solver.getLevel()[repr.l]) {
       solver.learnClause(-l, repr.l, Origin::EQUALITY, repr.id);
       added = true;
+      lvl_l = solver.getLevel()[l];  // a backjump may have happened
+      if (lvl_l >= INF) return State::FAIL;
     }
     assert(lvl_l >= solver.getLevel()[repr.l]);
     for (Lit ll : repr.equals) {
@@ -120,6 +122,8 @@ State Equalities::propagate() {
         assert(getRepr(ll).l == l);
         solver.learnClause(-l, ll, Origin::EQUALITY, getRepr(-ll).id);
         added = true;
+        lvl_l = solver.getLevel()[l];  // a backjump may have happened
+        if (lvl_l >= INF) return State::FAIL;
       }
       assert(lvl_l >= solver.getLevel()[ll]);
     }
