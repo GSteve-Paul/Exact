@@ -214,7 +214,7 @@ inline bigint sto(const std::string& s) {
 
 template <typename T, typename S>
 bool contains(const T& v, const S& x) {
-  return std::find(v.cbegin(), v.cend(), x) != v.cend();
+  return std::find(v.begin(), v.end(), x) != v.end();
 }
 bool contains(const std::string& s, char c);
 
