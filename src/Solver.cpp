@@ -1384,7 +1384,15 @@ SolveState Solver::solve() {
         if (!lastSol.has_value()) lastSol = LitVec();
         lastSol.value().resize(getNbVars() + 1);
         lastSol.value()[0] = 0;
-        for (Var v = 1; v <= getNbVars(); ++v) lastSol.value()[v] = isOrig(v) ? (isTrue(level, v) ? v : -v) : 0;
+        if (getOptions().varSol) {
+          for (Var v = 1; v <= getNbVars(); ++v) {
+            Lit image = (isTrue(level, v) ? v : -v);
+            lastSol.value()[v] = isOrig(v) ? image : 0;
+            heur.setFixedPhase(v, image);
+          }
+        } else {
+          for (Var v = 1; v <= getNbVars(); ++v) lastSol.value()[v] = isOrig(v) ? (isTrue(level, v) ? v : -v) : 0;
+        }
         assert(checkSAT());
         backjumpTo(0);
         return SolveState::SAT;
