@@ -526,13 +526,30 @@ struct ConstrExp final : public ConstrExpSuper {
     // negation of asserting literal has positive coefficient in conflict
     const SMALL conflCoef = getCoef(-asserting);
     assert(conflCoef > 0);
-    if (reason->getCoef(asserting) == 1) {  // just multiply, nothing else matters as slack is =< 0
+    bool fixed = false;
+    if (reason->getCoef(asserting) == 1) {
+      // just multiply, nothing else matters as slack is =< 0
+      fixed = true;
       reason->multiply(conflCoef);
       assert(reason->getSlack(level) <= 0);
-    } else {
-      if (global.options.multBeforeDiv) {
-        reason->multiply(conflCoef);
+    }
+    if (!fixed && global.options.weakenMultiply) {
+      SMALL reasonCoef = reason->getCoef(asserting);
+      SMALL mult = aux::ceildiv(conflCoef, reasonCoef);
+      if (reason->getSlack(level) * mult + getSlack(level) < 0) {
+        fixed = true;
+        global.stats.NMULTWEAKENED += 1;
+        reason->multiply(mult);
+        const SMALL toWeaken = reasonCoef * mult - conflCoef;
+        assert(toWeaken >= 0);
+        reason->weaken(asserting >= 0 ? -toWeaken : toWeaken, toVar(asserting));
+        assert(reason->getCoef(asserting) == conflCoef);
+        reason->repairOrder();
+        reason->saturate(true, true);
       }
+    }
+    if (!fixed) {
+      if (global.options.multBeforeDiv) reason->multiply(conflCoef);
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
       if (global.options.division.is("rto")) {

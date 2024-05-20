@@ -242,6 +242,7 @@ struct Options {
       "lp-cut-maxcos",
       "Upper bound on cosine of angle between cuts added in one round, higher means cuts can be more parallel", 0.1,
       "0 =< float =< 1", [](const double& x) -> bool { return 0 <= x && x <= 1; }};
+  BoolOption weakenMultiply{"ca-multweaken", "Multiply and weaken instead of division when possible.", true};
   BoolOption multBeforeDiv{"ca-multiply", "Multiply reason with the asserting literal's conflict coefficient", true};
   EnumOption division{"ca-division",
                       "Division method to round the reason to non-positive slack",
@@ -337,6 +338,7 @@ struct Options {
       &lpGomoryCutLimit,
       &lpMaxCutCos,
 #endif  // WITHSOPLEX
+      &weakenMultiply,
       &multBeforeDiv,
       &division,
       &weakenNonImplying,
