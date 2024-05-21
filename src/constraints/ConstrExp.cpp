@@ -89,6 +89,74 @@ void ConstrExpSuper::resetBuffer(const std::string& line) {
   proofBuffer << line;
 }
 
+int ConstrExpSuper::nVars() const { return vars.size(); }
+
+bool ConstrExpSuper::empty() const { return vars.empty(); }
+
+int ConstrExpSuper::nNonZeroVars() const {
+  int result = 0;
+  for (Var v : vars) {
+    result += hasVar(v);
+  }
+  return result;
+}
+
+const VarVec& ConstrExpSuper::getVars() const { return vars; }
+
+bool ConstrExpSuper::used(Var v) const { return index[v] >= 0; }
+
+void ConstrExpSuper::reverseOrder() {
+  std::reverse(vars.begin(), vars.end());
+  for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
+}
+
+void ConstrExpSuper::popLast() {
+  assert(!vars.empty());
+  assert(!hasVar(vars.back()));
+  index[vars.back()] = -1;
+  vars.pop_back();
+}
+
+void ConstrExpSuper::weakenLast() {
+  if (vars.empty()) return;
+  weaken(vars.back());
+  popLast();
+}
+
+bool ConstrExpSuper::isUnitConstraint() const { return isClause() && nVars() == 1 && !isUnsat(); }
+
+bool ConstrExpSuper::hasNoUnits(const IntMap<int>& level) const {
+  return std::all_of(vars.cbegin(), vars.cend(), [&](Var v) { return !isUnit(level, v) && !isUnit(level, -v); });
+}
+
+// NOTE: only equivalence preserving operations over the Bools!
+void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur,
+                                 bool sortFirst, Stats& stats) {
+  removeUnitsAndZeroes(level, pos);
+  assert(sortFirst || isSortedInDecreasingCoefOrder());  // NOTE: check this only after removing units and zeroes
+  saturate(true, !sortFirst);
+  if (isClause() || isCardinality()) return;
+  if (sortFirst) {
+    const std::vector<ActNode>& actList = heur.getActList();
+    sortInDecreasingCoefOrder([&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
+  }
+  if (divideByGCD()) {
+    ++stats.NGCD;
+  }
+  if (simplifyToCardinality(true, getCardinalityDegree())) {
+    ++stats.NCARDDETECT;
+  }
+}
+
+void ConstrExpSuper::strongPostProcess(Solver& solver) {
+  [[maybe_unused]] int nvars = nNonZeroVars();
+  removeEqualities(solver.getEqualities());
+  selfSubsumeImplications(solver.getImplications());
+  postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, solver.getStats());
+  assert(hasRhsDegreeInvariant());
+  assert(nvars >= nNonZeroVars());
+}
+
 std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce) {
   ce.toStreamAsOPB(o);
   return o;
@@ -504,12 +572,6 @@ void ConstrExp<SMALL, LARGE>::weaken(Var v) {  // fully weaken v
   weaken(-coefs[v], v);
 }
 
-void ConstrExpSuper::weakenLast() {
-  if (vars.empty()) return;
-  weaken(vars.back());
-  popLast();
-}
-
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weaken(const aux::predicate<Lit>& toWeaken) {
   for (Var v : vars) {
@@ -519,11 +581,31 @@ void ConstrExp<SMALL, LARGE>::weaken(const aux::predicate<Lit>& toWeaken) {
   }
 }
 
-void ConstrExpSuper::popLast() {
-  assert(!vars.empty());
-  assert(!hasVar(vars.back()));
-  index[vars.back()] = -1;
-  vars.pop_back();
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenCheckSaturated(SMALL& toWeaken, Lit l, const IntMap<int>& level) {
+  assert(toWeaken >= 0);
+  assert(toWeaken < getCoef(l));
+  if (isSaturated(l)) {
+    // indirect weakening
+    for (int64_t i = std::ssize(vars) - 1; i >= 0; --i) {
+      Var v = vars[i];
+      if (coefs[v] == 0) continue;
+      Lit ll = getLit(v);
+      if (!isFalse(level, ll)) {
+        if (toWeaken < getCoef(ll)) break;
+        toWeaken -= aux::abs(coefs[v]);
+        weaken(v);
+      }
+    }
+    removeZeroes();
+  }
+  assert(toWeaken >= 0);
+  if (toWeaken > 0) {
+    // direct weakening
+    weaken(l >= 0 ? -toWeaken : toWeaken, toVar(l));
+  }
+  repairOrder();
+  saturate(true, true);
 }
 
 // @post: preserves order of vars
@@ -561,10 +643,6 @@ void ConstrExp<SMALL, LARGE>::removeUnitsAndZeroes(const IntMap<int>& level, con
     }
   }
   vars.resize(j);
-}
-
-bool ConstrExpSuper::hasNoUnits(const IntMap<int>& level) const {
-  return std::all_of(vars.cbegin(), vars.cend(), [&](Var v) { return !isUnit(level, v) && !isUnit(level, -v); });
 }
 
 // @post: preserves order of vars
@@ -1138,34 +1216,6 @@ bool ConstrExp<SMALL, LARGE>::divideTo(double limit, const aux::predicate<Lit>& 
   return true;
 }
 
-// NOTE: only equivalence preserving operations over the Bools!
-void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int>& pos, const Heuristic& heur,
-                                 bool sortFirst, Stats& stats) {
-  removeUnitsAndZeroes(level, pos);
-  assert(sortFirst || isSortedInDecreasingCoefOrder());  // NOTE: check this only after removing units and zeroes
-  saturate(true, !sortFirst);
-  if (isClause() || isCardinality()) return;
-  if (sortFirst) {
-    const std::vector<ActNode>& actList = heur.getActList();
-    sortInDecreasingCoefOrder([&](Var v1, Var v2) { return actList[v1].activity > actList[v2].activity; });
-  }
-  if (divideByGCD()) {
-    ++stats.NGCD;
-  }
-  if (simplifyToCardinality(true, getCardinalityDegree())) {
-    ++stats.NCARDDETECT;
-  }
-}
-
-void ConstrExpSuper::strongPostProcess(Solver& solver) {
-  [[maybe_unused]] int nvars = nNonZeroVars();
-  removeEqualities(solver.getEqualities());
-  selfSubsumeImplications(solver.getImplications());
-  postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, solver.getStats());
-  assert(hasRhsDegreeInvariant());
-  assert(nvars >= nNonZeroVars());
-}
-
 template <typename SMALL, typename LARGE>
 AssertionStatus ConstrExp<SMALL, LARGE>::isAssertingBefore(const IntMap<int>& level, int lvl) const {
   assert(lvl >= 0);
@@ -1494,8 +1544,6 @@ void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntMap<int>& level, const std
   assert(isUnitConstraint());
 }
 
-bool ConstrExpSuper::isUnitConstraint() const { return isClause() && nVars() == 1 && !isUnsat(); }
-
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isSortedInDecreasingCoefOrder() const {
   if (vars.size() <= 1) return true;
@@ -1526,27 +1574,6 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
     int res = comp(v1, v2);
     return res > 0 || (res == 0 && aux::abs(coefs[v1]) > aux::abs(coefs[v2]));
   });
-  for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
-}
-
-int ConstrExpSuper::nVars() const { return vars.size(); }
-
-bool ConstrExpSuper::empty() const { return vars.empty(); }
-
-int ConstrExpSuper::nNonZeroVars() const {
-  int result = 0;
-  for (Var v : vars) {
-    result += hasVar(v);
-  }
-  return result;
-}
-
-const VarVec& ConstrExpSuper::getVars() const { return vars; }
-
-bool ConstrExpSuper::used(Var v) const { return index[v] >= 0; }
-
-void ConstrExpSuper::reverseOrder() {
-  std::reverse(vars.begin(), vars.end());
   for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
 }
 

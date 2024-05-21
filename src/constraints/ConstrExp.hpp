@@ -291,6 +291,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void weaken(const SMALL& m, Var v);
   void weaken(Var v);
   void weaken(const aux::predicate<Lit>& toWeaken);
+  void weakenCheckSaturated(SMALL& toWeaken, Lit l, const IntMap<int>& level);
 
   LARGE getSlack(const IntMap<int>& level) const;
   bool hasNegativeSlack(const IntMap<int>& level) const;
@@ -534,60 +535,69 @@ struct ConstrExp final : public ConstrExpSuper {
       assert(reason->getSlack(level) <= 0);
     }
     if (!fixed && global.options.weakenMultiply) {
-      SMALL reasonCoef = reason->getCoef(asserting);
-      SMALL mult = aux::ceildiv(conflCoef, reasonCoef);
+      const SMALL reasonCoef = reason->getCoef(asserting);
+      const SMALL mult = aux::ceildiv(conflCoef, reasonCoef);
       if (reason->getSlack(level) * mult + getSlack(level) < 0) {
         fixed = true;
         global.stats.NMULTWEAKENED += 1;
         reason->multiply(mult);
-        const SMALL toWeaken = reasonCoef * mult - conflCoef;
-        assert(toWeaken >= 0);
-        reason->weaken(asserting >= 0 ? -toWeaken : toWeaken, toVar(asserting));
+        SMALL toWeaken = reasonCoef * mult - conflCoef;
+        reason->weakenCheckSaturated(toWeaken, asserting, level);
         assert(reason->getCoef(asserting) == conflCoef);
-        reason->repairOrder();
-        reason->saturate(true, true);
       }
+    }
+    if (!fixed && global.options.division.is("rto")) {
+      fixed = true;
+      reason->weakenDivideRoundOrdered(reason->getCoef(asserting), level);
+      reason->multiply(conflCoef);
+      assert(reason->getSlack(level) <= 0);
     }
     if (!fixed) {
       if (global.options.multBeforeDiv) reason->multiply(conflCoef);
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
-      if (global.options.division.is("rto")) {
-        reason->weakenDivideRoundOrdered(reasonCoef, level);
-        reason->multiply(conflCoef);
-        assert(reason->getSlack(level) <= 0);
+      const SMALL reasonSlack =
+          static_cast<SMALL>(aux::max<LARGE>(-reason->absCoef(reason->vars[0]), reason->getSlack(level)));
+      // SMALL cast possible because slack < reasonCoef
+      SMALL gcd = global.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
+      const SMALL minDiv = reasonCoef / gcd;
+      if (minDiv > reasonSlack) {
+        SMALL diff = minDiv - reasonSlack;
+        reason->weakenDivideRoundOrdered(minDiv, level, diff);
+        assert(conflCoef % reason->getCoef(asserting) == 0);
+        reason->multiply(conflCoef / reason->getCoef(asserting));
       } else {
-        const SMALL reasonSlack = static_cast<SMALL>(reason->getSlack(level));  // possible because slack < reasonCoef
-        if (global.options.division.is("slack+1") && reasonSlack > 0 && reasonCoef / (reasonSlack + 1) < conflCoef) {
+        assert(reasonSlack > 0);  // otherwise if clause would have triggered
+        if (global.options.division.is("slack+1")) {
           reason->weakenDivideRoundOrdered(reasonSlack + 1, level);
-          reason->multiply(aux::ceildiv(conflCoef, reason->getCoef(asserting)));
+          const SMALL reasonCoef = reason->getCoef(asserting);
+          const SMALL mult = aux::ceildiv(conflCoef, reasonCoef);
+          reason->multiply(mult);
+          SMALL toWeaken = reasonCoef * mult - conflCoef;
+          reason->weakenCheckSaturated(toWeaken, asserting, level);
           assert(reason->getSlack(level) <= 0);
+          assert(reason->getCoef(asserting) == conflCoef);
         } else {
-          assert(global.options.division.is("mindiv") || reasonSlack <= 0 ||
-                 reasonCoef / (reasonSlack + 1) >= conflCoef);
-          assert(!global.options.multBeforeDiv || conflCoef == aux::gcd(conflCoef, reasonCoef));
-          SMALL gcd = global.options.multBeforeDiv ? conflCoef : aux::gcd(conflCoef, reasonCoef);
-          const SMALL minDiv = reasonCoef / gcd;
+          assert(global.options.division.is("mindiv"));
+          assert(minDiv <= reasonSlack);
           SMALL bestDiv = minDiv;
-          if (bestDiv <= reasonSlack) {
-            // quick heuristic search for small divisor larger than slack
-            bestDiv = reasonCoef;
-            SMALL tmp;
-            SMALL pp;
-            for (int p : {7, 5, 3, 2}) {
-              pp = 1;
-              while (gcd % p == 0) {
-                gcd /= p;
-                tmp = reasonCoef / gcd;
-                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                tmp = minDiv * gcd;
-                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                pp *= p;
-                tmp = reasonCoef / pp;
-                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-                tmp = minDiv * pp;
-                if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
-              }
+          // quick heuristic search for small divisor larger than slack
+          bestDiv = reasonCoef;
+          SMALL tmp;
+          SMALL pp;
+          for (int p : {7, 5, 3, 2}) {
+            pp = 1;
+            while (gcd % p == 0) {
+              gcd /= p;
+              tmp = reasonCoef / gcd;
+              if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+              tmp = minDiv * gcd;
+              if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+              pp *= p;
+              tmp = reasonCoef / pp;
+              if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
+              tmp = minDiv * pp;
+              if (tmp < bestDiv && tmp > reasonSlack) bestDiv = tmp;
             }
           }
 
@@ -605,7 +615,7 @@ struct ConstrExp final : public ConstrExpSuper {
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
             assert(bestDiv <= reasonCoef);
-            SMALL diff = bestDiv - aux::max<SMALL>(0, reasonSlack);
+            SMALL diff = bestDiv - reasonSlack;
             reason->weakenDivideRoundOrdered(bestDiv, level, diff);
             reason->multiply(mult);
             assert(reason->getSlack(level) <= 0);
@@ -613,17 +623,12 @@ struct ConstrExp final : public ConstrExpSuper {
         }
       }
     }
-
-    assert(reason->getCoef(asserting) >= conflCoef);
-    assert(reason->getCoef(asserting) < 2 * conflCoef);
-    assert(global.options.division.is("slack+1") || conflCoef == reason->getCoef(asserting));
+    assert(conflCoef == reason->getCoef(asserting));
 
     // In most cases, at this point, the reason coefficient is equal to the conflict coefficient
     // and the reason slack is at most zero, so we can safely add the reason to the conflict.
-
     for (Var v : reason->vars) {
-      Lit ll = reason->getLit(v);
-      if (isFalse(level, ll)) {
+      if (isFalse(level, reason->getLit(v))) {
         actSet.add(v);
       }
     }
