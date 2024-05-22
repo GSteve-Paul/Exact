@@ -209,6 +209,8 @@ struct Options {
   BoolOption varSol{"var-sol", "Use last solution as phase", true};
   ValOption<int> dbDecayLBD{"db-decay", "Decay term for the LBD of constraints", 1, "0 (no decay) =< int",
                             [](const int& x) -> bool { return 0 <= x; }};
+  ValOption<int64_t> dbBase{"db-base", "Initial number of conflicts at which database cleaning is performed.", 2000,
+                            "1 =< int", [](const int64_t& x) -> bool { return x >= 1; }};
   ValOption<double> dbExp{"db-exp",
                           "Exponent of the growth of the learned constraint database and the inprocessing intervals, "
                           "with log(#conflicts) as base",
@@ -324,6 +326,7 @@ struct Options {
       &varWeight,
       &varSol,
       &dbDecayLBD,
+      &dbBase,
       &dbExp,
       &dbScale,
       &dbSafeLBD,

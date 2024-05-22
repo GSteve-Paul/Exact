@@ -101,11 +101,11 @@ class Solver {
   Global& global;
 
  private:
-  int n;
+  int n = 0;
   std::vector<bool> isorig;
-  bool firstRun;
-  bool unsatReached;
-  bool objectiveSet;
+  bool firstRun = true;
+  bool unsatReached = false;
+  bool objectiveSet = false;
 
   ConstraintAllocator ca;
   Heuristic heur;
@@ -127,16 +127,17 @@ class Solver {
 
   int qhead = 0;  // tracks where next index on trail for constraint propagation
 
-  std::vector<int> assumptions_lim;
+  std::vector<int> assumptions_lim = std::vector<int>{0};
   IntSet assumptions;
+  bool coreguided = false;
 
   std::shared_ptr<LpSolver> lpSolver;
 
   Equalities equalities;
   Implications implications;
 
-  long long nconfl_to_reduce = 0;
-  long long nconfl_to_restart = 0;
+  int64_t nconfl_to_reduce;
+  int64_t nconfl_to_restart;
   Var nextToSort = 0;
 
   // vectors used in subroutines that should not be reallocated over and over
@@ -185,10 +186,9 @@ class Solver {
   const std::vector<CRef>& getRawConstraints() const { return constraints; }
   const ConstraintAllocator& getCA() const { return ca; }
 
-  void setAssumptions(const LitVec& assumps);
+  void setAssumptions(const LitVec& assumps, bool coreguided);
   void clearAssumptions();
   const IntSet& getAssumptions() const;
-  bool hasAssumptions() const;
   bool assumptionsClashWithUnits() const;
 
   int getNbUnits() const;

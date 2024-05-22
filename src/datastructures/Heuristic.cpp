@@ -106,7 +106,6 @@ void Heuristic::undoOne(Var v, Lit l) {
 
 void Heuristic::setPhase(Var v, Lit l) { phase[v].second = l; }
 void Heuristic::setFixedPhase(Var v, Lit l) { phase[v].first = l; }
-Lit Heuristic::getPhase(Var v) const { return phase[v].first ? phase[v].first : phase[v].second; }
 
 ActValV Heuristic::getActivity(Var v) const {
   assert(v > 0);
@@ -167,8 +166,9 @@ void Heuristic::vBumpActivity(VarVec& vars, const std::vector<int>& position, do
 }
 
 // NOTE: so far, this is only called when the returned lit will be decided shortly
-Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
-  assert(getPhase(0) == 0);        // so will return right phase
+Lit Heuristic::pickBranchLit(const std::vector<int>& position, bool coreguided) {
+  assert(phase[0].first == 0);     // so will return right phase
+  assert(phase[0].second == 0);    // so will return right phase
   assert(isUnknown(position, 0));  // so will eventually stop
   // Activity based decision:
   if (nextDecision == 0) {
@@ -177,7 +177,7 @@ Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
   while (isKnown(position, nextDecision)) {
     nextDecision = actList[nextDecision].next;
   }
-  return getPhase(nextDecision);
+  return (!coreguided && phase[nextDecision].first) ? phase[nextDecision].first : phase[nextDecision].second;
 }
 
 Var Heuristic::nextInActOrder(Var v) const { return actList[v].next; }

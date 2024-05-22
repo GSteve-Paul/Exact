@@ -531,7 +531,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           reformObj->sortInDecreasingCoefOrder([](Var v1, Var v2) { return v1 < v2; });
         }
         if (reformObj->empty()) {
-          solver.setAssumptions(assumptions.getKeys());
+          solver.setAssumptions(assumptions.getKeys(), false);
         } else {
           assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
           VarVec& refVars = reformObj->vars;
@@ -551,17 +551,17 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
               lastCoef = cf;
             }
           }
-          solver.setAssumptions(assumps);
+          solver.setAssumptions(assumps, true);
         }
       } else {
         boundBottomUp();
         assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
         assumps.push_back(-boundingVar);
-        solver.setAssumptions(assumps);
+        solver.setAssumptions(assumps, true);
       }
     } else {  // set regular assumptions
       topdown = true;
-      solver.setAssumptions(assumptions.getKeys());
+      solver.setAssumptions(assumptions.getKeys(), false);
     }
 
     SolveState reply;

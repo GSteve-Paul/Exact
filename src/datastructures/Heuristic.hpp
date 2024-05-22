@@ -85,7 +85,6 @@ class Heuristic {
   void undoOne(Var v, Lit l);
   void setPhase(Var v, Lit l);
   void setFixedPhase(Var v, Lit l);
-  Lit getPhase(Var v) const;
 
   ActValV getActivity(Var v) const;
   const std::vector<ActNode>& getActList() const;
@@ -93,7 +92,7 @@ class Heuristic {
   void vBumpActivity(VarVec& vars, const std::vector<int>& position, double weightNew, long long nConfl);
   bool before(Var v1, Var v2) const;
 
-  Lit pickBranchLit(const std::vector<int>& position);
+  Lit pickBranchLit(const std::vector<int>& position, bool coreguided);
   Var nextInActOrder(Var v) const;
   Var firstInActOrder() const;
   void swapOrder(Var v1, Var v2);

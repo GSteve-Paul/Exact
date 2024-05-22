@@ -72,16 +72,10 @@ namespace xct {
 Solver::Solver(Global& g)
     : lastCore(g.cePools.take32()),
       global(g),
-      n(0),
-      firstRun(true),
-      unsatReached(false),
-      objectiveSet(false),
-      assumptions_lim({0}),
       equalities(*this),
       implications(*this),
-      nconfl_to_reduce(1000),
-      nconfl_to_restart(global.options.lubyMult.get()),
-      nextToSort(0) {
+      nconfl_to_reduce(global.options.dbBase.get()),
+      nconfl_to_restart(global.options.lubyMult.get()) {
   ca.capacity(1048576);  // 4MiB
   position.resize(1, INF);
   isorig.resize(1, true);
@@ -869,13 +863,14 @@ void Solver::dropExternal(ID id, bool erasable, bool forceDelete) {
 // ---------------------------------------------------------------------
 // Assumptions
 
-void Solver::setAssumptions(const LitVec& assumps) {
+void Solver::setAssumptions(const LitVec& assumps, bool cg) {
   clearAssumptions();
   if (assumps.empty()) return;
   for (Lit l : assumps) {
     assumptions.add(l);
   }
   assumptions_lim.reserve((int)assumptions.size() + 1);
+  coreguided = cg;
 }
 
 void Solver::clearAssumptions() {
@@ -883,10 +878,10 @@ void Solver::clearAssumptions() {
   backjumpTo(0);
   assert(assumptionLevel() == 0);
   assumptions_lim[0] = 0;
+  coreguided = false;
 }
 
 const IntSet& Solver::getAssumptions() const { return assumptions; }
-bool Solver::hasAssumptions() const { return !assumptions.isEmpty(); }
 
 bool Solver::assumptionsClashWithUnits() const {
   return std::any_of(assumptions.getKeys().cbegin(), assumptions.getKeys().cend(),
@@ -1329,7 +1324,7 @@ SolveState Solver::solve() {
         // NOTE: cast to double to avoid an issue with GCC13/14 giving NaN after std::log with -03 and single source on
         // commit 3f9584893afe38dfe30dc9c4a1322a903a231859 with SoPlex
         // NOTE 2: does not matter, we get long double errors in boost::multiprecision::cpp_int...
-        // Let's go with Clang for now.
+        // Let's go with Clang when building single source for now.
         if (global.options.verbosity.get() > 0) {
           StatNum propDiff = global.stats.PROPTIME.z - lastPropTime;
           StatNum cADiff = global.stats.CATIME.z - lastCATime;
@@ -1377,7 +1372,7 @@ SolveState Solver::solve() {
         }
       }
       if (next == 0) {
-        next = aux::timeCall<Lit>([&] { return heur.pickBranchLit(getPos()); }, global.stats.HEURTIME);
+        next = aux::timeCall<Lit>([&] { return heur.pickBranchLit(getPos(), coreguided); }, global.stats.HEURTIME);
       }
       if (next == 0) {
         assert((int)trail.size() == getNbVars());
