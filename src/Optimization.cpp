@@ -411,7 +411,14 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {  // mod
 
   assert(!cardCore->isTautology());
   assert(!cardCore->isUnsat());
-  // so we need at least 1 variable, unless the upper bound is already tight
+  if (cardCore->getDegree() == cardCore->nVars()) {
+    // we can just add them as unit constraints
+    solver.addConstraint(cardCore);
+    reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+    lower_bound = std::max(lower_bound, -reformObj->getDegree());
+    return State::SUCCESS;
+  }
+  // now we need at least 1 variable, unless the upper bound is already tight
   bool needAuxiliary = upper_bound / mult > cardCore->getDegree();
   if (needAuxiliary) {
     // add auxiliary variable
