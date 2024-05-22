@@ -528,6 +528,7 @@ struct ConstrExp final : public ConstrExpSuper {
     const SMALL conflCoef = getCoef(-asserting);
     assert(conflCoef > 0);
     bool fixed = false;
+    bool multipliedConflict = false;
     if (reason->getCoef(asserting) == 1) {
       // just multiply, nothing else matters as slack is =< 0
       fixed = true;
@@ -536,14 +537,27 @@ struct ConstrExp final : public ConstrExpSuper {
     }
     if (!fixed && global.options.weakenMultiply) {
       const SMALL reasonCoef = reason->getCoef(asserting);
-      const SMALL mult = aux::ceildiv(conflCoef, reasonCoef);
-      if (reason->getSlack(level) * mult + getSlack(level) < 0) {
-        fixed = true;
-        global.stats.NMULTWEAKENED += 1;
-        reason->multiply(mult);
-        SMALL toWeaken = reasonCoef * mult - conflCoef;
-        reason->weakenCheckSaturated(toWeaken, asserting, level);
-        assert(reason->getCoef(asserting) == conflCoef);
+      if (conflCoef >= reasonCoef) {
+        const SMALL mult = aux::ceildiv(conflCoef, reasonCoef);
+        if (reason->getSlack(level) * mult + getSlack(level) < 0) {
+          fixed = true;
+          global.stats.NMULTWEAKENEDREASON += 1;
+          reason->multiply(mult);
+          SMALL toWeaken = reasonCoef * mult - conflCoef;
+          reason->weakenCheckSaturated(toWeaken, asserting, level);
+          assert(reason->getCoef(asserting) == conflCoef);
+        }
+      } else {
+        const SMALL mult = aux::floordiv(reasonCoef, conflCoef);
+        if (reason->getSlack(level) + mult * getSlack(level) < 0) {
+          fixed = true;
+          multipliedConflict = true;
+          global.stats.NMULTWEAKENEDCONFLICT += 1;
+          multiply(mult);
+          SMALL toWeaken = reasonCoef - conflCoef * mult;
+          reason->weakenCheckSaturated(toWeaken, asserting, level);
+          assert(reason->getCoef(asserting) == getCoef(-asserting));
+        }
       }
     }
     if (!fixed && global.options.division.is("rto")) {
@@ -623,7 +637,7 @@ struct ConstrExp final : public ConstrExpSuper {
         }
       }
     }
-    assert(conflCoef == reason->getCoef(asserting));
+    assert(getCoef(-asserting) == reason->getCoef(asserting));
 
     // In most cases, at this point, the reason coefficient is equal to the conflict coefficient
     // and the reason slack is at most zero, so we can safely add the reason to the conflict.
@@ -637,7 +651,7 @@ struct ConstrExp final : public ConstrExpSuper {
     // add reason to conflict
     addUp(reason);
 
-    VarVec& varsToCheck = oldDegree <= getDegree() ? reason->vars : vars;
+    VarVec& varsToCheck = !multipliedConflict && oldDegree <= getDegree() ? reason->vars : vars;
     SMALL largestCF = getLargestCoef(varsToCheck);
     if (largestCF > getDegree()) {
       saturate(varsToCheck, false, false);

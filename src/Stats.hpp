@@ -238,7 +238,8 @@ struct Stats {
   Stat NCARDDETECT{0, "detected cardinalities"};
   Stat NWEAKENEDNONIMPLYING{0, "weakened non-implying"};
   Stat NWEAKENEDNONIMPLIED{0, "weakened non-implied"};
-  Stat NMULTWEAKENED{0, "number of multiply-weakens"};
+  Stat NMULTWEAKENEDREASON{0, "number of multiply-weakens on reason"};
+  Stat NMULTWEAKENEDCONFLICT{0, "number of multiply-weakens on conflict"};
   Stat NORIGVARS{0, "original variables"};
   Stat NAUXVARS{0, "auxiliary variables"};
 
@@ -405,7 +406,8 @@ struct Stats {
       &NCARDDETECT,
       &NWEAKENEDNONIMPLIED,
       &NWEAKENEDNONIMPLYING,
-      &NMULTWEAKENED,
+      &NMULTWEAKENEDREASON,
+      &NMULTWEAKENEDCONFLICT,
       &NPROPCLAUSE,
       &NPROPCARD,
       &NPROPWATCH,
