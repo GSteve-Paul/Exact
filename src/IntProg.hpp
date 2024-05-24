@@ -80,15 +80,14 @@ Core emptyCore();
 class IntProg;
 
 struct IntConstraint {
- public:
   std::vector<IntTerm> lhs = {};
   std::optional<bigint> lowerBound = 0;
   std::optional<bigint> upperBound = std::nullopt;
 
   static std::vector<IntTerm> zip(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars);
 
-  bigint getRange() const;
-  int64_t size() const;
+  [[nodiscard]] bigint getRange() const;
+  [[nodiscard]] int64_t size() const;
   void invert();
 
   void toConstrExp(CeArb&, bool useLowerBound) const;
@@ -113,9 +112,9 @@ struct TimeOut {
 };
 
 struct ReifInfo {
-  IntVar* head;
-  bool sign;
-  bool left;
+  IntVar* head = nullptr;
+  bool sign = false;
+  bool left = false;
   IntConstraint body;
 };
 
@@ -130,14 +129,14 @@ class IntProg {
 
   std::vector<std::unique_ptr<IntVar>> vars;
   IntConstraint obj;  // NOTE: we could erase this, but then we would not store the untransformed input objective
-  bool minimize;
+  bool minimize = true;
   unordered_map<std::string, IntVar*> name2var;
   unordered_map<Var, IntVar*> var2var;
 
   int inputVarLimit = INF;
   int64_t nConstrs = 0;
 
-  xct::IntSet assumptions;
+  IntSet assumptions;
   struct intvechash {
     size_t operator()(const std::vector<int32_t>& t) const { return xct::aux::hashForList<int32_t>(t); }
   };
@@ -154,7 +153,7 @@ class IntProg {
   void addSingleAssumption(IntVar* iv, const bigint& val);
 
  public:
-  IntProg(const Options& opts, bool keepIn = false);
+  explicit IntProg(const Options& opts, bool keepIn = false);
 
   const Solver& getSolver() const;
   Solver& getSolver();
@@ -218,6 +217,9 @@ class IntProg {
   WithState<std::vector<std::vector<bigint>>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
                                                            const TimeOut& to = {false, 0});
   WithState<int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
+  WithState<std::vector<unordered_map<bigint, int64_t>>> count(const std::vector<IntVar*>& ivs_base,
+                                                               const std::vector<IntVar*>& ivs_counts, bool keepstate,
+                                                               const TimeOut& to = {false, 0});
   WithState<Core> extractMUS(const TimeOut& to = {false, 0});
 
   void runFromCmdLine();

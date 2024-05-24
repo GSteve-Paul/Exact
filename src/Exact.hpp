@@ -408,7 +408,8 @@ class Exact {
    * will return this value.
    * - "INCONSISTENT": no solutions consistent with the assumptions exist and a core has been constructed, which can be
    * accessed via getLastCore().
-   * - "TIMEOUT": the timeout was reached. Solving can be resumed with a later call.
+   * - "TIMEOUT": the timeout was reached, and the solution count *so far* is returned.
+   * Solving can be resumed with a later call.
    * - "SAT": the domains have been counted.
    */
   std::pair<std::string, int64_t> count(const std::vector<std::string>& vars, double timeout = 0);

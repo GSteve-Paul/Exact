@@ -52,7 +52,7 @@ void lhs2str(std::ostream& o, const IntConstraint& x) {
   for (const IntTerm& t : x.lhs) {
     terms.push_back(aux::str(t));
   }
-  std::sort(terms.begin(), terms.end());
+  std::ranges::sort(terms);
   for (const std::string& s : terms) o << s << " ";
 }
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
@@ -216,7 +216,7 @@ bigint IntConstraint::getRange() const {
   return res;
 }
 
-int64_t IntConstraint::size() const { return lhs.size(); }
+int64_t IntConstraint::size() const { return std::ssize(lhs); }
 
 void IntConstraint::invert() {
   if (lowerBound) lowerBound = -lowerBound.value();
@@ -606,7 +606,7 @@ void IntProg::addMultiplication(const std::vector<IntVar*>& factors, IntVar* low
     solver.addClauseConstraint(clause, Origin::FORMULA);
   }
 
-  std::array<IntVar*, 2> bounds = {lower_bound, upper_bound};
+  std::array bounds = {lower_bound, upper_bound};
   for (int j = 0; j < 2; ++j) {
     IntVar* iv = bounds[j];
     if (!iv) continue;
@@ -760,7 +760,7 @@ std::ostream& IntProg::printVars(std::ostream& out) const {
   return out;
 }
 
-long long IntProg::getNbVars() const { return vars.size(); }
+long long IntProg::getNbVars() const { return std::ssize(vars); }
 
 long long IntProg::getNbConstraints() const { return nConstrs; }
 
@@ -1051,10 +1051,19 @@ Var IntProg::fixObjective(const IntConstraint& ico, const bigint& optval) {
 }
 
 WithState<int64_t> IntProg::count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
+  WithState<std::vector<unordered_map<bigint, int64_t>>> result = count(ivs, {}, keepstate, to);
+  assert(result.val.size() == 1);
+  assert(result.val.size() == 1);
+  return {result.state, std::ssize(result.val)};
+}
+
+WithState<std::vector<unordered_map<bigint, int64_t>>> IntProg::count(const std::vector<IntVar*>& ivs_base,
+                                                                      const std::vector<IntVar*>& ivs_counts,
+                                                                      bool keepstate, const TimeOut& to) {
   solver.printHeader();
   auto [result, optval, optcore] = toOptimum(obj, keepstate, to);
   if (result == SolveState::INCONSISTENT || result == SolveState::UNSAT || result == SolveState::TIMEOUT) {
-    return {result, -int(result == SolveState::TIMEOUT)};
+    return {result, {}};
   }
   assert(result == SolveState::SAT);
 
@@ -1064,13 +1073,24 @@ WithState<int64_t> IntProg::count(const std::vector<IntVar*>& ivs, bool keepstat
     flag_v = fixObjective(obj, optval);
     opt = OptimizationSuper::make(IntConstraint{}, solver, assumptions);
   }
-  int64_t n = 0;
-  result = SolveState::SAT;
-  while (true) {
+
+  std::vector<unordered_map<bigint, int64_t>> counts(std::ssize(ivs_counts));
+  bool has_counts = !counts.empty();
+  if (!has_counts) counts.emplace_back();
+
+  result = opt->runFull(false, to.limit);
+  while (result == SolveState::SAT) {
+    if (has_counts) {
+      assert(solver.foundSolution());
+      int64_t i = 0;
+      for (IntVar* iv : ivs_counts) {
+        counts[i][iv->getValue(solver.getLastSolution())] += 1;
+      }
+    } else {
+      counts[0][0] += 1;
+    }
+    invalidateLastSol(ivs_base, flag_v);
     result = opt->runFull(false, to.limit);
-    if (result != SolveState::SAT) break;
-    ++n;
-    invalidateLastSol(ivs, flag_v);
   }
 
   if (keepstate) {
@@ -1080,10 +1100,9 @@ WithState<int64_t> IntProg::count(const std::vector<IntVar*>& ivs, bool keepstat
   }
 
   if (result == SolveState::TIMEOUT) {
-    return {SolveState::TIMEOUT, -1 - n};
-  } else {
-    return {SolveState::SAT, n};
+    return {SolveState::TIMEOUT, counts};
   }
+  return {SolveState::SAT, counts};
 }
 
 WithState<Core> IntProg::extractMUS(const TimeOut& to) {
