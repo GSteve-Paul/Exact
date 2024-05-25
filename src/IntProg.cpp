@@ -1052,9 +1052,10 @@ Var IntProg::fixObjective(const IntConstraint& ico, const bigint& optval) {
 
 WithState<int64_t> IntProg::count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to) {
   WithState<std::vector<unordered_map<bigint, int64_t>>> result = count(ivs, {}, keepstate, to);
-  assert(result.val.size() == 1);
-  assert(result.val.size() == 1);
-  return {result.state, std::ssize(result.val)};
+  assert(result.val.size() <= 1);
+  if (result.val.empty()) return {result.state, 0};
+  assert(result.val[0].contains(0));
+  return {result.state, result.val[0][0]};
 }
 
 WithState<std::vector<unordered_map<bigint, int64_t>>> IntProg::count(const std::vector<IntVar*>& ivs_base,
@@ -1085,6 +1086,7 @@ WithState<std::vector<unordered_map<bigint, int64_t>>> IntProg::count(const std:
       int64_t i = 0;
       for (IntVar* iv : ivs_counts) {
         counts[i][iv->getValue(solver.getLastSolution())] += 1;
+        ++i;
       }
     } else {
       counts[0][0] += 1;

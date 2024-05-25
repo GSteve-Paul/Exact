@@ -210,7 +210,7 @@ TEST_CASE("count advanced") {
         intprog.setObjective(IntConstraint::zip({-1, -1, -2, -3, -5}, vars));
         auto [state3, count3] = intprog.count(vars, true, {true, timeouttime});
         CHECK(state3 == SolveState::TIMEOUT);
-        CHECK(count3 < 0);
+        CHECK(count3 == 0);
 
         auto [state4, count4] = intprog.count(vars, true);
         CHECK(state4 == SolveState::SAT);
@@ -581,6 +581,42 @@ TEST_CASE("extract MUS") {
   CHECK(state3 == SolveState::UNSAT);
   CHECK(mus3);
   CHECK(mus3->size() == 0);
+}
+
+TEST_CASE("detailed count") {
+  Options opts;
+  for (int ii = 0; ii < 2; ++ii) {
+    opts.optCoreguided.set(ii);
+    for (double x : {0.0, 0.5, 1.0}) {
+      opts.optRatio.set(x);
+
+      IntProg intprog(opts);
+      std::vector<IntVar*> vars;
+      vars.reserve(5);
+      for (const auto& s : {"a", "b", "c", "d", "e"}) {
+        vars.push_back(intprog.addVar(s, -1, 2, Encoding::ORDER));
+      }
+
+      std::vector<IntVar*> vars2 = vars;
+      vars2.pop_back();
+      vars2.pop_back();
+
+      auto res = intprog.count(vars, vars2, true).val;
+      for (int64_t i = 0; i < std::ssize(vars2); ++i) {
+        for (int64_t j = -1; j < 3; ++j) {
+          CHECK(res[i][j] == 256);
+        }
+      }
+
+      intprog.addConstraint({IntConstraint::zip({1, 1, 1, 1, 1}, vars), 9});
+      auto res2 = intprog.count(vars, vars2, true).val;
+      for (int64_t i = 0; i < std::ssize(vars2); ++i) {
+        CHECK(res2[i].size() == 2);
+        CHECK(res2[i][1] == 1);
+        CHECK(res2[i][2] == 5);
+      }
+    }
+  }
 }
 
 TEST_SUITE_END();
