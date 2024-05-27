@@ -102,7 +102,7 @@ void printLicense(const std::string& lic) {
       {"MIT", MIT},
       {"RS", roundingsat},
 #if WITHSOPLEX
-      {"ZIB", zib_apache},
+      {"ZIB Apache 2", zib_apache},
 #endif
   });
 

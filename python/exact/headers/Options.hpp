@@ -169,7 +169,7 @@ struct Options {
                              "MIT",
                              "RS",
 #if WITHSOPLEX
-                             "ZIB",
+                             "ZIB Apache 2",
 #endif
                          }};
   ValOption<long long> randomSeed{"seed", "Seed for the pseudo-random number generator", 1, "1 =< int",
