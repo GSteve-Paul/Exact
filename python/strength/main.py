@@ -15,9 +15,10 @@ if __name__ == '__main__':
     # gen.generate(nb, max_vars, filename, lb, ub, stepsize)
 
     rows = an.read_csv(filename)
+    rows = an.add_max_sat(rows, max_vars)
     # rows = an.add_max_sat_std_dev_without_zeros(rows, max_vars)
     # rows = an.add_w_average(rows)
-    # rows = an.add_avg(rows)
+    rows = an.adgemd_avg(rows)
     # print(rows)
     rows = an.transform_rows(rows)
     # print(rows[0])
@@ -46,7 +47,7 @@ if __name__ == '__main__':
 
     nb_cut_sols = rows[0]
 
-    measures = ['generalised-slack', 'degree-over-sum-of-constraints', 'normalised-size', 'min-sat', 'stddev', 'max-sat']
+    measures = ['generalised-slack', 'degree-over-sum-of-constraints', 'length', 'normalised-size', 'min-sat', 'std-dev', 'std-dev-min-sat', 'max-sat', 'avg']
     # measures = ['generalised-slack', 'degree-over-sum-of-constraints']
 
     # rows = rows[1:len(measures)+2]

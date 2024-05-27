@@ -73,6 +73,15 @@ def plot_cors(cors, lb, ub, stepsize):
     plt.xticks(range(len(range(lb, ub, stepsize))), [f'{i}' for i in range(lb, ub, stepsize)], rotation=90)
     plt.show()
 
+def add_max_sat(rows, max_vars):
+    # add max sat
+    for i, row in enumerate(rows):
+        # print(row)
+        row = row[:max_vars+1]
+        const = convert_to_constraint(row)
+        rows[i].append(str(cl.norm_max_sat(const)))
+    return rows
+
 def add_max_sat_std_dev_without_zeros(rows, max_vars):
     # add max sat and std dev without zeros
 
@@ -95,6 +104,7 @@ def add_avg(rows):
     # add average
     for i, row in enumerate(rows):
         heur, size, minsat, stddev, maxsat = float(row[33]), float(row[35]), float(row[36]), float(row[37]), float(row[38])
+        print(heur, size, minsat, stddev, maxsat)
         rows[i].append(str((heur + size + minsat + stddev + maxsat) / 5))
     return rows
 
