@@ -140,7 +140,7 @@ class Logger {
   }
   template <typename T>
   static std::ostream& proofWeaken(std::ostream& o, Lit l, const T& m) {
-    assert(m != 0);
+    if (m == 0) return o;
     if ((m < 0) != (l < 0)) {
       o << "~";
     }

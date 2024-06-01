@@ -240,6 +240,8 @@ struct Stats {
   Stat NWEAKENEDNONIMPLIED{0, "weakened non-implied"};
   Stat NMULTWEAKENEDREASON{0, "number of multiply-weakens on reason"};
   Stat NMULTWEAKENEDCONFLICT{0, "number of multiply-weakens on conflict"};
+  Stat NMULTWEAKENEDDIRECT{0, "number of direct multiply-weakens"};
+  Stat NMULTWEAKENEDINDIRECT{0, "number of indirect multiply-weakens"};
   Stat NORIGVARS{0, "original variables"};
   Stat NAUXVARS{0, "auxiliary variables"};
 
@@ -408,6 +410,8 @@ struct Stats {
       &NWEAKENEDNONIMPLYING,
       &NMULTWEAKENEDREASON,
       &NMULTWEAKENEDCONFLICT,
+      &NMULTWEAKENEDDIRECT,
+      &NMULTWEAKENEDINDIRECT,
       &NPROPCLAUSE,
       &NPROPCARD,
       &NPROPWATCH,

@@ -550,9 +550,9 @@ void ConstrExp<SMALL, LARGE>::addLhs(const SMALL& cf, Lit l) {  // add c*(l>=0) 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weaken(const SMALL& m, Var v) {  // add m*(v>=0) if m>0 and -m*(-v>=-1) if m<0
   assert(v > 0);
-  assert(v < (Var)coefs.size());
+  assert(v < static_cast<Var>(coefs.size()));
   assert(coefs[v] != 0);
-  if (global.logger.isActive() && m != 0) {
+  if (global.logger.isActive()) {
     Logger::proofWeaken(proofBuffer, v, m);
   }
 
@@ -568,8 +568,39 @@ void ConstrExp<SMALL, LARGE>::weaken(const SMALL& m, Var v) {  // add m*(v>=0) i
 }
 
 template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::weakenVar(const SMALL& m, Var v) {  // add -m*l
+  assert(m > 0);
+  assert(v < static_cast<Var>(coefs.size()));
+  assert(v > 0);
+  assert(aux::abs(coefs[v]) >= m);
+
+  if (global.logger.isActive()) {
+    Logger::proofWeaken(proofBuffer, getLit(v), -m);
+  }
+
+  degree -= m;
+  if (coefs[v] < 0) {
+    coefs[v] += m;
+  } else {
+    coefs[v] -= m;
+    rhs -= m;
+  }
+}
+
+template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weaken(Var v) {  // fully weaken v
-  weaken(-coefs[v], v);
+  assert(v < static_cast<Var>(coefs.size()));
+  if (global.logger.isActive()) {
+    Logger::proofWeaken(proofBuffer, v, -coefs[v]);
+  }
+
+  if (coefs[v] < 0) {
+    degree += coefs[v];
+  } else {
+    degree -= coefs[v];
+    rhs -= coefs[v];
+  }
+  coefs[v] = 0;
 }
 
 template <typename SMALL, typename LARGE>
@@ -582,27 +613,31 @@ void ConstrExp<SMALL, LARGE>::weaken(const aux::predicate<Lit>& toWeaken) {
 }
 
 template <typename SMALL, typename LARGE>
-void ConstrExp<SMALL, LARGE>::weakenCheckSaturated(SMALL& toWeaken, Lit l, const IntMap<int>& level) {
+void ConstrExp<SMALL, LARGE>::weakenCheckSaturated(SMALL& toWeaken, Lit asserting, const IntMap<int>& level) {
   assert(toWeaken >= 0);
-  assert(toWeaken < getCoef(l));
-  if (isSaturated(l)) {
-    // indirect weakening
-    for (int64_t i = std::ssize(vars) - 1; i >= 0; --i) {
+  assert(toWeaken < getCoef(asserting));
+  if (isSaturated(asserting)) {  // indirect weakening
+    global.stats.NMULTWEAKENEDINDIRECT += 1;
+    for (int64_t i = std::ssize(vars) - 1; toWeaken != 0 && i >= 0; --i) {
       Var v = vars[i];
       if (coefs[v] == 0) continue;
-      Lit ll = getLit(v);
-      if (!isFalse(level, ll)) {
-        if (toWeaken < getCoef(ll)) break;
-        toWeaken -= aux::abs(coefs[v]);
-        weaken(v);
+      Lit l = getLit(v);
+      if (!isFalse(level, l)) {
+        if (toWeaken < absCoef(v)) {
+          weakenVar(toWeaken, v);
+          toWeaken = 0;
+        } else {
+          toWeaken -= aux::abs(coefs[v]);
+          weaken(v);
+        }
       }
     }
     removeZeroes();
   }
   assert(toWeaken >= 0);
-  if (toWeaken > 0) {
-    // direct weakening
-    weaken(l >= 0 ? -toWeaken : toWeaken, toVar(l));
+  if (toWeaken > 0) {  // direct weakening
+    global.stats.NMULTWEAKENEDDIRECT += 1;
+    weakenVar(toWeaken, toVar(asserting));
   }
   repairOrder();
   saturate(true, true);
@@ -1122,9 +1157,9 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div, bool sorted, c
     Var v = vars[i];
     if (!toWeaken(v) || coefs[v] == 0 || saturatedVar(v)) continue;
     SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
-    if (r <= rem) {
+    if (r > 0 && r <= rem) {
       rem -= r;
-      weaken(coefs[v] < 0 ? r : -r, v);
+      weakenVar(r, v);
     }
   }
   assert(quot == aux::ceildiv(degree, div));
@@ -1141,9 +1176,9 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluous(const LARGE& div) {
     if (coefs[v] == 0) continue;
     if (saturatedVar(v)) break;
     SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
-    if (r <= rem) {
+    if (r > 0 && r <= rem) {
       rem -= r;
-      weaken(coefs[v] < 0 ? r : -r, v);
+      weakenVar(r, v);
     }
   }
   assert(quot == aux::ceildiv(degree, div));
@@ -1159,9 +1194,9 @@ void ConstrExp<SMALL, LARGE>::weakenSuperfluousCanceling(const LARGE& div, const
     Var v = vars[i];
     if (pos[v] == INF || coefs[v] == 0 || saturatedVar(v)) continue;
     SMALL r = static_cast<SMALL>(static_cast<LARGE>(aux::abs(coefs[v])) % div);
-    if (r <= rem) {
+    if (r > 0 && r <= rem) {
       rem -= r;
-      weaken(coefs[v] < 0 ? r : -r, v);
+      weakenVar(r, v);
     }
   }
   assert(quot == aux::ceildiv(degree, div));
@@ -1392,11 +1427,9 @@ bool ConstrExp<SMALL, LARGE>::simplifyToCardinality(bool equivalencePreserving, 
   SMALL cardCoef = aux::abs(coefs[vars[cardDegree - 1]]);
   for (int i = 0; i < cardDegree - 1; ++i) {
     Var v = vars[i];
-    if (coefs[v] < 0) {
-      weaken(-cardCoef - coefs[v], v);
-    } else {
-      weaken(cardCoef - coefs[v], v);
-    }
+    assert(aux::abs(coefs[v]) >= cardCoef);
+    const SMALL m = aux::abs(coefs[v]) - cardCoef;
+    if (m != 0) weakenVar(m, v);
   }
   assert(cardCoef == getLargestCoef());
   LARGE cardSum = static_cast<LARGE>(cardDegree - 1) * cardCoef;

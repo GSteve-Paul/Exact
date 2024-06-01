@@ -234,8 +234,7 @@ std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce);
 std::ostream& operator<<(std::ostream& o, const CeSuper& ce);
 
 template <typename SMALL, typename LARGE>  // LARGE should be able to fit the sum of 2^32 SMALLs
-struct ConstrExp final : public ConstrExpSuper {
- public:
+struct ConstrExp final : ConstrExpSuper {
   LARGE degree = 0;
   LARGE rhs = 0;
   std::vector<SMALL> coefs;  // maps variables to coefficients
@@ -289,6 +288,7 @@ struct ConstrExp final : public ConstrExpSuper {
   void addRhs(const LARGE& r);
   void addLhs(const SMALL& cf, Lit l);  // TODO: Term?
   void weaken(const SMALL& m, Var v);
+  void weakenVar(const SMALL& m, Var v);
   void weaken(Var v);
   void weaken(const aux::predicate<Lit>& toWeaken);
   void weakenCheckSaturated(SMALL& toWeaken, Lit l, const IntMap<int>& level);
@@ -496,7 +496,7 @@ struct ConstrExp final : public ConstrExpSuper {
       if (div > 1) {
         for (unsigned int i = 0; i < size; ++i) {
           Lit l = lits[i] >> 1;
-          if (!isFalse(level, l) && l != asserting && cfs[i] % div != 0) {
+          if (!isFalse(level, l) && l != asserting) {
             Logger::proofWeaken(proofBuffer, l, -(cfs[i] % div));
           }
         }
@@ -534,8 +534,13 @@ struct ConstrExp final : public ConstrExpSuper {
       fixed = true;
       reason->multiply(conflCoef);
       assert(reason->getSlack(level) <= 0);
+    } else if (conflCoef == 1) {
+      fixed = true;
+      multipliedConflict = true;
+      multiply(reason->getCoef(asserting));
+      assert(reason->getSlack(level) + getSlack(level) < 0);
     }
-    if (!fixed && global.options.weakenMultiply) {
+    if (!fixed && global.options.multWeaken) {
       const SMALL reasonCoef = reason->getCoef(asserting);
       if (conflCoef >= reasonCoef) {
         const SMALL mult = aux::ceildiv(conflCoef, reasonCoef);
