@@ -71,6 +71,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+int32_t dp_subsetsum(const std::vector<int32_t>& coefs, int32_t W);
+
 enum class AssertionStatus { NONASSERTING, ASSERTING, FALSIFIED };
 
 struct ConstraintAllocator;
@@ -111,7 +113,7 @@ struct ConstrExpSuper {
                    Stats& stats);
   void strongPostProcess(Solver& solver);
 
-  ConstrExpSuper(Global& g);
+  explicit ConstrExpSuper(Global& g);
   virtual ~ConstrExpSuper() = default;
 
   virtual void copyTo(const Ce32& ce) const = 0;

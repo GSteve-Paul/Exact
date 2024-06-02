@@ -72,6 +72,33 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+constexpr int32_t size_m_subsetsum = 100000;
+int32_t m_subsetsum[size_m_subsetsum + 1];
+
+int32_t dp_subsetsum(const std::vector<int32_t>& coefs, int32_t W) {
+  assert(W > 0);
+  assert(W < size_m_subsetsum);
+  // coeffsum < max<int32_t>
+  // some heuristic to limit the computation, e.g., W*std::ssize(coefs) < 1e6
+
+  int32_t total = std::accumulate(coefs.begin(), coefs.end(), 0);
+  assert(total > W);
+  int32_t heur = total;
+  for (int32_t c : coefs) {
+    if (heur - c >= W) heur -= c;
+    if (heur == W) return W;
+  }
+
+  for (int32_t i = 0; i <= W; ++i) m_subsetsum[i] = total;
+
+  for (int32_t i = 0; i < std::ssize(coefs); ++i) {
+    for (int32_t j = 0; j <= W - coefs[i]; ++j) {
+      m_subsetsum[j] = std::min(m_subsetsum[j], m_subsetsum[j + coefs[i]] - coefs[i]);
+    }
+  }
+  return m_subsetsum[W];
+}
+
 ConstrExpSuper::ConstrExpSuper(Global& g) : global(g), orig(Origin::UNKNOWN) {}
 
 void ConstrExpSuper::resetBuffer(ID proofID) {
