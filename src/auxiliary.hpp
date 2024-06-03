@@ -206,12 +206,6 @@ template <>
 inline int64_t sto(const std::string& s) {
   return std::stoll(s);
 }
-#if UNIXLIKE
-template <>
-inline long long sto(const std::string& s) {
-  return std::stoll(s);
-}
-#endif
 template <>
 inline int32_t sto(const std::string& s) {
   return std::stoi(s);
