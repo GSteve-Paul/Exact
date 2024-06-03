@@ -90,7 +90,7 @@ std::byte* xrealloc(std::byte* ptr, size_t oldsize, size_t newsize) {
   // copy to a larger memory block
   // not the most efficient, but no better option right now:
   // https://stackoverflow.com/questions/64884745/is-there-a-linux-equivalent-of-aligned-realloc
-  std::byte* mem = (std::byte*)std::aligned_alloc(maxAlign, newsize);
+  std::byte* mem = static_cast<std::byte*>(aux::align_alloc(maxAlign, newsize));
   if (mem == nullptr) throw OutOfMemoryException();
   std::memcpy(mem, ptr, oldsize);
   std::free(ptr);

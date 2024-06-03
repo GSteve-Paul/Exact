@@ -137,4 +137,13 @@ uint64_t shift_hash(uint64_t x) {
   return x ^ (x >> 31);
 }
 
+void* align_alloc(size_t alignment, size_t size) {
+#if UNIXLIKE
+  return std::aligned_alloc(alignment, size);
+#else
+  // MSVC alternative
+  return _aligned_malloc(size, alignment);
+#endif
+}
+
 }  // namespace xct::aux

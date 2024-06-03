@@ -64,6 +64,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define EXPANDED(x) STR(x)
 #define STR(x) #x
 
+#include <malloc.h>
 #include <algorithm>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
@@ -83,7 +84,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "external/ankerl/unordered_dense.h"
+// #include "external/ankerl/unordered_dense.h"
 #include "external/plf/plf_reorderase.h"
 
 #if UNIXLIKE
@@ -591,6 +592,8 @@ auto comprehension(CONTAINER&& container, LAM_MAP&& map, LAM_FILTER&& filter) {
 struct IntVecHash {
   size_t operator()(const std::vector<int>& t) const { return xct::aux::hashForList<int>(t); }
 };
+
+void* align_alloc(size_t alignment, size_t size);
 
 }  // namespace aux
 
