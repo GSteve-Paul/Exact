@@ -84,7 +84,7 @@ void ConstraintAllocator::capacity(int64_t min_cap) {
 
 Constr& ConstraintAllocator::operator[](CRef cr) const { return (Constr&)*(memory + maxAlign * cr.ofs); }
 
-void ConstraintAllocator::cleanup() { std::free(memory); }
+void ConstraintAllocator::cleanup() { aux::align_free(memory); }
 
 std::byte* xrealloc(std::byte* ptr, size_t oldsize, size_t newsize) {
   // copy to a larger memory block
@@ -93,7 +93,7 @@ std::byte* xrealloc(std::byte* ptr, size_t oldsize, size_t newsize) {
   std::byte* mem = static_cast<std::byte*>(aux::align_alloc(maxAlign, newsize));
   if (mem == nullptr) throw OutOfMemoryException();
   std::memcpy(mem, ptr, oldsize);
-  std::free(ptr);
+  aux::align_free(ptr);
   return mem;
 }
 

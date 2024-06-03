@@ -146,4 +146,13 @@ void* align_alloc(size_t alignment, size_t size) {
 #endif
 }
 
+void align_free(void* ptr) {
+#if UNIXLIKE
+  std::free(ptr);
+#else
+  // MSVC alternative
+  _aligned_free(ptr);
+#endif
+}
+
 }  // namespace xct::aux
