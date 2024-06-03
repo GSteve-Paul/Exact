@@ -72,31 +72,24 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-constexpr int32_t size_m_subsetsum = 100000;
-int32_t m_subsetsum[size_m_subsetsum + 1];
+constexpr int32_t size_sbstsm = 1e6;
+int32_t m_sbstsm[size_sbstsm];
 
-int32_t dp_subsetsum(const std::vector<int32_t>& coefs, int32_t W) {
-  assert(W > 0);
-  assert(W < size_m_subsetsum);
-  // coeffsum < max<int32_t>
-  // some heuristic to limit the computation, e.g., W*std::ssize(coefs) < 1e6
-
-  int32_t total = std::accumulate(coefs.begin(), coefs.end(), 0);
-  assert(total > W);
-  int32_t heur = total;
-  for (int32_t c : coefs) {
-    if (heur - c >= W) heur -= c;
-    if (heur == W) return W;
-  }
-
-  for (int32_t i = 0; i <= W; ++i) m_subsetsum[i] = total;
-
+int32_t dp_subsetsum(const std::vector<int32_t>& coefs, int32_t degree, int32_t total) {
+  assert(degree > 0);
+  assert(!coefs.empty());
+  assert(total > degree);
+  assert(total == std::accumulate(coefs.begin(), coefs.end(), 0));
+  const int32_t w = total - degree;
+  for (int32_t i = 0; i <= w; ++i) m_sbstsm[i] = total;
   for (int32_t i = 0; i < std::ssize(coefs); ++i) {
-    for (int32_t j = 0; j <= W - coefs[i]; ++j) {
-      m_subsetsum[j] = std::min(m_subsetsum[j], m_subsetsum[j + coefs[i]] - coefs[i]);
+    for (int32_t j = 0; j <= w - coefs[i]; ++j) {
+      m_sbstsm[j] = std::min(m_sbstsm[j], m_sbstsm[j + coefs[i]] - coefs[i]);
     }
   }
-  return m_subsetsum[W];
+
+  assert(m_sbstsm[0] >= degree);
+  return m_sbstsm[0];
 }
 
 ConstrExpSuper::ConstrExpSuper(Global& g) : global(g), orig(Origin::UNKNOWN) {}
@@ -173,6 +166,7 @@ void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int
   if (simplifyToCardinality(true, getCardinalityDegree())) {
     ++stats.NCARDDETECT;
   }
+  liftDegree();
 }
 
 void ConstrExpSuper::strongPostProcess(Solver& solver) {
@@ -1602,6 +1596,52 @@ void ConstrExp<SMALL, LARGE>::simplifyToUnit(const IntMap<int>& level, const std
   assert(degree > 0);
   divideRoundUp(std::max<LARGE>(aux::abs(coefs[v_unit]), degree));
   assert(isUnitConstraint());
+}
+
+template <typename SMALL, typename LARGE>
+void ConstrExp<SMALL, LARGE>::liftDegree() {
+  if (!global.options.proofAssumps) return;
+  assert(isSaturated());
+  assert(isSortedInDecreasingCoefOrder());
+  assert(hasNoZeroes());
+
+  assert(degree >= 0);
+  assert(!vars.empty());
+
+  if (degree > std::numeric_limits<int32_t>::max() || coefs[vars[0]] == -1 || coefs[vars[0]] == 0 ||
+      aux::abs(coefs[vars[0]]) > std::numeric_limits<int32_t>::max())
+    return;
+
+  int64_t total = static_cast<int64_t>(absCoeffSum());  // all coefficients fit in 32 bits
+  if (total <= degree || total > std::numeric_limits<int32_t>::max() || total - degree - 1 >= size_sbstsm ||
+      std::ssize(vars) * (total - degree) > global.options.subsetSum.get()) {
+    return;
+  }
+
+  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  int32_t heur1 = total;
+  int32_t heur2 = 0;
+  std::vector<int32_t> cfs(vars.size());
+  for (int32_t i = 0; i < std::ssize(vars); ++i) {
+    cfs[i] = static_cast<int32_t>(aux::abs(coefs[vars[i]]));
+    if (heur1 - cfs[i] >= degree) heur1 -= cfs[i];
+    if (heur2 + cfs[i] <= degree) heur2 += cfs[i];
+    if (heur1 == degree || heur2 == degree) {
+      global.stats.SUBSETSUMTIME +=
+          std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count();
+      return;
+    }
+  }
+
+  int32_t newdegree = dp_subsetsum(cfs, static_cast<int32_t>(degree), static_cast<int32_t>(total));
+  if (newdegree > degree) {
+    rhs += newdegree - degree;
+    degree = newdegree;
+    global.stats.NSUBSETSUM += 1;
+    global.logger.logAssumption(*this, global.options.proofAssumps.operator bool());
+  }
+  global.stats.SUBSETSUMTIME +=
+      std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - start).count();
 }
 
 template <typename SMALL, typename LARGE>

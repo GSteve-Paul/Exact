@@ -71,7 +71,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-int32_t dp_subsetsum(const std::vector<int32_t>& coefs, int32_t W);
+int32_t dp_subsetsum(const std::vector<int32_t>& coefs, int32_t degree, int32_t total);
 
 enum class AssertionStatus { NONASSERTING, ASSERTING, FALSIFIED };
 
@@ -187,6 +187,7 @@ struct ConstrExpSuper {
   virtual void simplifyToClause() = 0;
   virtual bool isClause() const = 0;
   virtual void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit) = 0;
+  virtual void liftDegree() = 0;
 
   virtual bool isSortedInDecreasingCoefOrder() const = 0;
   virtual void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) = 0;
@@ -415,6 +416,7 @@ struct ConstrExp final : ConstrExpSuper {
   void simplifyToClause();
   bool isClause() const;
   void simplifyToUnit(const IntMap<int>& level, const std::vector<int>& pos, Var v_unit);
+  void liftDegree();
 
   bool isSortedInDecreasingCoefOrder() const;
   void sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker);

@@ -97,7 +97,7 @@ class Logger {
 
   explicit Logger(const Stats&);
 
-  void activate(const std::string& proof_log_name, const bool zip);
+  void activate(const std::string& proof_log_name, bool zip);
   bool isActive() const;
   void flush();
   void logComment([[maybe_unused]] const std::string& comment);
@@ -105,6 +105,7 @@ class Logger {
   ID logInput(const CeSuper& ce);
   void logObjective(const CeSuper& ce);
   ID logAssumption(const CeSuper& ce, bool allowed);
+  ID logAssumption(ConstrExpSuper& ce, bool allowed);
   ID logProofLine(const CeSuper& ce);
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
   ID logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position);
@@ -150,6 +151,14 @@ class Logger {
   static std::ostream& proofWeakenFalseUnit(std::ostream& o, ID id, const T& m) {
     assert(m < 0);
     return proofMult(o << id << " ", -m) << "+ ";
+  }
+  template <typename T>
+  static std::ostream& proofIncreaseDegree(std::ostream& o, Lit l, const T& m) {
+    if (m == 0) return o;
+    if ((m < 0) != (l < 0)) {
+      o << "~";
+    }
+    return proofMult(o << "x" << toVar(l) << " ", aux::abs(m)) << "+ ";
   }
 };
 

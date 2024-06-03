@@ -25,26 +25,12 @@ using namespace xct;
 
 TEST_SUITE_BEGIN("IntProg inference tests");
 
-TEST_CASE("subset sum") { CHECK(dp_subsetsum({11, 22, 33, 44, 55}, 100) == 99); }
-
-/**
-
-decdef Item as {"i" 1..4}.
-
-declare has: Item -> bool.
-
-declare value: Item -> {0..12}.
-define value as {
-  ("i1",2),
-  ("i2",4),
-  ("i3",6)
-} default 0.
-
-decdef cutoff as 11.
-
-cutoff() <= sum[value(x) for x where Item(x) and has(x)].
-
-@minimize sum[value(x) for x where Item(x) and has(x)].
-*/
+TEST_CASE("subset sum") {
+  CHECK(dp_subsetsum({23, 34, 45, 56, 67}, 88, 225) == 90);
+  CHECK(dp_subsetsum({3, 34, 4, 12, 5, 2}, 9, 60) == 9);
+  CHECK(dp_subsetsum({2, 34, 4, 12, 5, 12}, 22, 69) == 23);
+  CHECK(dp_subsetsum({1, 2, 3, 4, 5}, 14, 15) == 14);
+  CHECK(dp_subsetsum({1, 2, 3, 4, 5}, 1, 15) == 1);
+}
 
 TEST_SUITE_END();

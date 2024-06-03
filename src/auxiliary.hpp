@@ -174,8 +174,7 @@ extern std::ostream& cout;
 
 template <typename T>
 T sto(const std::string&) {
-  // static_assert(false);
-  assert(false);
+  static_assert(false);
   return 0;
 }
 template <>
@@ -196,6 +195,10 @@ inline std::string sto(const std::string& s) {
 }
 template <>
 inline int64_t sto(const std::string& s) {
+  return std::stoll(s);
+}
+template <>
+inline long long sto(const std::string& s) {
   return std::stoll(s);
 }
 template <>

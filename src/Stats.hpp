@@ -242,6 +242,7 @@ struct Stats {
   Stat NMULTWEAKENEDCONFLICT{0, "number of multiply-weakens on conflict"};
   Stat NMULTWEAKENEDDIRECT{0, "number of direct multiply-weakens"};
   Stat NMULTWEAKENEDINDIRECT{0, "number of indirect multiply-weakens"};
+  Stat NSUBSETSUM{0, "number of subset sum minimization improvements"};
   Stat NORIGVARS{0, "original variables"};
   Stat NAUXVARS{0, "auxiliary variables"};
 
@@ -304,6 +305,7 @@ struct Stats {
   Stat GCTIME{0, "garbage collection time"};
   Stat LEARNTIME{0, "constraint learning time"};
   Stat HEURTIME{0, "time spent in activity heuristic"};
+  Stat SUBSETSUMTIME{0, "time spent in subset sum optimization"};
 
   Stat EXTERNLENGTHAVG{0, "input length average"};
   Stat EXTERNDEGREEAVG{0, "input degree average"};
@@ -360,6 +362,8 @@ struct Stats {
       &HEURTIME,
       &ATMOSTONETIME,
       &ATMOSTONEDETTIME,
+      &SUBSETSUMTIME,
+      &NSUBSETSUM,
 #if WITHSOPLEX
       &LPSOLVETIME,
       &LPTOTALTIME,

@@ -142,12 +142,14 @@ void Logger::logObjective(const CeSuper& ce) {
   formula_obj << ";\n";
 }
 
-ID Logger::logAssumption(const CeSuper& ce, [[maybe_unused]] bool allowed) {
+ID Logger::logAssumption(const CeSuper& ce, bool allowed) { return logAssumption(*ce, allowed); }
+
+ID Logger::logAssumption(ConstrExpSuper& ce, [[maybe_unused]] bool allowed) {
   assert(allowed);
   if (!active) return ++last_proofID;
-  proofStream() << "a " << *ce << "\n";
+  proofStream() << "a " << ce << "\n";
   ++last_proofID;
-  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  ce.resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
 }
 
