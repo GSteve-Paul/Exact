@@ -46,14 +46,14 @@ ext_modules = [
             "src/used_licenses/COPYING.cpp",
             "src/Exact.cpp"
         ],
-        extra_compile_args=["-O3"],
+        extra_compile_args=["-O3","-std=c++20","-DUNIXLIKE=1"],
         # Example: passing in the version to the compiled code
         # define_macros=[("VERSION_INFO", __version__)],
     ),
 ]
 
 # Optional multithreaded build
-ParallelCompile("NPY_NUM_BUILD_JOBS", default=6, needs_recompile=naive_recompile).install()
+ParallelCompile("NPY_NUM_BUILD_JOBS", default=8, needs_recompile=naive_recompile).install()
 
 setup(
     name="exact",
