@@ -137,10 +137,7 @@ class IntProg {
   int64_t nConstrs = 0;
 
   IntSet assumptions;
-  struct intvechash {
-    size_t operator()(const std::vector<int32_t>& t) const { return xct::aux::hashForList<int32_t>(t); }
-  };
-  unordered_map<VarVec, Var, intvechash> multAuxs;
+  unordered_map<VarVec, Var, aux::IntVecHash> multAuxs;
 
   // only for printing purposes:
   const bool keepInput;
