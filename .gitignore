@@ -11,15 +11,8 @@
 /build*
 
 # python package directories
-/python/build*
-/python/Exact.egg*
-/python/dist*
-/python/exact/__pycache__*
-/python/exact/*.so
-/python/CMake*
-/python/cmake*
-/python/libExact.so
-/python/Makefile
+exact.egg*
+/venv/*
 
 # superfluous test files
 /test/instances/mps_troublesome*
