@@ -226,7 +226,7 @@ if(unixlike)
     target_compile_definitions(Exact PUBLIC UNIXLIKE=1)
 endif()
 
-if(Boost_MINOR_VERSION LESS 1.81)
+if(Boost_MINOR_VERSION LESS 81)
     target_compile_definitions(Exact PUBLIC ANKERLMAPS=1)
 endif()
 
