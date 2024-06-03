@@ -69,8 +69,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
-#include <boost/unordered/unordered_flat_map.hpp>
-#include <boost/unordered/unordered_flat_set.hpp>
 #include <cassert>
 #include <chrono>
 #include <cstdlib>
@@ -84,8 +82,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-// #include "external/ankerl/unordered_dense.h"
 #include "external/plf/plf_reorderase.h"
+#if ANKERLMAPS
+#include "external/ankerl/unordered_dense.h"
+#else
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
+#endif
 
 #if UNIXLIKE
 namespace xct {
@@ -110,23 +113,28 @@ static_assert(alignof(int128) <= maxAlign);
 static_assert(alignof(int256) <= maxAlign);
 static_assert(alignof(bigint) <= maxAlign);
 
+#if ANKERLMAPS
 template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
-// using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;
-// using unordered_map = std::unordered_map<K, V, H, KE>;
+using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;
+template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+using unordered_set = std::unordered_set<K, H, KE>;
+#else
+template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
 using unordered_map = boost::unordered::unordered_flat_map<K, V, H, KE>;
+template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+using unordered_set = boost::unordered::unordered_flat_set<K, H, KE>;
+#endif
+// template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+// using unordered_map = std::unordered_map<K, V, H, KE>;
+// template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+// using unordered_set = ankerl::unordered_dense::set<K, H, KE>;
 
 template <typename K, typename V, typename Comp = std::less<K>>
-// using ordered_map = std::map<K,V,Comp>;
 using ordered_map = boost::container::flat_map<K, V, Comp>;
-
-template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
-// using unordered_set = ankerl::unordered_dense::set<K, H, KE>;
-// using unordered_set = std::unordered_set<K, H, KE>;
-using unordered_set = boost::unordered::unordered_flat_set<K, H, KE>;
-
+// using ordered_map = std::set<K,Comp>;
 template <typename K, typename Comp = std::less<K>>
-// using ordered_set = std::set<K,Comp>;
 using ordered_set = boost::container::flat_set<K, Comp>;
+// using ordered_set = std::set<K,Comp>;
 
 enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, TIMEOUT, INPROCESSED };

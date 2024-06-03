@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(Exact)
 
 set(CMAKE_CXX_STANDARD 20)
-set(LINK_WHAT_YOU_USE TRUE)
+find_package(Boost 1.65.0 REQUIRED) # 1.81 for the fastest hash maps
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
 
@@ -54,7 +54,7 @@ set(coinutils "OFF"
 set(zlib "OFF"
     CACHE STRING "Use ZLIB to compress proof certificates.")
 set(mimalloc "OFF"
-        CACHE STRING "Link with faster memory allocator mimalloc")
+    CACHE STRING "Link with faster memory allocator mimalloc")
 
 set(testruns_timeout 1 CACHE STRING "Timeout of scenario test runs.")
 
@@ -226,6 +226,10 @@ if(unixlike)
     target_compile_definitions(Exact PUBLIC UNIXLIKE=1)
 endif()
 
+if(Boost_MINOR_VERSION LESS 1.81)
+    target_compile_definitions(Exact PUBLIC ANKERLMAPS=1)
+endif()
+
 if(soplex)
     target_include_directories(Exact SYSTEM PUBLIC ${soplex_src} ${soplex_build})
     if(build_static)
@@ -252,7 +256,6 @@ if(zlib)
     target_compile_definitions(Exact PUBLIC WITHZLIB=1)
 endif()
 
-find_package(Boost 1.81.0 REQUIRED)
 target_include_directories(Exact PUBLIC ${Boost_INCLUDE_DIRS})
 
 FIND_PROGRAM(CLANG_FORMAT "clang-format")
