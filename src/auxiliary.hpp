@@ -183,7 +183,8 @@ extern std::ostream& cout;
 
 template <typename T>
 T sto(const std::string&) {
-  static_assert(false);
+  // static_assert(false);
+  assert(false);
   return 0;
 }
 template <>
