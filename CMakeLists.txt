@@ -6,7 +6,7 @@ set(LINK_WHAT_YOU_USE TRUE)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
 
-set(CMAKE_CXX_FLAGS_TESTRUNS "-O3")
+set(CMAKE_CXX_FLAGS_TESTRUNS "${CMAKE_CXX_FLAGS_TESTRUNS} -O3")
 
 if(NOT (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
         CMAKE_BUILD_TYPE STREQUAL "Release" OR
@@ -99,8 +99,8 @@ execute_process(
 add_definitions("-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH}")
 add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
 
 set(test_files
     src/tests/algorithms.cpp
@@ -251,6 +251,8 @@ endif()
 
 find_package(Boost 1.81.0 REQUIRED)
 target_include_directories(Exact PUBLIC ${Boost_INCLUDE_DIRS})
+
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
 FIND_PROGRAM(CLANG_FORMAT "clang-format")
 if(CLANG_FORMAT)
