@@ -99,8 +99,11 @@ execute_process(
 add_definitions("-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH}")
 add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
+if(unixlike)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -W3")
+endif()
 
 set(test_files
     src/tests/algorithms.cpp
@@ -251,8 +254,6 @@ endif()
 
 find_package(Boost 1.81.0 REQUIRED)
 target_include_directories(Exact PUBLIC ${Boost_INCLUDE_DIRS})
-
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
 FIND_PROGRAM(CLANG_FORMAT "clang-format")
 if(CLANG_FORMAT)
