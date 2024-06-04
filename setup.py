@@ -2,22 +2,15 @@
 # For Windows, this is straightforward. For Linux, follow the ManyLinux approach on https://github.com/pypa/manylinux.
 
 # Commands that worked previously:
-## sudo docker run -it --entrypoint bash quay.io/pypa/manylinux_2_28_x86_64
-# Alma's Boost package does not work, so we install our own (following https://www.baeldung.com/linux/boost-install-on-ubuntu)
-## dnf install wget
-## wget -O boost_1_81_0.tar.gz https://sourceforge.net/projects/boost/files/boost/1.81.0/boost_1_81_0.tar.gz/download
-## mkdir boost-ver && cd boost-ver
-## tar -xzf ../boost_*.tar.gz
-## cd boost_*/
-## ./bootstrap.sh
-## ./b2 install --prefix=/usr/local
-## /opt/python/cp310-cp310/bin/python -m pip install twine
-## cd /
+# (Alma's Boost package does not work, so we install our own (following https://www.baeldung.com/linux/boost-install-on-ubuntu))
+# In Exact's root:
+## docker build -f docker_images/pypi_package -t manylinux_with_boost
+## docker run -it --entrypoint bash manylinux_with_boost
 ## git clone https://gitlab.com/JoD/exact
 ## cd exact
 ## /opt/python/cp310-cp310/bin/python -m build
-## auditwheel repair dist/Exact-2.0.0-cp310-cp310-linux_x86_64.whl
-## /opt/python/cp310-cp310/bin/python -m twine upload --repository pypi wheelhouse/Exact-2.0.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl -p <API KEY>
+## auditwheel repair dist/Exact-2.0.0-cp312-cp312-linux_x86_64.whl
+## /opt/python/cp312-cp312/bin/python -m twine upload --repository pypi wheelhouse/Exact-2.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl -p <API KEY>
 
 from pybind11.setup_helpers import Pybind11Extension
 from setuptools import setup
