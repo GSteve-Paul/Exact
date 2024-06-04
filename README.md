@@ -26,28 +26,22 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [
 
 ## Python interface
 
-### PyPi package
+### PyPI package
 
-The easiest way is to use an **x86_64** machine with **Linux** operating system. In that case, install this precompiled [PyPi package](https://pypi.org/project/exact), e.g., by running `pip3 install exact`.
+The easiest way is to use an **x86_64** machine with **Windows** or **Ubuntu 22.04** (or above). In that case, install this precompiled [PyPi package](https://pypi.org/project/exact), e.g., by running `pip install exact`.
 
 ### Compile your own Python package
 
 To use the Exact Python interface with optimal binaries for your machine (and the option to include SoPlex in the binary), compile as a shared library and install it with your package manager (e.g., `pip`).
 
-On Linux, `pip3 install .` in Exact's root directory should do the trick.
-On other systems, something similar should work.
-Make sure to have the Boost libraries installed (see dependencies).
+On Linux systems, `pip install .` in Exact's root directory should do the trick. On Windows, uncomment the build options below `# FOR WINDOWS` and comment out those for `# FOR LINUX`. Make sure to have the Boost libraries installed (see dependencies).
 
 ### Documentation
 
 The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/main/src/Exact.hpp) contains the C++ methods exposed to Python via [Pybind11](https://pybind11.readthedocs.io) as well as their description. This is probably the place to start to learn about Exact's Python usage.
 
-Next, [`python/examples`](https://gitlab.com/JoD/exact/-/blob/main/python/examples) contains instructive, fully commented examples.
-- [`python/examples/knapsack_classic.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_classic.py) showcases how to solve an integer classic knapsack problem with Exact's Python interface.
-- [`python/examples/knapsack_implied.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_implied.py) elaborates on the first and showcases how to find the variable assignments implied by optimality, i.e., the variable assignments shared by all optimal solutions. A combination of the mechanics of assumption and solution invalidation allow to reuse the existing solver state (containing learned constraints) for optimal performance.
-- [`python/examples/knapsack_propagate.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_propagate.py) elaborates on the second and showcases the builtin propagate method, which returns implied variable bounds under given assumptions.
-- [`python/examples/ramsey.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/knapsack_propagate.py) tries to compute the infamous [Ramsey numbers](https://en.wikipedia.org/wiki/Ramsey%27s_theorem).
-- [`python/examples/graph_coloring/graph_coloring.py`](https://gitlab.com/JoD/exact/-/blob/main/python/examples/graph_coloring/graph_coloring.py) tries to find the chromatic number of a graph. If you can get Exact to prove the provided graph cannot be colored with 6 colors, contact @JoD ;)
+Next, [`python_examples`](https://gitlab.com/JoD/exact/-/blob/main/python_examples) contains instructive examples.
+Of particular interest is the [`knapsack tutorial`](https://gitlab.com/JoD/exact/-/blob/main/python_examples/knapsack_tutorial), which is fully commented, starts simple, but ends with some of Exact's advanced features.
 
 
 ## Command line usage
@@ -85,29 +79,22 @@ In the root directory of Exact:
     cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
     make
+	
+Replace `make` by `cmake --build .` on Windows. For more builds, similar build directories can be created.
 
-For a debug build:
-
-    cd build_debug
-    cmake .. -DCMAKE_BUILD_TYPE=Debug
-    make
-
-For more builds, similar build directories can be created.
-
-For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make install`.
-
+For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make install` (on Linux).
 
 ## Dependencies
 
 - A recent C++20 compiler (GCC, Clang or MSVC should do)
-- [Boost](https://www.boost.org) library, minimal version 1.81.
-  On a Debian/Ubuntu system, install with `sudo apt install libboost-dev`.
+- [Boost](https://www.boost.org) library, minimal version 1.65.
+  On a Debian/Ubuntu system, install with `sudo apt install libboost-dev`. On Windows, follow the instructions on [boost.org](https://www.boost.org/doc/libs/1_85_0/more/getting_started/windows.html)
 - Optionally: [CoinUtils](https://github.com/coin-or/CoinUtils) library to parse MPS and LP file formats.
   Use CMake option `-Dcoinutils=ON` after [installing the library](https://github.com/coin-or/CoinUtils#binaries).
 - Optionally: [SoPlex](https://soplex.zib.de) LP solver (see below).
 
 
-## SoPlex
+## SoPlex (Linux)
 
 Exact supports an integration with the LP solver [SoPlex](https://soplex.zib.de) to improve its search routine.
 For this, checkout SoPlex from its [git repository](https://github.com/scipopt/soplex) as a submodule, compile it in some separate directory, and configure the right CMake options when compiling Exact.

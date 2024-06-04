@@ -1,6 +1,7 @@
+# To upload a package to PyPI, follow the instructions on https://packaging.python.org/en/latest/tutorials/packaging-projects
+
 from pybind11.setup_helpers import Pybind11Extension
 from setuptools import setup
-
 
 __version__ = "2.0.0"
 
