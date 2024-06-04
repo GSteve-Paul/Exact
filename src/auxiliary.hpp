@@ -130,14 +130,14 @@ using unordered_set = boost::unordered::unordered_flat_set<K, H, KE>;
 
 template <typename K, typename V, typename Comp = std::less<K>>
 using ordered_map = boost::container::flat_map<K, V, Comp>;
-// using ordered_map = std::set<K,Comp>;
+// using ordered_map = std::unordered_map<K, V, Comp>;
 template <typename K, typename Comp = std::less<K>>
 using ordered_set = boost::container::flat_set<K, Comp>;
-// using ordered_set = std::set<K,Comp>;
+// using ordered_set = std::set<K, Comp>;
 
 enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, TIMEOUT, INPROCESSED };
-std::ostream& operator<<(std::ostream& o, enum SolveState state);
+std::ostream& operator<<(std::ostream& o, SolveState state);
 
 namespace xct {
 
