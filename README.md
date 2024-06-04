@@ -23,7 +23,7 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 
 ### PyPI package
 
-The easiest way is to use Exact's Python interfaces is on an **x86_64** machine with **Windows** or **Ubuntu 22.04** (or above). In that case, install this precompiled [PyPi package](https://pypi.org/project/exact), e.g., by running `pip install exact`.
+The easiest way is to use Exact's Python interfaces is on an **x86_64** machine with **Windows** or **Linux**. In that case, install this precompiled [PyPi package](https://pypi.org/project/exact), e.g., by running `pip install exact`.
 
 ### Compile your own Python package
 

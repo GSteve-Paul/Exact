@@ -1,6 +1,11 @@
 # To upload a package to PyPI, follow the instructions on https://packaging.python.org/en/latest/tutorials/packaging-projects
-# For Windows, this is straightforward. For Linux, follow the ManyLinux approach on https://github.com/pypa/manylinux.
+# For Windows, this is straightforward:
+# adjust pyproject.toml to use Windows compile options.
+# In Exact's root:
+## py -m build
+## py -m twine upload --repository pypi dist/Exact-2.0.0-cp312-cp312-win_amd64.whl -p <API TOKEN>
 
+# For Linux, follow the ManyLinux approach on https://github.com/pypa/manylinux.
 # Commands that worked previously:
 ## sudo docker run -it --entrypoint bash quay.io/pypa/manylinux_2_28_x86_64
 # Alma's Boost package does not work, so we install our own (following https://www.baeldung.com/linux/boost-install-on-ubuntu)
@@ -17,7 +22,7 @@
 ## cd exact
 ## /opt/python/cp310-cp310/bin/python -m build
 ## auditwheel repair /output/mylibrary*whl -w /output
-## /opt/python/cp310-cp310/bin/python -m twine upload --repository testpypi dist/wheelhouse/exact-2.0.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl -p <API KEY>
+## /opt/python/cp310-cp310/bin/python -m twine upload --repository testpypi dist/wheelhouse/exact-2.0.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl -p <API TOKEN>
 
 from pybind11.setup_helpers import Pybind11Extension
 from setuptools import setup
@@ -56,12 +61,12 @@ ext_modules = [
             "src/Exact.cpp"
         ],
         # FOR WINDOWS
-        # include_dirs=['C:\\Program Files\\boost\\boost_1_85_0'],
-        # extra_compile_args=["/O2","/std:c++20"],
-        # define_macros=[("UNIXLIKE",0),("ANKERLMAPS",1)]
+        include_dirs=['C:\\Program Files\\boost\\boost_1_85_0'],
+        extra_compile_args=["/O2","/std:c++20"],
+        define_macros=[("UNIXLIKE",0),("ANKERLMAPS",1)]
         # FOR LINUX / OSX
-        extra_compile_args=["-O3","-std=c++20"],
-        define_macros=[("UNIXLIKE",1),("ANKERLMAPS",1)]
+        # extra_compile_args=["-O3","-std=c++20"],
+        # define_macros=[("UNIXLIKE",1),("ANKERLMAPS",1)]
     ),
 ]
 
