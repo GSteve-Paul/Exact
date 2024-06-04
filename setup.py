@@ -16,8 +16,8 @@
 ## git clone https://gitlab.com/JoD/exact
 ## cd exact
 ## /opt/python/cp310-cp310/bin/python -m build
-## auditwheel repair /output/mylibrary*whl -w /output
-## /opt/python/cp310-cp310/bin/python -m twine upload --repository testpypi dist/wheelhouse/exact-2.0.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl -p <API KEY>
+## auditwheel repair dist/Exact-2.0.0-cp310-cp310-linux_x86_64.whl
+## /opt/python/cp310-cp310/bin/python -m twine upload --repository pypi wheelhouse/Exact-2.0.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl -p <API KEY>
 
 from pybind11.setup_helpers import Pybind11Extension
 from setuptools import setup
