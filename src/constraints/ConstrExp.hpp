@@ -468,13 +468,13 @@ struct ConstrExp final : ConstrExpSuper {
       }
       DG maxVal = std::max<DG>(cfs[0], std::max<DG>(degr, aux::abs(_rhs)) / INF);
       // largest coef in front
-      if (maxVal > 0 && (int)aux::msb(maxVal) >= bitOverflow) {
+      if (maxVal > 0 && aux::msb(maxVal) >= bitOverflow) {
         div = aux::ceildiv<DG>(maxVal, aux::powtwo<DG>(bitReduce) - 1);
       }
     }
     if (div == 1) {
       for (unsigned int i = 0; i < size; ++i) {
-        assert(bitOverflow == 0 || (int)aux::msb(aux::ceildiv<DG>(cfs[i], div)) < bitOverflow);
+        assert(bitOverflow == 0 || aux::msb(aux::ceildiv<DG>(cfs[i], div)) < bitOverflow);
         addLhs(static_cast<SMALL>(cfs[i]), lits[i] >> 1);
       }
       addRhs(static_cast<LARGE>(degr));
@@ -488,7 +488,7 @@ struct ConstrExp final : ConstrExpSuper {
           addLhs(static_cast<SMALL>(cf / div), l);  // partial weakening
           weakenedDegree -= cf % div;
         } else {
-          assert((int)aux::msb(aux::ceildiv<DG>(cf, div)) < bitOverflow);
+          assert(aux::msb(aux::ceildiv<DG>(cf, div)) < bitOverflow);
           addLhs(static_cast<SMALL>(aux::ceildiv<DG>(cf, div)), l);
         }
       }

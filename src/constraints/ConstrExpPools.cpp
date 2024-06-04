@@ -114,10 +114,10 @@ void ConstrExpPool<SMALL, LARGE>::resize(size_t newn) {
 
 template <typename SMALL, typename LARGE>
 CePtr<SMALL, LARGE> ConstrExpPool<SMALL, LARGE>::take() {
-  for (int i = ces.size() - 1; i >= 0; --i) {
+  for (int64_t i = std::ssize(ces) - 1; i >= 0; --i) {
     if (ces[i].use_count() == 1) {
       ces[i]->reset(false);
-      if (i == (int)ces.size() - 1) return ces[i];
+      if (i == std::ssize(ces) - 1) return ces[i];
       std::swap(ces[i], ces[i + 1]);  // slowly move free CePtr to the back
       return ces[i + 1];
     }

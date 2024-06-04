@@ -112,7 +112,7 @@ void IntSet::add(int key) {
   if (index.reserved() <= (unsigned int)2 * std::abs(key)) resize(std::abs(key));
   if (index[key] != _unused_()) return;
   assert(!aux::contains(keys, key));
-  index[key] = keys.size();
+  index[key] = static_cast<int>(keys.size());
   keys.push_back(key);
 }
 

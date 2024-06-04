@@ -170,8 +170,8 @@ class Solver {
   const Heuristic& getHeuristic() const { return heur; }
   void fixPhase(const std::vector<std::pair<Var, Lit>>& vls, bool bump = false);
 
-  int decisionLevel() const { return trail_lim.size(); }
-  int assumptionLevel() const { return assumptions_lim.size() - 1; }
+  int decisionLevel() const { return static_cast<int32_t>(trail_lim.size()); }
+  int assumptionLevel() const { return static_cast<int32_t>(assumptions_lim.size()) - 1; }
 
   // @return: formula line id, processed id, needed for optimization proof logging
   std::pair<ID, ID> addConstraint(const CeSuper& c);

@@ -149,7 +149,7 @@ void Clause::initializeWatches(CRef cr, Solver& solver) {
   }
 
   unsigned int watch = 0;
-  for (unsigned int i = 0; i < size() && watch <= 1; ++i) {
+  for (uint32_t i = 0; i < size() && watch <= 1; ++i) {
     if (const Lit l = data[i]; !isFalse(level, l)) {
       data[i] = data[watch];
       data[watch++] = l;
@@ -233,7 +233,7 @@ unsigned int Clause::subsumeWith(CeSuper& confl, const Lit l, Solver& solver, In
 CeSuper Clause::toExpanded(ConstrExpPools& cePools) const {
   Ce32 result = cePools.take32();
   result->addRhs(1);
-  for (size_t i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     result->addLhs(1, data[i]);
   }
   result->orig = getOrigin();
@@ -242,7 +242,7 @@ CeSuper Clause::toExpanded(ConstrExpPools& cePools) const {
 }
 
 bool Clause::isSatisfiedAtRoot(const IntMap<int>& level) const {
-  for (unsigned int i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     if (isUnit(level, data[i])) return true;
   }
   return false;
@@ -251,7 +251,7 @@ bool Clause::isSatisfiedAtRoot(const IntMap<int>& level) const {
 bool Clause::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                              IntSetPool& isp) const {
   const bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (unsigned int i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     if (const Lit l = data[i]; isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) {
       return true;
     }
@@ -294,7 +294,7 @@ void Cardinality::initializeWatches(CRef cr, Solver& solver) {
 
   if (degr >= size()) {
     assert(solver.decisionLevel() == 0);
-    for (unsigned int i = 0; i < size(); ++i) {
+    for (uint32_t i = 0; i < size(); ++i) {
       assert(isUnknown(position, data[i]));
       assert(isCorrectlyPropagating(solver, i));
       solver.propagate(data[i], cr);
@@ -303,7 +303,7 @@ void Cardinality::initializeWatches(CRef cr, Solver& solver) {
   }
 
   unsigned int watch = 0;
-  for (unsigned int i = 0; i < size() && watch <= degr; ++i) {
+  for (uint32_t i = 0; i < size() && watch <= degr; ++i) {
     if (const Lit l = data[i]; !isFalse(level, l)) {
       data[i] = data[watch];
       data[watch++] = l;
@@ -387,7 +387,7 @@ unsigned int Cardinality::subsumeWith(CeSuper& confl, const Lit l, Solver& solve
 CeSuper Cardinality::toExpanded(ConstrExpPools& cePools) const {
   Ce32 result = cePools.take32();
   result->addRhs(degr);
-  for (size_t i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     result->addLhs(1, data[i]);
   }
   result->orig = getOrigin();
@@ -397,7 +397,7 @@ CeSuper Cardinality::toExpanded(ConstrExpPools& cePools) const {
 
 bool Cardinality::isSatisfiedAtRoot(const IntMap<int>& level) const {
   int eval = -static_cast<int>(degr);
-  for (unsigned int i = 0; i < size() && eval < 0; ++i) {
+  for (uint32_t i = 0; i < size() && eval < 0; ++i) {
     eval += isUnit(level, data[i]);
   }
   return eval >= 0;
@@ -405,7 +405,7 @@ bool Cardinality::isSatisfiedAtRoot(const IntMap<int>& level) const {
 
 bool Cardinality::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications&, IntSetPool&) const {
   const bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (unsigned int i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     if (const Lit l = data[i]; isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l))) {
       return true;
     }
@@ -432,7 +432,7 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 
   watchslack = -degr;
   const CF& lrgstCf = _c(0);
-  for (unsigned int i = 0; i < size() && watchslack < lrgstCf; ++i) {
+  for (uint32_t i = 0; i < size() && watchslack < lrgstCf; ++i) {
     if (const Lit l = lit(i); !isFalse(level, l) || position[toVar(l)] >= qhead) {
       assert(!hasWatch(i));
       watchslack += _c(i);
@@ -446,7 +446,7 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
     // set sufficient falsified watches
     std::vector<unsigned int>& falsifiedIdcs = solver.falsifiedIdcsMem;
     assert(falsifiedIdcs.empty());
-    for (unsigned int i = 0; i < size(); ++i) {
+    for (uint32_t i = 0; i < size(); ++i) {
       if (isFalse(level, lit(i)) && position[toVar(lit(i))] < qhead) falsifiedIdcs.push_back(i);
     }
     std::sort(falsifiedIdcs.begin(), falsifiedIdcs.end(),
@@ -460,7 +460,7 @@ void Watched<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
       if (diff <= 0) break;
     }
     // perform initial propagation
-    for (unsigned int i = 0; i < size() && _c(i) > watchslack; ++i) {
+    for (uint32_t i = 0; i < size() && _c(i) > watchslack; ++i) {
       if (isUnknown(position, lit(i))) {
         assert(isCorrectlyPropagating(solver, i));
         solver.propagate(lit(i), cr);
@@ -557,7 +557,7 @@ template <typename CF, typename DG>
 CePtr<CF, DG> Watched<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
-  for (size_t i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     result->addLhs(_c(i), lit(i));
   }
   result->orig = getOrigin();
@@ -574,7 +574,7 @@ CeSuper Watched<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 template <typename CF, typename DG>
 bool Watched<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -degr;
-  for (unsigned int i = 0; i < size() && eval < 0; ++i) {
+  for (uint32_t i = 0; i < size() && eval < 0; ++i) {
     if (isUnit(level, lit(i))) eval += _c(i);
   }
   return eval >= 0;
@@ -584,7 +584,7 @@ template <typename CF, typename DG>
 bool Watched<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                                       IntSetPool& isp) const {
   const bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (unsigned int i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     if (const Lit l = lit(i); isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l)))
       return true;
   }
@@ -624,7 +624,7 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
 
   watchslack = -degr;
   const CF& lrgstCf = _c(0);
-  for (unsigned int i = 0; i < size() && watchslack < lrgstCf; ++i) {
+  for (uint32_t i = 0; i < size() && watchslack < lrgstCf; ++i) {
     if (const Lit l = lit(i); !isFalse(level, l) || position[toVar(l)] >= qhead) {
       assert(!hasWatch(i));
       watchslack += _c(i);
@@ -638,7 +638,7 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
     // set sufficient falsified watches
     std::vector<unsigned int>& falsifiedIdcs = solver.falsifiedIdcsMem;
     assert(falsifiedIdcs.empty());
-    for (unsigned int i = 0; i < size(); ++i) {
+    for (uint32_t i = 0; i < size(); ++i) {
       if (isFalse(level, lit(i)) && position[toVar(lit(i))] < qhead) falsifiedIdcs.push_back(i);
     }
     std::sort(falsifiedIdcs.begin(), falsifiedIdcs.end(),
@@ -652,7 +652,7 @@ void WatchedSafe<CF, DG>::initializeWatches(CRef cr, Solver& solver) {
       if (diff <= 0) break;
     }
     // perform initial propagation
-    for (unsigned int i = 0; i < size() && _c(i) > watchslack; ++i) {
+    for (uint32_t i = 0; i < size() && _c(i) > watchslack; ++i) {
       if (isUnknown(position, lit(i))) {
         assert(isCorrectlyPropagating(solver, i));
         solver.propagate(lit(i), cr);
@@ -748,7 +748,7 @@ template <typename CF, typename DG>
 CePtr<CF, DG> WatchedSafe<CF, DG>::expandTo(ConstrExpPools& cePools) const {
   CePtr<CF, DG> result = cePools.take<CF, DG>();
   result->addRhs(degr);
-  for (size_t i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     result->addLhs(_c(i), lit(i));
   }
   result->orig = getOrigin();
@@ -765,7 +765,7 @@ CeSuper WatchedSafe<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
 template <typename CF, typename DG>
 bool WatchedSafe<CF, DG>::isSatisfiedAtRoot(const IntMap<int>& level) const {
   DG eval = -degr;
-  for (unsigned int i = 0; i < size() && eval < 0; ++i) {
+  for (uint32_t i = 0; i < size() && eval < 0; ++i) {
     if (isUnit(level, lit(i))) eval += _c(i);
   }
   return eval >= 0;
@@ -775,7 +775,7 @@ template <typename CF, typename DG>
 bool WatchedSafe<CF, DG>::canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                                           IntSetPool& isp) const {
   const bool isEquality = getOrigin() == Origin::EQUALITY;
-  for (unsigned int i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     if (const Lit l = lit(i); isUnit(level, l) || isUnit(level, -l) || (!isEquality && !equalities.isCanonical(l)))
       return true;
   }
@@ -812,14 +812,14 @@ bool Constr::isCorrectlyPropagating(const Solver& solver, int idx) const {
   return true;  // comment to run check
   assert(isUnknown(solver.getPos(), lit(idx)));
   bigint slack = -degree();
-  for (unsigned int i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     slack += isFalse(solver.getLevel(), lit(i)) ? 0 : coef(i);
   }
   return slack < coef(idx);
 }
 
 void Constr::print(const Solver& solver) const {
-  for (size_t i = 0; i < size(); ++i) {
+  for (uint32_t i = 0; i < size(); ++i) {
     const int pos = solver.getPos()[toVar(lit(i))];
     std::cout << coef(i) << "x" << lit(i)
               << (pos < solver.qhead ? (isTrue(solver.getLevel(), lit(i)) ? "t" : "f") : "u") << (pos == INF ? -1 : pos)

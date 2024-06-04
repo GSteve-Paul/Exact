@@ -92,7 +92,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if UNIXLIKE
 namespace xct {
-
 inline std::ostream& operator<<(std::ostream& o, const __int128& x) {
   if (x == std::numeric_limits<__int128>::min()) return o << "-170141183460469231731687303715884105728";
   if (x < 0) return o << "-" << -x;
@@ -419,20 +418,9 @@ inline double divToDouble(const bigint& num, const bigint& denom) {
 }
 
 template <typename T>
-unsigned msb(const T& x) {
+int32_t msb(const T& x) {
   assert(x > 0);
-  // return std::bit_floor(x); // C++20
-  return boost::multiprecision::msb(boost::multiprecision::int128_t(x));
-}
-template <>
-inline unsigned msb(const int256& x) {
-  assert(x > 0);
-  return boost::multiprecision::msb(x);
-}
-template <>
-inline unsigned msb(const bigint& x) {
-  assert(x > 0);
-  return boost::multiprecision::msb(x);
+  return static_cast<int32_t>(boost::multiprecision::msb(x));
 }
 
 template <typename T>

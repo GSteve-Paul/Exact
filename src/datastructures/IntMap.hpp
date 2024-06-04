@@ -52,9 +52,14 @@ class IntMap {
 
   void resize(int size, const T& init) {  // should always be called before use, as int2type is not set otherwise
     assert(size >= 0);
-    int oldsize = (_int2type.size() - 1) / 2;  // NOTE: oldsize can be -1, which is useful in for loops below
+    long long oldsize = -1;  // NOTE: oldsize can be -1, which is useful in for loops below
+    long long newsize = 0;
+    if (!_int2type.empty()) {
+      assert(_int2type.size() % 2 == 1);
+      oldsize = (std::ssize(_int2type) - 1) / 2;
+      newsize = oldsize;
+    }
     if (oldsize >= size) return;
-    long long newsize = std::max(0, oldsize);
     while (newsize < size) {
       newsize = newsize * resize_factor + 1;
     }
