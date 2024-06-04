@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -81,11 +81,7 @@ class Solver {
   friend struct Clause;
   friend struct Cardinality;
   template <typename CF, typename DG>
-  friend struct Counting;
-  template <typename CF, typename DG>
   friend struct Watched;
-  template <typename CF, typename DG>
-  friend struct CountingSafe;
   template <typename CF, typename DG>
   friend struct WatchedSafe;
   friend class Propagator;
@@ -94,24 +90,25 @@ class Solver {
 
   // ---------------------------------------------------------------------
   // Members
+ private:
+  std::optional<LitVec> lastSol;
 
  public:
-  std::vector<Lit> lastSol = {0};
   bool foundSolution() const;
   CeSuper lastCore;
   CeSuper lastGlobalDual;
-  IntSet objectiveLits;
   CeArb objective;
+  Global& global;
 
  private:
-  Global& global;
-  int n;
+  int n = 0;
   std::vector<bool> isorig;
+  bool firstRun = true;
+  bool unsatReached = false;
+  bool objectiveSet = false;
 
   ConstraintAllocator ca;
-  Heuristic freeHeur;
-  Heuristic cgHeur;
-  Heuristic* heur = &freeHeur;
+  Heuristic heur;
 
   std::vector<CRef> constraints;  // row-based view
   unordered_map<ID, CRef> external;
@@ -124,26 +121,27 @@ class Solver {
   // TODO: make position, level, contiguous memory for better cache efficiency.
   IntMap<int> level;           // map from literal to decision level when on the trail. INF means unset.
   std::vector<int> position;   // map from variable to index ('position') in the trail.
-  std::vector<Lit> trail;      // current assignment in chronological order
+  LitVec trail;                // current assignment in chronological order
   std::vector<int> trail_lim;  // for each level, first index on the trail. This is the index of the decision literal.
   std::vector<CRef> reason;    // map from variable to reason constraint (when propagated, otherwise CRef_Undef)
 
   int qhead = 0;  // tracks where next index on trail for constraint propagation
 
-  std::vector<int> assumptions_lim;
+  std::vector<int> assumptions_lim = std::vector<int>{0};
   IntSet assumptions;
+  bool coreguided = false;
 
   std::shared_ptr<LpSolver> lpSolver;
 
   Equalities equalities;
   Implications implications;
 
-  long long nconfl_to_reduce = 0;
-  long long nconfl_to_restart = 0;
+  int64_t nconfl_to_reduce;
+  int64_t nconfl_to_restart;
   Var nextToSort = 0;
 
   // vectors used in subroutines that should not be reallocated over and over
-  std::vector<Lit> assertionStateMem;
+  LitVec assertionStateMem;
   std::vector<std::pair<int, Lit>> litsToSubsumeMem;
   std::vector<unsigned int> falsifiedIdcsMem;
 
@@ -152,15 +150,15 @@ class Solver {
  public:
   Solver(Global& g);
   ~Solver();
-  void init(const CeArb& obj);
+  void setObjective(const CeArb& obj);
+  void ignoreLastObjective();
+  bool objectiveIsSet() const;
+  void reportUnsat(const CeSuper& confl);
 
-  int getNbVars() const { return n; }
+  int getNbVars() const;
   void setNbVars(int nvars, bool orig);
-  bool isOrig(Var v) const {
-    assert(v >= 0);
-    assert(v <= getNbVars());
-    return isorig[v];
-  }
+  Var addVar(bool orig);
+  bool isOrig(Var v) const;
 
   Options& getOptions();
   Stats& getStats();
@@ -169,34 +167,35 @@ class Solver {
   const std::vector<int>& getPos() const { return position; }
   Equalities& getEqualities() { return equalities; }
   Implications& getImplications() { return implications; }
-  const Heuristic& getHeuristic() const { return *heur; }
+  const Heuristic& getHeuristic() const { return heur; }
   void fixPhase(const std::vector<std::pair<Var, Lit>>& vls, bool bump = false);
 
-  int decisionLevel() const { return trail_lim.size(); }
-  int assumptionLevel() const { return assumptions_lim.size() - 1; }
+  int decisionLevel() const { return static_cast<int32_t>(trail_lim.size()); }
+  int assumptionLevel() const { return static_cast<int32_t>(assumptions_lim.size()) - 1; }
 
   // @return: formula line id, processed id, needed for optimization proof logging
-  std::pair<ID, ID> addConstraint(const CeSuper& c, Origin orig);
-  std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, Origin orig);
+  std::pair<ID, ID> addConstraint(const CeSuper& c);
+  std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c);
   std::pair<ID, ID> addUnitConstraint(Lit l, Origin orig);
   std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
-  void invalidateLastSol(const std::vector<Var>& vars);
+  std::pair<ID, ID> addClauseConstraint(const LitVec& clause, Origin orig);
+  void invalidateLastSol(const VarVec& vars);
 
   void dropExternal(ID id, bool erasable, bool forceDelete);
   int getNbConstraints() const { return constraints.size(); }
-  CeSuper getIthConstraint(int i) const;
   const std::vector<CRef>& getRawConstraints() const { return constraints; }
   const ConstraintAllocator& getCA() const { return ca; }
 
-  void setAssumptions(const std::vector<Lit>& assumps);
+  void setAssumptions(const LitVec& assumps, bool coreguided);
   void clearAssumptions();
-  const IntSet& getAssumptions() const { return assumptions; }
-  bool hasAssumptions() const { return !assumptions.isEmpty(); }
+  const IntSet& getAssumptions() const;
   bool assumptionsClashWithUnits() const;
 
   int getNbUnits() const;
-  std::vector<Lit> getUnits() const;
-  const std::vector<Lit>& getLastSolution() const;
+  LitVec getUnits() const;
+  const LitVec& getLastSolution() const;
+
+  void printHeader() const;
 
   /**
    * @return SolveState:
@@ -204,17 +203,15 @@ class Solver {
    * 	SAT if satisfying assignment found
    * 	    this->lastSol contains the satisfying assignment
    * 	INCONSISTENT if no solution extending assumptions exists
-   * 	    this->lastCore is an implied constraint falsified by the assumptions,
-   * 	    unless this->lastCore is a CeNull, which implies assumptionsClashWithUnits.
-   * 	    Note that assumptionsClashWithUnits may still hold when this->lastCore is not a CeNull.
+   * 	    this->lastCore is an implied constraint falsified by the assumptions.
    * 	INPROCESSING if solver just finished a cleanup phase
    */
   // TODO: use a coroutine / yield instead of a SolveAnswer return value
   [[nodiscard]] SolveState solve();
 
-  bool checkSAT(const std::vector<Lit>& assignment);
-
  private:
+  bool checkSAT() const;
+
   // ---------------------------------------------------------------------
   // Trail manipulation
 
@@ -241,16 +238,17 @@ class Solver {
 
   [[nodiscard]] CeSuper analyze(const CeSuper& confl);
   void minimize(CeSuper& conflict);
-  void extractCore(const CeSuper& confl, Lit l_assump = 0);
+  [[nodiscard]] Ce32 getUnitClause(Lit l) const;
+  [[nodiscard]] CeSuper extractCore(const CeSuper& confl, Lit l_assump = 0);
 
   // ---------------------------------------------------------------------
   // Constraint management
 
   [[nodiscard]] CRef attachConstraint(const CeSuper& constraint, bool locked);
   void removeConstraint(const CRef& cr, bool override = false);
-  void learnConstraint(const CeSuper& c, Origin orig);
+  void learnConstraint(const CeSuper& c);
   void learnUnitConstraint(Lit l, Origin orig, ID id);
-  void learnClause(const std::vector<Lit>& lits, Origin orig, ID id);
+  void learnClause(Lit l1, Lit l2, Origin orig, ID id);
   std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
 
   // ---------------------------------------------------------------------
@@ -280,7 +278,7 @@ class Solver {
   Var lastRestartNext = 0;
   void probeRestart(Lit next);
 
-  void detectAtMostOne(Lit seed, unordered_set<Lit>& considered, std::vector<Lit>& previousProbe);
+  void detectAtMostOne(Lit seed, unordered_set<Lit>& considered, LitVec& previousProbe);
   unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
   void runAtMostOneDetection();
 };

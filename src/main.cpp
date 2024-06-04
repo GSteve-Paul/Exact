@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -19,7 +19,7 @@ or run with the flag --license=AGPLv3. If not, see
 **********************************************************************/
 
 #include <csignal>
-#include "ILP.hpp"
+#include "IntProg.hpp"
 #include "quit.hpp"
 
 using namespace xct;
@@ -31,18 +31,26 @@ int main(int argc, char** argv) {
   signal(SIGXCPU, SIGINT_interrupt);
 #endif
 
-  ILP ilp;
   try {
-    ilp.runInternal(argc, argv);
-  } catch (const AsynchronousInterrupt& ai) {
-    std::cout << "c " << ai.what() << std::endl;
-    return quit::exit_INDETERMINATE(ilp);
-  } catch (const UnsatEncounter& ue) {
-    return quit::exit_SUCCESS(ilp);
-  } catch (const std::invalid_argument& ia) {
-    return quit::exit_ERROR(ia.what());
+    Options opts;
+    opts.pureLits.set(true);
+    opts.domBreakLim.set(-1);
+    opts.verbosity.set(1);
+    opts.parseCommandLine(argc, argv);
+    IntProg intprog(opts);
+
+    try {
+      intprog.runFromCmdLine();
+      return quit::exit_SUCCESS(intprog);
+    } catch (const AsynchronousInterrupt& ai) {
+      std::cout << "c " << ai.what() << std::endl;
+      return quit::exit_INDETERMINATE(intprog);
+    } catch (const UnsatEncounter& ue) {
+      return quit::exit_SUCCESS(intprog);
+    } catch (const std::invalid_argument& ia) {
+      return quit::exit_ERROR(ia.what());
+    }
   } catch (const EarlyTermination& et) {
     return quit::exit_EARLY();
   }
-  return quit::exit_SUCCESS(ilp);
 }

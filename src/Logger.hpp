@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -67,6 +67,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "typedefs.hpp"
 #if WITHZLIB
 #include "external/gzstream/gzstream.h"
+// To reduce dependencies, we could also switch to the Boost version:
+// https://stackoverflow.com/questions/624250/how-do-i-read-write-gzipped-files-in-c
 #endif  // WITHZLIB
 
 namespace xct {
@@ -76,6 +78,7 @@ class Logger {
   std::ofstream proof_out;
 #if WITHZLIB
   ogzstream proof_out_zip;
+  ogzstream formula_out_zip;
   bool proof_is_zip = false;
 #endif  // WITHZLIB
 
@@ -85,35 +88,43 @@ class Logger {
 
   std::ostream& proofStream();
 
+  std::stringstream formula_constr;
+  std::stringstream formula_obj;
+
  public:
   ID last_formID;
   ID last_proofID;
 
-  explicit Logger(const Stats& stats);
+  explicit Logger(const Stats&);
 
-  void activate(const std::string& proof_log_name, const bool zip);
-  void deactivate();
-  bool isActive();
+  void activate(const std::string& proof_log_name, bool zip);
+  bool isActive() const;
   void flush();
   void logComment([[maybe_unused]] const std::string& comment);
 
   ID logInput(const CeSuper& ce);
-  ID logAssumption(const CeSuper& ce);
+  void logObjective(const CeSuper& ce);
+  ID logAssumption(const CeSuper& ce, bool allowed);
+  ID logAssumption(ConstrExpSuper& ce, bool allowed);
   ID logProofLine(const CeSuper& ce);
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
-  void logInconsistency(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position);
+  ID logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position);
   void logUnit(const CeSuper& ce);
   ID logRUP(Lit l, Lit ll);
   ID logImpliedUnit(Lit implying, Lit implied);
+  ID logBottomUp(const CeSuper& ce);
+  ID logUpperBound(const CeSuper& ce, const LitVec& lastSol);
   ID logPure(const CeSuper& ce);
   ID logDomBreaker(const CeSuper& ce);  // second lit is the witness
   ID logAtMostOne(const ConstrSimple32& c, const CeSuper& ce);
   ID logResolvent(ID id1, ID id2);
   std::pair<ID, ID> logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA, ID bImpReprB, ID reprBImplB, Lit reprA,
                                 Lit reprB);
+  void logDeletion(ID id);
+  void logAsCore(ID id);
 
-  ID getUnitID(int trailIdx) { return unitIDs[trailIdx]; }
-  int getNbUnitIDs() { return unitIDs.size(); }
+  ID getUnitID(Lit l, const std::vector<int>& pos) const;
+  int getNbUnitIDs() const;
 
  public:
   template <typename T>
@@ -130,7 +141,7 @@ class Logger {
   }
   template <typename T>
   static std::ostream& proofWeaken(std::ostream& o, Lit l, const T& m) {
-    assert(m != 0);
+    if (m == 0) return o;
     if ((m < 0) != (l < 0)) {
       o << "~";
     }
@@ -140,6 +151,14 @@ class Logger {
   static std::ostream& proofWeakenFalseUnit(std::ostream& o, ID id, const T& m) {
     assert(m < 0);
     return proofMult(o << id << " ", -m) << "+ ";
+  }
+  template <typename T>
+  static std::ostream& proofIncreaseDegree(std::ostream& o, Lit l, const T& m) {
+    if (m == 0) return o;
+    if ((m < 0) != (l < 0)) {
+      o << "~";
+    }
+    return proofMult(o << "x" << toVar(l) << " ", aux::abs(m)) << "+ ";
   }
 };
 

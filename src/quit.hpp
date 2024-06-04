@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -68,19 +68,20 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-// TODO: move these methods to ILP?
-class ILP;
+// TODO: move these methods to IntProg?
+class IntProg;
 struct Global;
 
 extern std::atomic<bool> asynch_interrupt;
 
 namespace quit {
 
-void printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive);
-void printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp);
-void printFinalStats(ILP& ilp);
-int exit_SUCCESS(ILP& ilp);
-int exit_INDETERMINATE(ILP& ilp);
+void printLits(const LitVec& lits, char pre, bool onlyPositive, int inputVarLimit);
+void printLitsPBcomp(const LitVec& lits, int inputVarLimit);
+void printLitsMaxsat(const LitVec& lits, int inputVarLimit);
+void printFinalStats(IntProg& intprog);
+int exit_SUCCESS(IntProg& intprog);
+int exit_INDETERMINATE(IntProg& intprog);
 int exit_ERROR(const std::string& message);
 int exit_EARLY();
 

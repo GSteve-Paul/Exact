@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -52,9 +52,14 @@ class IntMap {
 
   void resize(int size, const T& init) {  // should always be called before use, as int2type is not set otherwise
     assert(size >= 0);
-    int oldsize = (_int2type.size() - 1) / 2;  // NOTE: oldsize can be -1, which is useful in for loops below
+    long long oldsize = -1;  // NOTE: oldsize can be -1, which is useful in for loops below
+    long long newsize = 0;
+    if (!_int2type.empty()) {
+      assert(_int2type.size() % 2 == 1);
+      oldsize = (std::ssize(_int2type) - 1) / 2;
+      newsize = oldsize;
+    }
     if (oldsize >= size) return;
-    long long newsize = std::max(0, oldsize);
     while (newsize < size) {
       newsize = newsize * resize_factor + 1;
     }
@@ -73,5 +78,16 @@ class IntMap {
 
   size_t reserved() const { return _int2type.size(); }
 };
+
+template <typename T>
+std::ostream& operator<<(std::ostream& o, const IntMap<T>& im) {
+  if (im.reserved() > 0) {
+    o << "0:" << im[0] << ", ";
+  }
+  for (int64_t i = 1; i <= im.reserved() / 2; ++i) {
+    o << -i << ":" << im[-i] << "|" << i << ":" << im[i] << ", ";
+  }
+  return o;
+}
 
 }  // namespace xct

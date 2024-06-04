@@ -2,16 +2,19 @@
 
 # usage: ../test/run_all.sh 3 "testruns" /home/jod/workspace/exact-dev/build_testruns/Exact
 
+# to stop: ../test/kill_all.sh
+
 logfolder="/tmp/Exact/$2"
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 declare -a arr_configs=(
-"simple"
+"default"
 "arbitrary"
 "noproof"
 "mindiv"
 "rto"
 "slack+1"
+"noassumps"
 )
 
 for idx in "${!arr_configs[@]}"; do

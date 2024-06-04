@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -127,8 +127,8 @@ class LpSolver {
   friend struct CandidateCut;
 
   soplex::SoPlex lp;
-  Global& global;  // TODO: needed? We already have solver?
   Solver& solver;
+  Global& global;  // TODO: needed? We already have solver?
 
   double lpPivotMult = 1;
   constexpr static double INFTY = 1e100;
@@ -158,12 +158,13 @@ class LpSolver {
   std::vector<CandidateCut> candidateCuts;
 
  public:
-  explicit LpSolver(Solver& s, const CeArb& o, Global& g);
+  explicit LpSolver(Solver& s);
   void setNbVariables(int n);
+  void setObjective(const CeArb& o);
 
   [[nodiscard]] std::pair<LpStatus, CeSuper> checkFeasibility(
       bool inProcessing);  // TODO: don't use objective function here?
-  [[nodiscard]] CeSuper inProcess();
+  [[nodiscard]] CeSuper inProcess(bool overrideHeur = false);
 
   void addConstraint(const CeSuper& c, bool removable, bool upperbound = false, bool lowerbound = false);
   void addConstraint(CRef cr, bool removable, bool upperbound = false, bool lowerbound = false);
@@ -197,14 +198,15 @@ struct Global;
 
 class LpSolver {
  public:
-  LpSolver([[maybe_unused]] Solver& s, [[maybe_unused]] const CeArb& o, [[maybe_unused]] Global& g){};
-  void setNbVariables([[maybe_unused]] int n){};
+  LpSolver([[maybe_unused]] Solver& s){};
+  void setNbVariables([[maybe_unused]] int n) {};
+  void setObjective([[maybe_unused]] const CeArb& o) {};
 
   std::pair<LpStatus, CeSuper> checkFeasibility([[maybe_unused]] bool inProcessing) {
     assert(false);
     return {LpStatus::UNDETERMINED, CeNull()};
   }
-  CeSuper inProcess() { return CeNull(); }
+  CeSuper inProcess([[maybe_unused]] bool overrideHeur) { return CeNull(); }
   bool canInProcess() { return false; }
 
   void addConstraint([[maybe_unused]] const CeSuper& c, [[maybe_unused]] bool removable,

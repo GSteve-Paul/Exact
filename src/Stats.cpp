@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -88,7 +88,7 @@ StatNum Stats::getRunTime() const {
   return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - runStartTime)
       .count();
 }
-StatNum Stats::getSolveTime() const { return SOLVETIMEFREE + SOLVETIMEASSUMP; }
+StatNum Stats::getSolveTime() const { return SOLVETIMETOPDOWN + SOLVETIMEBOTTOMUP; }
 // NOTE: below linear relations were determined by regression tests on experimental data,
 // so that the deterministic time correlates as closely as possible with the cpu time in seconds
 StatNum Stats::getLpDetTime() const { return (5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9; }

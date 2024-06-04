@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -41,7 +41,7 @@ class Solver;
 struct Repr {
   Lit l;
   ID id;
-  std::vector<Lit> equals;
+  LitVec equals;
 };
 
 class Equalities : public Propagator {  // a union-find data structure

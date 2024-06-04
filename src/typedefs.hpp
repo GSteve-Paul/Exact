@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -67,26 +67,34 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace xct {
 
 using ID = uint64_t;
-const ID ID_Undef = std::numeric_limits<ID>::max();
-const ID ID_Trivial = 1;  // represents constraint 0 >= 0
-inline bool isValid(ID id) { return id > 0 && id < ID_Undef; }
+constexpr ID ID_Undef = 0;
+constexpr ID ID_Trivial = 1;  // represents constraint 0 >= 0
+inline bool isValid(ID id) { return id != ID_Undef; }
+
+constexpr unsigned int MAXLBD = 1e5;
 
 using Var = int32_t;
 using Lit = int32_t;
 inline Var toVar(Lit l) { return std::abs(l); }
+using VarVec = std::vector<Var>;
+using LitVec = std::vector<Lit>;
 
-const int32_t resize_factor = 2;
+constexpr int32_t resize_factor = 2;
 
-const int32_t INF =
+constexpr int32_t INF =
     1e9 + 1;  // 1e9 < 30 bits is the maximum number of variables in the system, anything beyond is infinity
 // NOTE: 31 bits is not possible due to the idx entry in the Watch struct
-const long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long long range captured by double
+constexpr long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long long range captured by double
 
 template <typename CF, typename DG>
 inline double limitAbs() {
+  // static_assert(false);
   assert(false);
-  // NOTE: no implementation for <bigint,bigint>, as there is no limit on the resulting numbers
-  return -1;
+  return 0;
+}
+template <>
+inline double limitAbs<bigint, bigint>() {
+  return 0;
 }
 template <>
 inline double limitAbs<int, long long>() {
@@ -98,11 +106,11 @@ inline double limitAbs<long long, int128>() {
 }
 template <>
 inline double limitAbs<int128, int128>() {
-  return 8e27;  // 2^92-2^93
+  return 9e27;  // 2^92-2^93
 }
 template <>
 inline double limitAbs<int128, int256>() {
-  return 32e36;  // 2^124-2^125
+  return 4e37;  // 2^124-2^125
 }
 template <>
 inline double limitAbs<int256, bigint>() {
@@ -111,6 +119,7 @@ inline double limitAbs<int256, bigint>() {
 
 template <typename CF, typename DG>
 inline int limitBit() {
+  // static_assert(false);
   assert(false);
   return -1;
 }
@@ -204,24 +213,25 @@ using StatNum = long double;
 
 // NOTE: max number of types is 32, as the type is stored with 5 bits in Constr
 enum class Origin {
-  UNKNOWN,        // uninitialized
-  FORMULA,        // original input formula
-  DOMBREAKER,     // dominance breaking
-  INVALIDATOR,    // solution-invalidating constraint
-  PURE,           // pure unit literal
-  COREGUIDED,     // extension constraints from coreguided optimization
-  HARDENEDBOUND,  // unit constraint due to upper bound on the objective function
-  UPPERBOUND,     // upper bound on the objective function
-  LOWERBOUND,     // lower bound on the objective function
-  LEARNED,        // learned from regular conflict analysis
-  FARKAS,         // LP solver infeasibility witness
-  DUAL,           // LP solver feasibility dual constraint
-  GOMORY,         // Gomory cut
-  PROBING,        // probing unit literal
-  DETECTEDAMO,    // detected cardinality constraint
-  REDUCED,        // reduced constraint
-  EQUALITY,       // equality enforcing constraint
-  IMPLICATION,    // binary implication clause
+  UNKNOWN,      // uninitialized
+  FORMULA,      // original input formula
+  DOMBREAKER,   // dominance breaking
+  INVALIDATOR,  // solution-invalidating constraint
+  PURE,         // pure unit literal
+  COREGUIDED,   // extension constraints from coreguided optimization
+  BOTTOMUP,     // simple bottom-up optimization constraint
+  REFORMBOUND,  // upper bound on the reformed objective function
+  UPPERBOUND,   // upper bound on the objective function
+  LOWERBOUND,   // lower bound on the objective function
+  LEARNED,      // learned from regular conflict analysis
+  FARKAS,       // LP solver infeasibility witness
+  DUAL,         // LP solver feasibility dual constraint
+  GOMORY,       // Gomory cut
+  PROBING,      // probing unit literal
+  DETECTEDAMO,  // detected cardinality constraint
+  REDUCED,      // reduced constraint
+  EQUALITY,     // equality enforcing constraint
+  IMPLICATION,  // binary implication clause
 };
 inline std::ostream& operator<<(std::ostream& o, enum Origin orig) {
   switch (orig) {
@@ -243,8 +253,11 @@ inline std::ostream& operator<<(std::ostream& o, enum Origin orig) {
     case (Origin::COREGUIDED):
       o << "COREGUIDED";
       break;
-    case (Origin::HARDENEDBOUND):
-      o << "HARDENEDBOUND";
+    case (Origin::BOTTOMUP):
+      o << "BOTTOMUP";
+      break;
+    case (Origin::REFORMBOUND):
+      o << "REFORMBOUND";
       break;
     case (Origin::UPPERBOUND):
       o << "UPPERBOUND";
@@ -289,7 +302,9 @@ inline bool isNonImplied(Origin o) {
   return o == Origin::FORMULA || o == Origin::DOMBREAKER || o == Origin::INVALIDATOR;
 }
 inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
-inline bool isExternal(Origin o) { return isBound(o) || o == Origin::COREGUIDED; }
+inline bool isExternal(Origin o) {
+  return isBound(o) || o == Origin::COREGUIDED || o == Origin::REFORMBOUND || o == Origin::BOTTOMUP;
+}
 inline bool isInput(Origin o) { return o != Origin::UNKNOWN && o < Origin::LEARNED; }
 inline bool isLearned(Origin o) { return o >= Origin::LEARNED; }
 
@@ -326,23 +341,13 @@ struct Clause;
 struct Cardinality;
 
 template <typename CF, typename DG>
-struct Counting;
-using Counting32 = Counting<int, long long>;
-using Counting64 = Counting<long long, int128>;
-using Counting96 = Counting<int128, int128>;
-using Counting128 = Counting<int128, int256>;
-template <typename CF, typename DG>
-struct CountingSafe;
-using CountingArb = CountingSafe<bigint, bigint>;
-
-template <typename CF, typename DG>
 struct Watched;
-using Watched32 = Watched<int, long long>;
-using Watched64 = Watched<long long, int128>;
-using Watched96 = Watched<int128, int128>;
-using Watched128 = Watched<int128, int256>;
 template <typename CF, typename DG>
 struct WatchedSafe;
+using Watched32 = Watched<int, long long>;
+using Watched64 = WatchedSafe<long long, int128>;
+using Watched96 = WatchedSafe<int128, int128>;
+using Watched128 = WatchedSafe<int128, int256>;
 using WatchedArb = WatchedSafe<bigint, bigint>;
 
 template <typename CF>
@@ -357,11 +362,7 @@ struct Term {
 using Term32 = Term<int>;
 using Term64 = Term<long long>;
 using Term128 = Term<int128>;
-using Term256 = Term<int256>;
 using TermArb = Term<bigint>;
-
-class OptimizationSuper;
-using Optim = std::shared_ptr<OptimizationSuper>;
 
 template <typename CF>
 std::ostream& operator<<(std::ostream& o, const Term<CF>& t) {
@@ -385,6 +386,7 @@ class AsynchronousInterrupt : public std::exception {
 
 class UnsatEncounter : public std::exception {
  public:
+  //  UnsatEncounter() : std::exception() { assert(false); }
   [[nodiscard]] const char* what() const noexcept override {
     return "UNSAT state reached, this exception should have been caught.";
   }

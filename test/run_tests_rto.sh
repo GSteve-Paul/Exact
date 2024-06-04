@@ -35,6 +35,8 @@ declare -a arr_opt=(
 "wcnf/g2_n56e57_n61e85.wcnf*39"
 "wcnf/synthetic-20.wcnf*6720"
 "wcnf/f49-DC_TotalLoss.seq-A-2-2-EDCBAir.wcnf*85435860665"
+"wcnf/edgecase2.wcnf*0"
+"wcnf/edgecases.wcnf*2"
 "lp/hole.lp*2917/2"
 "mps/disctom.mps*-5000"
 "mps/hypothyroid-k1.mps*-2851"
@@ -72,6 +74,10 @@ declare -a arr_opt=(
 "opb/opt/cracpb1.opb*22199"
 "opb/opt/rs_iss_3.opb*2"
 "opb/opt/knapPI_16_1000_1000_1_-27147.opb*-27147"
+"opb/opt/testlin.opb*0"
+"opb/opt/mult.opb*5"
+"wbo/example1.wbo*2"
+"wbo/example2.wbo*2"
 )
 
 for idx in "${!arr_divis[@]}"; do

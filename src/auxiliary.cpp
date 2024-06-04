@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -63,17 +63,20 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 std::ostream& operator<<(std::ostream& o, enum SolveState state) {
   switch (state) {
-    case (SolveState::UNSAT):
+    case SolveState::UNSAT:
       o << "UNSAT";
       break;
-    case (SolveState::INCONSISTENT):
+    case SolveState::INCONSISTENT:
       o << "INCONSISTENT";
       break;
-    case (SolveState::INPROCESSED):
+    case SolveState::INPROCESSED:
       o << "INPROCESSED";
       break;
-    case (SolveState::SAT):
+    case SolveState::SAT:
       o << "SAT";
+      break;
+    case SolveState::TIMEOUT:
+      o << "TIMEOUT";
       break;
     default:
       assert(false);
@@ -82,6 +85,8 @@ std::ostream& operator<<(std::ostream& o, enum SolveState state) {
 }
 
 namespace xct::aux {
+
+std::ostream& cout = std::cout;  // to easily find debugging prints
 
 bigint commonDenominator(const std::vector<ratio>& ratios) {
   bigint cdenom = 1;
@@ -108,6 +113,7 @@ uint32_t xorshift32() {
 }  // namespace rng
 
 int32_t getRand(int32_t min, int32_t max) {
+  assert(rng::seed != 0);
   // based on https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction
   assert(min < max);
   return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) + min;
@@ -129,6 +135,24 @@ uint64_t shift_hash(uint64_t x) {
   x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
   x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
   return x ^ (x >> 31);
+}
+
+void* align_alloc(size_t alignment, size_t size) {
+#if UNIXLIKE
+  return std::aligned_alloc(alignment, size);
+#else
+  // MSVC alternative
+  return _aligned_malloc(size, alignment);
+#endif
+}
+
+void align_free(void* ptr) {
+#if UNIXLIKE
+  std::free(ptr);
+#else
+  // MSVC alternative
+  _aligned_free(ptr);
+#endif
 }
 
 }  // namespace xct::aux

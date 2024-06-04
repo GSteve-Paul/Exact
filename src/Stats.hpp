@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -195,7 +195,6 @@ struct Stats {
   Stat LEARNEDLBDSUM{0, "learned LBD sum"};
 
   Stat NUNITS{0, "unit literals derived"};
-  Stat NHARDENINGS{0, "hardened literals"};
   Stat NPURELITS{0, "pure literals"};
   Stat NSATISFIEDSREMOVED{0, "constraints satisfied at root"};
   Stat NCONSREADDED{0, "constraints simplified during database reduction"};
@@ -212,10 +211,10 @@ struct Stats {
   Stat NATMOSTONEUNITS{0, "units derived during at-most-one detection"};
 
   Stat PARSETIME{0, "parse time"};
-  Stat SOLVETIMEFREE{0, "free solve time"};
-  Stat DETTIMEFREE{0, "free solve time det"};
-  Stat SOLVETIMEASSUMP{0, "assumption solve time"};
-  Stat DETTIMEASSUMP{0, "assumption solve time det"};
+  Stat SOLVETIMETOPDOWN{0, "top-down time"};
+  Stat DETTIMETOPDOWN{0, "top-down time det"};
+  Stat SOLVETIMEBOTTOMUP{0, "bottom-up solve time"};
+  Stat DETTIMEBOTTOMUP{0, "bottom-up solve time det"};
   Stat CATIME{0, "conflict analysis time"};
   Stat MINTIME{0, "learned minimize time"};
   Stat PROPTIME{0, "propagation time"};
@@ -231,9 +230,6 @@ struct Stats {
   Stat NLARGE{0, "large coef constraints"};
   Stat NARB{0, "arbitrary coef constraints"};
 
-  Stat NWATCHED{0, "watched constraints"};
-  Stat NCOUNTING{0, "counting constraints"};
-
   Stat NCLEANUP{0, "inprocessing phases"};
   Stat NRESTARTS{0, "restarts"};
   Stat NCORES{0, "cores"};
@@ -242,6 +238,11 @@ struct Stats {
   Stat NCARDDETECT{0, "detected cardinalities"};
   Stat NWEAKENEDNONIMPLYING{0, "weakened non-implying"};
   Stat NWEAKENEDNONIMPLIED{0, "weakened non-implied"};
+  Stat NMULTWEAKENEDREASON{0, "number of multiply-weakens on reason"};
+  Stat NMULTWEAKENEDCONFLICT{0, "number of multiply-weakens on conflict"};
+  Stat NMULTWEAKENEDDIRECT{0, "number of direct multiply-weakens"};
+  Stat NMULTWEAKENEDINDIRECT{0, "number of indirect multiply-weakens"};
+  Stat NSUBSETSUM{0, "number of subset sum minimization improvements"};
   Stat NORIGVARS{0, "original variables"};
   Stat NAUXVARS{0, "auxiliary variables"};
 
@@ -293,7 +294,6 @@ struct Stats {
 
   Stat NCGUNITCORES{0, "CG unit cores"};
   Stat NCGNONCLAUSALCORES{0, "CG non-clausal cores"};
-  Stat NCGCOREREUSES{0, "CG additional cardinalities from a core"};
 
   // derived statistics
   Stat CPUTIME{0, "cpu time"};
@@ -305,6 +305,7 @@ struct Stats {
   Stat GCTIME{0, "garbage collection time"};
   Stat LEARNTIME{0, "constraint learning time"};
   Stat HEURTIME{0, "time spent in activity heuristic"};
+  Stat SUBSETSUMTIME{0, "time spent in subset sum optimization"};
 
   Stat EXTERNLENGTHAVG{0, "input length average"};
   Stat EXTERNDEGREEAVG{0, "input degree average"};
@@ -316,7 +317,6 @@ struct Stats {
 
   Stat LASTLB{std::numeric_limits<StatNum>::quiet_NaN(), "best lower bound"};
   Stat LASTUB{std::numeric_limits<StatNum>::quiet_NaN(), "best upper bound"};
-  Stat DEPLTIME{-1, "depletion time"};
 
   std::chrono::steady_clock::time_point startTime;
   std::chrono::steady_clock::time_point runStartTime;
@@ -348,10 +348,10 @@ struct Stats {
       &SOLVETIME,
       &DETTIME,
       &OPTTIME,
-      &SOLVETIMEFREE,
-      &DETTIMEFREE,
-      &SOLVETIMEASSUMP,
-      &DETTIMEASSUMP,
+      &SOLVETIMETOPDOWN,
+      &DETTIMETOPDOWN,
+      &SOLVETIMEBOTTOMUP,
+      &DETTIMEBOTTOMUP,
       &CATIME,
       &MINTIME,
       &PROPTIME,
@@ -362,6 +362,8 @@ struct Stats {
       &HEURTIME,
       &ATMOSTONETIME,
       &ATMOSTONEDETTIME,
+      &SUBSETSUMTIME,
+      &NSUBSETSUM,
 #if WITHSOPLEX
       &LPSOLVETIME,
       &LPTOTALTIME,
@@ -390,12 +392,9 @@ struct Stats {
       &LEARNEDSTRENGTHAVG,
       &LEARNEDLBDAVG,
       &NUNITS,
-      &NHARDENINGS,
       &NPURELITS,
       &NSATISFIEDSREMOVED,
       &NCONSREADDED,
-      &NWATCHED,
-      &NCOUNTING,
       &NSMALL,
       &NLARGE,
       &NARB,
@@ -413,6 +412,10 @@ struct Stats {
       &NCARDDETECT,
       &NWEAKENEDNONIMPLIED,
       &NWEAKENEDNONIMPLYING,
+      &NMULTWEAKENEDREASON,
+      &NMULTWEAKENEDCONFLICT,
+      &NMULTWEAKENEDDIRECT,
+      &NMULTWEAKENEDINDIRECT,
       &NPROPCLAUSE,
       &NPROPCARD,
       &NPROPWATCH,
@@ -442,10 +445,8 @@ struct Stats {
       &NENCIMPL,
       &NCGUNITCORES,
       &NCGNONCLAUSALCORES,
-      &NCGCOREREUSES,
       &LASTUB,
       &LASTLB,
-      &DEPLTIME,
 #if WITHSOPLEX
       &LPOBJ,
       &NLPADDEDROWS,

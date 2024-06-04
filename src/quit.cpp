@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -61,7 +61,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "quit.hpp"
 #include <iostream>
-#include "ILP.hpp"
+#include "IntProg.hpp"
 #include "Optimization.hpp"
 #include "auxiliary.hpp"
 
@@ -69,57 +69,78 @@ namespace xct {
 
 std::atomic<bool> asynch_interrupt(false);
 
-void quit::printLits(const std::vector<Lit>& lits, char pre, bool onlyPositive) {
+void quit::printLits(const LitVec& lits, char pre, bool onlyPositive, int inputVarLimit) {
   std::cout << pre;
   for (Lit l : lits) {
-    if (l == 0 || (onlyPositive && l < 0)) continue;
+    if (l == 0 || (onlyPositive && l < 0) || toVar(l) > inputVarLimit) continue;
     std::cout << " " << l;
   }
   std::cout << std::endl;
 }
 
-void quit::printLitsMaxsat(const std::vector<Lit>& lits, const ILP& ilp) {
+void quit::printLitsPBcomp(const LitVec& lits, int inputVarLimit) {
+  std::cout << "v";
+  for (Lit l : lits) {
+    if (l == 0 || toVar(l) > inputVarLimit) continue;
+    std::cout << (l < 0 ? " -x" : " x") << toVar(l);
+  }
+  std::cout << std::endl;
+}
+
+void quit::printLitsMaxsat(const LitVec& lits, int inputVarLimit) {
   std::cout << "v ";
-  for (Var v = 1; v <= ilp.getMaxSatVars(); ++v) {
+  for (Var v = 1; v <= inputVarLimit; ++v) {
     std::cout << (lits[v] > 0);
   }
   std::cout << std::endl;
 }
 
-void quit::printFinalStats(ILP& ilp) {
-  if (ilp.global.options.printUnits) printLits(ilp.getSolver().getUnits(), 'u', false);
-  StatNum lb = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getLowerBound())
-                                     : std::numeric_limits<StatNum>::quiet_NaN();
-  StatNum ub = ilp.getOptimization() ? static_cast<StatNum>(ilp.getOptimization()->getUpperBound())
-                                     : std::numeric_limits<StatNum>::quiet_NaN();
-  if (ilp.global.options.verbosity.get() > 0) ilp.global.stats.print(lb, ub);
-  if (ilp.global.options.printCsvData) ilp.global.stats.printCsvLine(lb, ub);
-  if (ilp.global.options.printOpb) ilp.printFormula();
+void quit::printFinalStats(IntProg& intprog) {
+  if (intprog.global.options.printUnits) {
+    printLits(intprog.getSolver().getUnits(), 'u', false, intprog.getInputVarLimit());
+  }
+  StatNum lb = static_cast<StatNum>(intprog.getLowerBound());
+  StatNum ub = static_cast<StatNum>(intprog.getUpperBound());
+  if (intprog.global.options.verbosity.get() > 0) intprog.global.stats.print(lb, ub);
+  if (intprog.global.options.printCsvData) intprog.global.stats.printCsvLine(lb, ub);
 }
 
-int quit::exit_SUCCESS(ILP& ilp) {
-  ilp.global.logger.flush();
-  printFinalStats(ilp);
-  if (ilp.hasSolution()) {
-    if (ilp.global.options.uniformOut || ilp.global.options.fileFormat.is("opb")) {
-      std::cout << "o " << ilp.getUpperBound() << "\n";
+int quit::exit_SUCCESS(IntProg& intprog) {
+  intprog.global.logger.flush();
+  printFinalStats(intprog);
+  if (intprog.hasLastSolution()) {
+    if (intprog.global.options.uniformOut) {
+      std::cout << "o " << intprog.getUpperBoundRatio() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
-      if (ilp.global.options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
-    } else if (ilp.global.options.fileFormat.is("wcnf")) {
-      std::cout << "o " << ilp.getUpperBound() << "\n";
+      if (intprog.global.options.printSol) {
+        printLits(intprog.getSolver().getLastSolution(), 'v', true, intprog.getInputVarLimit());
+      }
+    } else if (intprog.global.options.fileFormat.is("opb") || intprog.global.options.fileFormat.is("wbo")) {
+      std::cout << (intprog.getSolver().objectiveIsSet() ? "s OPTIMUM FOUND" : "s SATISFIABLE") << std::endl;
+      if (intprog.global.options.printSol) {
+        printLitsPBcomp(intprog.getSolver().getLastSolution(), intprog.getInputVarLimit());
+      }
+    } else if (intprog.global.options.fileFormat.is("wcnf")) {
       std::cout << "s OPTIMUM FOUND" << std::endl;
-      if (ilp.global.options.printSol) printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
+      if (intprog.global.options.printSol) {
+        printLitsMaxsat(intprog.getSolver().getLastSolution(), intprog.getInputVarLimit());
+      }
+    } else if (intprog.global.options.fileFormat.is("cnf")) {
+      std::cout << "s SATISFIABLE" << std::endl;
+      if (intprog.global.options.printSol) {
+        printLitsMaxsat(intprog.getSolver().getLastSolution(), intprog.getInputVarLimit());
+      }
     } else {
-      assert(ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp"));
-      std::cout << "=obj= " << ilp.getUpperBound() << std::endl;
-      if (ilp.global.options.printSol) ilp.printOrigSol();
+      assert(intprog.global.options.fileFormat.is("mps") || intprog.global.options.fileFormat.is("lp"));
+      std::cout << "=obj= " << intprog.getUpperBoundRatio() << std::endl;
+      if (intprog.global.options.printSol) intprog.printOrigSol();
     }
     std::cout.flush();
     std::cerr.flush();
     return 30;
   } else {
-    if (!ilp.global.options.uniformOut &&
-        (ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp"))) {
+    if (!intprog.global.options.uniformOut &&
+        (intprog.global.options.fileFormat.is("mps") || intprog.global.options.fileFormat.is("lp"))) {
       std::cout << "=infeas=" << std::endl;
     } else {
       std::cout << "s UNSATISFIABLE" << std::endl;
@@ -130,30 +151,39 @@ int quit::exit_SUCCESS(ILP& ilp) {
   }
 }
 
-int quit::exit_INDETERMINATE(ILP& ilp) {
-  ilp.global.logger.flush();
-  printFinalStats(ilp);
-  if (ilp.hasSolution()) {
-    if (ilp.global.options.uniformOut || ilp.global.options.fileFormat.is("opb")) {
-      std::cout << "c best so far " << ilp.getUpperBound() << "\n";
+int quit::exit_INDETERMINATE(IntProg& intprog) {
+  intprog.global.logger.flush();
+  printFinalStats(intprog);
+  if (intprog.hasLastSolution()) {
+    assert(!intprog.global.options.fileFormat.is("cnf"));  // otherwise we would have succesfully terminated
+    if (intprog.global.options.uniformOut) {
+      std::cout << "c best so far " << intprog.getUpperBoundRatio() << "\n";
       std::cout << "s SATISFIABLE" << std::endl;
-      if (ilp.global.options.printSol) printLits(ilp.getSolver().getLastSolution(), 'v', true);
-    } else if (ilp.global.options.fileFormat.is("wcnf")) {
-      std::cout << "o " << ilp.getUpperBound() << "\n";
+      if (intprog.global.options.printSol) {
+        printLits(intprog.getSolver().getLastSolution(), 'v', true, intprog.getInputVarLimit());
+      }
+    } else if (intprog.global.options.fileFormat.is("opb") || intprog.global.options.fileFormat.is("wbo")) {
+      std::cout << "s SATISFIABLE" << std::endl;
+      if (intprog.global.options.printSol) {
+        printLitsPBcomp(intprog.getSolver().getLastSolution(), intprog.getInputVarLimit());
+      }
+    } else if (intprog.global.options.fileFormat.is("wcnf")) {
       std::cout << "s UNKNOWN" << std::endl;
-      if (ilp.global.options.printSol) printLitsMaxsat(ilp.getSolver().getLastSolution(), ilp);
+      if (intprog.global.options.printSol) {
+        printLitsMaxsat(intprog.getSolver().getLastSolution(), intprog.getInputVarLimit());
+      }
     } else {
-      assert(ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp"));
-      std::cout << "=obj= " << ilp.getUpperBound() << std::endl;
-      if (ilp.global.options.printSol) ilp.printOrigSol();
+      assert(intprog.global.options.fileFormat.is("mps") || intprog.global.options.fileFormat.is("lp"));
+      std::cout << "=obj= " << intprog.getUpperBoundRatio() << std::endl;
+      if (intprog.global.options.printSol) intprog.printOrigSol();
     }
     std::cout.flush();
     std::cerr.flush();
     return 10;
   } else {
-    if (!ilp.global.options.noSolve) {
-      if (!ilp.global.options.uniformOut &&
-          (ilp.global.options.fileFormat.is("mps") || ilp.global.options.fileFormat.is("lp"))) {
+    if (!intprog.global.options.noSolve) {
+      if (!intprog.global.options.uniformOut &&
+          (intprog.global.options.fileFormat.is("mps") || intprog.global.options.fileFormat.is("lp"))) {
         std::cout << "=unkn=" << std::endl;
       } else {
         std::cout << "s UNKNOWN" << std::endl;

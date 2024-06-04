@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -84,16 +84,16 @@ void ConstraintAllocator::capacity(int64_t min_cap) {
 
 Constr& ConstraintAllocator::operator[](CRef cr) const { return (Constr&)*(memory + maxAlign * cr.ofs); }
 
-void ConstraintAllocator::cleanup() { std::free(memory); }
+void ConstraintAllocator::cleanup() { aux::align_free(memory); }
 
 std::byte* xrealloc(std::byte* ptr, size_t oldsize, size_t newsize) {
   // copy to a larger memory block
   // not the most efficient, but no better option right now:
   // https://stackoverflow.com/questions/64884745/is-there-a-linux-equivalent-of-aligned-realloc
-  std::byte* mem = (std::byte*)std::aligned_alloc(maxAlign, newsize);
+  std::byte* mem = static_cast<std::byte*>(aux::align_alloc(maxAlign, newsize));
   if (mem == nullptr) throw OutOfMemoryException();
   std::memcpy(mem, ptr, oldsize);
-  std::free(ptr);
+  aux::align_free(ptr);
   return mem;
 }
 

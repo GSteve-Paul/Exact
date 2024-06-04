@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -70,7 +70,7 @@ namespace xct {
 CandidateCut::CandidateCut(const CeSuper& in, const std::vector<double>& sol) {
   assert(in->isSaturated());
   in->saturateAndFixOverflowRational();
-  in->toSimple()->copyTo(simpcons);
+  in->copyTo(simpcons);
   // NOTE: simpcons is already in var-normal form
   initialize(sol);
 }
@@ -83,7 +83,7 @@ CandidateCut::CandidateCut(const Constr& in, CRef cref, const std::vector<double
   if (tmp->isTautology()) {
     return;
   }
-  tmp->toSimple()->copyTo(simpcons);
+  tmp->copyTo(simpcons);
   // NOTE: simpcons is already in var-normal form
   initialize(sol);
   assert(isValid(cr));
@@ -133,8 +133,7 @@ std::ostream& operator<<(std::ostream& o, const CandidateCut& cc) {
   return o << cc.simpcons << " norm " << cc.norm << " ratSlack " << cc.ratSlack;
 }
 
-LpSolver::LpSolver(Solver& s, const CeArb& o, Global& g) : global(g), solver(s) {
-  assert(o);
+LpSolver::LpSolver(Solver& s) : solver(s), global(s.global) {
   assert(INFTY == lp.realParam(lp.INFTY));
 
   if (global.options.verbosity.get() > 1) std::cout << "c Initializing LP" << std::endl;
@@ -144,7 +143,7 @@ LpSolver::LpSolver(Solver& s, const CeArb& o, Global& g) : global(g), solver(s) 
   lp.setIntParam(soplex::SoPlex::CHECKMODE, soplex::SoPlex::CHECKMODE_REAL);
   lp.setIntParam(soplex::SoPlex::SIMPLIFIER, soplex::SoPlex::SIMPLIFIER_OFF);
   lp.setIntParam(soplex::SoPlex::OBJSENSE, soplex::SoPlex::OBJSENSE_MINIMIZE);
-  lp.setIntParam(soplex::SoPlex::VERBOSITY, global.options.verbosity.get());
+  lp.setIntParam(soplex::SoPlex::VERBOSITY, 0);  // only errors, no warnings
   lp.setRandomSeed(global.options.randomSeed.get());
 
   // add two empty rows for objective bound constraints
@@ -164,24 +163,7 @@ LpSolver::LpSolver(Solver& s, const CeArb& o, Global& g) : global(g), solver(s) 
     }
   }
 
-  soplex::DVectorReal objective;
-  objective.reDim(getNbCols());  // NOTE: automatically set to zero
-  o->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  o->removeEqualities(solver.getEqualities(), false);
-  if (o->nVars() == 0) {
-    for (int v = 1; v < getNbCols(); ++v) objective[v] = 1;  // add default objective function
-  } else {
-    for (Var v : o->getVars()) {
-      objective[v] = aux::toDouble(o->coefs[v]);
-    }
-  }
-  lp.changeObjReal(objective);
-
   if (global.options.verbosity.get() > 1) std::cout << "c Finished initializing LP" << std::endl;
-}
-
-bool LpSolver::canInProcess() const {
-  return madeInternalCall && (global.options.lpGomoryCuts || global.options.lpLearnedCuts);
 }
 
 void LpSolver::setNbVariables(int n) {
@@ -200,6 +182,25 @@ void LpSolver::setNbVariables(int n) {
   assert(getNbCols() == n);
 }
 
+void LpSolver::setObjective(const CeArb& o) {
+  assert(o);
+  setNbVariables(solver.getNbVars() + 1);
+  soplex::DVectorReal objective;
+  objective.reDim(getNbCols());  // NOTE: automatically set to zero
+  if (o->empty()) {
+    for (int v = 1; v < getNbCols(); ++v) objective[v] = 1;  // add default objective function
+  } else {
+    for (Var v : o->getVars()) {
+      objective[v] = aux::toDouble(o->coefs[v]);
+    }
+  }
+  lp.changeObjReal(objective);
+}
+
+bool LpSolver::canInProcess() const {
+  return madeInternalCall && (global.options.lpGomoryCuts || global.options.lpLearnedCuts);
+}
+
 int LpSolver::getNbCols() const { return lp.numCols(); }
 int LpSolver::getNbRows() const { return lp.numRows(); }
 
@@ -209,6 +210,7 @@ CeSuper LpSolver::createLinearCombinationFarkas(soplex::DVectorReal& mults) {
   assert(scale > 0);
 
   Ce128 out = global.cePools.take128();
+  out->orig = Origin::FARKAS;
   for (int r = 0; r < mults.dim(); ++r) {
     int128 factor = aux::cast<int128, double>(mults[r] * scale);
     if (factor <= 0) continue;
@@ -223,8 +225,8 @@ CeSuper LpSolver::createLinearCombinationFarkas(soplex::DVectorReal& mults) {
     out->weakenSmalls(aux::toDouble(out->absCoeffSum()) / out->nVars() * global.options.lpIntolerance.get());
     out->removeZeroes();
   }
-  out->saturateAndFixOverflow(solver.getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
-                              0);
+  out->saturateAndFixOverflow(solver.getLevel(), global.options.bitsOverflow.get(), global.options.bitsReduced.get(), 0,
+                              false);
   return out;
 }
 
@@ -246,8 +248,9 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
   }
 
   int256 b = lcc->getRhs();
-  for (Var v : lcc->getVars())
+  for (Var v : lcc->getVars()) {
     if (lpSolution[v] > 0.5) b -= lcc->coefs[v];
+  }
   if (b == 0) {
     return CandidateCut();
   }
@@ -268,7 +271,7 @@ CandidateCut LpSolver::createLinearCombinationGomory(soplex::DVectorReal& mults)
     global.stats.NLPADDEDLITERALS += ce->nVars();
     lcc->addUp(ce, aux::abs(factor));
   }
-  global.logger.logAssumption(lcc);
+  global.logger.logAssumption(lcc, global.options.proofAssumps.operator bool());
   // TODO: fix logging for Gomory cuts
 
   lcc->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -330,7 +333,7 @@ void LpSolver::constructLearnedCandidates() {
     const Constr& c = solver.ca[cr];
     if (isLearned(c.getOrigin())) {
       bool containsNewVars = false;
-      for (unsigned int i = 0; i < c.size && !containsNewVars; ++i) {
+      for (unsigned int i = 0; i < c.size() && !containsNewVars; ++i) {
         containsNewVars = toVar(c.lit(i)) >= getNbCols();
       }
       if (containsNewVars) continue;  // for now, LP solver only knows about the initial formula variables
@@ -362,11 +365,12 @@ void LpSolver::addFilteredCuts() {
   for (int i : keptCuts) {
     CandidateCut& cc = candidateCuts[i];
     CeSuper ce = cc.simpcons.toExpanded(global.cePools);
+    ce->orig = Origin::GOMORY;
     ce->postProcess(solver.getLevel(), solver.getPos(), solver.getHeuristic(), true, global.stats);
     assert(ce->fitsInDouble());
     assert(!ce->isTautology());
     if (cc.cr == CRef_Undef) {  // Gomory cut
-      aux::timeCallVoid([&] { solver.learnConstraint(ce, Origin::GOMORY); }, global.stats.LEARNTIME);
+      aux::timeCallVoid([&] { solver.learnConstraint(ce); }, global.stats.LEARNTIME);
     } else {  // learned cut
       ++global.stats.NLPLEARNEDCUTS;
     }
@@ -392,7 +396,7 @@ double LpSolver::getScaleFactor(soplex::DVectorReal& mults, bool removeNegatives
   for (int i = 0; i < mults.dim(); ++i) {
     if (std::isnan(mults[i]) || std::isinf(mults[i]) || (removeNegatives && mults[i] < 0)) mults[i] = 0;
     largest = std::max(aux::abs(mults[i]), largest);
-    nonzeros += mults[i] == 0;
+    nonzeros += mults[i] != 0;
   }
   if (largest == 0) return 0;
   assert(nonzeros > 0);
@@ -472,7 +476,8 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
       if (lp.getDual(lpMultipliers)) {
         CeSuper dual = createLinearCombinationFarkas(lpMultipliers);
         if (dual) {
-          aux::timeCallVoid([&] { solver.learnConstraint(dual, Origin::DUAL); }, global.stats.LEARNTIME);
+          dual->orig = Origin::DUAL;
+          aux::timeCallVoid([&] { solver.learnConstraint(dual); }, global.stats.LEARNTIME);
           return {LpStatus::OPTIMAL, dual};
         }
       } else {
@@ -511,13 +516,13 @@ std::pair<LpStatus, CeSuper> LpSolver::checkFeasibility(bool inProcessing) {
 
   CeSuper confl = createLinearCombinationFarkas(lpMultipliers);
   if (confl) {
-    aux::timeCallVoid([&] { solver.learnConstraint(confl, Origin::FARKAS); }, global.stats.LEARNTIME);
+    aux::timeCallVoid([&] { solver.learnConstraint(confl); }, global.stats.LEARNTIME);
     return {LpStatus::INFEASIBLE, confl};
   }
   return {LpStatus::INFEASIBLE, CeNull()};
 }
 
-CeSuper LpSolver::inProcess() {
+CeSuper LpSolver::inProcess(bool overrideHeur) {
   solver.backjumpTo(0);
   auto [lpstat, constraint] =
       aux::timeCall<std::pair<LpStatus, CeSuper>>([&] { return checkFeasibility(true); }, global.stats.LPTOTALTIME);
@@ -534,8 +539,10 @@ CeSuper LpSolver::inProcess() {
   for (int i = 0; i < lpSol.dim(); ++i) lpSolution[i] = lpSol[i];
   lp.getSlacksReal(lpSlackSolution);
   assert(solver.getNbVars() + 1 >= getNbCols());
-  for (Var v = 1; v < getNbCols(); ++v) {
-    solver.freeHeur.setPhase(v, (lpSolution[v] <= 0.5) ? -v : v);
+  if (overrideHeur) {
+    for (Var v = 1; v < getNbCols(); ++v) {
+      solver.heur.setPhase(v, (lpSolution[v] <= 0.5) ? -v : v);
+    }
   }
   double objVal = lp.objValueReal();
   if (isfinite(objVal)) {
@@ -549,7 +556,7 @@ CeSuper LpSolver::inProcess() {
   candidateCuts.clear();
   if (global.options.lpGomoryCuts || global.options.lpLearnedCuts) global.logger.logComment("cutting");
   if (global.options.lpLearnedCuts) constructLearnedCandidates();  // first to avoid adding gomory cuts twice
-  if (global.options.lpGomoryCuts) constructGomoryCandidates();
+  if (global.options.lpGomoryCuts && global.options.proofAssumps) constructGomoryCandidates();
   addFilteredCuts();
   pruneCuts();
   return constraint;
@@ -582,10 +589,10 @@ void LpSolver::addConstraint(const CeSuper& c, bool removable, bool upperbound, 
   ID id = global.logger.logProofLineWithInfo(c, "LP");
   if (upperbound || lowerbound) {
     boundsToAdd[lowerbound].id = id;
-    c->toSimple()->copyTo(boundsToAdd[lowerbound].cs);
+    c->copyTo(boundsToAdd[lowerbound].cs);
   } else {
     toAdd[id] = {ConstrSimple64(), removable};
-    c->toSimple()->copyTo(toAdd[id].cs);
+    c->copyTo(toAdd[id].cs);
   }
 }
 

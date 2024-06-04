@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -100,11 +100,17 @@ void ConstrSimple<CF, DG>::toNormalFormVar() {
 }
 
 template <typename CF, typename DG>
+void ConstrSimple<CF, DG>::flip() {
+  rhs = -rhs;
+  for (auto& t : terms) t.c = -t.c;
+}
+
+template <typename CF, typename DG>
 void ConstrSimple<CF, DG>::reset() {
   orig = Origin::UNKNOWN;
   terms.clear();
   rhs = 0;
-  proofLine = (std::to_string(ID_Trivial) + " ");
+  proofLine = std::to_string(ID_Trivial) + " ";
 }
 
 template <typename CF, typename DG>

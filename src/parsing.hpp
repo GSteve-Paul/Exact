@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -66,19 +66,19 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-class ILP;
+class IntProg;
 
 namespace parsing {
 
-bigint read_bigint(const std::string& s, int start);
-void file_read(ILP& ilp);
-void opb_read(std::istream& in, ILP& ilp);
-void cnf_read(std::istream& in, ILP& ilp);
-void wcnf_read(std::istream& in, ILP& ilp);
-void mps_read(const std::string& filename, ILP& ilp);
-void lp_read(const std::string& filename, ILP& ilp);
+bigint read_bigint(const std::string& s, int64_t start, int64_t end);
+void file_read(IntProg& intprog);
+void opb_read(std::istream& in, IntProg& intprog);
+void cnf_read(std::istream& in, IntProg& intprog);
+void wcnf_read(std::istream& in, IntProg& intprog);
+void mps_read(const std::string& filename, IntProg& intprog);
+void lp_read(const std::string& filename, IntProg& intprog);
 template <typename T>
-void coinutils_read(T& coinutils, ILP& ilp, bool wasMaximization);
+void coinutils_read(T& coinutils, IntProg& intprog, bool wasMaximization);
 
 }  // namespace parsing
 

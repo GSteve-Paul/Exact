@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -64,7 +64,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define EXPANDED(x) STR(x)
 #define STR(x) #x
 
+#include <malloc.h>
 #include <algorithm>
+#include <boost/container/flat_map.hpp>
+#include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <cassert>
 #include <chrono>
@@ -72,13 +75,20 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <limits>
 #include <list>
+#include <map>
 #include <numeric>
 #include <optional>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "external/ankerl/unordered_dense.h"
 #include "external/plf/plf_reorderase.h"
+#if ANKERLMAPS
+#include "external/ankerl/unordered_dense.h"
+#else
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
+#endif
 
 #if UNIXLIKE
 namespace xct {
@@ -102,19 +112,32 @@ static_assert(alignof(int128) <= maxAlign);
 static_assert(alignof(int256) <= maxAlign);
 static_assert(alignof(bigint) <= maxAlign);
 
+#if ANKERLMAPS
 template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
-using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;  // TODO: switch to this once Boost 1.81 is in Ubuntu
-// using unordered_map = std::unordered_map<K, V, H, KE>;
-// using unordered_map = boost::unordered_flat_map<K, V, H, KE>;
-
+using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;
 template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
-using unordered_set = ankerl::unordered_dense::set<K, H, KE>;
-// using unordered_set = std::unordered_set<K, H, KE>;
-// using unordered_set = boost::unordered_flat_set<K, V, H, KE>; // TODO: switch to this once Boost 1.81 is in Ubuntu
+using unordered_set = std::unordered_set<K, H, KE>;
+#else
+template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+using unordered_map = boost::unordered::unordered_flat_map<K, V, H, KE>;
+template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+using unordered_set = boost::unordered::unordered_flat_set<K, H, KE>;
+#endif
+// template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+// using unordered_map = std::unordered_map<K, V, H, KE>;
+// template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
+// using unordered_set = ankerl::unordered_dense::set<K, H, KE>;
+
+template <typename K, typename V, typename Comp = std::less<K>>
+using ordered_map = boost::container::flat_map<K, V, Comp>;
+// using ordered_map = std::unordered_map<K, V, Comp>;
+template <typename K, typename Comp = std::less<K>>
+using ordered_set = boost::container::flat_set<K, Comp>;
+// using ordered_set = std::set<K, Comp>;
 
 enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, TIMEOUT, INPROCESSED };
-std::ostream& operator<<(std::ostream& o, enum SolveState state);
+std::ostream& operator<<(std::ostream& o, SolveState state);
 
 namespace xct {
 
@@ -143,11 +166,28 @@ std::ostream& operator<<(std::ostream& o, const std::list<T>& m) {
   for (const auto& e : m) o << e << " ";
   return o;
 }
+template <typename T>
+std::ostream& operator<<(std::ostream& o, const std::optional<T>& m) {
+  if (m) {
+    o << m.value();
+  } else {
+    o << "null";
+  }
+  return o;
+}
 
 namespace aux {
 
+extern std::ostream& cout;
+
 template <typename T>
-T sto(const std::string& s) {
+T sto(const std::string&) {
+  // static_assert(false);
+  assert(false);
+  return 0;
+}
+template <>
+inline long double sto(const std::string& s) {
   return std::stold(s);
 }
 template <>
@@ -155,13 +195,34 @@ inline double sto(const std::string& s) {
   return std::stod(s);
 }
 template <>
+inline float sto(const std::string& s) {
+  return std::stof(s);
+}
+template <>
 inline std::string sto(const std::string& s) {
   return s;
+}
+template <>
+inline int64_t sto(const std::string& s) {
+  return std::stoll(s);
+}
+template <>
+inline int32_t sto(const std::string& s) {
+  return std::stoi(s);
+}
+template <>
+inline bigint sto(const std::string& s) {
+  // NOTE: boost::cpp_int does not like leading zeroes
+  // https://stackoverflow.com/questions/56153071/cpp-int-boost-runtime-error-unexpected-content-found-while-parsing-character
+  const bool minus = !s.empty() && s[0] == '-';
+  int64_t i = minus;
+  while (i < std::ssize(s) && s[i] == '0') ++i;
+  return minus ? -boost::multiprecision::cpp_int(s.c_str() + i) : boost::multiprecision::cpp_int(s.c_str() + i);
 }
 
 template <typename T, typename S>
 bool contains(const T& v, const S& x) {
-  return std::find(v.cbegin(), v.cend(), x) != v.cend();
+  return std::find(v.begin(), v.end(), x) != v.end();
 }
 bool contains(const std::string& s, char c);
 
@@ -307,6 +368,23 @@ template <>
 inline bigint gcd(const bigint& x, const bigint& y) {
   return boost::multiprecision::gcd(x, y);
 }
+template <typename T>
+T lcm(const T& x, const T& y) {
+  return std::lcm(x, y);
+}
+template <>
+inline int128 lcm(const int128& x, const int128& y) {
+  return static_cast<int128>(
+      boost::multiprecision::lcm(boost::multiprecision::int128_t(x), boost::multiprecision::int128_t(y)));
+}
+template <>
+inline int256 lcm(const int256& x, const int256& y) {
+  return boost::multiprecision::lcm(x, y);
+}
+template <>
+inline bigint lcm(const bigint& x, const bigint& y) {
+  return boost::multiprecision::lcm(x, y);
+}
 
 template <typename T>
 double toDouble(const T& x) {
@@ -340,20 +418,9 @@ inline double divToDouble(const bigint& num, const bigint& denom) {
 }
 
 template <typename T>
-unsigned msb(const T& x) {
+int32_t msb(const T& x) {
   assert(x > 0);
-  // return std::bit_floor(x); // C++20
-  return boost::multiprecision::msb(boost::multiprecision::int128_t(x));
-}
-template <>
-inline unsigned msb(const int256& x) {
-  assert(x > 0);
-  return boost::multiprecision::msb(x);
-}
-template <>
-inline unsigned msb(const bigint& x) {
-  assert(x > 0);
-  return boost::multiprecision::msb(x);
+  return static_cast<int32_t>(boost::multiprecision::msb(x));
 }
 
 template <typename T>
@@ -514,6 +581,13 @@ auto comprehension(CONTAINER&& container, LAM_MAP&& map, LAM_FILTER&& filter) {
   w.resize(i);
   return w;
 }
+
+struct IntVecHash {
+  size_t operator()(const std::vector<int32_t>& t) const { return xct::aux::hashForList<int32_t>(t); }
+};
+
+void* align_alloc(size_t alignment, size_t size);
+void align_free(void* ptr);
 
 }  // namespace aux
 

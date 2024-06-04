@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -78,11 +78,6 @@ struct ConstrSimpleSuper {
   virtual ~ConstrSimpleSuper() = default;
 
   virtual CeSuper toExpanded(ConstrExpPools& cePools) const = 0;
-  virtual void copyTo(ConstrSimple32& out) const = 0;
-  virtual void copyTo(ConstrSimple64& out) const = 0;
-  virtual void copyTo(ConstrSimple96& out) const = 0;
-  virtual void copyTo(ConstrSimple128& out) const = 0;
-  virtual void copyTo(ConstrSimpleArb& out) const = 0;
 };
 
 template <typename CF, typename DG>
@@ -102,29 +97,10 @@ struct ConstrSimple final : public ConstrSimpleSuper {
 
   void toNormalFormLit();
   void toNormalFormVar();
+  void flip();
   void reset();
 
   void toStreamAsOPB(std::ostream& o) const;
-
- private:
-  template <typename C, typename D>
-  void copy_(ConstrSimple<C, D>& out) const {
-    out.orig = orig;
-    out.rhs = static_cast<D>(rhs);
-    out.terms.resize(size());
-    for (unsigned int i = 0; i < size(); ++i) {
-      out.terms[i].l = terms[i].l;
-      out.terms[i].c = static_cast<C>(terms[i].c);
-    }
-    out.proofLine = proofLine;
-  }
-
- public:
-  void copyTo(ConstrSimple32& out) const override { copy_(out); }
-  void copyTo(ConstrSimple64& out) const override { copy_(out); }
-  void copyTo(ConstrSimple96& out) const override { copy_(out); }
-  void copyTo(ConstrSimple128& out) const override { copy_(out); }
-  void copyTo(ConstrSimpleArb& out) const override { copy_(out); }
 };
 
 template <typename CF, typename DG>

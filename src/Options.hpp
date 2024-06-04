@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -63,6 +63,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "auxiliary.hpp"
 #include "quit.hpp"
+#include "typedefs.hpp"
 #include "used_licenses/licenses.hpp"
 
 namespace xct {
@@ -128,7 +129,7 @@ class ValOption : public Option {
   void parse(const std::string& v) override {
     try {
       set(aux::sto<T>(v));
-    } catch (const std::invalid_argument& ia) {
+    } catch (const std::invalid_argument&) {
       throw InvalidArgument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
     if (!check(val)) {
@@ -169,187 +170,163 @@ struct Options {
                              "MIT",
                              "RS",
 #if WITHSOPLEX
-                             "ZIB",
+                             "ZIB Apache 2",
 #endif
                          }};
-  ValOption<long long> randomSeed{"seed", "Seed for the pseudo-random number generator", 1, "1 =< int",
-                                  [](long long x) -> bool { return 1 <= x; }};
+  ValOption<int64_t> randomSeed{"seed", "Seed for the pseudo-random number generator", 1, "1 =< int",
+                                [](int64_t x) -> bool { return 1 <= x; }};
   VoidOption noSolve{"onlyparse", "Quit after parsing file"};
-  EnumOption fileFormat{
-      "format", "File format (overridden by corresponding file extension)", "opb", {"opb", "cnf", "wcnf", "mps", "lp"}};
-  BoolOption uniformOut{"out-uniform", "Use the default opb output style even for other file formats", false};
+  EnumOption fileFormat{"format",
+                        "File format (overridden by corresponding file extension)",
+                        "opb",
+                        {"opb", "wbo", "cnf", "wcnf", "mps", "lp"}};
   VoidOption printOpb{"print-opb", "Print OPB of the parsed problem"};
-  VoidOption printSol{"print-sol", "Print the solution if found"};
+  BoolOption uniformOut{"print-uniform", "Use a default output style for all file formats", true};
+  VoidOption printSol{"print-sol", "Print the solution if found (style can be uniform or non-uniform)"};
   VoidOption printUnits{"print-units", "Print unit literals"};
   VoidOption printCsvData{"print-csv", "Print statistics in a comma-separated value format"};
-  ValOption<int> verbosity{"verbosity", "Verbosity of the output", 1, "0 =< int",
-                           [](const int& x) -> bool { return x >= 0; }};
+  ValOption<int32_t> verbosity{"verbosity", "Verbosity of the output", 0, "0 =< int",
+                               [](const int32_t& x) -> bool { return x >= 0; }};
   ValOption<std::string> proofLog{"proof-log", "Filename for the proof logs, left unspecified disables proof logging",
                                   "", "/path/to/file", [](const std::string&) -> bool { return true; }};
   BoolOption proofZip{"proof-zip", "Generate proof file in ZIP format. This can alleviate space and IO constraints.",
                       false};
+  BoolOption proofAssumps{"proof-assumptions",
+                          "Allow advanced solving techniques that generate incomplete proofs with "
+                          "assumption rules. Disabling may reduce performance.",
+                          true};
   ValOption<double> timeout{"timeout", "Timeout in seconds, 0 is infinite ", 0, "0 =< float",
                             [](double x) -> bool { return 0 <= x; }};
-  ValOption<long long> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
-                                  [](long long x) -> bool { return 0 <= x; }};
-  BoolOption boundUpper{"opt-boundupper", "Add objective upper bound constraints when a feasible solution is found.",
-                        true};
+  ValOption<int64_t> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
+                                [](int64_t x) -> bool { return 0 <= x; }};
   ValOption<double> lubyBase{"luby-base", "Base of the Luby restart sequence", 2, "1 =< float",
                              [](double x) -> bool { return 1 <= x; }};
-  ValOption<int> lubyMult{"luby-mult", "Multiplier of the Luby restart sequence", 100, "1 =< int",
-                          [](const int& x) -> bool { return x >= 1; }};
+  ValOption<int32_t> lubyMult{"luby-mult", "Multiplier of the Luby restart sequence", 100, "1 =< int",
+                              [](const int32_t& x) -> bool { return x >= 1; }};
   ValOption<double> varWeight{
       "var-weight", "Activity weight for latest conflict variables - 0 = fixed activity, 0.5 = ACIDS, 1 = VMTF.", 0.99,
       "0 =< float =< 1", [](const double& x) -> bool { return 0 <= x && x <= 1; }};
-  BoolOption varSeparate{"var-separate", "Use separate phase and activity for linear and core-guided phases", true};
-  ValOption<int> dbDecayLBD{"db-decay", "Decay term for the LBD of constraints", 1, "0 (no decay) =< int",
-                            [](const int& x) -> bool { return 0 <= x; }};
+  BoolOption varSol{"var-sol", "Use last solution as phase", true};
+  ValOption<int32_t> dbDecayLBD{"db-decay", "Decay term for the LBD of constraints", 1, "0 (no decay) =< int",
+                                [](const int32_t& x) -> bool { return 0 <= x; }};
+  ValOption<int64_t> dbBase{"db-base", "Initial number of conflicts at which database cleaning is performed.", 2000,
+                            "1 =< int", [](const int64_t& x) -> bool { return x >= 1; }};
   ValOption<double> dbExp{"db-exp",
                           "Exponent of the growth of the learned constraint database and the inprocessing intervals, "
                           "with log(#conflicts) as base",
                           1.1, "0 =< float", [](const double& x) -> bool { return 0 <= x; }};
   ValOption<double> dbScale{"db-scale", "Multiplier of the learned clause database and inprocessing intervals", 500,
                             "0 < float", [](const double& x) -> bool { return 0 < x; }};
-  ValOption<int> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup", 1,
-                           "0 (nobody is safe) =< int", [](const int& x) -> bool { return 0 <= x; }};
-  ValOption<double> propWatched{"prop-watched", "Watched propagation instead of counting propagation", 1,
-                                "0 (always counting) =< float =< 1 (always watched)",
-                                [](const double& x) -> bool { return 0 <= x && x <= 1e9; }};
-  ValOption<double> lpTimeRatio {
-    "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
+  ValOption<int32_t> dbSafeLBD{"db-safelbd", "Learned constraints with this LBD or less are safe from database cleanup",
+                               1, "0 (nobody is safe) =< int", [](const int32_t& x) -> bool { return 0 <= x; }};
+  ValOption<int32_t> dbMaxLBD{"db-maxlbd", "Constraints with an LBD larger than this are considered to have this LBD",
+                              static_cast<int32_t>(1e5), "1 =< int =< 1e5",
+                              [](const int32_t& x) -> bool { return 1 <= x && x <= static_cast<int32_t>(MAXLBD); }};
+  ValOption<double> lpTimeRatio{
+      "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
 #if WITHSOPLEX
-        0.1, "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }
+      0.1, "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }
 #else
-        0, "0", [](const double& x) -> bool { return x == 0; }
+      0, "0", [](const double& x) -> bool { return x == 0; }
 #endif
   };
-  ValOption<int> lpPivotBudget{"lp-budget", "Initial LP call pivot budget", 2000, "1 =< int",
-                               [](const int& x) -> bool { return x >= 1; }};
+  ValOption<int32_t> lpPivotBudget{"lp-budget", "Initial LP call pivot budget", 2000, "1 =< int",
+                                   [](const int32_t& x) -> bool { return x >= 1; }};
   ValOption<double> lpIntolerance{"lp-intolerance", "Intolerance for floating point artifacts", 1e-6, "0 < float",
                                   [](const double& x) -> bool { return x > 1; }};
   BoolOption lpLearnDuals{"lp-learnduals", "Learn dual constraints from optimal LP", true};
   BoolOption lpGomoryCuts{"lp-cut-gomory", "Generate Gomory cuts", false};
   BoolOption lpLearnedCuts{"lp-cut-learned", "Use learned constraints as cuts", false};
-  ValOption<int> lpGomoryCutLimit{"lp-cut-gomlim",
-                                  "Max number of tableau rows considered for Gomory cuts in a single round", 100,
-                                  "1 =< int", [](const int& x) -> bool { return 1 <= x; }};
+  ValOption<int32_t> lpGomoryCutLimit{"lp-cut-gomlim",
+                                      "Max number of tableau rows considered for Gomory cuts in a single round", 100,
+                                      "1 =< int", [](const int32_t& x) -> bool { return 1 <= x; }};
   ValOption<double> lpMaxCutCos{
       "lp-cut-maxcos",
       "Upper bound on cosine of angle between cuts added in one round, higher means cuts can be more parallel", 0.1,
       "0 =< float =< 1", [](const double& x) -> bool { return 0 <= x && x <= 1; }};
+  BoolOption multWeaken{"ca-multweaken", "Multiply and weaken instead of division when possible.", true};
   BoolOption multBeforeDiv{"ca-multiply", "Multiply reason with the asserting literal's conflict coefficient", true};
   EnumOption division{"ca-division",
                       "Division method to round the reason to non-positive slack",
                       "mindiv",
                       {"rto", "slack+1", "mindiv"}};
   BoolOption weakenNonImplying{"ca-weaken-nonimplying",
-                               "Weaken non-implying falsified literals from learned constraints", true};
+                               "Weaken non-implying falsified literals from learned constraints", false};
   BoolOption learnedMin{"ca-min", "Minimize learned constraints through generalized self-subsumption.", true};
-  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", true};
-  ValOption<int> bitsOverflow{"bits-overflow",
-                              "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
-                              "unlimited or greater than 62 may use slower arbitrary precision implementations)",
-                              limitBitConfl<int128, int128>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
-  ValOption<int> bitsReduced{"bits-reduced",
-                             "Bit width of maximum coefficient after reduction when exceeding bits-overflow (0 is "
-                             "unlimited, 1 reduces to cardinalities)",
-                             limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
-  ValOption<int> bitsLearned{
+  BoolOption caCancelingUnkns{"ca-cancelingunknowns", "Exploit canceling unknowns", false};
+  ValOption<int64_t> subsetSum{
+      "ca-liftdegree",
+      "Use subset sum calculation to lift the degree when the estimated cost is at most this value (0 disables)",
+      static_cast<int32_t>(1e7), "0 =< 1e9", [](const int64_t& x) -> bool { return x >= 0 && x <= 1e9; }};
+  ValOption<int32_t> bitsOverflow{
+      "bits-overflow",
+      "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
+      "unlimited or greater than 62 may use slower arbitrary precision implementations)",
+      limitBitConfl<int128, int128>(), "0 =< int", [](const int32_t& x) -> bool { return x >= 0; }};
+  ValOption<int32_t> bitsReduced{"bits-reduced",
+                                 "Bit width of maximum coefficient after reduction when exceeding bits-overflow (0 is "
+                                 "unlimited, 1 reduces to cardinalities)",
+                                 limitBit<int, long long>(), "0 =< int",
+                                 [](const int32_t& x) -> bool { return x >= 0; }};
+  ValOption<int32_t> bitsLearned{
       "bits-learned",
       "Bit width of maximum coefficient for learned constraints (0 is unlimited, 1 reduces to cardinalities)",
-      limitBit<int, long long>(), "0 =< int", [](const int& x) -> bool { return x >= 0; }};
-  ValOption<float> cgHybrid{"cg",
-                            "Ratio of core-guided optimization time (0 means no core-guided, 1 fully core-guided)", 0.5,
-                            "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
-  ValOption<int> cgMaxCoef{"cg-maxcoef", "Max coefficient when reducing cores", 100, "1 =< int =< 1e9",
-                           [](const int& x) -> bool { return x >= 1 && x <= limitAbs<int, long long>(); }};
-  BoolOption cgResolveProp{"cg-resprop", "Resolve propagated assumptions when extracting cores", true};
-  ValOption<float> cgStrat{"cg-strat", "Stratification factor (1 disables stratification, higher means greater strata)",
-                           2, "1 =< float", [](const float& x) -> bool { return x >= 1; }};
-  EnumOption cgReform{"cg-reform", "When the objective is reformulated", "always", {"always", "depletion", "never"}};
-  EnumOption ilpEncoding{"ilp-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
-  BoolOption ilpContinuous{"ilp-continuous",
+      limitBit<int, long long>(), "0 =< int", [](const int32_t& x) -> bool { return x >= 0; }};
+  ValOption<float> optRatio{"opt-ratio", "Ratio of bottom-up optimization time (0 means top-down, 1 fully bottom-up)",
+                            0.5, "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
+  BoolOption optCoreguided{"opt-coreguided", "Core-guided bottom up optimization instead of a basic approach", true};
+  BoolOption optReuseCores{"opt-reusecores", "Reuse cores during core-guided bottom up optimization", false};
+  ValOption<int32_t> optStratification{
+      "opt-stratification",
+      "Stratification during core-guided optimization will ignore the smallest literals that together amount to at "
+      "most 1/x of the optimality gap (0 means no stratification)",
+      50, "0 or int > 1", [](const int32_t& x) -> bool { return x > 1 || x == 0; }};
+  ValOption<int32_t> optPrecision{"opt-precision",
+                                  "Precision of bottom-up optimization. Each core will improve the optimality gap by "
+                                  "at least a factor of 1/x (0 guarantees the minimum improvement of 1)",
+                                  50, "0 or int > 1", [](const int32_t& x) -> bool { return x > 1 || x == 0; }};
+  EnumOption intEncoding{"int-encoding", "Encoding of integer variables", "log", {"log", "order", "onehot"}};
+  BoolOption intContinuous{"int-continuous",
                            "Accept continuous variables by treating them as integer variables. This restricts the "
                            "problem and may yield UNSAT when no integer solution exists.",
                            false};
-  BoolOption ilpUnbounded{"ilp-unbounded",
+  BoolOption intUnbounded{"int-unbounded",
                           "Accept unbounded integer variables by imposing default bounds. This restricts the problem "
                           "and may yield UNSAT when no solution within the bounds exists.",
                           true};
-  ValOption<double> ilpDefaultBound{"ilp-defbound", "Default bound used for unbounded integer variables",
+  ValOption<double> intDefaultBound{"int-defbound", "Default bound used for unbounded integer variables",
                                     limitAbs<int, long long>(), "0 < double",
                                     [](const double& x) -> bool { return x > 0; }};
-  BoolOption pureLits{"inp-purelits", "Propagate pure literals", true};
-  ValOption<long long> domBreakLim{
+  BoolOption pureLits{"inp-purelits", "Propagate pure literals", false};
+  ValOption<int32_t> domBreakLim{
       "inp-dombreaklim",
-      "Maximum limit of queried constraints for dominance breaking (0 means no dominance breaking, -1 is unlimited)",
-      -1, "-1 =< int", [](const int& x) -> bool { return x >= -1; }};
+      "Maximum limit of queried constraints for dominance breaking (0 means no dominance breaking, -1 is unlimited)", 0,
+      "-1 =< int", [](const int32_t& x) -> bool { return x >= -1; }};
   BoolOption inpProbing{"inp-probing", "Perform probing", true};
   ValOption<double> inpAMO{"inp-atmostone",
                            "Ratio of time spent detecting at-most-ones (0 means none, 1 means unlimited)", 0.1,
                            "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
-                              "0=< float", [](const DetTime& x) -> bool { return x >= 0; }};
+                              "0 =< float", [](const DetTime& x) -> bool { return x >= 0; }};
 
   const std::vector<Option*> options = {
-      &help,
-      &copyright,
-      &licenseInfo,
-      &randomSeed,
-      &noSolve,
-      &fileFormat,
-      &uniformOut,
-      &printOpb,
-      &printSol,
-      &printUnits,
-      &printCsvData,
-      &verbosity,
-      &timeout,
-      &timeoutDet,
-      &proofLog,
-      &proofZip,
-      &boundUpper,
-      &lubyBase,
-      &lubyMult,
-      &varWeight,
-      &varSeparate,
-      &dbDecayLBD,
-      &dbExp,
-      &dbScale,
-      &dbSafeLBD,
-      &propWatched,
+      &help,          &copyright,         &licenseInfo,      &randomSeed,
+      &noSolve,       &fileFormat,        &printOpb,         &uniformOut,
+      &printSol,      &printUnits,        &printCsvData,     &verbosity,
+      &timeout,       &timeoutDet,        &proofLog,         &proofZip,
+      &proofAssumps,  &lubyBase,          &lubyMult,         &varWeight,
+      &varSol,        &dbDecayLBD,        &dbBase,           &dbExp,
+      &dbScale,       &dbSafeLBD,         &dbMaxLBD,
 #if WITHSOPLEX
-      &lpTimeRatio,
-      &lpPivotBudget,
-      &lpIntolerance,
-      &lpLearnDuals,
-      &lpGomoryCuts,
-      &lpLearnedCuts,
-      &lpGomoryCutLimit,
-      &lpMaxCutCos,
+      &lpTimeRatio,   &lpPivotBudget,     &lpIntolerance,    &lpLearnDuals,
+      &lpGomoryCuts,  &lpLearnedCuts,     &lpGomoryCutLimit, &lpMaxCutCos,
 #endif  // WITHSOPLEX
-      &multBeforeDiv,
-      &division,
-      &weakenNonImplying,
-      &learnedMin,
-      &caCancelingUnkns,
-      &bitsOverflow,
-      &bitsReduced,
-      &bitsLearned,
-      &cgHybrid,
-      &cgMaxCoef,
-      &cgResolveProp,
-      &cgStrat,
-      &cgReform,
-      &ilpEncoding,
-      &ilpContinuous,
-      &ilpUnbounded,
-      &ilpDefaultBound,
-      &pureLits,
-      &domBreakLim,
-      &inpProbing,
-      &inpAMO,
-      &basetime,
+      &multWeaken,    &multBeforeDiv,     &division,         &weakenNonImplying,
+      &learnedMin,    &caCancelingUnkns,  &subsetSum,        &bitsOverflow,
+      &bitsReduced,   &bitsLearned,       &optRatio,         &optCoreguided,
+      &optReuseCores, &optStratification, &optPrecision,     &intEncoding,
+      &intContinuous, &intUnbounded,      &intDefaultBound,  &pureLits,
+      &domBreakLim,   &inpProbing,        &inpAMO,           &basetime,
   };
   unordered_map<std::string, Option*> name2opt;
 

@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -102,24 +102,30 @@ void Equalities::setNbVars(int nvars) {
 }
 
 State Equalities::propagate() {
-  while (nextTrailPos < (int)solver.trail.size()) {
+  while (nextTrailPos < std::ssize(solver.trail)) {
     Lit l = solver.trail[nextTrailPos];
     ++nextTrailPos;
     assert(isTrue(solver.getLevel(), l));
     const Repr& repr = getRepr(l);
+    if (repr.l == l && repr.equals.empty()) continue;
     bool added = false;
-    if (!isTrue(solver.getLevel(), repr.l)) {
-      solver.learnClause({-l, repr.l}, Origin::EQUALITY, repr.id);
+    int lvl_l = solver.getLevel()[l];
+    if (lvl_l < solver.getLevel()[repr.l]) {
+      solver.learnClause(-l, repr.l, Origin::EQUALITY, repr.id);
       added = true;
+      lvl_l = solver.getLevel()[l];  // a backjump may have happened
+      if (lvl_l >= INF) return State::FAIL;
     }
-    assert(solver.getLevel()[l] == solver.getLevel()[repr.l]);
+    assert(lvl_l >= solver.getLevel()[repr.l]);
     for (Lit ll : repr.equals) {
-      if (!isTrue(solver.getLevel(), ll)) {
+      if (lvl_l < solver.getLevel()[ll]) {
         assert(getRepr(ll).l == l);
-        solver.learnClause({-l, ll}, Origin::EQUALITY, getRepr(-ll).id);
+        solver.learnClause(-l, ll, Origin::EQUALITY, getRepr(-ll).id);
         added = true;
+        lvl_l = solver.getLevel()[l];  // a backjump may have happened
+        if (lvl_l >= INF) return State::FAIL;
       }
-      assert(solver.getLevel()[l] == solver.getLevel()[ll]);
+      assert(lvl_l >= solver.getLevel()[ll]);
     }
     if (added) return State::FAIL;
   }

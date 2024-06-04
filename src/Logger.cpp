@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -77,35 +77,44 @@ std::ostream& Logger::proofStream() {
 
 void Logger::activate(const std::string& proof_log_name, [[maybe_unused]] const bool zip) {
   if (proof_log_name == "") return;
-  flush();
-  formula_out = std::ofstream(proof_log_name + ".formula");
-  formula_out << "* #variable= 0 #constraint= 0\n";
-  formula_out << " >= 0 ;\n";
 
+  if (zip) {
 #if WITHZLIB
-  proof_is_zip = zip;
-  if (proof_is_zip)
+    proof_is_zip = zip;
     proof_out_zip.open((proof_log_name + ".proof.zip").c_str());
-  else
-#endif  // WITHZLIB
+    formula_out_zip.open((proof_log_name + ".formula.zip").c_str());
+#else
+    std::cout << "c WARNING not compiled with ZLIB, emitting unzipped proof" << std::endl;
     proof_out.open(proof_log_name + ".proof");
+    formula_out.open(proof_log_name + ".formula");
+#endif  // WITHZLIB
+  } else {
+    proof_out.open(proof_log_name + ".proof");
+    formula_out.open(proof_log_name + ".formula");
+  }
+  formula_constr << "* #variable= 0 #constraint= 0\n";
+  formula_constr << " >= 0 ;\n";
 
   proofStream() << "pseudo-Boolean proof version 1.1\n";
   proofStream() << "l 1\n";
   active = true;
 }
 
-void Logger::deactivate() {
-  flush();
-  active = false;
-}
-
-bool Logger::isActive() { return active; }
+bool Logger::isActive() const { return active; }
 
 void Logger::flush() {
   if (!active) return;
-  formula_out.flush();
-  proof_out.flush();
+#if WITHZLIB
+  if (proof_is_zip)
+    formula_out_zip << formula_obj.str() << formula_constr.str();
+  else
+#endif  // WITHZLIB
+    formula_out << formula_obj.str() << formula_constr.str();
+  std::stringstream temp1;
+  formula_obj.swap(temp1);
+  std::stringstream temp2;
+  formula_constr.swap(temp2);
+  proofStream().flush();
 }
 
 void Logger::logComment([[maybe_unused]] const std::string& comment) {
@@ -117,18 +126,30 @@ void Logger::logComment([[maybe_unused]] const std::string& comment) {
 
 ID Logger::logInput(const CeSuper& ce) {
   if (!active) return ++last_proofID;
-  formula_out << *ce << "\n";
+  formula_constr << *ce << "\n";
   proofStream() << "l " << ++last_formID << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
 }
 
-ID Logger::logAssumption(const CeSuper& ce) {
+void Logger::logObjective(const CeSuper& ce) {
+  if (!active) return;
+  std::stringstream temp;
+  formula_obj.swap(temp);
+  formula_obj << "min: ";
+  ce->toStreamAsOPBlhs(formula_obj, false);
+  formula_obj << ";\n";
+}
+
+ID Logger::logAssumption(const CeSuper& ce, bool allowed) { return logAssumption(*ce, allowed); }
+
+ID Logger::logAssumption(ConstrExpSuper& ce, [[maybe_unused]] bool allowed) {
+  assert(allowed);
   if (!active) return ++last_proofID;
-  proofStream() << "a " << *ce << "\n";
+  proofStream() << "a " << ce << "\n";
   ++last_proofID;
-  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  ce.resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
 }
 
@@ -150,7 +171,7 @@ ID Logger::logProofLine(const CeSuper& ce) {
     id = std::stoll(buffer);
   }
 #if !NDEBUG
-  proofStream() << "e " << id << " " << *ce << "\n";
+  proofStream() << "e " << *ce << " " << id << "\n";
 #endif
   return id;
 }
@@ -163,12 +184,13 @@ ID Logger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::s
   return logProofLine(ce);
 }
 
-void Logger::logInconsistency(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position) {
-  if (!active) return;
+ID Logger::logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position) {
+  if (!active) return ID_Undef;
   ce->removeUnitsAndZeroes(level, position);
-  assert(ce->isInconsistency());
+  assert(ce->isUnsat());
   ID id = logProofLineWithInfo(ce, "Inconsistency");
   proofStream() << "c " << id << "" << std::endl;
+  return id;
 }
 
 void Logger::logUnit(const CeSuper& ce) {
@@ -179,7 +201,7 @@ void Logger::logUnit(const CeSuper& ce) {
 
 ID Logger::logRUP(Lit l, Lit ll) {
   if (!active) return ++last_proofID;
-  proofStream() << "u " << (std::pair<int, Lit>{1, l}) << " " << (std::pair<int, Lit>{1, ll}) << " >= 1 ;\n";
+  proofStream() << "rup " << (std::pair<int, Lit>{1, l}) << " " << (std::pair<int, Lit>{1, ll}) << " >= 1 ;\n";
   return ++last_proofID;
 }
 
@@ -190,14 +212,46 @@ ID Logger::logImpliedUnit(Lit implying, Lit implied) {
 #endif
   ID result = logResolvent(logRUP(implying, implied), logRUP(-implying, implied));
 #if !NDEBUG
-  proofStream() << "e " << result << " " << (std::pair<int, Lit>{1, implied}) << " >= 1 ;\n";
+  proofStream() << "e " << std::pair<int, Lit>{1, implied} << " >= 1 ; " << result << "\n";
 #endif
   return result;
 }
 
+ID Logger::logBottomUp(const CeSuper& ce) {
+  if (!active) return ++last_proofID;
+#if !NDEBUG
+  logComment("Bottom-up");
+#endif
+  Lit l = 0;
+  for (Var v : ce->vars) {
+    if (v > toVar(l)) l = ce->getLit(v);  // largest variable is the extension variable
+  }
+  assert(l != 0);
+  assert(ce->isSaturated(l));
+  proofStream() << "red " << *ce << " x" << toVar(l) << " " << (l > 0) << "\n";
+  ++last_proofID;
+  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
+}
+
+ID Logger::logUpperBound(const CeSuper& ce, const LitVec& lastSol) {
+  if (!active) return ++last_proofID;
+#if !NDEBUG
+  logComment("Upper bound");
+#endif
+  proofStream() << "soli";
+  for (Lit l : lastSol) {
+    proofStream() << (l < 0 ? " ~x" : " x") << toVar(l);
+  }
+  proofStream() << "\n";
+  ++last_proofID;
+  ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
+  return last_proofID;
+}
+
 ID Logger::logPure(const CeSuper& ce) {
   if (!active) return ++last_proofID;
-  assert(ce->vars.size() == 1);
+  assert(ce->nVars() == 1);
 #if !NDEBUG
   logComment("Pure");
 #endif
@@ -210,14 +264,14 @@ ID Logger::logPure(const CeSuper& ce) {
 
 ID Logger::logDomBreaker(const CeSuper& ce) {
   if (!active) return ++last_proofID;
-  assert(ce->vars.size() == 2);
+  assert(ce->nVars() == 2);
 #if !NDEBUG
   logComment("Dominance breaking");
 #endif
   Lit a = ce->getLit(ce->vars[0]);
   Lit b = ce->getLit(ce->vars[1]);
   proofStream() << "red " << (std::pair<int, Lit>{1, a}) << " " << (std::pair<int, Lit>{1, b}) << " >= 1 ; x"
-                << toVar(a) << " )" << (a < 0) << " x" << toVar(b) << " " << (b > 0) << "\n";
+                << toVar(a) << " " << (a < 0) << " x" << toVar(b) << " " << (b > 0) << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
@@ -242,15 +296,15 @@ ID Logger::logAtMostOne(const ConstrSimple32& c, const CeSuper& ce) {
     previous = ++last_proofID;
   }
 #if !NDEBUG
-  proofStream() << "e " << last_proofID << " ";
-  c.toStreamAsOPB(proof_out);
-  proofStream() << "\n";
+  proofStream() << "e ";
+  c.toStreamAsOPB(proofStream());
+  proofStream() << " " << last_proofID << "\n";
 #endif
   ce->resetBuffer(last_proofID);
   return last_proofID;
 }
 
-ID Logger::logResolvent(ID id1, ID id2) {  // should be clauses
+ID Logger::logResolvent(const ID id1, const ID id2) {  // should be clauses
   if (!active) return ++last_proofID;
   assert(isValid(id1));
   assert(isValid(id2));
@@ -276,16 +330,43 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
   proofStream() << "pol " << reprAImplA << " " << aImpliesB << " + " << bImpReprB << " + s\n";
   ID reprAImpReprB = ++last_proofID;
 #if !NDEBUG
-  proofStream() << "e " << reprAImpReprB << " " << (std::pair<int, Lit>{1, -reprA}) << " "
-                << (std::pair<int, Lit>{1, reprB}) << " >= 1 ;\n";
+  proofStream() << "e " << std::pair<int, Lit>{1, -reprA} << " " << std::pair<int, Lit>{1, reprB} << " >= 1 ; "
+                << reprAImpReprB << "\n";
 #endif
   ID bImpliesA = logRUP(-b, a);
   proofStream() << "pol " << reprBImplB << " " << bImpliesA << " + " << aImpReprA << " + s\n";
   ID reprBImpReprA = ++last_proofID;
 #if !NDEBUG
-  proofStream() << "e " << reprBImpReprA << " " << (std::pair<int, Lit>{1, -reprB}) << " "
-                << (std::pair<int, Lit>{1, reprA}) << " >= 1 ;\n";
+  proofStream() << "e " << std::pair<int, Lit>{1, -reprB} << " " << std::pair<int, Lit>{1, reprA} << " >= 1 ; "
+                << reprBImpReprA << "\n";
 #endif
   return {reprAImpReprB, reprBImpReprA};
 }
+
+void Logger::logDeletion(ID id) {
+  if (!active) return;
+  assert(isValid(id));
+#if !NDEBUG
+  logComment("Delete");
+#endif
+  proofStream() << "del id " << id << "\n";
+}
+
+void Logger::logAsCore(ID id) {
+  if (!active) return;
+  assert(isValid(id));
+#if !NDEBUG
+  logComment("Core");
+#endif
+  proofStream() << "core id " << id << "\n";
+}
+
+ID Logger::getUnitID(Lit l, const std::vector<int>& pos) const {
+  if (!active) return ID_Undef;
+  assert(pos[toVar(l)] < (int)unitIDs.size());
+  return unitIDs[pos[toVar(l)]];
+}
+
+int Logger::getNbUnitIDs() const { return unitIDs.size(); }
+
 }  // namespace xct

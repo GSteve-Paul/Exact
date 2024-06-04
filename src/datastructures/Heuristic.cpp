@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -106,7 +106,6 @@ void Heuristic::undoOne(Var v, Lit l) {
 
 void Heuristic::setPhase(Var v, Lit l) { phase[v].second = l; }
 void Heuristic::setFixedPhase(Var v, Lit l) { phase[v].first = l; }
-Lit Heuristic::getPhase(Var v) const { return phase[v].first ? phase[v].first : phase[v].second; }
 
 ActValV Heuristic::getActivity(Var v) const {
   assert(v > 0);
@@ -117,7 +116,7 @@ ActValV Heuristic::getActivity(Var v) const {
 const std::vector<ActNode>& Heuristic::getActList() const { return actList; }
 
 void Heuristic::randomize(const std::vector<int>& position) {
-  std::vector<Var> vars;
+  VarVec vars;
   vars.reserve((int)actList.size() - 1);
   for (Var v = 1; v < (int)actList.size(); ++v) {
     vars.push_back(v);
@@ -127,8 +126,7 @@ void Heuristic::randomize(const std::vector<int>& position) {
   vBumpActivity(vars, position, 0, 0);
 }
 
-void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& position, double weightNew,
-                              long long nConfl) {
+void Heuristic::vBumpActivity(VarVec& vars, const std::vector<int>& position, double weightNew, long long nConfl) {
   assert(weightNew >= 0);
   assert(weightNew <= 1);
   double weightOld = 1 - weightNew;
@@ -168,8 +166,9 @@ void Heuristic::vBumpActivity(std::vector<Var>& vars, const std::vector<int>& po
 }
 
 // NOTE: so far, this is only called when the returned lit will be decided shortly
-Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
-  assert(getPhase(0) == 0);        // so will return right phase
+Lit Heuristic::pickBranchLit(const std::vector<int>& position, bool coreguided) {
+  assert(phase[0].first == 0);     // so will return right phase
+  assert(phase[0].second == 0);    // so will return right phase
   assert(isUnknown(position, 0));  // so will eventually stop
   // Activity based decision:
   if (nextDecision == 0) {
@@ -178,7 +177,7 @@ Lit Heuristic::pickBranchLit(const std::vector<int>& position) {
   while (isKnown(position, nextDecision)) {
     nextDecision = actList[nextDecision].next;
   }
-  return getPhase(nextDecision);
+  return (!coreguided && phase[nextDecision].first) ? phase[nextDecision].first : phase[nextDecision].second;
 }
 
 Var Heuristic::nextInActOrder(Var v) const { return actList[v].next; }
@@ -188,7 +187,7 @@ Var Heuristic::firstInActOrder() const { return nextInActOrder(0); }
 bool Heuristic::testActList([[maybe_unused]] const std::vector<int>& position) const {
   // printActList(position);
   Var current = actList[0].next;
-  int tested = 1;
+  [[maybe_unused]] int tested = 1;
   while (current != 0) {
     ++tested;
     Var next = actList[current].next;

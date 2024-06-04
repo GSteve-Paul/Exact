@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -67,10 +67,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace xct {
 
 enum class WatchStatus { DROPWATCH, KEEPWATCH, CONFLICTING };
-const unsigned int LBDBITS = 24;
-const unsigned int SAFELBD = (((unsigned int)1) << LBDBITS) - 1;
-// TODO: use SAFELBD to keep fresh constraints active for one round
-const unsigned int MAXLBD = SAFELBD - 1;
 
 class Solver;
 class Equalities;
@@ -79,37 +75,38 @@ struct Stats;
 struct Constr {  // internal solver constraint optimized for fast propagation
   virtual size_t getMemSize() const = 0;
 
-  const ID id;  // NOTE: ID attribute not strictly needed in cache-sensitive Constr, but it did not matter after testing
-  const double strength;  // NOTE: can also be a float, but let's make use of 4 padding bytes left in this struct
-  const uint32_t size;
+  float priority;  // Integer part is LBD (0 to 1e5), fractional part is 1-strength. Lower is better.
   struct {
+    unsigned seen : 1;  // utility bit to avoid hash maps
     unsigned markedfordel : 1;
     unsigned locked : 1;
-    unsigned seen : 1;  // utility bit to avoid hash maps
     const unsigned origin : 5;
-    unsigned lbd : LBDBITS;
+    const unsigned long long id : 56;  // plenty of bits to store ID
   } header;
+  const uint32_t sze;
 
-  Constr(ID i, Origin o, bool lkd, unsigned int lngth, double strngth);
+  Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth, unsigned int maxLBD);
   virtual ~Constr() {}
   virtual void cleanup() = 0;  // poor man's destructor
 
-  void setLocked(bool lkd) { header.locked = lkd; }
-  bool isLocked() const { return header.locked; }
-  Origin getOrigin() const { return (Origin)header.origin; }
-  void decreaseLBD(unsigned int lbd) { header.lbd = std::min(header.lbd, lbd); }
-  void decayLBD(unsigned int decay) { header.lbd = std::min({header.lbd + decay, MAXLBD}); }
-  unsigned int lbd() const { return header.lbd; }
-  bool isMarkedForDelete() const { return header.markedfordel; }
-  bool isSeen() const { return header.seen; }
-  void setSeen(bool s) { header.seen = s; }
+  uint32_t size() const;
+  void setLocked(bool lkd);
+  bool isLocked() const;
+  Origin getOrigin() const;
+  void decreaseLBD(unsigned int lbd);
+  void decayLBD(unsigned int decay, unsigned int maxLBD);
+  unsigned int lbd() const;
+  float strength() const;
+  bool isMarkedForDelete() const;
+  bool isSeen() const;
+  void setSeen(bool s);
+  ID id() const;
   void fixEncountered(Stats& stats) const;
 
   // TODO: remove direct uses of these bigint methods, convert to ConstrExp instead
   // NOTE: useful for debugging though!
   virtual bigint degree() const = 0;
   virtual bigint coef(unsigned int i) const = 0;
-  bigint largestCoef() const { return coef(0); };
   virtual Lit lit(unsigned int i) const = 0;
   virtual unsigned int getUnsaturatedIdx() const = 0;
   virtual bool isClauseOrCard() const = 0;
@@ -118,8 +115,8 @@ struct Constr {  // internal solver constraint optimized for fast propagation
   virtual void initializeWatches(CRef cr, Solver& solver) = 0;
   virtual WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& slvr, Stats& stats) = 0;
   virtual void undoFalsified(int i) = 0;
-  virtual int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const = 0;
-  virtual int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const = 0;
+  virtual unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const = 0;
+  virtual unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const = 0;
 
   virtual CeSuper toExpanded(ConstrExpPools& cePools) const = 0;
   virtual bool isSatisfiedAtRoot(const IntMap<int>& level) const = 0;
@@ -136,26 +133,25 @@ std::ostream& operator<<(std::ostream& o, const Constr& c);
 struct Clause final : public Constr {
   Lit data[];  // Flexible Array Member
 
-  static size_t getMemSize(unsigned int length) {
-    return aux::ceildiv(sizeof(Clause) + sizeof(Lit) * length, maxAlign);
-  }
-  size_t getMemSize() const { return getMemSize(size); }
+  static size_t getMemSize(unsigned int length);
+  size_t getMemSize() const;
 
-  bigint degree() const { return 1; }
-  bigint coef([[maybe_unused]] unsigned int i) const { return 1; }
-  Lit lit(unsigned int i) const { return data[i]; }
-  unsigned int getUnsaturatedIdx() const { return size; }
-  bool isClauseOrCard() const { return true; }
-  bool isAtMostOne() const { return size == 2; }
+  bigint degree() const;
+  bigint coef(unsigned int) const;
+  Lit lit(unsigned int i) const;
+  unsigned int getUnsaturatedIdx() const;
+  bool isClauseOrCard() const;
+  bool isAtMostOne() const;
 
   template <typename SMALL, typename LARGE>
   Clause(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), 1 / static_cast<double>(constraint->nVars())) {
+      : Constr(_id, constraint->orig, locked, constraint->nVars(), 1 / static_cast<double>(constraint->nVars()),
+               constraint->global.options.dbMaxLBD.get()) {
     assert(_id > ID_Trivial);
     assert(constraint->nVars() < INF);
     assert(constraint->getDegree() == 1);
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       data[i] = constraint->getLit(v);
@@ -167,8 +163,8 @@ struct Clause final : public Constr {
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified([[maybe_unused]] int i) { assert(false); }
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
@@ -182,22 +178,21 @@ struct Cardinality final : public Constr {
   long long ntrailpops;
   Lit data[];  // Flexible Array Member
 
-  static size_t getMemSize(unsigned int length) {
-    return aux::ceildiv(sizeof(Cardinality) + sizeof(Lit) * length, maxAlign);
-  }
-  size_t getMemSize() const { return getMemSize(size); }
+  static size_t getMemSize(unsigned int length);
+  size_t getMemSize() const;
 
-  bigint degree() const { return degr; }
-  bigint coef([[maybe_unused]] unsigned int i) const { return 1; }
-  Lit lit(unsigned int i) const { return data[i]; }
-  unsigned int getUnsaturatedIdx() const { return 0; }
-  bool isClauseOrCard() const { return true; }
-  bool isAtMostOne() const { return degr == size - 1; }
+  bigint degree() const;
+  bigint coef(unsigned int) const;
+  Lit lit(unsigned int i) const;
+  unsigned int getUnsaturatedIdx() const;
+  bool isClauseOrCard() const;
+  bool isAtMostOne() const;
 
   template <typename SMALL, typename LARGE>
   Cardinality(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
       : Constr(_id, constraint->orig, locked, constraint->nVars(),
-               static_cast<double>(constraint->getDegree()) / constraint->nVars()),
+               static_cast<double>(constraint->getDegree()) / constraint->nVars(),
+               constraint->global.options.dbMaxLBD.get()),
         watchIdx(0),
         degr(static_cast<unsigned int>(constraint->getDegree())),
         ntrailpops(-1) {
@@ -207,7 +202,7 @@ struct Cardinality final : public Constr {
     assert(aux::abs(constraint->coefs[constraint->getVars()[0]]) == 1);
     assert(constraint->getDegree() <= (LARGE)constraint->nVars());
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
       data[i] = constraint->getLit(v);
@@ -219,79 +214,13 @@ struct Cardinality final : public Constr {
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
   void undoFalsified([[maybe_unused]] int i) { assert(false); }
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CeSuper toExpanded(ConstrExpPools& cePools) const;
   bool isSatisfiedAtRoot(const IntMap<int>& level) const;
   bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
                        IntSetPool& isp) const;
-};
-
-template <typename CF, typename DG>
-struct Counting final : public Constr {
-  unsigned int unsaturatedIdx;
-  unsigned int watchIdx;
-  long long ntrailpops;
-  const DG degr;
-  DG slack;
-  Term<CF> data[0];  // Flexible Array Member - gcc complains about destruction when using the proper syntax '[]'
-
-  static size_t getMemSize(unsigned int length) {
-    return aux::ceildiv(sizeof(Counting<CF, DG>) + sizeof(Term<CF>) * length, maxAlign);
-  }
-  size_t getMemSize() const { return getMemSize(size); }
-
-  bigint degree() const { return degr; }
-  bigint coef(unsigned int i) const { return data[i].c; }
-  Lit lit(unsigned int i) const { return data[i].l; }
-  unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
-  bool isClauseOrCard() const {
-    assert(largestCoef() > 1);
-    return false;
-  }
-  bool isAtMostOne() const {
-    assert(largestCoef() > 1);
-    return false;
-  }
-
-  template <typename SMALL, typename LARGE>
-  Counting(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id, double strngth)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth),
-        unsaturatedIdx(0),
-        watchIdx(0),
-        ntrailpops(-1),
-        degr(static_cast<DG>(constraint->getDegree())),
-        slack(0) {
-    assert(_id > ID_Trivial);
-    assert(fitsIn<DG>(constraint->getDegree()));
-    assert(fitsIn<CF>(constraint->getLargestCoef()));
-    assert(strngth == constraint->getStrength());
-
-    for (unsigned int i = 0; i < size; ++i) {
-      Var v = constraint->getVars()[i];
-      assert(constraint->getLit(v) != 0);
-      data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += data[i].c >= degr;
-      assert(data[i].c <= degr);
-    }
-  }
-
-  void cleanup() {}
-
-  void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
-  void undoFalsified(int i);
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
-
-  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
-  CeSuper toExpanded(ConstrExpPools& cePools) const;
-  bool isSatisfiedAtRoot(const IntMap<int>& level) const;
-  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
-                       IntSetPool& isp) const;
-
-  bool hasCorrectSlack(const Solver& solver);
 };
 
 template <typename CF, typename DG>
@@ -301,29 +230,32 @@ struct Watched final : public Constr {
   long long ntrailpops;
   const DG degr;
   DG watchslack;
-  Term<CF> data[0];  // Flexible Array Member - gcc complains about destruction when using the proper syntax '[]'
+  Lit data[0];  // Flexible Array Member - gcc complains about destruction when using the proper syntax '[]'
+  // WARNING: Watched only works for int coefficients for now (they take up the same bytes as Lit)
+  // use WatchedSafe for other coefficient types
 
   static size_t getMemSize(unsigned int length) {
-    return aux::ceildiv(sizeof(Watched<CF, DG>) + sizeof(Term<CF>) * length, maxAlign);
+    return aux::ceildiv(sizeof(Watched<CF, DG>) + sizeof(Lit) * length * 2, maxAlign);
   }
-  size_t getMemSize() const { return getMemSize(size); }
+  size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return degr; }
-  bigint coef(unsigned int i) const { return aux::abs(data[i].c); }
-  Lit lit(unsigned int i) const { return data[i].l; }
+  const CF& _c(unsigned int i) const { return data[sze + i]; }
+  bigint coef(unsigned int i) const { return _c(i); }
+  Lit lit(unsigned int i) const { return data[i] >> 1; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
-    assert(largestCoef() > 1);
+    assert(_c(0) > 1);
     return false;
   }
   bool isAtMostOne() const {
-    assert(largestCoef() > 1);
+    assert(!isClauseOrCard());
     return false;
   }
 
   template <typename SMALL, typename LARGE>
   Watched(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id, double strngth)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth),
+      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth, constraint->global.options.dbMaxLBD.get()),
         unsaturatedIdx(0),
         watchIdx(0),
         ntrailpops(-1),
@@ -334,22 +266,26 @@ struct Watched final : public Constr {
     assert(fitsIn<CF>(constraint->getLargestCoef()));
     assert(strngth == constraint->getStrength());
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
-      data[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += data[i].c >= degr;
-      assert(data[i].c <= degr);
+      data[i] = constraint->getLit(v) << 1;
+      data[i + size()] = static_cast<CF>(aux::abs(constraint->coefs[v]));
+      unsaturatedIdx += _c(i) >= degr;
+      assert(_c(i) <= degr);
     }
   }
 
   void cleanup() {}
 
+  bool hasWatch(unsigned int) const;
+  void flipWatch(unsigned int);
+
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;
@@ -362,129 +298,68 @@ struct Watched final : public Constr {
 };
 
 template <typename CF, typename DG>
-struct CountingSafe final : public Constr {
-  unsigned int unsaturatedIdx;
-  unsigned int watchIdx;
-  long long ntrailpops;
-  const DG degr;
-  DG slack;
-  Term<CF>* terms;  // array
-
-  static size_t getMemSize([[maybe_unused]] unsigned int length) {
-    return aux::ceildiv(sizeof(CountingSafe<CF, DG>), maxAlign);
-  }
-  size_t getMemSize() const { return getMemSize(size); }
-
-  bigint degree() const { return bigint(degr); }
-  bigint coef(unsigned int i) const { return bigint(terms[i].c); }
-  Lit lit(unsigned int i) const { return terms[i].l; }
-  unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
-  bool isClauseOrCard() const {
-    assert(largestCoef() > 1);
-    return false;
-  }
-  bool isAtMostOne() const {
-    assert(largestCoef() > 1);
-    return false;
-  }
-
-  template <typename SMALL, typename LARGE>
-  CountingSafe(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id, double strngth)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth),
-        unsaturatedIdx(0),
-        watchIdx(0),
-        ntrailpops(-1),
-        degr(static_cast<DG>(constraint->getDegree())),
-        slack(0),
-        terms(new Term<CF>[constraint->nVars()]) {
-    assert(_id > ID_Trivial);
-    assert(fitsIn<DG>(constraint->getDegree()));
-    assert(fitsIn<CF>(constraint->getLargestCoef()));
-    assert(strngth == constraint->getStrength());
-
-    for (unsigned int i = 0; i < size; ++i) {
-      Var v = constraint->getVars()[i];
-      assert(constraint->getLit(v) != 0);
-      terms[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += terms[i].c >= degr;
-      assert(terms[i].c <= degr);
-    }
-  }
-
-  void cleanup() { delete[] terms; }
-
-  void initializeWatches(CRef cr, Solver& solver);
-  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p, Solver& solver, Stats& stats);
-  void undoFalsified(int i);
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
-
-  CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
-  CeSuper toExpanded(ConstrExpPools& cePools) const;
-  bool isSatisfiedAtRoot(const IntMap<int>& level) const;
-  bool canBeSimplified(const IntMap<int>& level, Equalities& equalities, Implications& implications,
-                       IntSetPool& isp) const;
-
-  bool hasCorrectSlack(const Solver& solver);
-};
-
-template <typename CF, typename DG>
 struct WatchedSafe final : public Constr {
   unsigned int unsaturatedIdx;
   unsigned int watchIdx;
   long long ntrailpops;
   const DG degr;
   DG watchslack;
-  Term<CF>* terms;  // array
+  CF* cfs;
+  Lit lits[0];
 
-  static size_t getMemSize([[maybe_unused]] unsigned int length) {
-    return aux::ceildiv(sizeof(WatchedSafe<CF, DG>), maxAlign);
+  static size_t getMemSize(unsigned int length) {
+    return aux::ceildiv(sizeof(WatchedSafe<CF, DG>) + sizeof(Lit) * length, maxAlign);
   }
-  size_t getMemSize() const { return getMemSize(size); }
+  size_t getMemSize() const { return getMemSize(size()); }
 
   bigint degree() const { return bigint(degr); }
-  bigint coef(unsigned int i) const { return bigint(aux::abs(terms[i].c)); }
-  Lit lit(unsigned int i) const { return terms[i].l; }
+  const CF& _c(unsigned int i) const { return cfs[i]; }
+  bigint coef(unsigned int i) const { return _c(i); }
+  Lit lit(unsigned int i) const { return lits[i] >> 1; }
   unsigned int getUnsaturatedIdx() const { return unsaturatedIdx; }
   bool isClauseOrCard() const {
-    assert(largestCoef() > 1);
+    assert(_c(0) > 1);
     return false;
   }
   bool isAtMostOne() const {
-    assert(largestCoef() > 1);
+    assert(!isClauseOrCard());
     return false;
   }
 
   template <typename SMALL, typename LARGE>
   WatchedSafe(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id, double strngth)
-      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth),
+      : Constr(_id, constraint->orig, locked, constraint->nVars(), strngth, constraint->global.options.dbMaxLBD.get()),
         unsaturatedIdx(0),
         watchIdx(0),
         ntrailpops(-1),
         degr(static_cast<DG>(constraint->getDegree())),
         watchslack(0),
-        terms(new Term<CF>[constraint->nVars()]) {
+        cfs(new CF[sze]) {
     assert(_id > ID_Trivial);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
     assert(strngth == constraint->getStrength());
 
-    for (unsigned int i = 0; i < size; ++i) {
+    for (unsigned int i = 0; i < size(); ++i) {
       Var v = constraint->getVars()[i];
       assert(constraint->getLit(v) != 0);
-      terms[i] = {static_cast<CF>(aux::abs(constraint->coefs[v])), constraint->getLit(v)};
-      unsaturatedIdx += terms[i].c >= degr;
-      assert(terms[i].c <= degr);
+      cfs[i] = static_cast<CF>(aux::abs(constraint->coefs[v]));
+      lits[i] = constraint->getLit(v) << 1;
+      unsaturatedIdx += _c(i) >= degr;
+      assert(_c(i) <= degr);
     }
   }
 
-  void cleanup() { delete[] terms; }
+  void cleanup() { delete[] cfs; }
+
+  bool hasWatch(unsigned int) const;
+  void flipWatch(unsigned int);
 
   void initializeWatches(CRef cr, Solver& solver);
   WatchStatus checkForPropagation(CRef cr, int& idx, [[maybe_unused]] Lit p, Solver& solver, Stats& stats);
   void undoFalsified(int i);
-  int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
-  int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
+  unsigned int resolveWith(CeSuper& confl, Lit l, Solver& solver, IntSet& actSet) const;
+  unsigned int subsumeWith(CeSuper& confl, Lit l, Solver& solver, IntSet& saturatedLits) const;
 
   CePtr<CF, DG> expandTo(ConstrExpPools& cePools) const;
   CeSuper toExpanded(ConstrExpPools& cePools) const;

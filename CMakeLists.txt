@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.5)
 project(Exact)
 
 set(CMAKE_CXX_STANDARD 20)
-set(LINK_WHAT_YOU_USE TRUE)
+find_package(Boost 1.70.0 REQUIRED) # 1.81 for the fastest hash maps
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
 
-set(CMAKE_CXX_FLAGS_TESTRUNS "-O3")
+set(CMAKE_CXX_FLAGS_TESTRUNS "${CMAKE_CXX_FLAGS_TESTRUNS} -O3")
 
 if(NOT (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
         CMAKE_BUILD_TYPE STREQUAL "Release" OR
@@ -19,8 +19,8 @@ endif()
 set(build_result "Executable"
     CACHE STRING "Result of make command: Executable, SharedLib or StaticLib.")
 
-if(NOT (build_result STREQUAL "Executable" OR build_result STREQUAL "SharedLib" OR build_result STREQUAL "StaticLib"))
-    message(WARNING "Please use -Dbuild_result=[Executable | SharedLib | StaticLib]")
+if(NOT (build_result STREQUAL "Executable" OR build_result STREQUAL "SharedLib" OR build_result STREQUAL "StaticLib" OR build_result STREQUAL "UnitTests"))
+    message(WARNING "Please use -Dbuild_result=[Executable | SharedLib | StaticLib | UnitTests]")
 endif()
 
 set(build_static "OFF"
@@ -31,6 +31,8 @@ set(profile_flags "OFF"
 
 set(flto "OFF"
     CACHE STRING "Build with link-time optimization (-flto).")
+set(singlesource "OFF"
+        CACHE STRING "Build with a single source file to simulate link-time optimization. Warning: slow!")
 
 if(WIN32)
     set(unixlike "OFF"
@@ -49,9 +51,10 @@ set(soplex_build "${PROJECT_SOURCE_DIR}/soplex_build"
 
 set(coinutils "OFF"
     CACHE STRING "Coin OR Utils library to parse .mps and .lp files.")
-
 set(zlib "OFF"
     CACHE STRING "Use ZLIB to compress proof certificates.")
+set(mimalloc "OFF"
+    CACHE STRING "Link with faster memory allocator mimalloc")
 
 set(testruns_timeout 1 CACHE STRING "Timeout of scenario test runs.")
 
@@ -70,6 +73,11 @@ if(flto)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -flto")
+endif()
+
+if(mimalloc)
+    find_package(mimalloc 1.4 REQUIRED)
+    target_link_libraries(ManyWorlds mimalloc-static)
 endif()
 
 set(GIT_BRANCH "unknown")
@@ -91,8 +99,19 @@ execute_process(
 add_definitions("-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH}")
 add_definitions("-DGIT_BRANCH=${GIT_BRANCH}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wno-attributes")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -Wextra -Wno-attributes")
+if(unixlike)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-attributes")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W1")
+endif()
+
+set(test_files
+    src/tests/algorithms.cpp
+    src/tests/inferences.cpp
+    src/tests/input.cpp
+    src/tests/optimization.cpp
+    src/tests/memory.cpp
+)
 
 set(source_files
     src/constraints/Constr.cpp
@@ -101,7 +120,7 @@ set(source_files
     src/constraints/ConstrExpPools.cpp
     src/propagation/LpSolver.cpp
     src/Solver.cpp
-    src/ILP.cpp
+    src/IntProg.cpp
     src/datastructures/SolverStructs.cpp
     src/Logger.cpp
     src/datastructures/IntSet.cpp
@@ -112,7 +131,6 @@ set(source_files
     src/auxiliary.cpp
     src/Optimization.cpp
     src/quit.cpp
-    src/Exact.cpp
     src/propagation/Propagator.cpp
     src/propagation/Equalities.cpp
     src/propagation/Implications.cpp
@@ -134,7 +152,7 @@ set(header_files
     src/constraints/ConstrExpPools.hpp
     src/propagation/LpSolver.hpp
     src/Solver.hpp
-    src/ILP.hpp
+    src/IntProg.hpp
     src/Logger.hpp
     src/datastructures/IntMap.hpp
     src/datastructures/IntSet.hpp
@@ -163,13 +181,19 @@ set(header_files
 
 set(main_files
     src/main.cpp
+    src/Exact.cpp
+    src/singlesource.cpp
 )
 
-set(files_to_format ${main_files} ${source_files} ${header_files})
-set(files_to_compile ${source_files})
+set(files_to_format ${main_files} ${source_files} ${test_files} ${header_files})
+if(singlesource)
+    set(files_to_compile src/singlesource.cpp)
+else()
+    set(files_to_compile ${source_files})
+endif()
 
 if(build_result STREQUAL "Executable")
-    add_executable(Exact src/main.cpp ${files_to_compile})
+    add_executable(Exact ${files_to_compile} src/main.cpp)
     install(TARGETS Exact RUNTIME DESTINATION bin)
     add_custom_target(
             testruns
@@ -190,10 +214,20 @@ if(build_result STREQUAL "StaticLib")
     set(Boost_USE_STATIC_LIBS ON)
 endif()
 
+if(build_result STREQUAL "UnitTests")
+    add_executable(Exact src/external/doctest/main.cpp ${files_to_compile} ${test_files})
+else()
+    target_compile_definitions(Exact PUBLIC DOCTEST_CONFIG_DISABLE=1)
+endif()
+
 target_include_directories(Exact PUBLIC ${PROJECT_SOURCE_DIR}/src/)
 
 if(unixlike)
     target_compile_definitions(Exact PUBLIC UNIXLIKE=1)
+endif()
+
+if(Boost_MINOR_VERSION LESS 81)
+    target_compile_definitions(Exact PUBLIC ANKERLMAPS=1)
 endif()
 
 if(soplex)
@@ -208,6 +242,8 @@ endif()
 
 if(coinutils)
     find_package(CoinUtils REQUIRED)
+    find_package(ZLIB REQUIRED)
+    find_package(BZip2 REQUIRED)
     target_include_directories(Exact PUBLIC ${CoinUtils_INCLUDE_DIR})
     target_link_libraries(Exact CoinUtils z bz2)
     target_compile_definitions(Exact PUBLIC WITHCOINUTILS=1)
@@ -215,11 +251,11 @@ endif()
 
 if(zlib)
     find_package(ZLIB REQUIRED)
-    target_link_libraries(Exact ${ZLIB_LIBRARY})
+    target_include_directories(Exact PUBLIC ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(Exact z)
     target_compile_definitions(Exact PUBLIC WITHZLIB=1)
 endif()
 
-find_package(Boost REQUIRED)
 target_include_directories(Exact PUBLIC ${Boost_INCLUDE_DIRS})
 
 FIND_PROGRAM(CLANG_FORMAT "clang-format")

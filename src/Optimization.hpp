@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -62,6 +62,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "constraints/ConstrSimple.hpp"
+#include "datastructures/IntSet.hpp"
 #include "typedefs.hpp"
 
 namespace xct {
@@ -81,9 +82,8 @@ struct LazyVar {
   ConstrSimple32 atMost;   // k + y1 + ... + yi-1 + (1+n-k-i)yi >= X
 
   SMALL mult;
-  LARGE exceedSum;
 
-  LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& esum, const LARGE& normUpBnd);
+  LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& upperBnd);
   ~LazyVar();
 
   void addVar(Var v);
@@ -101,71 +101,75 @@ std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
   return o;
 }
 
+struct IntConstraint;
+class OptimizationSuper;
+using Optim = std::shared_ptr<OptimizationSuper>;
+
 class OptimizationSuper {
  protected:
   Solver& solver;
   Global& global;
+  const bigint offset;
+  const IntSet& assumptions;  // external assumptions
+  LitVec assumps;             // all assumptions passed to solver
 
  public:
-  int solutionsFound = 0;
   virtual bigint getUpperBound() const = 0;
   virtual bigint getLowerBound() const = 0;
-  virtual CeSuper getReformObj() const = 0;
+  virtual CeSuper getOrigObj() const = 0;
 
-  static Optim make(const CeArb& obj, Solver& solver, Global& g);
+  static Optim make(const IntConstraint& obj, Solver& solver, const IntSet& assumps);
 
-  [[nodiscard]] virtual SolveState optimize(const std::vector<Lit>& assumptions) = 0;
-  virtual void handleNewSolution(const std::vector<Lit>& sol) = 0;
+  [[nodiscard]] virtual SolveState run(bool optimize, double timeout) = 0;
+  [[nodiscard]] virtual SolveState runFull(bool optimize, double timeout) = 0;
 
-  OptimizationSuper(Solver& s, Global& g);
+  virtual void boundObjByLastSol() = 0;
+
+  OptimizationSuper(Solver& s, const bigint& offs, const IntSet& assumps);
   virtual ~OptimizationSuper() = default;
 };
 
 template <typename SMALL, typename LARGE>
 class Optimization final : public OptimizationSuper {
+ public:
   const CePtr<SMALL, LARGE> origObj;
+
+ private:
   CePtr<SMALL, LARGE> reformObj;
 
   LARGE lower_bound;
   LARGE upper_bound;
-  ID lastUpperBound = ID_Undef;
-  ID lastUpperBoundUnprocessed = ID_Undef;
-  ID lastLowerBound = ID_Undef;
-  ID lastLowerBoundUnprocessed = ID_Undef;
+  ID lastUpperBound;
+  ID lastLowerBound;
+  ID lastReformUpperBound;
 
   std::vector<std::unique_ptr<LazyVar<SMALL, LARGE>>> lazyVars;
 
-  // State variables during solve loop:
-  SolveState reply;
-  float stratDiv;
-  double stratLim;
-  bool coreguided;
-  bool somethingHappened;
-  bool firstRun;
+  LARGE boundingVal;
+  Var boundingVar;
 
  public:
-  explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, Global& g);
+  explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& offset, const IntSet& assumps);
+  ~Optimization();
 
-  LARGE normalizedLowerBound() const { return lower_bound + origObj->getDegree(); }
-  LARGE normalizedUpperBound() const { return upper_bound + origObj->getDegree(); }
-  bigint getUpperBound() const { return bigint(upper_bound); }
-  bigint getLowerBound() const { return bigint(lower_bound); }
-  CeSuper getReformObj() const;
+  bigint getUpperBound() const;
+  bigint getLowerBound() const;
+  CeSuper getOrigObj() const;
 
   void printObjBounds();
   void checkLazyVariables();
   void addLowerBound();
+  void addReformUpperBound(bool deletePrevious);
 
   Ce32 reduceToCardinality(const CeSuper& core);                            // does not modify core
-  [[nodiscard]] State reformObjective(const CeSuper& core);                 // modifies core
+  State reformObjective(const CeSuper& core);                               // modifies core
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
   void handleInconsistency(const CeSuper& core);                            // modifies core
-  void handleNewSolution(const std::vector<Lit>& sol);
+  void boundObjByLastSol();
+  void boundBottomUp();
 
-  void logProof();
-  void harden();
-
-  [[nodiscard]] SolveState optimize(const std::vector<Lit>& assumptions);
+  [[nodiscard]] SolveState run(bool optimize, double timeout);
+  [[nodiscard]] SolveState runFull(bool optimize, double timeout);
 };
 
 }  // namespace xct

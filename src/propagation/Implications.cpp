@@ -1,7 +1,7 @@
 /**********************************************************************
 This file is part of Exact.
 
-Copyright (c) 2022-2023 Jo Devriendt, Nonfiction Software
+Copyright (c) 2022-2024 Jo Devriendt, Nonfiction Software
 
 Exact is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License version 3 as
@@ -54,19 +54,26 @@ bool Implications::hasImplieds(Lit a) const { return !implieds[a].empty(); }
 long long Implications::nImpliedsInMemory() const { return implInMem; }
 
 State Implications::propagate() {
-  for (; nextTrailPos < (int)solver.trail.size(); ++nextTrailPos) {
+  for (; nextTrailPos < std::ssize(solver.trail); ++nextTrailPos) {
     Lit a = solver.trail[nextTrailPos];
     assert(isTrue(solver.getLevel(), a));
-    bool added = false;
+    if (implieds[a].empty()) continue;
+    int lvl_a = solver.getLevel()[a];
+    Lit found = 0;
     for (Lit b : implieds[a]) {
-      if (!isTrue(solver.getLevel(), b)) {
+      if (lvl_a < solver.getLevel()[b]) {
         ++solver.getStats().NPROBINGIMPLS;
         ID id = solver.getLogger().logRUP(-a, b);
-        solver.learnClause({-a, b}, Origin::IMPLICATION, id);
-        added = true;
+        solver.learnClause(-a, b, Origin::IMPLICATION, id);
+        found = b;
+        break;
       }
+      assert(lvl_a >= solver.getLevel()[b]);
     }
-    if (added) return State::FAIL;
+    if (found != 0) {
+      implieds[a].erase(found);
+      return State::FAIL;
+    }
   }
   return State::SUCCESS;
 }
