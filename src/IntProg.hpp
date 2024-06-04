@@ -205,7 +205,6 @@ class IntProg {
   std::ostream& printVars(std::ostream& out) const;
   long long getNbVars() const;
   long long getNbConstraints() const;
-  bigint getSolSpaceSize() const;  // in bits
 
   OptRes toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& to = {false, 0});
   WithState<Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});

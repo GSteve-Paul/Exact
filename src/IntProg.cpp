@@ -115,7 +115,7 @@ IntVar::IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint
     assert(range > 1 || encoding == Encoding::ORDER);
     int oldvars = solver.getNbVars();
     int newvars = oldvars + (encoding == Encoding::LOG
-                                 ? aux::msb(range) + 1  // TODO: correct?
+                                 ? aux::msb(range) + 1  // NOTE: msb is 0-based, so we add another bit
                                  : static_cast<int>(range) + static_cast<int>(encoding == Encoding::ONEHOT));
 
     solver.setNbVars(newvars, true);
@@ -763,14 +763,6 @@ std::ostream& IntProg::printVars(std::ostream& out) const {
 long long IntProg::getNbVars() const { return std::ssize(vars); }
 
 long long IntProg::getNbConstraints() const { return nConstrs; }
-
-bigint IntProg::getSolSpaceSize() const {
-  bigint total = 0;
-  for (const std::unique_ptr<IntVar>& v : vars) {
-    total += aux::msb(1 + v->getRange());
-  }
-  return total;
-};
 
 bigint IntProg::getLowerBound() const { return minimize ? optim->getLowerBound() : -optim->getLowerBound(); }
 bigint IntProg::getUpperBound() const { return minimize ? optim->getUpperBound() : -optim->getUpperBound(); }

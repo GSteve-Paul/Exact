@@ -245,7 +245,6 @@ struct ConstrExp final : ConstrExpSuper {
  private:
   void add(Var v, SMALL c, bool removeZeroes = false);
   void remove(Var v);  // NOTE: modifies order of variables, and can invalidate rhs / degree invariant
-  bool increasesSlack(const IntMap<int>& level, Var v) const;
   LARGE calcDegree() const;
   LARGE calcRhs() const;
   bool testConstraint() const;

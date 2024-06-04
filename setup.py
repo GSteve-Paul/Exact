@@ -46,10 +46,13 @@ ext_modules = [
             "src/used_licenses/COPYING.cpp",
             "src/Exact.cpp"
         ],
+        # FOR WINDOWS
+        # include_dirs=['C:\\Program Files\\boost\\boost_1_85_0'],
+        # extra_compile_args=["/O2","/std:c++20"],
+        # define_macros=[("UNIXLIKE",0),("ANKERLMAPS",1)]
+        # FOR LINUX / OSX
         extra_compile_args=["-O3","-std=c++20"],
-        # Example: passing in the version to the compiled code
-        # define_macros=[("VERSION_INFO", __version__)],
-        define_macros=[("UNIXLIKE", 1),("ANKERLMAPS",1)]
+        define_macros=[("UNIXLIKE",1),("ANKERLMAPS",1)]
     ),
 ]
 

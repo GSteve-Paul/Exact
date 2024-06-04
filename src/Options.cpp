@@ -66,7 +66,7 @@ VoidOption::VoidOption(const std::string& n, const std::string& d) : Option{n, d
 
 void VoidOption::printUsage(int colwidth) const {
   std::cout << " --" << name;
-  for (int i = name.size() + 3; i < colwidth; ++i) std::cout << " ";
+  for (int64_t i = std::ssize(name) + 3; i < colwidth; ++i) std::cout << " ";
   std::cout << description << "\n";
 }
 
@@ -95,7 +95,7 @@ void BoolOption::parse(const std::string& v) {
     } else {
       throw InvalidArgument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
-  } catch (const std::invalid_argument& ia) {
+  } catch (const std::invalid_argument&) {
     throw InvalidArgument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
   }
 }

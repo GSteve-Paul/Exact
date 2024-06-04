@@ -758,7 +758,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
     }
     try {
       reportUnsat(ce);
-    } catch (const UnsatEncounter& ue) {
+    } catch (const UnsatEncounter&) {
       // expected, do not rethrow
     }
     return {ID_Undef, ID_Undef};
@@ -777,7 +777,7 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
     }
 
     return {input, id};
-  } catch (const UnsatEncounter& ue) {
+  } catch (const UnsatEncounter&) {
     return {ID_Undef, ID_Undef};
   }
 }

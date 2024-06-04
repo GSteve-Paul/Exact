@@ -507,7 +507,7 @@ template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   try {
     solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
-  } catch (const UnsatEncounter& ue) {
+  } catch (const UnsatEncounter&) {
     lower_bound = upper_bound;
     return SolveState::UNSAT;
   }
@@ -581,7 +581,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       try {
         reply = aux::timeCall<SolveState>([&] { return solver.solve(); },
                                           topdown ? global.stats.SOLVETIMETOPDOWN : global.stats.SOLVETIMEBOTTOMUP);
-      } catch (const UnsatEncounter& ue) {
+      } catch (const UnsatEncounter&) {
         reply = SolveState::UNSAT;
       }
       if (topdown) {

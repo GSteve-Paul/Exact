@@ -129,7 +129,7 @@ class ValOption : public Option {
   void parse(const std::string& v) override {
     try {
       set(aux::sto<T>(v));
-    } catch (const std::invalid_argument& ia) {
+    } catch (const std::invalid_argument&) {
       throw InvalidArgument("Invalid value for " + name + ": " + v + ".\nCheck usage with --help option.");
     }
     if (!check(val)) {
