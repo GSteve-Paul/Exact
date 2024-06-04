@@ -1,4 +1,4 @@
-from pybind11.setup_helpers import Pybind11Extension, build_ext, ParallelCompile, naive_recompile
+from pybind11.setup_helpers import Pybind11Extension
 from setuptools import setup
 
 
@@ -46,14 +46,12 @@ ext_modules = [
             "src/used_licenses/COPYING.cpp",
             "src/Exact.cpp"
         ],
-        extra_compile_args=["-O3","-std=c++20","-DUNIXLIKE=1"],
+        extra_compile_args=["-O3","-std=c++20"],
         # Example: passing in the version to the compiled code
         # define_macros=[("VERSION_INFO", __version__)],
+        define_macros=[("UNIXLIKE", 1),("ANKERLMAPS",1)]
     ),
 ]
-
-# Optional multithreaded build
-ParallelCompile("NPY_NUM_BUILD_JOBS", default=8, needs_recompile=naive_recompile).install()
 
 setup(
     name="exact",
@@ -64,9 +62,5 @@ setup(
     description="Python bindings for Exact",
     long_description="TODO",
     ext_modules=ext_modules,
-    # extras_require={"test": "pytest"},
-    # Currently, build_ext only provides an optional "highest supported C++
-    # level" feature, but in the future it may provide more features.
-    cmdclass={"build_ext": build_ext},
     python_requires=">=3.7",
 )
