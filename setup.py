@@ -1,18 +1,26 @@
 # To upload a package to PyPI, follow the instructions on https://packaging.python.org/en/latest/tutorials/packaging-projects
+# For Windows, this is straightforward. For Linux, follow the ManyLinux approach on https://github.com/pypa/manylinux.
+
+# Commands that worked previously:
+## sudo docker run -it --entrypoint bash quay.io/pypa/manylinux_2_28_x86_64
+# Alma's Boost package does not work, so we install our own (following https://www.baeldung.com/linux/boost-install-on-ubuntu)
+## dnf install wget
+## wget -O boost_1_81_0.tar.gz https://sourceforge.net/projects/boost/files/boost/1.81.0/boost_1_81_0.tar.gz/download
+## mkdir boost-ver && cd boost-ver
+## tar -xzf ../boost_*.tar.gz
+## cd boost_*/
+## ./bootstrap.sh
+## ./b2 install --prefix=/usr/local
+## /opt/python/cp310-cp310/bin/python -m pip install twine
+## cd /
+## git clone https://gitlab.com/JoD/exact
+## cd exact
+## /opt/python/cp310-cp310/bin/python -m build
+## auditwheel repair /output/mylibrary*whl -w /output
+## /opt/python/cp310-cp310/bin/python -m twine upload --repository testpypi dist/wheelhouse/exact-2.0.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl -p <API KEY>
 
 from pybind11.setup_helpers import Pybind11Extension
 from setuptools import setup
-
-__version__ = "2.0.0"
-
-# The main interface is through Pybind11Extension.
-# * You can add cxx_std=11/14/17, and then build_ext can be removed.
-# * You can set include_pybind11=false to add the include directory yourself,
-#   say from a submodule.
-#
-# Note:
-#   Sort input source files if you glob sources to ensure bit-for-bit
-#   reproducible builds (https://github.com/pybind/python_example/pull/53)
 
 ext_modules = [
     Pybind11Extension(
@@ -57,14 +65,4 @@ ext_modules = [
     ),
 ]
 
-setup(
-    name="exact",
-    version=__version__,
-    author="Jo Devriendt",
-    author_email="jo.devriendt@nonfictionsoftware.com",
-    url="https://gitlab.com/JoD/exact",
-    description="Python bindings for Exact",
-    long_description="TODO",
-    ext_modules=ext_modules,
-    python_requires=">=3.7",
-)
+setup(ext_modules=ext_modules)

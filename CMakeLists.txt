@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(Exact)
 
 set(CMAKE_CXX_STANDARD 20)
-find_package(Boost 1.65.0 REQUIRED) # 1.81 for the fastest hash maps
+find_package(Boost 1.70.0 REQUIRED) # 1.81 for the fastest hash maps
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
 

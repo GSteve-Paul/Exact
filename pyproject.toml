@@ -7,20 +7,20 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "Exact"
+version = "2.0.0"
+authors = [
+    { name="Jo Devriendt", email="jo.devriendt@nonfictionsoftware.com" },
+]
+description = "Python bindings for Exact"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Affero General Public License v3"
+]
 
-# [tool.cibuildwheel]
-# test-command = "python {project}/tests/test.py"
-# test-skip = "*universal2:arm64"
-
-
-# [tool.ruff]
-# target-version = "py37"
-
-# [tool.ruff.lint]
-# extend-select = [
-#   "B",   # flake8-bugbear
-#   "I",   # isort
-#   "PGH", # pygrep-hooks
-#   "RUF", # Ruff-specific
-#   "UP",  # pyupgrade
-# ]
+[project.urls]
+Homepage = "https://gitlab.com/JoD/exact"
+Issues = "https://gitlab.com/JoD/exact/-/issues"
