@@ -2,15 +2,10 @@
 
 [Exact](https://gitlab.com/JoD/exact) solves decision and optimization problems formulated as integer linear programs. Under the hood, it converts integer variables to binary (0-1) variables and applies highly efficient propagation routines and strong cutting-planes / pseudo-Boolean conflict analysis.
 
-Exact is a fork of [RoundingSat](https://gitlab.com/MIAOresearch/roundingsat) and improves upon its predecessor in reliability, performance and ease-of-use.
+Exact is a fork of [RoundingSat](https://gitlab.com/MIAOresearch/roundingsat) and improves upon its predecessor in reliability, performance and ease-of-use. 
+In particular, Exact supports integer variables, reified linear constraints, multiplication constraints, and propagation and count inferences. 
 The name "Exact" reflects that the answers are fully sound, as approximate and floating-point calculations only occur in heuristic parts of the algorithm.
 As such, Exact can soundly be used for verification and theorem proving, where its envisioned ability to emit machine-checkable certificates of optimality and unsatisfiability should prove useful.
-
-
-## Stay updated
-
-Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [reddit community](https://reddit.com/r/exact).
-
 
 ## Features
 
@@ -28,25 +23,26 @@ Follow [@ExactSolver](https://twitter.com/ExactSolver) on Twitter and join the [
 
 ### PyPI package
 
-The easiest way is to use an **x86_64** machine with **Windows** or **Ubuntu 22.04** (or above). In that case, install this precompiled [PyPi package](https://pypi.org/project/exact), e.g., by running `pip install exact`.
+The easiest way is to use Exact's Python interfaces is on an **x86_64** machine with **Windows** or **Ubuntu 22.04** (or above). In that case, install this precompiled [PyPi package](https://pypi.org/project/exact), e.g., by running `pip install exact`.
 
 ### Compile your own Python package
 
-To use the Exact Python interface with optimal binaries for your machine (and the option to include SoPlex in the binary), compile as a shared library and install it with your package manager (e.g., `pip`).
-
-On Linux systems, `pip install .` in Exact's root directory should do the trick. On Windows, uncomment the build options below `# FOR WINDOWS` and comment out those for `# FOR LINUX`. Make sure to have the Boost libraries installed (see dependencies).
+To use the Exact Python interface with optimal binaries for your machine (and the option to include SoPlex in the binary), compile as a shared library and install it with your package manager.
+E.g., on Linux systems, running `pip install .` in Exact's root directory should do the trick. On Windows, uncomment the build options below `# FOR WINDOWS` and comment out those for `# FOR LINUX`.
+Make sure to have the Boost libraries installed (see dependencies).
 
 ### Documentation
 
-The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/main/src/Exact.hpp) contains the C++ methods exposed to Python via [Pybind11](https://pybind11.readthedocs.io) as well as their description. This is probably the place to start to learn about Exact's Python usage.
+The header file [`Exact.hpp`](https://gitlab.com/JoD/exact/-/blob/main/src/Exact.hpp) contains the C++ methods exposed to Python via [Pybind11](https://pybind11.readthedocs.io) as well as their description. 
+This is probably the best place to start to learn about Exact's Python interface.
 
 Next, [`python_examples`](https://gitlab.com/JoD/exact/-/blob/main/python_examples) contains instructive examples.
-Of particular interest is the [`knapsack tutorial`](https://gitlab.com/JoD/exact/-/blob/main/python_examples/knapsack_tutorial), which is fully commented, starts simple, but ends with some of Exact's advanced features.
+Of particular interest is the [`knapsack tutorial`](https://gitlab.com/JoD/exact/-/blob/main/python_examples/knapsack_tutorial), which is fully commented, starts simple, and ends with some of Exact's advanced features.
 
 
 ## Command line usage
 
-Exact takes as input an integer linear program and outputs a(n optimal) solution or reports that none exists.
+Exact takes as command line input an integer linear program and outputs a(n optimal) solution or reports that none exists.
 Either pipe the program
 
     cat test/instances/opb/opt/stein15.opb | build/Exact
@@ -72,7 +68,7 @@ Rewrite constraints with fractional values to integral ones by multiplying with 
 By default, Exact decides on the format based on the filename extension, but this can be overridden with the `--format` option.
 
 
-## Compilation
+## Compilation from source
 
 In the root directory of Exact:
 
@@ -94,7 +90,7 @@ For installing system-wide or to the `CMAKE_INSTALL_PREFIX` root, use `make inst
 - Optionally: [SoPlex](https://soplex.zib.de) LP solver (see below).
 
 
-## SoPlex (Linux)
+## SoPlex (on Linux)
 
 Exact supports an integration with the LP solver [SoPlex](https://soplex.zib.de) to improve its search routine.
 For this, checkout SoPlex from its [git repository](https://github.com/scipopt/soplex) as a submodule, compile it in some separate directory, and configure the right CMake options when compiling Exact.
