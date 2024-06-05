@@ -43,5 +43,5 @@ Lots of changes, most small, some big. Biggest new features:
 
 ### 2024-06-05
 *2.1.0*
-commit: 29d4fa844bad8c65ba2e42263443cffe6b961653
-- Added multiplication constraint to the Python interface
+commit: 2c6bee36dbeac27bc054d3d80264c73f3ac498cf
+- Add multiplication constraint to the Python interface
