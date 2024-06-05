@@ -40,3 +40,8 @@ Lots of changes, most small, some big. Biggest new features:
 - Reduced memory footprint
 - Proper unit tests for new code
 - Lots of small fixes and optimizations
+
+### 2024-06-05
+*2.1.0*
+commit: 29d4fa844bad8c65ba2e42263443cffe6b961653
+- Added multiplication constraint to the Python interface

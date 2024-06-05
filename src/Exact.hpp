@@ -124,6 +124,19 @@ class Exact {
                           const bigint& lb);
 
   /**
+   * Add a multiplicative constraint, where the lower and upper bound variables constrain a product of factors.
+   * Use both the lower and upper bound to post a multiplicative equality constraint in the form of a*b*...*y = z.
+   *
+   * @param factors: the factors to be multiplied.
+   * @param useLB: whether or not the constraint is lower bounded
+   * @param lb: the lower bound variable
+   * @param useUB: whether or not the constraint is upper bounded
+   * @param ub: the upper bound variable
+   */
+  void addMultiplication(const std::vector<std::string>& factors, bool useLB = false, const std::string& lb = "",
+                         bool useUB = false, const std::string& ub = "");
+
+  /**
    * Fix the value of a variable.
    *
    * Fixing the variable to different values will lead to unsatisfiability.

@@ -200,6 +200,11 @@ void Exact::addLeftReification(const std::string& head, bool sign,
   intprog.addLeftReification(getVariable(head), sign, ic);
 }
 
+void Exact::addMultiplication(const std::vector<std::string>& factors, bool useLB, const std::string& lb, bool useUB,
+                              const std::string& ub) {
+  intprog.addMultiplication(getVars(factors), useLB ? getVariable(lb) : nullptr, useUB ? getVariable(ub) : nullptr);
+}
+
 void Exact::fix(const std::string& var, const bigint& val) { intprog.fix(getVariable(var), val); }
 
 void Exact::setAssumptions(const std::vector<std::pair<std::string, bigint>>& varvals) {
@@ -350,6 +355,9 @@ PYBIND11_MODULE(exact, m) {
 
       .def("addRightReification", &Exact::addRightReification, "Add a right reification of a linear constraint",
            "head"_a, "sign"_a, "terms"_a, "lower_bound"_a)
+
+      .def("addMultiplication", &Exact::addMultiplication, "Add a multiplication constraint", "factors"_a,
+           "use_lower_bound"_a = false, "lower_bound"_a = "", "use_upper_bound"_a = false, "upper_bound"_a = "")
 
       .def("fix", &Exact::fix)
 
