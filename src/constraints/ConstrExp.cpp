@@ -673,13 +673,8 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, bool sorted) {
   global.stats.NSATURATESTEPS += vs.size();
   assert(check || !sorted);
-  // std::cout << "saturate" << std::endl;
-  // toStreamPure(std::cout);
-  // std::cout << std::endl;
   if (vars.empty() || (sorted && aux::abs(coefs[vars[0]]) <= degree) ||
       (!sorted && check && getLargestCoef() <= degree)) {
-    // std::cout << "return empty" << std::endl;
-    return;
   }
   assert(getLargestCoef() > degree);
   if (global.logger.isActive()) proofBuffer << "s ";  // log saturation only if it modifies the constraint
@@ -688,22 +683,16 @@ void ConstrExp<SMALL, LARGE>::saturate(const std::vector<Var>& vs, bool check, b
     reset(true);
     return;
   }
-  // std::cout << "smallDeg: " << smallDeg << std::endl;
   for (Var v : vs) {
-    // std::cout << "v: " << v << " coefs[v]: " << coefs[v] << std::endl;
     if (coefs[v] < -smallDeg) {
       rhs -= coefs[v] + smallDeg;
       coefs[v] = -smallDeg;
     } else if (coefs[v] > smallDeg) {
       coefs[v] = smallDeg;
-      // std::cout << "check" << std::endl;
     } else if (sorted) {
-      // std::cout << "break" << std::endl;
       break;
     }
   }
-  // toStreamPure(std::cout);
-  // std::cout << std::endl;
   assert(isSaturated());
 }
 
@@ -729,11 +718,6 @@ void ConstrExp<SMALL, LARGE>::saturate(bool check, bool sorted) {
 
 template <typename SMALL, typename LARGE>
 bool ConstrExp<SMALL, LARGE>::isSaturated() const {
-  // std::cout << "isSaturated" << std::endl;
-  // toStreamPure(std::cout);
-  // std::cout << std::endl;
-  // std::cout << "getLargestCoef: " << getLargestCoef() << std::endl;
-  // std::cout << "degree: " << degree << std::endl;
   return getLargestCoef() <= degree || degree < 0;
 }
 
@@ -785,8 +769,6 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOverflow(const IntMap<int>& level, int bitOverflow, int bitReduce,
                                           const SMALL& largestCoef, Lit asserting) {
   assert(hasNoZeroes());
-  // std::cout << "fixOverflow" << std::endl;
-  // toStreamPure(std::cout);
   assert(isSaturated());
   if (bitOverflow == 0) {
     return;
@@ -917,9 +899,6 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   assert(div > 0);
   if (div == 1) return;
   weakenNonDivisible(div, level);
-  // std::cout << "weakened non divisible" << std::endl;
-  // toStreamPure(std::cout);
-  // std::cout << "\n" << std::endl;
   weakenSuperfluous(div);
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
@@ -927,9 +906,6 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   }
   assert(hasNoZeroes());
 
-  // std::cout << "in weakenDivideRoundOrdered: " << std::endl;
-  // toStreamPure(std::cout);
-  // std::cout << "\n" << std::endl;
   if (div >= degree) {
     simplifyToClause();
   } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
@@ -1280,36 +1256,22 @@ bool ConstrExp<SMALL, LARGE>::weakenNonImplying(const IntMap<int>& level, const 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenNonFalsified(const IntMap<int>& level, const SMALL& amount, const Lit& asserting) {
   SMALL am = amount;
-  // std::cout << "in weakenNonFalsified: " << std::endl;
-  // std::cout << "amount: " << amount << std::endl;
   assert(hasNoZeroes());
   assert(isSortedInDecreasingCoefOrder());
-  // assert(getSlack(level) >= 0);
   for (int i = vars.size() - 1; i >= 0 && am > 0; --i) {
     Var v = vars[i];
     if (coefs[v] != 0 && !falsified(level, v) && getLit(v) != asserting) {
       if (aux::abs(coefs[v]) < am) {
         am -= aux::abs(coefs[v]);
-        // std::cout << "weakened: " << v << std::endl;
-        // std::cout << "coefs[v]: " << coefs[v] << std::endl;
-        // std::cout << "am: " << am << std::endl;
         weaken(v);
       } else {
-        // std::cout << "weakened partially: " << v << std::endl;
-        // std::cout << "coefs[v]: " << coefs[v] << std::endl;
-        // std::cout << "am: " << am << std::endl;
         weaken(coefs[v] < 0 ? am : -am, v);
         am = 0;
         removeZeroes();
-        // std::cout << "after weakening partially: " << std::endl;
         if (coefs[v] != 0) fixOrderAtIndex(i);
       }
     }
   }
-  // std::cout << "asserting in weakenNonFalsified: " << asserting << std::endl;
-  // std::cout << "after weakening: " << std::endl;
-  // toStreamPure(std::cout);
-  // std::cout << "\n" << std::endl;
   assert(am == 0);
   assert(isSortedInDecreasingCoefOrder());
 }
@@ -1573,32 +1535,20 @@ void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOrderAtIndex(const int index) {
-  // std::cout << "in fixOrderAtIndex: " << std::endl;
-  // std::cout << "index: " << index << std::endl;
   assert(index >= 0 && index < (int)vars.size());
   Var checking = vars[index];
   SMALL checkingCoef = absCoef(checking);
   for (unsigned long int i = index; i < vars.size() - 1 && absCoef(vars[i + 1]) > checkingCoef; i++) {
     std::swap(vars[i], vars[i + 1]);
   }
-  // toStreamPure(std::cout);
-  // std::cout << "\n" << std::endl;
   assert(isSortedInDecreasingCoefOrder());
 }
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::fixOrderOfVar(Var v) {
-  // std::cout << "in fixOrderOfVar: " << std::endl;
   assert(hasVar(v));
-  // std::cout << "var: " << v << std::endl;
   int i = index[v];
-  // std::cout << "index: " << i << std::endl;
-  // toStreamPure(std::cout);
-  // std::cout << "\n" << std::endl;
   fixOrderAtIndex(i);
-  // std::cout << "after fixOrderAtIndex: " << std::endl;
-  // toStreamPure(std::cout);
-  // std::cout << "\n" << std::endl;
   assert(isSortedInDecreasingCoefOrder());
 }
 
