@@ -898,8 +898,6 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const IntMap<int>& level) {
   assert(isSortedInDecreasingCoefOrder());
   assert(div > 0);
-  // std::cout << "div: " << div << std::endl;
-  // std::cout << "reason start: " << *this << std::endl;
   if (div == 1) return;
   weakenNonDivisible(div, level);
   weakenSuperfluous(div);
@@ -913,7 +911,6 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
   } else if (!vars.empty() && div >= aux::abs(coefs[vars[0]])) {
     simplifyToCardinality(false, getCardinalityDegree());
   } else {
-    // std::cout << "final block" << std::endl;
     saturate(true, true);
     
     CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
@@ -921,10 +918,6 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
     copyTo(copy);
     copyTo(startcopy);
 
-    // std::cout << "slack+1: " << getSlack(level) + 1 << std::endl;
-    // std::cout << "div: " << div << std::endl;
-    // std::cout << "reason pre cuts: " << *this << std::endl;
-    // assert(getSlack(level) + 1 == div);
     divideRoundUp(div);
     if (copy->getDegree() % div > 1) {
       ++global.stats.NDIVCUTS;
@@ -933,8 +926,6 @@ void ConstrExp<SMALL, LARGE>::weakenDivideRoundOrdered(const LARGE& div, const I
       ++global.stats.NMIRCUTS;
       copy->divideRoundUp(div);
     }
-    // std::cout << "reason post cuts: " << *this << std::endl;
-    // std::cout << "copy post cuts: " << *copy << std::endl;
     compare(copy, startcopy, div);
     assert(isSaturated());
     assert(copy->isSaturated());
@@ -1116,27 +1107,16 @@ void ConstrExp<SMALL, LARGE>::applyMIR(const LARGE& d, const std::function<Lit(V
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
   assert(d > 0);
-  // std::cout << "in apply MIR" << std::endl;
-  // std::cout << "reason: " << *this << std::endl;
-  // std::cout << "d: " << d << std::endl;
   LARGE tmpRhs = rhs;
   for (Var v : vars)
     if (getLit(v) < 0) {
-      // std::cout << "v: " << v << std::endl;
-      // std::cout << "coefs[v]: " << coefs[v] << std::endl;
       tmpRhs -= coefs[v];
     }
-  // std::cout << "rhs: " << rhs << std::endl;
-  // std::cout << "tmpRhs: " << tmpRhs << std::endl;
-  // std::cout << "reason: " << *this << std::endl;
   assert(tmpRhs == degree);
-  // std::cout << "tmpRhs: " << tmpRhs << std::endl;
   LARGE bmodd = aux::mod_safe(tmpRhs, d);
-  // std::cout << "bmodd: " << bmodd << std::endl;
   rhs = bmodd * aux::ceildiv_safe(tmpRhs, d);
   for (Var v : vars) {
     if (getLit(v) < 0) {
-      // coefs[v] = ()
       coefs[v] = static_cast<SMALL>(
           -(bmodd * aux::floordiv_safe<LARGE>(-coefs[v], d) + std::min(aux::mod_safe<LARGE>(-coefs[v], d), bmodd)));
       rhs += coefs[v];
@@ -1163,11 +1143,6 @@ void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other, const Ce
 
   double delta = 0;
 
-  // std::cout << "comparing" << std::endl;
-
-  // std::cout << "this: " << *this << std::endl;
-  // std::cout << "other: " << *other << std::endl;
-
   global.stats.DIVSTRENGTHSUM += division_strength;
   global.stats.MIRSTRENGTHSUM += mir_strength;
 
@@ -1175,18 +1150,7 @@ void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other, const Ce
     ++global.stats.NEQUAL;
   } else if (mir_strength > division_strength) {
     ++global.stats.NMIRSTRONGER;
-    // std::cout << "MIR result: " << *other << std::endl;
-    // std::cout << "Division result: " << *this << std::endl;
   } else if (mir_strength < division_strength) {
-    // if (div <= 2000) {
-
-      // std::cout << "div: " << div << std::endl;
-      // std::cout << "reason: " << *starting << std::endl;
-      // std::cout << "MIR result: " << *other << std::endl;
-      // std::cout << "Division result: " << *this << std::endl;
-      // std::cout << "MIR strength: " << mir_strength << std::endl;
-      // std::cout << "Division strength: " << division_strength << std::endl;
-    // }
     ++global.stats.NDIVSTRONGER;
   }
 }
