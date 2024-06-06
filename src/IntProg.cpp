@@ -195,6 +195,8 @@ bigint IntVar::getValue(const LitVec& sol) const {
   return val;
 }
 
+IntTerm::IntTerm(const bigint& _c, IntVar* _v) : c(_c), v(_v) {}
+
 Core emptyCore() { return std::make_unique<unordered_set<IntVar*>>(); }
 
 std::vector<IntTerm> IntConstraint::zip(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars) {

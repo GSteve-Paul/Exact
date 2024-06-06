@@ -70,6 +70,13 @@ std::ostream& operator<<(std::ostream& o, IntVar* x);
 struct IntTerm {
   bigint c;
   IntVar* v;
+  // constructors needed because Apple clang does not support parenthesized initialization of aggregates
+  IntTerm(const bigint& _c, IntVar* _v);
+  IntTerm() = default;
+  IntTerm(IntTerm&&) = default;
+  IntTerm& operator=(IntTerm&&) = default;
+  IntTerm(const IntTerm&) = default;
+  IntTerm& operator=(const IntTerm&) = default;
 };
 std::ostream& operator<<(std::ostream& o, const IntTerm& x);
 
