@@ -11,7 +11,7 @@
 /build*
 
 # python package directories
-exact.egg*
+*.egg-info*
 /venv/*
 
 # superfluous test files

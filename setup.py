@@ -17,6 +17,15 @@
 ## auditwheel repair dist/Exact-2.0.0-cp312-cp312-linux_x86_64.whl
 ## /opt/python/cp312-cp312/bin/python -m twine upload --repository pypi wheelhouse/Exact-2.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl -p <API TOKEN>
 
+# For OSX, only compilation from source for now (<path to venv binaries>/pip install .)
+# Use https://github.com/kholia/OSX-KVM
+## cd ~/workspace/_systems/OSX-KVM
+## ./OpenCore-Boot.sh
+# Installing OSX requires a fresh partition and takes a long time (downloading stuff?)
+# When stuck in a shell screen, type exit, and boot from a BIOS-like environment.
+# Repeatedly run the "install image" option until completion (up to 5 times!). Be patient
+# Current image works though.
+
 from pybind11.setup_helpers import Pybind11Extension
 from setuptools import setup
 
