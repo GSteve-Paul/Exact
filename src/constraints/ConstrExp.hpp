@@ -318,13 +318,6 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
   void addUp(const CePtr<S, L>& c, const SMALL& cmult = 1) {
     global.stats.NADDEDLITERALS += c->nVars();
     assert(cmult >= 1);
-    // std::cout << "in addup" << std::endl;
-    // std::cout << "confl start: " << std::endl;
-    // toStreamPure(std::cout);
-    // std::cout << "\n" << std::endl;
-    // std::cout << "reason start: " << std::endl;
-    // c->toStreamPure(std::cout);
-    // std::cout << "\n" << std::endl;
     if (global.logger.isActive()) Logger::proofMult(proofBuffer << c->proofBuffer.str(), cmult) << "+ ";
     rhs += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->rhs);
     degree += static_cast<LARGE>(cmult) * static_cast<LARGE>(c->degree);
@@ -334,15 +327,11 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
       SMALL val = cmult * static_cast<SMALL>(c->coefs[v]);
       add(v, val, true);
     }
-    // std::cout << "confl end: " << std::endl;
-    // toStreamPure(std::cout);
-    // std::cout << "\n" << std::endl;
   }
 
   template <typename S, typename L>
   void addAndCleanUp(const CePtr<S, L>& other, const IntMap<int>& level, SMALL& mult = 1) {
     assert(mult >= 1);
-    // assert(isSortedInDecreasingCoefOrder());
     assert(other->isSortedInDecreasingCoefOrder());
     multiply(mult);
     LARGE oldDegree = degree;
@@ -350,7 +339,6 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     std::vector<Var>& varsToCheck = oldDegree <= getDegree() ? other->vars : vars;
     SMALL largestCF = getLargestCoef(varsToCheck);
     if (largestCF > getDegree()) {
-      // std::cout << "in clean up" << std::endl;
       saturate(varsToCheck, false, false);
       largestCF = static_cast<SMALL>(getDegree());
     }
@@ -538,20 +526,8 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
       assert(reason->getSlack(level) <= 0);
       ++global.stats.NNONMULTWEAKEN;
     } else {
-      // std::cout << "confl start: " << std::endl;
-      // toStreamPure(std::cout);
-      // std::cout << "\n" << std::endl;
-      // std::cout << "reason start: " << std::endl;
-      // reason->toStreamPure(std::cout);
-      // std::cout << "\n" << std::endl;
       bool cond = true;
       if (global.options.multWeaken) {
-        // std::cout << "reason start: " << std::endl;
-        // reason->toStreamWithAssignment(std::cout, level, pos);
-        // std::cout << "\n" << std::endl;
-        // std::cout << "conflict start: " << std::endl;
-        // toStreamWithAssignment(std::cout, level, pos);
-        // std::cout << "\n" << std::endl;
 
         SMALL reasonCoef = reason->getCoef(asserting);
 
@@ -587,7 +563,6 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
         SMALL amountDirect = reasonCoef - newConflCoef;
 
         LARGE reasonSlack = nu * (reason->getSlack(level));
-        // LARGE conflSlack = getSlack(level);
 
         bool flagIndirect = false;
         bool flagDirect = false;
@@ -596,14 +571,12 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
         SMALL largestCF;
 
         if (reasonSlack - reasonCoef + newConflCoef >= 0) {
-          // std::cout << "doing indirect \n" << std::endl;
           indirectReason->weakenNonFalsified(level, amountIndirect, asserting);
           indirectReason->saturate(true, false);
           indirectConfl->addUp(indirectReason);
 
           largestCF = indirectConfl->getLargestCoef();
           if (largestCF > indirectConfl->getDegree()) {
-            // std::cout << "indirect sat" << std::endl;
             indirectConfl->saturate(false, false);
             largestCF = static_cast<SMALL>(indirectConfl->getDegree());
           }
@@ -615,35 +588,16 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
         }
 
         if (newConflCoef > reasonSlack) {
-          // std::cout << "doing direct \n" << std::endl;
           directReason->weaken(asserting < 0 ? amountDirect : -amountDirect, toVar(asserting));
           directReason->fixOrderOfVar(toVar(asserting));
           directReason->saturate(true, false);
-          // std::cout << "pre add: " << std::endl;
-          // std::cout << "directConfl: " << std::endl;
-          // directConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
           directConfl->addUp(directReason);
-
-          // std::cout << "post direct add: " << std::endl;
-          // std::cout << "directConfl: " << std::endl;
-          // directConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
 
           largestCF = directConfl->getLargestCoef();
           if (largestCF > directConfl->getDegree()) {
-            // std::cout << "direct sat" << std::endl;
             directConfl->saturate(false, false);
-            // std::cout << "post direct sat: " << std::endl;
-            // std::cout << "directConfl: " << std::endl;
-            // directConfl->toStreamPure(std::cout);
-            // std::cout << "\n" << std::endl;
             largestCF = static_cast<SMALL>(directConfl->getDegree());
           }
-          // std::cout << "largestCF: " << largestCF << std::endl;
-          // std::cout << "directConfl: " << std::endl;
-          // directConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
           directConfl->fixOverflow(level, global.options.bitsOverflow.get(), global.options.bitsReduced.get(),
                                    largestCF, 0);
           if (directConfl->getSlack(level) < 0) {
@@ -658,30 +612,15 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
           addAndCleanUp(indirectReason, level, mu);
           returnval = indirectReason->getLBD(level);
           ++global.stats.NINDIRECTWEAKEN;
-          // std::cout << "real: " << std::endl;
-          // toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          // std::cout << "indirectConfl: " << std::endl;
-          // indirectConfl->toStreamPure(std::cout);
-          // std::cout << "\n" << std::endl;
-          // std::cout << "real slack: " << getSlack(level) << std::endl;
-          // std::cout << "indirect slack: " << indirectConfl->getSlack(level) << std::endl;
         } else {
           cond = false;
         }
         if (cond) {
           assert(hasNegativeSlack(level));
-          // std::cout << "exiting mws" << std::endl;
           return returnval;
         }
       }
       if (!cond || !global.options.multWeaken) {
-        // std::cout << "conflict after abort: " << std::endl;
-        // toStreamPure(std::cout);
-        // std::cout << "\n" << std::endl;
-        // std::cout << "reason after abort: " << std::endl;
-        // reason->toStreamPure(std::cout);
-        // std::cout << "\n" << std::endl;
 
         ++global.stats.NNONMULTWEAKEN;
 
@@ -751,15 +690,6 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
       }
     }
 
-    // std::cout << "reason out: " << std::endl;
-    // reason->toStreamPure(std::cout);
-    // std::cout << "\n" << std::endl;
-    // std::cout << "conflict out: " << std::endl;
-    // toStreamPure(std::cout);
-    // std::cout << "\n" << std::endl;
-
-    // std::cout << "Asserting: " << asserting << std::endl;
-
     assert(reason->getCoef(asserting) >= getCoef(-asserting));
     assert(reason->getCoef(asserting) < 2 * getCoef(-asserting));
     assert(global.options.division.is("slack+1") || getCoef(-asserting) == reason->getCoef(asserting));
@@ -787,7 +717,6 @@ struct ConstrExp final : public ConstrExpSuper, std::enable_shared_from_this<Con
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 
-    // std::cout << "exiting standard: " << std::endl;
     return reason->getLBD(level);
   }
 

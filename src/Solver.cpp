@@ -389,7 +389,6 @@ CeSuper Solver::analyze(const CeSuper& conflict) {
 resolve:
   int counter = 0;
   while (decisionLevel() > 0) {
-    // std::cout << "c " << counter << std::endl;
     counter++;
     quit::checkInterrupt(global);
     Lit l = trail.back();
@@ -407,10 +406,6 @@ resolve:
       Constr& reasonC = ca[reason[toVar(l)]];
 
       int lbd = reasonC.resolveWith(confl, l, *this, actSet);
-      // std::cout << "post resolve" << std::endl;
-      // confl->toStreamPure(std::cout);
-      // std::cout << std::endl;
-      // std::cout << "post slack: " << confl->hasNegativeSlack(level) << std::endl;
       reasonC.decreaseLBD(lbd);
       reasonC.fixEncountered(global.stats);
     }
