@@ -1275,7 +1275,6 @@ void ConstrExp<SMALL, LARGE>::heuristicWeakening(const IntMap<int>& level, const
   }
   assert(slk < aux::abs(coefs[v_prop]));
   if (global.options.weakenNonImplied) {
-    // std::cout << "weakenNonImplied" << std::endl;
     weakenNonImplied(level, slk);
   }
 }
