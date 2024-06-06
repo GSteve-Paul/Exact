@@ -515,9 +515,7 @@ struct ConstrExp final : public ConstrExpSuper {
       const SMALL reasonCoef = reason->getCoef(asserting);
       assert(reasonCoef > 0);
       if (global.options.division.is("rto")) {
-        // std::cout << "asserting: " << asserting << std::endl;
         reason->weakenMIROrdered(reasonCoef, level, conflCoef, reasonCoef);
-        // std::cout << "reasonCoef: " << reason->getCoef(asserting) << std::endl;
         multiply(reason->getCoef(asserting));
         reason->multiply(conflCoef);
         assert(reason->getSlack(level) <= 0);
@@ -569,23 +567,9 @@ struct ConstrExp final : public ConstrExpSuper {
             reason->multiply(mult);
             // NOTE: since canceling unknowns are rounded up, the reason may have positive slack
           } else {
-            // std::cout << "conflict with assignments: " << std::endl;
-            // toStreamWithAssignment(std::cout, level, pos);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "bestDiv: " << bestDiv << std::endl;
-            // std::cout << "reasonCoef: " << reasonCoef << std::endl;
-            // std::cout << "reason with assignments: " << std::endl;
-            // reason->toStreamWithAssignment(std::cout, level, pos);
-            // std::cout << "\n" << std::endl;
-            // std::cout << "Reason slack before MIR: " << reason->getSlack(level) << std::endl;
             reason->weakenMIROrdered(bestDiv, level, mult, reasonCoef);
-            // std::cout << "Reason slack after MIR: " << reason->getSlack(level) << std::endl;
-            // std::cout << "asserting: " << asserting << std::endl;
             const SMALL newMult = conflCoef / reason->getCoef(asserting);
-            // std::cout << "newMult: " << newMult << std::endl;
             reason->multiply(newMult);
-            // std::cout << "reason: " << *reason << std::endl;
-            // std::cout << "confl: " << *this << std::endl;
             assert(reason->getSlack(level) <= 0);
           }
         }
@@ -620,14 +604,6 @@ struct ConstrExp final : public ConstrExpSuper {
     assert(getCoef(-asserting) <= 0);
     assert(hasNegativeSlack(level));
 
-    // // std::cout << "learned conflict with assignments: " << std::endl;
-    // // toStreamWithAssignment(std::cout, level, pos);
-    // // std::cout << "\n" << std::endl;
-    // // std::cout << "slack: " << getSlack(level) << std::endl;
-
-    // std::cout << "end reason with assignments: " << std::endl;
-    // reason->toStreamWithAssignment(std::cout, level, pos);
-    // std::cout << "\n" << std::endl;
     return reason->getLBD(level);
   }
 

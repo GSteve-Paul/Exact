@@ -530,10 +530,8 @@ void Solver::extractCore(const CeSuper& conflict, Lit l_assump) {
   assert(lastCore->hasNegativeSlack(assumptions.getIndex()));
   assert(!lastCore->isTautology());
   assert(lastCore->isSaturated());
-  // std::cout << "here maybe?" << std::endl;
   aux::timeCallVoid([&] { learnConstraint(lastCore, Origin::LEARNED); },
                     global.stats.LEARNTIME);  // NOTE: takes care of inconsistency
-  // std::cout << "hello from the other siiiiiide" << std::endl;
   backjumpTo(0);
   lastCore->postProcess(getLevel(), getPos(), getHeuristic(), true, global.stats);
   if (!lastCore->hasNegativeSlack(assumptions.getIndex())) {
@@ -650,12 +648,7 @@ void Solver::learnConstraint(const CeSuper& ce, Origin orig) {
   }
   assert(!learned->isInconsistency());
   assert(learned->hasNegativeSlack(level) == ce->hasNegativeSlack(level));
-  // learned->toStreamWithAssignment(std::cout, level, position);
-  // std::cout << std::endl;
   backjumpTo(assertionLevel);
-  // learned->toStreamWithAssignment(std::cout, level, position);
-  // std::cout << std::endl;
-  // this assert fails, but why?
   assert(!learned->hasNegativeSlack(level));
   if (isAsserting) learned->heuristicWeakening(level, position);
   learned->postProcess(getLevel(), getPos(), getHeuristic(), false, global.stats);

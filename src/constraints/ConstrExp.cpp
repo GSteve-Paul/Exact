@@ -479,8 +479,6 @@ unsigned int ConstrExp<SMALL, LARGE>::getLBD(const IntMap<int>& level) const {
       }
     }
   }
-  // std::cout << "i: " << i << std::endl;
-  // if (i < 0) std::cout << *this << std::endl;
   assert(i >= 0);  // constraint is asserting or conflicting
   IntSet& lbdSet = global.isPool.take();
   for (; i >= 0; --i) {  // gather all levels
@@ -957,28 +955,16 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   assert(isSortedInDecreasingCoefOrder());
   assert(d > 0);
   assert(reasonCoef % d == 0);
-  // const SMALL reasonMult = static_cast<SMALL>(reasonCoef / d);
-  // assert(reasonMult == to);
-  // assert(to % reasonMult == 0);
-  // const SMALL maxmod = to / reasonMult;
-  // JO: hou je rekening met negatieve coëfficiënten? Moet het aux::floordiv(.) zijn ipv standaard deling?
-
 
   if (d == 1) return;
-  // std::cout << "d: " << d << std::endl;
   weakenNonDivisible(d, level);
-  // std::cout << "after weakenNonDivisible: " << *this << std::endl;
-  // if (getDegree() % d )
   SMALL amount = findWeakenAmount(d, to);
 
   if ((getDegree() % d) > 1) global.stats.TOTALMIRWEAKEN += aux::divToDouble(static_cast<LARGE>(amount), (getDegree() % d) - 1);
 
-  // std::cout << "amount: " << amount << std::endl;
   if (global.options.weakenSuperfluous) {
     amount = weakenSuperfluousMIR(d, amount);
-    // std::cout << "after weakenSuperfluous: " << *this << std::endl;
   }
-  // if (!weakenUseless(d, amount) && amount > 0) {
   if (amount > 0) {
     dropDegree(d, amount);
   }
@@ -988,8 +974,6 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   CePtr<SMALL, LARGE> copy = global.cePools.take<SMALL, LARGE>();
   copyTo(copy);
 
-  // std::cout << "after dropDegree: " << *this << std::endl;
-
   repairOrder();
   while (!vars.empty() && coefs[vars.back()] == 0) {
     popLast();
@@ -998,27 +982,19 @@ void ConstrExp<SMALL, LARGE>::weakenMIROrdered(const LARGE& d, const IntMap<int>
   if (d >= degree) {
     ++global.stats.NCLAUSES;
     simplifyToClause();
-    // std::cout << "after simplifyToClause: " << *this << std::endl;
   } else if (!vars.empty() && d >= aux::abs(coefs[vars[0]])) {
     ++global.stats.NCARDS;
     simplifyToCardinality(false, getCardinalityDegree());
-    // std::cout << "after simplifyToCardinality: " << *this << std::endl;
   } else {
-    // std::cout << "bmodd: " << degree % d << std::endl;
-    // std::cout << "before divideRoundUp: " << *this << std::endl;
     copy->divideRoundUp(d);
     if (degree % d <= 1) {
       ++global.stats.NDIVWEAKEN;
       divideRoundUp(d);
-      // std::cout << "after divideRoundUp: " << *this << std::endl;
     } else {
       ++global.stats.NMIRWEAKEN;
       applyMIRalt(d);
-      // std::cout << "after applyMIR: " << *this << std::endl;
     }
     compare(copy);
-    // std::cout << "after applyMIR: " << *this << std::endl;
-    // std::cout << "after saturate: " << *this << std::endl;
   }
 }
 
@@ -1220,27 +1196,16 @@ void ConstrExp<SMALL, LARGE>::applyMIR(const LARGE& d, const std::function<Lit(V
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::applyMIRalt(const LARGE& d) {
   assert(d > 0);
-  // std::cout << "in apply MIR" << std::endl;
-  // std::cout << "reason: " << *this << std::endl;
-  // std::cout << "d: " << d << std::endl;
   LARGE tmpRhs = rhs;
   for (Var v : vars)
     if (getLit(v) < 0) {
-      // std::cout << "v: " << v << std::endl;
-      // std::cout << "coefs[v]: " << coefs[v] << std::endl;
       tmpRhs -= coefs[v];
     }
-  // std::cout << "rhs: " << rhs << std::endl;
-  // std::cout << "tmpRhs: " << tmpRhs << std::endl;
-  // std::cout << "reason: " << *this << std::endl;
   assert(tmpRhs == degree);
-  // std::cout << "tmpRhs: " << tmpRhs << std::endl;
   LARGE bmodd = aux::mod_safe(tmpRhs, d);
-  // std::cout << "bmodd: " << bmodd << std::endl;
   rhs = bmodd * aux::ceildiv_safe(tmpRhs, d);
   for (Var v : vars) {
     if (getLit(v) < 0) {
-      // coefs[v] = ()
       coefs[v] = static_cast<SMALL>(
           -(bmodd * aux::floordiv_safe<LARGE>(-coefs[v], d) + std::min(aux::mod_safe<LARGE>(-coefs[v], d), bmodd)));
       rhs += coefs[v];
@@ -1314,11 +1279,6 @@ const SMALL ConstrExp<SMALL, LARGE>::findWeakenAmount(const LARGE& d, const SMAL
       primesDividing.push_back(highestP);
     }
   }
-
-  // std::cout << "primesDividing: ";
-  // for (SMALL p : primesDividing) {
-  //   std::cout << p << " ";
-  // }
 
   // calc divisor smaller than bmodd backtofront and fronttoback
   SMALL frontToBack = 1;
@@ -1408,9 +1368,6 @@ void ConstrExp<SMALL, LARGE>::compare(const CePtr<SMALL, LARGE>& other) const {
   ratio mir_strength = getDegree() / mir_coefsum;
 
   double delta = 0;
-
-  // std::cout << "this: " << *this << std::endl;
-  // std::cout << "other: " << *other << std::endl;
 
   global.stats.DIVSTRENGTHSUM += division_strength;
   global.stats.MIRSTRENGTHSUM += mir_strength;
