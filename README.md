@@ -14,9 +14,8 @@ Throughout the thesis many different branches were made to test out parts of the
 
 Most of the options can just be turned on or off in the main branch of Exact, so no separate branch was made to test out all the options. The options that were introduced separately are in the branches:
 
-- full-weakening
-- no-weaken-superfluous
-- no-weaken-non-implied
+- full-weakening: This branch implements full weakening instead of partial weakening.
+- no-weaken-superfluous: This branch disables superfluous weakening.
 
 ### Multiply Weaken
 
@@ -35,7 +34,7 @@ Most of the options can just be turned on or off in the main branch of Exact, so
 
 Some aspects were briefly tested, but didn't make it into the thesis:
 
-- weaken-superfluous-sweeping: This branch was made to see if superfluous weakening couldn't be improved through a better weakening order. Initial results showed there was not much of a difference and we didn't look further into it after realising superfluous weakening didn't have a big impact to begin with.
-- no-actset: Exact uses a VSIDS like heuristic called the actset. MW doesn't use this heuristic, but this was only by accident at the beginning. After adding the actset heuristic to MW it performed worse however so we tested it out. On the main branch of Exact it does seem to provide much better results however. This is still worth looking into, but there wasn't enough time in the thesis.
+- weaken-non-implied: This branch was made to add the option to turn of weakening of non-implied literals. Weakening non-implying literals is already optional in Exact and in fact in the thesis we see that it has a slight negative effect on the solver. Weakening non-implied literals however is very important, but the results are not discussed in the thesis as it is not a key option.
+- no-actset: Exact uses a VSIDS like heuristic called the actset. MW doesn't use this heuristic, but this was only by accident at the beginning. However after adding the actset heuristic to MW it performed worse however so we it out on the default settings. On the main branch of Exact it does seem to provide much better results however with the actset heuristic enabled. This is still worth looking into, but there wasn't enough time in the thesis.
 
 ## Results
