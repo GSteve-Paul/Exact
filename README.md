@@ -38,3 +38,5 @@ Some aspects were briefly tested, but didn't make it into the thesis:
 - no-actset: Exact uses a VSIDS like heuristic called the actset. MW doesn't use this heuristic, but this was only by accident at the beginning. However after adding the actset heuristic to MW it performed worse however so we it out on the default settings. On the main branch of Exact it does seem to provide much better results however with the actset heuristic enabled. This is still worth looking into, but there wasn't enough time in the thesis.
 
 ## Results
+
+The results, scripts and visualisations from the thesis can be found at a private repository. Please contact me to request access at orestis.lomis@student.kuleuven.be or otherwise see a selection of the results in the thesistext.
