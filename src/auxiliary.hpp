@@ -64,7 +64,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define EXPANDED(x) STR(x)
 #define STR(x) #x
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <algorithm>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
