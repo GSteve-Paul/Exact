@@ -513,6 +513,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   }
   while (true) {
     if (timeout != 0 && global.stats.getRunTime() > timeout) return SolveState::TIMEOUT;
+    quit::checkInterrupt(global);
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
     // constraint yields UNSAT, at which case core-guided search can derive any constraint.
     StatNum current_time = global.stats.getDetTime();

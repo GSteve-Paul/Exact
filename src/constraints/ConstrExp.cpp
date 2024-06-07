@@ -1622,7 +1622,8 @@ void ConstrExp<SMALL, LARGE>::liftDegree() {
   int32_t heur1 = total;
   int32_t heur2 = 0;
   std::vector<int32_t> cfs(vars.size());
-  for (int32_t i = 0; i < std::ssize(vars); ++i) {
+  for (uint32_t i = 0; i < std::size(vars); ++i) {
+    if ((i & static_cast<uint32_t>(1023)) == 0) quit::checkInterrupt(global);  // check every 1024 iterations
     cfs[i] = static_cast<int32_t>(aux::abs(coefs[vars[i]]));
     if (heur1 - cfs[i] >= degree) heur1 -= cfs[i];
     if (heur2 + cfs[i] <= degree) heur2 += cfs[i];
