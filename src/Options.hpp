@@ -275,7 +275,7 @@ struct Options {
   ValOption<float> optRatio{"opt-ratio", "Ratio of bottom-up optimization time (0 means top-down, 1 fully bottom-up)",
                             0.5, "0 =< float =< 1", [](const double& x) -> bool { return x >= 0 && x <= 1; }};
   BoolOption optCoreguided{"opt-coreguided", "Core-guided bottom up optimization instead of a basic approach", true};
-  BoolOption optReuseCores{"opt-reusecores", "Reuse cores during core-guided bottom up optimization", false};
+  BoolOption optReuseCores{"opt-reusecores", "Reuse cores during core-guided bottom up optimization", true};
   ValOption<int32_t> optStratification{
       "opt-stratification",
       "Stratification during core-guided optimization will ignore the smallest literals that together amount to at "

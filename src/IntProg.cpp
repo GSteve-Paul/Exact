@@ -1173,6 +1173,7 @@ void IntProg::runFromCmdLine() {
 
   solver.printHeader();
 
+  global.stats.runStartTime = std::chrono::steady_clock::now();
   [[maybe_unused]] SolveState res = optim->runFull(true, 0);
 }
 

@@ -91,10 +91,10 @@ StatNum Stats::getRunTime() const {
 StatNum Stats::getSolveTime() const { return SOLVETIMETOPDOWN + SOLVETIMEBOTTOMUP; }
 // NOTE: below linear relations were determined by regression tests on experimental data,
 // so that the deterministic time correlates as closely as possible with the cpu time in seconds
-StatNum Stats::getLpDetTime() const { return (5.92 * NLPOPERATIONS + 1105.48 * NLPADDEDLITERALS) / 1e9; }
+StatNum Stats::getLpDetTime() const { return (5.3855 * NLPOPERATIONS + 1287.0531 * NLPADDEDLITERALS) / 1e9; }
 StatNum Stats::getNonLpDetTime() const {
-  return (49.00 * NWATCHLOOKUPS + 9.09 * NWATCHCHECKS + 3.55 * NPROPCHECKS + 60.69 * NSATURATESTEPS +
-          61.86 * (NADDEDLITERALS - NLPADDEDLITERALS) + 1484.40 * NWEAKENEDNONIMPLIED + 268.51 * NTRAILPOPS) /
+  return (3.7225 * NWATCHCHECKS + 50.4840 * NWATCHLOOKUPS + 62.8012 * NWATCHLOOKUPSBJ + 176.2522 * NSATURATESTEPS +
+          210.6627 * NTRAILPOPS + 626.5715 * NWEAKENEDNONIMPLIED) /
          1e9;
 }
 
