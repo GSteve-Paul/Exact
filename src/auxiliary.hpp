@@ -115,18 +115,30 @@ static_assert(alignof(bigint) <= maxAlign);
 #if ANKERLMAPS
 template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
 using unordered_map = ankerl::unordered_dense::map<K, V, H, KE>;
+template <typename K, typename V, typename H, typename KE, typename Pred>
+size_t erase_if(unordered_map<K, V, H, KE>& map, Pred pred) {
+  return std::erase_if(map, pred);
+}
 template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
 using unordered_set = std::unordered_set<K, H, KE>;
+template <typename K, typename H, typename KE, typename Pred>
+size_t erase_if(unordered_set<K, H, KE>& set, Pred pred) {
+  return std::erase_if(set, pred);
+}
 #else
 template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
 using unordered_map = boost::unordered::unordered_flat_map<K, V, H, KE>;
+template <typename K, typename V, typename H, typename KE, typename Pred>
+size_t erase_if(unordered_map<K, V, H, KE>& map, Pred pred) {
+  return boost::unordered::erase_if(map, pred);
+}
 template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
 using unordered_set = boost::unordered::unordered_flat_set<K, H, KE>;
+template <typename K, typename H, typename KE, typename Pred>
+size_t erase_if(unordered_set<K, H, KE>& set, Pred pred) {
+  return boost::unordered::erase_if(set, pred);
+}
 #endif
-// template <typename K, typename V, typename H = std::hash<K>, typename KE = std::equal_to<K>>
-// using unordered_map = std::unordered_map<K, V, H, KE>;
-// template <typename K, typename H = std::hash<K>, typename KE = std::equal_to<K>>
-// using unordered_set = ankerl::unordered_dense::set<K, H, KE>;
 
 template <typename K, typename V, typename Comp = std::less<K>>
 using ordered_map = boost::container::flat_map<K, V, Comp>;
