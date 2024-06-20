@@ -45,12 +45,21 @@ int main(int argc, char** argv) {
     } catch (const AsynchronousInterrupt& ai) {
       std::cout << "c " << ai.what() << std::endl;
       return quit::exit_INDETERMINATE(intprog);
-    } catch (const UnsatEncounter& ue) {
+    } catch (const UnsatEncounter&) {
       return quit::exit_SUCCESS(intprog);
     } catch (const std::invalid_argument& ia) {
       return quit::exit_ERROR(ia.what());
     }
-  } catch (const EarlyTermination& et) {
+  } catch (const EarlyTermination&) {
+    return quit::exit_EARLY();
+  } catch (const std::bad_alloc&) {
+    std::cout << "c OUT OF MEMORY" << std::endl;
+    return quit::exit_EARLY();
+  } catch (const OutOfMemoryException&) {
+    std::cout << "c OUT OF MEMORY" << std::endl;
+    return quit::exit_EARLY();
+  } catch (const std::exception&) {
+    std::cout << "c UNKNOWN EXCEPTION" << std::endl;
     return quit::exit_EARLY();
   }
 }
