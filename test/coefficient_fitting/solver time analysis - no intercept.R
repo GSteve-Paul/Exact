@@ -15,7 +15,7 @@ library(tidyr)
 #   select(-c(name, answer)) %>%
 #   mutate(time = 1e9 * time) %>%
 #   drop_na()
-time.data <- read_csv("/home/jod/workspace/exact/fitting/24-05-22___default_sol_mw_filtered_more.csv") %>%
+time.data <- read_csv("/home/jod/workspace/exact/test/coefficient_fitting/24-05-22___default_sol_mw_filtered_more.csv") %>%
   # select(-c(name, `col1`, `col2`, `...`)) %>% # replace below line by this to remove a column with the given nams
   select(-c(name)) %>%
   mutate(time = 1e9 * time) %>%
@@ -27,7 +27,7 @@ plot(density(log(time.data %>% pull(time)+1), adjust = 0.1))
 ## create in-sample and out-of-sample data
 
 n.oos <- floor(0.01*nrow(time.data)) # JO: wat als de data gesorteerd is op tijd?
-set.seed(1123583)
+set.seed(2)
 
 index.oos <- sample(seq(1:nrow(time.data)),size = n.oos)
 time.data.oos <- time.data[index.oos,]
@@ -80,12 +80,31 @@ elnet.model <- cva.glmnet(x, y, family = "gaussian", nlambda = 200, nfolds = n.i
 logelnet.model <- cva.glmnet(x, log(y+1), family = "gaussian", nlambda = 200, nfolds = n.is, intercept = FALSE)
 #relaxlogelnet.model <- cva.glmnet(x, log(y+1), family = "gaussian", nlambda = 200, nfolds = n.is, relax = TRUE, gamma = 0)
 
-# OPGEPAST 10 en 6 hangen af van de plots, TODO: automatiseren
-elnet.lambda.1se <- elnet.model$modlist[[10]]$lambda.1se
-elnet.alpha      <- elnet.model$alpha[10]
 
-logelnet.lambda.1se <- logelnet.model$modlist[[6]]$lambda.1se
-logelnet.alpha      <- logelnet.model$alpha[6]
+select.optimal.alpha.index <- function(model, criterion){
+  nalpha <- length(model$alpha)
+  alpha.mse <- rep(NA, length = nalpha)
+  for(i in 1:nalpha){
+    if(criterion == "minmse"){
+      lambda.index <- which(model$modlist[[i]]$lambda == model$modlist[[i]]$lambda.min)
+      alpha.mse[i] <- model$modlist[[i]]$cvm[lambda.index]
+    } else if(criterion == "min1se"){
+      lambda.index <- which(model$modlist[[i]]$lambda == model$modlist[[i]]$lambda.1se)
+      alpha.mse[i] <- model$modlist[[i]]$cvm[lambda.index]
+    }
+  }
+  optimal.alpha.index <- which(alpha.mse == min(alpha.mse))
+  return(optimal.alpha.index)
+}
+
+elnet.alpha.index <- select.optimal.alpha.index(elnet.model, "min1se")
+elnet.lambda.1se <- elnet.model$modlist[[elnet.alpha.index]]$lambda.1se
+elnet.alpha      <- elnet.model$alpha[elnet.alpha.index]
+
+logelnet.alpha.index <- select.optimal.alpha.index(logelnet.model, "min1se")
+logelnet.lambda.1se <- logelnet.model$modlist[[logelnet.alpha.index]]$lambda.1se
+logelnet.alpha      <- logelnet.model$alpha[logelnet.alpha.index]
+
 
 #relaxelnet.lambda.1se <- relaxelnet.model$modlist[[6]]$lambda.1se
 #relaxelnet.alpha      <- relaxelnet.model$alpha[6]
