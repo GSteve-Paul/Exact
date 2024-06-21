@@ -49,6 +49,12 @@ int main(int argc, char** argv) {
       return quit::exit_SUCCESS(intprog);
     } catch (const std::invalid_argument& ia) {
       return quit::exit_ERROR(ia.what());
+    } catch (const std::bad_alloc&) {
+      std::cout << "c OUT OF MEMORY" << std::endl;
+      return quit::exit_INDETERMINATE(intprog);
+    } catch (const OutOfMemoryException&) {
+      std::cout << "c OUT OF MEMORY" << std::endl;
+      return quit::exit_INDETERMINATE(intprog);
     }
   } catch (const EarlyTermination&) {
     return quit::exit_EARLY();
