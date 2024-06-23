@@ -60,6 +60,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Heuristic.hpp"
+#include <constraints/ConstrExp.hpp>
 
 namespace xct {
 
@@ -116,24 +117,44 @@ ActValV Heuristic::getActivity(Var v) const {
 const std::vector<ActNode>& Heuristic::getActList() const { return actList; }
 
 void Heuristic::randomize(const std::vector<int>& position) {
-  VarVec vars;
-  vars.reserve((int)actList.size() - 1);
-  for (Var v = 1; v < (int)actList.size(); ++v) {
-    vars.push_back(v);
+  VarVec vars(std::ssize(actList) - 1);
+  for (Var v = 1; v < std::ssize(actList); ++v) {
+    vars[v - 1] = v;
     actList[v].activity += aux::getRand(0, INF) / static_cast<ActValV>(INF);
   }
   nextDecision = 0;
   vBumpActivity(vars, position, 0, 0);
 }
 
-void Heuristic::vBumpActivity(VarVec& vars, const std::vector<int>& position, double weightNew, long long nConfl) {
+void Heuristic::bumpObjective(const CeArb& obj, const std::vector<int>& position) {
+  assert(obj->hasNoZeroes());
+  // set initial phase and activity so that we try optimal objective assignment first
+  VarVec vars = obj->vars;
+  std::ranges::sort(vars, [&](Var v1, Var v2) {
+    const bigint diff = obj->absCoef(v1) - obj->absCoef(v2);
+    return diff > 0 || (diff == 0 && actList[v1].activity > actList[v2].activity);  // takes into account randomization
+  });
+  ActValV tmpsize = std::ssize(vars);
+  for (int64_t i = 0; i < std::ssize(vars); ++i) {
+    const Var v = vars[i];
+    setPhase(v, obj->coefs[v] < 0 ? v : -v);
+    assert(2 + (actList[v].activity - i) / tmpsize >= actList[v].activity);
+    // NOTE: overrides randomization activity, so needs to be larger
+    actList[v].activity = 2 + (actList[v].activity - i) / tmpsize;
+  }
+  nextDecision = 0;
+  vBumpActivity(vars, position, 0, 0);
+}
+
+void Heuristic::vBumpActivity(VarVec& vars, const std::vector<int>& position, ActValV weightNew, int64_t nConfl) {
   assert(weightNew >= 0);
   assert(weightNew <= 1);
-  double weightOld = 1 - weightNew;
+  ActValV weightOld = 1 - weightNew;
   ActValV toAdd = weightNew * (nConfl + 1);
   for (Var v : vars) {
     assert(v > 0);  // not a literal, not 0
-    actList[v].activity = weightOld * actList[v].activity + toAdd;
+    actList[v].activity = aux::max(actList[v].activity, weightOld * actList[v].activity + toAdd);
+    // NOTE: max guard is needed when bumpObjective was used
   }
   std::sort(vars.begin(), vars.end(), [&](const Var& v1, const Var& v2) { return before(v1, v2); });
   // NOTE: order is complete, breaking ties on variable index. This means weightNew == 1 (== VMTF) will always sort ties
@@ -141,7 +162,8 @@ void Heuristic::vBumpActivity(VarVec& vars, const std::vector<int>& position, do
   for (Var v : vars) {
     if (before(nextDecision, v)) {
       break;  // vars is sorted
-    } else if (isUnknown(position, v)) {
+    }
+    if (isUnknown(position, v)) {
       nextDecision = v;
       break;  // vars is sorted
     }

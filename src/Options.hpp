@@ -308,6 +308,7 @@ struct Options {
                            "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }};
   ValOption<DetTime> basetime{"inp-basetime", "Initial deterministic time allotted to presolve techniques", 1,
                               "0 =< float", [](const DetTime& x) -> bool { return x >= 0; }};
+  BoolOption test{"test", "Activate experimental option", false};
 
   const std::vector<Option*> options = {
       &help,          &copyright,         &licenseInfo,      &randomSeed,
@@ -327,6 +328,7 @@ struct Options {
       &optReuseCores, &optStratification, &optPrecision,     &intEncoding,
       &intContinuous, &intUnbounded,      &intDefaultBound,  &pureLits,
       &domBreakLim,   &inpProbing,        &inpAMO,           &basetime,
+      &test,
   };
   unordered_map<std::string, Option*> name2opt;
 

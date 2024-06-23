@@ -152,8 +152,8 @@ OptimizationSuper::OptimizationSuper(Solver& s, const bigint& os, const IntSet& 
 Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver, const IntSet& assumps) {
   CeArb obj = solver.global.cePools.takeArb();
   ico.toConstrExp(obj, true);
-  obj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   obj->removeEqualities(solver.getEqualities());
+  obj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   bigint offs = -obj->getDegree();
   obj->addRhs(offs);
   assert(obj->getDegree() == 0);
@@ -179,24 +179,26 @@ Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver, const In
     Ce32 o = solver.global.cePools.take32();
     obj->copyTo(o);
     return std::make_shared<Optimization<int, long long>>(o, solver, offs, assumps);
-  } else if (maxVal <= static_cast<bigint>(limitAbs<long long, int128>())) {
+  }
+  if (maxVal <= static_cast<bigint>(limitAbs<long long, int128>())) {
     Ce64 o = solver.global.cePools.take64();
     obj->copyTo(o);
     return std::make_shared<Optimization<long long, int128>>(o, solver, offs, assumps);
-    // NOTE: yielded a bug during coreguided search - not sure where. Multiplying two coefficients?
-    //  } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
-    //    Ce96 o = solver.global.cePools.take96();
-    //    obj->copyTo(o);
-    //    return std::make_shared<Optimization<int128, int128>>(o, solver, offs, assumps);
-  } else if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
+  }
+  // TODO: below yielded a bug during coreguided search - not sure where. Multiplying two coefficients?
+  //  if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
+  //    Ce96 o = solver.global.cePools.take96();
+  //    obj->copyTo(o);
+  //    return std::make_shared<Optimization<int128, int128>>(o, solver, offs, assumps);
+  //  }
+  if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
     Ce128 o = solver.global.cePools.take128();
     obj->copyTo(o);
     return std::make_shared<Optimization<int128, int256>>(o, solver, offs, assumps);
-  } else {
-    CeArb o = solver.global.cePools.takeArb();
-    obj->copyTo(o);
-    return std::make_shared<Optimization<bigint, bigint>>(o, solver, offs, assumps);
   }
+  CeArb o = solver.global.cePools.takeArb();
+  obj->copyTo(o);
+  return std::make_shared<Optimization<bigint, bigint>>(o, solver, offs, assumps);
 }
 
 template <typename SMALL, typename LARGE>
@@ -271,7 +273,7 @@ void Optimization<SMALL, LARGE>::printObjBounds() {
   } else {
     std::cout << "-";
   }
-  std::cout << " >= " << getLowerBound() << " @ " << global.stats.getTime() << "\n";
+  std::cout << " >= " << getLowerBound() << " @ " << global.stats.getTime() << ", " << global.stats.NCONFL.z << "\n";
 }
 
 template <typename SMALL, typename LARGE>

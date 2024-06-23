@@ -1662,20 +1662,20 @@ template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::sortInDecreasingCoefOrder(const std::function<bool(Var, Var)>& tiebreaker) {
   if (vars.size() <= 1 || isSortedInDecreasingCoefOrder()) return;
   std::sort(vars.begin(), vars.end(), [&](Var v1, Var v2) {
-    int res = aux::sgn(aux::abs(coefs[v1]) - aux::abs(coefs[v2]));
+    const SMALL res = aux::abs(coefs[v1]) - aux::abs(coefs[v2]);
     return res > 0 || (res == 0 && tiebreaker(v1, v2));
   });
-  for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
+  for (int i = 0; i < std::ssize(vars); ++i) index[vars[i]] = i;
 }
 
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) {
   if (vars.size() <= 1) return;
-  std::sort(vars.begin(), vars.end(), [&](Var v1, Var v2) {
-    int res = comp(v1, v2);
+  std::ranges::sort(vars, [&](Var v1, Var v2) {
+    const int res = comp(v1, v2);
     return res > 0 || (res == 0 && aux::abs(coefs[v1]) > aux::abs(coefs[v2]));
   });
-  for (int i = 0; i < (int)vars.size(); ++i) index[vars[i]] = i;
+  for (int i = 0; i < std::ssize(vars); ++i) index[vars[i]] = i;
 }
 
 template <typename SMALL, typename LARGE>

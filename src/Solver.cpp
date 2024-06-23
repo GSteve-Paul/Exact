@@ -135,7 +135,7 @@ bool Solver::isOrig(Var v) const {
 void Solver::setObjective(const CeArb& obj) {
   objectiveSet = true;
   objective = obj;
-  if (lpSolver) lpSolver->setObjective(obj);
+  if (lpSolver) lpSolver->setObjective(objective);
 }
 
 void Solver::ignoreLastObjective() { objectiveSet = false; }
@@ -854,6 +854,7 @@ void Solver::dropExternal(ID id, bool erasable, bool forceDelete) {
   if (id == ID_Undef) return;
   auto old_it = external.find(id);
   assert(old_it != external.end());
+  if (old_it == external.end()) return;  // TODO: should never happen, happened in some old test run. Temporary fix...
   CRef cr = old_it->second;
   external.erase(old_it);
   ca[cr].setLocked(!erasable);
@@ -1121,6 +1122,7 @@ void Solver::presolve() {
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);
+  if (objectiveIsSet()) aux::timeCallVoid([&] { heur.bumpObjective(objective, getPos()); }, global.stats.HEURTIME);
   aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
 
 #if WITHSOPLEX

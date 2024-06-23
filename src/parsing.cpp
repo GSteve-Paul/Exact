@@ -185,7 +185,7 @@ void opb_read(std::istream& in, IntProg& intprog) {
   unordered_map<LitVec, Var, aux::IntVecHash> auxiliaries;
   ConstrSimpleArb constr;
   constr.orig = Origin::FORMULA;
-  std::vector<Lit> subTerms;
+  LitVec subTerms;
   long long lineNr = -1;
   bool wbo = false;
   std::optional<bigint> topcost;
