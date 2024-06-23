@@ -1383,12 +1383,12 @@ SolveState Solver::solve() {
         lastSol.value()[0] = 0;
         if (getOptions().varSol) {
           for (Var v = 1; v <= getNbVars(); ++v) {
-            Lit image = (isTrue(level, v) ? v : -v);
-            lastSol.value()[v] = isOrig(v) ? image : 0;
+            Lit image = isTrue(level, v) ? v : -v;
+            lastSol.value()[v] = image;
             heur.setFixedPhase(v, image);
           }
         } else {
-          for (Var v = 1; v <= getNbVars(); ++v) lastSol.value()[v] = isOrig(v) ? (isTrue(level, v) ? v : -v) : 0;
+          for (Var v = 1; v <= getNbVars(); ++v) lastSol.value()[v] = isTrue(level, v) ? v : -v;
         }
         assert(checkSAT());
         backjumpTo(0);

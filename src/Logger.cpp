@@ -240,8 +240,8 @@ ID Logger::logUpperBound(const CeSuper& ce, const LitVec& lastSol) {
   logComment("Upper bound");
 #endif
   proofStream() << "soli";
-  for (Lit l : lastSol) {
-    proofStream() << (l < 0 ? " ~x" : " x") << toVar(l);
+  for (Var v = 1; v < std::ssize(lastSol); ++v) {
+    proofStream() << (lastSol[v] < 0 ? " ~x" : " x") << v;
   }
   proofStream() << "\n";
   ++last_proofID;
