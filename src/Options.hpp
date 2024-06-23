@@ -257,7 +257,7 @@ struct Options {
   ValOption<int64_t> subsetSum{
       "ca-liftdegree",
       "Use subset sum calculation to lift the degree when the estimated cost is at most this value (0 disables)",
-      static_cast<int32_t>(1e5), "0 =< 1e9", [](const int64_t& x) -> bool { return x >= 0 && x <= 1e9; }};
+      static_cast<int32_t>(0), "0 =< 1e9", [](const int64_t& x) -> bool { return x >= 0 && x <= 1e9; }};
   ValOption<int32_t> bitsOverflow{
       "bits-overflow",
       "Bit width of maximum coefficient during conflict analysis calculations (0 is unlimited, "
@@ -328,7 +328,7 @@ struct Options {
       &optReuseCores, &optStratification, &optPrecision,     &intEncoding,
       &intContinuous, &intUnbounded,      &intDefaultBound,  &pureLits,
       &domBreakLim,   &inpProbing,        &inpAMO,           &basetime,
-      &test,
+      //      &test,
   };
   unordered_map<std::string, Option*> name2opt;
 
