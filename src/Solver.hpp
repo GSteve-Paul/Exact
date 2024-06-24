@@ -127,7 +127,7 @@ class Solver {
 
   int qhead = 0;  // tracks where next index on trail for constraint propagation
 
-  std::vector<int> assumptions_lim = std::vector<int>{0};
+  std::vector<int> assumptions_lim{0};
   IntSet assumptions;
   bool coreguided = false;
 
@@ -144,6 +144,8 @@ class Solver {
   LitVec assertionStateMem;
   std::vector<std::pair<int, Lit>> litsToSubsumeMem;
   std::vector<unsigned int> falsifiedIdcsMem;
+
+  std::vector<CRef> db_learnts;
 
   CeSuper getAnalysisCE(const CeSuper& conflict) const;
 

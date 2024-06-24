@@ -286,7 +286,7 @@ CeSuper Solver::runDatabasePropagation() {
     std::vector<Watch>& ws = adj[-p];
     double prevPrio = std::numeric_limits<double>::lowest();
     double cPrio = 0;
-    for (int it_ws = 0; it_ws < (int)ws.size(); ++it_ws) {
+    for (int it_ws = 0; it_ws < std::ssize(ws); ++it_ws) {
       int idx = ws[it_ws].idx;
       if (idx < 0 && isTrue(level, idx + INF)) {
         assert(dynamic_cast<Clause*>(&(ca[ws[it_ws].cref])) != nullptr);
@@ -965,8 +965,7 @@ void Solver::garbage_collect() {
 // only place where constraints are removed from memory.
 void Solver::reduceDB() {
   backjumpTo(0);  // otherwise reason CRefs need to be taken care of
-  std::vector<CRef> learnts;
-  learnts.reserve(constraints.size());
+  db_learnts.clear();
 
   removeSatisfiedNonImpliedsAtRoot();
   for (const CRef& cr : constraints) {
@@ -979,19 +978,19 @@ void Solver::reduceDB() {
       ++global.stats.NSATISFIEDSREMOVED;
       removeConstraint(cr);
     } else if ((int)c.lbd() > global.options.dbSafeLBD.get()) {
-      learnts.push_back(cr);  // Don't erase glue constraints
+      db_learnts.push_back(cr);  // Don't erase glue constraints
     }
   }
 
-  std::sort(learnts.begin(), learnts.end(), [&](CRef x, CRef y) { return ca[x].priority < ca[y].priority; });
+  std::sort(db_learnts.begin(), db_learnts.end(), [&](CRef x, CRef y) { return ca[x].priority < ca[y].priority; });
   int64_t limit = global.options.dbScale.get() *
                   std::pow(std::log(static_cast<double>(global.stats.NCONFL.z)), global.options.dbExp.get());
   // NOTE: cast to double to avoid an issue with GCC13/14 giving NaN after std::log with -03 and single source on
   // commit 3f9584893afe38dfe30dc9c4a1322a903a231859 with SoPlex
   // NOTE 2: does not matter, we get long double errors in boost::multiprecision::cpp_int...
   // Let's go with Clang for now.
-  for (size_t i = limit; i < learnts.size(); ++i) {
-    removeConstraint(learnts[i]);
+  for (size_t i = limit; i < db_learnts.size(); ++i) {
+    removeConstraint(db_learnts[i]);
   }
 
   int64_t currentConstraints = constraints.size();
@@ -1026,8 +1025,8 @@ void Solver::reduceDB() {
   }
 
   std::vector<int> cardPoints;
-  for (size_t i = limit; i < learnts.size(); ++i) {
-    Constr& c = ca[learnts[i]];
+  for (size_t i = limit; i < db_learnts.size(); ++i) {
+    Constr& c = ca[db_learnts[i]];
     assert(c.isMarkedForDelete());
     if (!c.isClauseOrCard()) {
       CeSuper ce = c.toExpanded(global.cePools);
@@ -1042,8 +1041,7 @@ void Solver::reduceDB() {
   size_t j = 0;
   unsigned int decay = (unsigned int)global.options.dbDecayLBD.get();
   for (size_t i = 0; i < constraints.size(); ++i) {
-    Constr& c = ca[constraints[i]];
-    if (c.isMarkedForDelete()) {
+    if (Constr& c = ca[constraints[i]]; c.isMarkedForDelete()) {
       c.cleanup();  // free up indirectly owned memory before implicitly deleting c during garbage collect
     } else {
       c.decayLBD(decay, global.options.dbMaxLBD.get());
@@ -1051,7 +1049,7 @@ void Solver::reduceDB() {
     }
   }
   constraints.resize(j);
-  if ((double)ca.wasted / (double)ca.at > 0.2) {
+  if (static_cast<double>(ca.wasted) / static_cast<double>(ca.at) > 0.2) {
     aux::timeCallVoid([&] { garbage_collect(); }, global.stats.GCTIME);
   }
 }
@@ -1285,8 +1283,7 @@ SolveState Solver::solve() {
       long long nconfl = static_cast<long long>(global.stats.NCONFL.z);
       if (nconfl % 1000 == 0 && global.options.verbosity.get() > 0) {
         std::cout << "c " << nconfl << " confls " << constraints.size() << " constrs "
-                  << getNbVars() - static_cast<int64_t>(global.stats.NUNITS.z + global.stats.NPROBINGEQS.z) << " vars"
-                  << std::endl;
+                  << getNbVars() - static_cast<int64_t>(global.stats.NUNITS.z) << " vars" << std::endl;
         if (global.options.verbosity.get() > 2) {
           // memory usage
           std::cout << "c total constraint space: " << ca.cap * 4 / 1024. / 1024. << "MB" << std::endl;

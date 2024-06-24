@@ -130,7 +130,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
 };
 std::ostream& operator<<(std::ostream& o, const Constr& c);
 
-struct Clause final : public Constr {
+struct Clause final : Constr {
   Lit data[];  // Flexible Array Member
 
   static size_t getMemSize(unsigned int length);
@@ -172,7 +172,7 @@ struct Clause final : public Constr {
                        IntSetPool& isp) const;
 };
 
-struct Cardinality final : public Constr {
+struct Cardinality final : Constr {
   unsigned int watchIdx;
   const unsigned int degr;
   long long ntrailpops;
@@ -224,7 +224,7 @@ struct Cardinality final : public Constr {
 };
 
 template <typename CF, typename DG>
-struct Watched final : public Constr {
+struct Watched final : Constr {
   unsigned int unsaturatedIdx;
   unsigned int watchIdx;
   long long ntrailpops;
@@ -298,7 +298,7 @@ struct Watched final : public Constr {
 };
 
 template <typename CF, typename DG>
-struct WatchedSafe final : public Constr {
+struct WatchedSafe final : Constr {
   unsigned int unsaturatedIdx;
   unsigned int watchIdx;
   long long ntrailpops;

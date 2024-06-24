@@ -165,6 +165,7 @@ void ConstrExpSuper::postProcess(const IntMap<int>& level, const std::vector<int
   }
   if (simplifyToCardinality(true, getCardinalityDegree())) {
     ++stats.NCARDDETECT;
+    return;
   }
   liftDegree();
 }
