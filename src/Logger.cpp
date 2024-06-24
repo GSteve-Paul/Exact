@@ -64,7 +64,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-Logger::Logger(const Stats& s) : stats(s), active(false), last_formID(ID_Trivial), last_proofID(ID_Trivial) {}
+Logger::Logger(const Stats& s) : stats(s), active(false), last_formID(ID_Undef), last_proofID(ID_Trivial) {}
 
 std::ostream& Logger::proofStream() {
 #if WITHZLIB
