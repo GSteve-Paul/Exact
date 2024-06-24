@@ -5,6 +5,14 @@ ctr=0
 
 for file in /home/jod/workspace/exact/test/instances/opb/opt/*
 do
+  if [[ "$file" == "/home/jod/workspace/exact/test/instances/opb/opt/mult.op" ]]; then
+    # non-linear constraints
+    continue
+  fi
+  if [[ "$file" == "/home/jod/workspace/exact/test/instances/opb/opt/testnlc.op" ]]; then
+    # non-linear constraints
+    continue
+  fi
   ctr=$(( ctr + 1 ))
   echo "*** $ctr $file ***"
   /home/jod/workspace/exact/build_profile/Exact $file --timeout=$timelim --proof-log=/tmp/out$ctr --proof-assumptions=0 --verbosity=0 --print-uniform=0
