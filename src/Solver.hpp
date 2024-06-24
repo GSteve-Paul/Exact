@@ -177,7 +177,7 @@ class Solver {
 
   // @return: formula line id, processed id, needed for optimization proof logging
   std::pair<ID, ID> addConstraint(const CeSuper& c);
-  std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c);
+  std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c, ID id = ID_Undef);
   std::pair<ID, ID> addUnitConstraint(Lit l, Origin orig);
   std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
   std::pair<ID, ID> addClauseConstraint(const LitVec& clause, Origin orig);
@@ -251,7 +251,7 @@ class Solver {
   void learnConstraint(const CeSuper& c);
   void learnUnitConstraint(Lit l, Origin orig, ID id);
   void learnClause(Lit l1, Lit l2, Origin orig, ID id);
-  std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
+  std::pair<ID, ID> addInputConstraint(const CeSuper& ce, ID id = ID_Undef);
 
   // ---------------------------------------------------------------------
   // Garbage collection

@@ -717,23 +717,24 @@ void Solver::learnClause(Lit l1, Lit l2, Origin orig, ID id) {
   aux::timeCallVoid([&] { learnConstraint(ce); }, global.stats.LEARNTIME);
 }
 
-std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: should not throw UnsatEncounter
-  if (unsatReached) return {ID_Undef, ID_Undef};
+std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce, ID input) {  // NOTE: should not throw UnsatEncounter
+  if (unsatReached) return {input, ID_Undef};
   //  std::cout << "ADD INPUT CONSTRAINT " << ce->orig << " " << ce << std::endl;
 
   assert(isInput(ce->orig));
   assert(decisionLevel() == 0);
-  ID input = ID_Undef;
-  switch (ce->orig) {
-    case Origin::FORMULA:
-      input = global.logger.logInput(ce);
-      break;
-    case Origin::BOTTOMUP:
-      input = global.logger.logBottomUp(ce);
-      break;
-    case Origin::UPPERBOUND:
-      input = global.logger.logUpperBound(ce, getLastSolution());
-      break;
+  assert(input == ID_Undef || ce->orig == Origin::FORMULA);
+  if (input == ID_Undef) {
+    switch (ce->orig) {
+      case Origin::FORMULA:
+        input = global.logger.logInput(ce);
+        break;
+      case Origin::BOTTOMUP:
+        input = global.logger.logBottomUp(ce);
+        break;
+      case Origin::UPPERBOUND:
+        input = global.logger.logUpperBound(ce, getLastSolution());
+        break;
       // TODO: reactivate below when VeriPB's redundant rule becomes stronger
       // case Origin::PURE:
       //   input = global.logger.logPure(ce);
@@ -741,8 +742,11 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper& ce) {  // NOTE: shou
       // case Origin::DOMBREAKER:
       //   input = global.logger.logDomBreaker(ce);
       //   break;
-    default:
-      input = global.logger.logAssumption(ce, global.options.proofAssumps.operator bool());
+      default:
+        input = global.logger.logAssumption(ce, global.options.proofAssumps.operator bool());
+    }
+  } else {
+    ce->resetBuffer(input);
   }
   ce->strongPostProcess(*this);
   if (ce->isTautology()) {
@@ -789,9 +793,9 @@ std::pair<ID, ID> Solver::addConstraint(const CeSuper& c) {
   return addInputConstraint(ce);
 }
 
-std::pair<ID, ID> Solver::addConstraint(const ConstrSimpleSuper& c) {
+std::pair<ID, ID> Solver::addConstraint(const ConstrSimpleSuper& c, ID id) {
   CeSuper ce = c.toExpanded(global.cePools);
-  return addInputConstraint(ce);
+  return addInputConstraint(ce, id);
 }
 
 std::pair<ID, ID> Solver::addUnitConstraint(Lit l, Origin orig) {

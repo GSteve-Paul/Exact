@@ -97,7 +97,7 @@ struct AdditionData {
 };
 
 struct BoundData {
-  ID id = ID_Trivial;
+  ID id = ID_Undef;
   ConstrSimple64 cs;
 };
 

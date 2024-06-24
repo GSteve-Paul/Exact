@@ -74,22 +74,24 @@ class ConstrExpPools;
 
 struct ConstrSimpleSuper {
   Origin orig = Origin::UNKNOWN;
+  std::string proofLine;
 
   virtual ~ConstrSimpleSuper() = default;
 
   virtual CeSuper toExpanded(ConstrExpPools& cePools) const = 0;
+  void setID(ID id);
 };
 
 template <typename CF, typename DG>
-struct ConstrSimple final : public ConstrSimpleSuper {
+struct ConstrSimple final : ConstrSimpleSuper {
   std::vector<Term<CF>> terms;
   DG rhs;
-  std::string proofLine;
 
   explicit ConstrSimple(const std::vector<Term<CF>>& t = {}, const DG& r = 0, const Origin& o = Origin::UNKNOWN,
-                        const std::string& p = (std::to_string(ID_Trivial) + " "))
-      : terms(t), rhs(r), proofLine(p) {
+                        const std::string& p = std::to_string(ID_Undef) + ' ')
+      : terms(t), rhs(r) {
     orig = o;
+    proofLine = p;
   }
 
   CeSuper toExpanded(ConstrExpPools& cePools) const override;

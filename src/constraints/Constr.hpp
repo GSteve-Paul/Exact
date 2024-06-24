@@ -147,7 +147,7 @@ struct Clause final : Constr {
   Clause(const ConstrExp<SMALL, LARGE>* constraint, bool locked, ID _id)
       : Constr(_id, constraint->orig, locked, constraint->nVars(), 1 / static_cast<double>(constraint->nVars()),
                constraint->global.options.dbMaxLBD.get()) {
-    assert(_id > ID_Trivial);
+    assert(_id > ID_Undef);
     assert(constraint->nVars() < INF);
     assert(constraint->getDegree() == 1);
 
@@ -197,7 +197,7 @@ struct Cardinality final : Constr {
         degr(static_cast<unsigned int>(constraint->getDegree())),
         ntrailpops(-1) {
     assert(degr > 1);  // otherwise should be a clause
-    assert(_id > ID_Trivial);
+    assert(_id > ID_Undef);
     assert(constraint->nVars() < INF);
     assert(aux::abs(constraint->coefs[constraint->getVars()[0]]) == 1);
     assert(constraint->getDegree() <= (LARGE)constraint->nVars());
@@ -261,7 +261,7 @@ struct Watched final : Constr {
         ntrailpops(-1),
         degr(static_cast<DG>(constraint->getDegree())),
         watchslack(0) {
-    assert(_id > ID_Trivial);
+    assert(_id > ID_Undef);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
     assert(strngth == constraint->getStrength());
@@ -335,7 +335,7 @@ struct WatchedSafe final : Constr {
         degr(static_cast<DG>(constraint->getDegree())),
         watchslack(0),
         cfs(new CF[sze]) {
-    assert(_id > ID_Trivial);
+    assert(_id > ID_Undef);
     assert(fitsIn<DG>(constraint->getDegree()));
     assert(fitsIn<CF>(constraint->getLargestCoef()));
     assert(strngth == constraint->getStrength());

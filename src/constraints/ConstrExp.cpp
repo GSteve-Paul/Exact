@@ -96,10 +96,13 @@ ConstrExpSuper::ConstrExpSuper(Global& g) : global(g), orig(Origin::UNKNOWN) {}
 
 void ConstrExpSuper::resetBuffer(ID proofID) {
   if (!global.logger.isActive()) return;
-  assert(proofID != ID_Undef);
   proofBuffer.clear();
   proofBuffer.str(std::string());
-  proofBuffer << proofID << " ";
+  if (proofID == ID_Undef) {
+    proofBuffer << global.logger.trivial << " ";
+  } else {
+    proofBuffer << proofID << " ";
+  }
 }
 
 void ConstrExpSuper::resetBuffer(const std::string& line) {
@@ -378,7 +381,7 @@ void ConstrExp<SMALL, LARGE>::reset(bool partial) {
   degree = 0;
   if (!partial) {
     orig = Origin::UNKNOWN;
-    resetBuffer(ID_Trivial);
+    resetBuffer(ID_Undef);
   }
 }
 

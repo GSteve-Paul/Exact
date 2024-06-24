@@ -110,13 +110,15 @@ void ConstrSimple<CF, DG>::reset() {
   orig = Origin::UNKNOWN;
   terms.clear();
   rhs = 0;
-  proofLine = std::to_string(ID_Trivial) + " ";
+  proofLine = std::to_string(ID_Undef) + ' ';
 }
+
+void ConstrSimpleSuper::setID(ID id) { proofLine = std::to_string(id) + ' '; }
 
 template <typename CF, typename DG>
 void ConstrSimple<CF, DG>::toStreamAsOPB(std::ostream& o) const {
   for (const Term<CF>& t : terms) {
-    o << std::pair<CF, Lit>{t.c, t.l} << " ";
+    o << std::pair<CF, Lit>{t.c, t.l} << ' ';
   }
   o << ">= " << rhs << " ;";
 }

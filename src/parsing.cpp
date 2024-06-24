@@ -191,11 +191,14 @@ void opb_read(std::istream& in, IntProg& intprog) {
   std::optional<bigint> topcost;
   std::vector<IntTerm> obj;
   std::optional<bigint> weight;
+  std::vector<ConstrSimpleArb> constrs;
+  bool prooflog = intprog.getSolver().getLogger().isActive();
   for (std::string line; getline(in, line);) {
     ++lineNr;
     if (line.empty() || line[0] == '*') continue;
-    for (char& c : line)
+    for (char& c : line) {
       if (c == ';') c = ' ';
+    }
     if (line[0] == 's') {
       assert(line.substr(0, 5) == "soft:");
       wbo = true;
@@ -274,19 +277,35 @@ void opb_read(std::istream& in, IntProg& intprog) {
         // if aux is false, constraint should be true;
         constr.toNormalFormLit();
         constr.terms.emplace_back(constr.rhs, aux);
-        intprog.getSolver().addConstraint(constr);
+        if (prooflog) {
+          constrs.push_back(constr);
+        } else {
+          intprog.getSolver().addConstraint(constr);
+        }
         if (!isInequality) {
           constr.terms.pop_back();
           constr.flip();
           constr.toNormalFormLit();
           constr.terms.emplace_back(constr.rhs, aux);
-          intprog.getSolver().addConstraint(constr);
+          if (prooflog) {
+            constrs.push_back(constr);
+          } else {
+            intprog.getSolver().addConstraint(constr);
+          }
         }
       } else {
-        intprog.getSolver().addConstraint(constr);
+        if (prooflog) {
+          constrs.push_back(constr);
+        } else {
+          intprog.getSolver().addConstraint(constr);
+        }
         if (!isInequality) {
           constr.flip();
-          intprog.getSolver().addConstraint(constr);
+          if (prooflog) {
+            constrs.push_back(constr);
+          } else {
+            intprog.getSolver().addConstraint(constr);
+          }
         }
       }
     }
@@ -301,7 +320,21 @@ void opb_read(std::istream& in, IntProg& intprog) {
       }
       constr.rhs = topcost.value() - 1;  // strict limit
       constr.flip();
-      intprog.getSolver().addConstraint(constr);
+      if (prooflog) {
+        constrs.push_back(constr);
+      } else {
+        intprog.getSolver().addConstraint(constr);
+      }
+    }
+  }
+  if (prooflog) {
+    intprog.getSolver().getLogger().logFullFormula(constrs.size());
+    ID id = 0;
+    for (ConstrSimpleArb& c : constrs) {
+      ++id;
+      intprog.getSolver().addConstraint(c, id);
+      std::vector<TermArb> tmp;
+      c.terms.swap(tmp);  // force frees memory
     }
   }
 }

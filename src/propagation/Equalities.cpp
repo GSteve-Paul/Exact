@@ -41,7 +41,7 @@ const Repr& Equalities::getRepr(Lit a) {
   const Repr& reprChild = getRepr(repr.l);
   assert(toVar(reprChild.l) < toVar(repr.l));
   repr.l = reprChild.l;
-  assert(reprChild.id != ID_Trivial);  // as we know that canonical[repr.l]!=repr.l
+  assert(reprChild.id != ID_Undef);  // as we know that canonical[repr.l]!=repr.l
   repr.id = solver.getLogger().logResolvent(repr.id, reprChild.id);
   return repr;
 }
@@ -93,7 +93,7 @@ bool Equalities::isPartOfEquality(Lit l) {
 
 void Equalities::setNbVars(int nvars) {
   int oldNvars = canonical.reserved() / 2;
-  canonical.resize(nvars, {0, ID_Trivial, {}});
+  canonical.resize(nvars, {0, ID_Undef, {}});
   int newNvars = canonical.reserved() / 2;
   for (Var v = oldNvars + 1; v <= newNvars; ++v) {
     canonical[v].l = v;

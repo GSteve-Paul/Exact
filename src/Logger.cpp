@@ -64,7 +64,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
-Logger::Logger(const Stats& s) : stats(s), active(false), last_formID(ID_Undef), last_proofID(ID_Trivial) {}
+Logger::Logger(const Stats& s) : stats(s), active(false), last_formID(ID_Undef), last_proofID(ID_Undef) {}
 
 std::ostream& Logger::proofStream() {
 #if WITHZLIB
@@ -94,9 +94,16 @@ void Logger::activate(const std::string& proof_log_name, [[maybe_unused]] const 
   }
   formula_constr << "* #variable= 0 #constraint= 0\n";
 
-  proofStream() << "pseudo-Boolean proof version 1.1\n";
+  proofStream() << "pseudo-Boolean proof version 2.0\n";
   proofStream() << "rup >= 0 ;\n";
   active = true;
+}
+
+void Logger::logFullFormula(int64_t nbConstrs) {
+  assert(isActive());
+  last_formID = nbConstrs;
+  last_proofID = last_formID + 1;
+  trivial = last_proofID;
 }
 
 bool Logger::isActive() const { return active; }
@@ -188,8 +195,22 @@ ID Logger::logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vect
   ce->removeUnitsAndZeroes(level, position);
   assert(ce->isUnsat());
   ID id = logProofLineWithInfo(ce, "Inconsistency");
-  proofStream() << "c " << id << "" << std::endl;
+  proofStream() << "output NONE\nconclusion UNSAT : " << id << "\nend pseudo-Boolean proof" << std::endl;
   return id;
+}
+
+void Logger::logSat(const LitVec& lastSol) {
+  if (!active) return;
+  proofStream() << "output NONE\nconclusion SAT : ";
+  for (Var v = 1; v < std::ssize(lastSol); ++v) {
+    proofStream() << (lastSol[v] < 0 ? " ~x" : " x") << v;
+  }
+  proofStream() << "\nend pseudo-Boolean proof" << std::endl;
+}
+
+void Logger::logUnknown() {
+  if (!active) return;
+  proofStream() << "output NONE\nconclusion NONE\nend pseudo-Boolean proof" << std::endl;
 }
 
 void Logger::logUnit(const CeSuper& ce) {
@@ -283,7 +304,7 @@ ID Logger::logAtMostOne(const ConstrSimple32& c, const CeSuper& ce) {
   logComment("Implied at-most-one");
 #endif
   std::stringstream buffer;
-  ID previous = ID_Trivial;
+  ID previous = trivial;
   for (int i = 1; i < (int)c.size(); ++i) {
     buffer << "pol " << previous << " ";
     if (i > 2) buffer << i - 1 << " * ";
@@ -310,8 +331,8 @@ ID Logger::logResolvent(const ID id1, const ID id2) {  // should be clauses
 #if !NDEBUG
   logComment("Resolve");
 #endif
-  if (id1 == ID_Trivial) return id2;
-  if (id2 == ID_Trivial) return id1;
+  if (id1 == trivial) return id2;
+  if (id2 == trivial) return id1;
   proofStream() << "pol " << id1 << " " << id2 << " + s\n";
   return ++last_proofID;
 }
@@ -322,6 +343,10 @@ std::pair<ID, ID> Logger::logEquality(Lit a, Lit b, ID aImpReprA, ID reprAImplA,
     last_proofID += 2;
     return {last_proofID - 1, last_proofID};
   }
+  aImpReprA = aImpReprA == ID_Undef ? trivial : aImpReprA;
+  reprAImplA = reprAImplA == ID_Undef ? trivial : reprAImplA;
+  bImpReprB = bImpReprB == ID_Undef ? trivial : bImpReprB;
+  reprBImplB = reprBImplB == ID_Undef ? trivial : reprBImplB;
 #if !NDEBUG
   logComment("Equality");
 #endif

@@ -150,7 +150,7 @@ LpSolver::LpSolver(Solver& s) : solver(s), global(s.global) {
   while (row2data.size() < 2) {
     soplex::DSVectorReal row(0);
     lp.addRowReal(soplex::LPRowReal(row, soplex::LPRowReal::Type::GREATER_EQUAL, 0));
-    row2data.emplace_back(ID_Trivial, false);
+    row2data.emplace_back(ID_Undef, false);
   }
 
   // add all formula constraints

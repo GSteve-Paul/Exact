@@ -598,6 +598,10 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       assert(solver.foundSolution());
       ++global.stats.NSOLS;
       if (optimize) {
+        if (origObj->empty()) {
+          global.logger.logSat(solver.getLastSolution());
+          return SolveState::UNSAT;
+        }
         boundObjByLastSol();
         printObjBounds(true);
       }

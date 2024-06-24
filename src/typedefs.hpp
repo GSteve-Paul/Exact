@@ -68,7 +68,6 @@ namespace xct {
 
 using ID = uint64_t;
 constexpr ID ID_Undef = 0;
-constexpr ID ID_Trivial = 1;  // represents constraint 0 >= 0
 inline bool isValid(ID id) { return id != ID_Undef; }
 
 constexpr unsigned int MAXLBD = 1e5;

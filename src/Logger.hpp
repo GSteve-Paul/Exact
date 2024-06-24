@@ -94,6 +94,7 @@ class Logger {
  public:
   ID last_formID;
   ID last_proofID;
+  ID trivial = 1;
 
   explicit Logger(const Stats&);
 
@@ -101,6 +102,7 @@ class Logger {
   bool isActive() const;
   void flush();
   void logComment([[maybe_unused]] const std::string& comment);
+  void logFullFormula(int64_t nbConstrs);
 
   ID logInput(const CeSuper& ce);
   void logObjective(const CeSuper& ce);
@@ -109,6 +111,8 @@ class Logger {
   ID logProofLine(const CeSuper& ce);
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
   ID logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position);
+  void logSat(const LitVec& lastSol);
+  void logUnknown();
   void logUnit(const CeSuper& ce);
   ID logRUP(Lit l, Lit ll);
   ID logImpliedUnit(Lit implying, Lit implied);
@@ -126,7 +130,6 @@ class Logger {
   ID getUnitID(Lit l, const std::vector<int>& pos) const;
   int getNbUnitIDs() const;
 
- public:
   template <typename T>
   static std::ostream& proofMult(std::ostream& o, const T& m) {
     assert(m > 0);
