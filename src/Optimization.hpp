@@ -156,7 +156,7 @@ class Optimization final : public OptimizationSuper {
   bigint getLowerBound() const;
   CeSuper getOrigObj() const;
 
-  void printObjBounds();
+  void printObjBounds(bool upperImproved);
   void checkLazyVariables();
   void addLowerBound();
   void addReformUpperBound(bool deletePrevious);

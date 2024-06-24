@@ -259,11 +259,11 @@ CeSuper Optimization<SMALL, LARGE>::getOrigObj() const {
 }
 
 template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::printObjBounds() {
+void Optimization<SMALL, LARGE>::printObjBounds(bool upperImproved) {
   if (!solver.objectiveIsSet()) return;
   if (!global.options.uniformOut && (global.options.fileFormat.is("opb") || global.options.fileFormat.is("wbo") ||
                                      global.options.fileFormat.is("wcnf"))) {
-    std::cout << "o " << getUpperBound() << std::endl;
+    if (upperImproved) std::cout << "o " << getUpperBound() << std::endl;
     return;
   }
   if (global.options.verbosity.get() == 0) return;
@@ -599,7 +599,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       ++global.stats.NSOLS;
       if (optimize) {
         boundObjByLastSol();
-        printObjBounds();
+        printObjBounds(true);
       }
       solver.clearAssumptions();
       return SolveState::SAT;
@@ -611,14 +611,13 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           solver.clearAssumptions();
           lower_bound = upper_bound;
           return SolveState::INCONSISTENT;
-        } else {
-          current_time = global.stats.getDetTime();
-          aux::timeCallVoid([&] { handleInconsistency(solver.lastCore); }, global.stats.SOLVETIMEBOTTOMUP);
-          global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
-          if (global.options.proofAssumps) addLowerBound();
-          solver.clearAssumptions();
-          printObjBounds();
         }
+        current_time = global.stats.getDetTime();
+        aux::timeCallVoid([&] { handleInconsistency(solver.lastCore); }, global.stats.SOLVETIMEBOTTOMUP);
+        global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
+        if (global.options.proofAssumps) addLowerBound();
+        solver.clearAssumptions();
+        printObjBounds(false);
       } else {
         assert(solver.getAssumptions().size() == assumptions.size());  // no bottom-up assumptions
         assert(solver.lastCore->falsifiedBy(assumptions));
