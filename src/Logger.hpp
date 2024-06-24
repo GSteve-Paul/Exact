@@ -75,11 +75,9 @@ namespace xct {
 
 class Solver;
 class Logger {
-  std::ofstream formula_out;
   std::ofstream proof_out;
 #if WITHZLIB
   ogzstream proof_out_zip;
-  ogzstream formula_out_zip;
   bool proof_is_zip = false;
 #endif  // WITHZLIB
 
@@ -88,9 +86,6 @@ class Logger {
   bool active;
 
   std::ostream& proofStream();
-
-  std::stringstream formula_constr;
-  std::stringstream formula_obj;
 
  public:
   ID last_formID;
@@ -106,7 +101,6 @@ class Logger {
   void logFullFormula(int64_t nbConstrs);
 
   ID logInput(const CeSuper& ce);
-  void logObjective(const CeSuper& ce);
   ID logAssumption(const CeSuper& ce, bool allowed);
   ID logAssumption(ConstrExpSuper& ce, bool allowed);
   ID logProofLine(const CeSuper& ce);

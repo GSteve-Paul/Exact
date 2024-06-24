@@ -15,7 +15,7 @@ do
   fi
   ctr=$(( ctr + 1 ))
   echo "*** $ctr $file ***"
-  /home/jod/workspace/exact/build_profile/Exact $file --timeout=$timelim --proof-log=/tmp/out$ctr --proof-assumptions=0 --verbosity=0 --print-uniform=0
+  /home/jod/workspace/exact/build_profile/Exact $file --timeout=$timelim --proof-log=/tmp/out$ctr.proof --proof-assumptions=0 --verbosity=0 --print-uniform=0
   sleep 0.1
   echo ""
   veripb $file /tmp/out$ctr.proof --arbitraryPrecision --no-requireUnsat
@@ -26,7 +26,7 @@ for file in /home/jod/workspace/exact/test/instances/opb/dec/*
 do
   ctr=$(( ctr + 1 ))
   echo "*** $ctr $file ***"
-  /home/jod/workspace/exact/build_profile/Exact $file --timeout=$timelim --proof-log=/tmp/out$ctr --proof-assumptions=0 --verbosity=0 --print-uniform=0
+  /home/jod/workspace/exact/build_profile/Exact $file --timeout=$timelim --proof-log=/tmp/out$ctr.proof --proof-assumptions=0 --verbosity=0 --print-uniform=0
   sleep 0.1
   echo ""
   veripb $file /tmp/out$ctr.proof --arbitraryPrecision --no-requireUnsat

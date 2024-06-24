@@ -83,18 +83,13 @@ void Logger::activate(const std::string& proof_log_name, [[maybe_unused]] const 
 #if WITHZLIB
     proof_is_zip = zip;
     proof_out_zip.open((proof_log_name + ".proof.zip").c_str());
-    formula_out_zip.open((proof_log_name + ".formula.zip").c_str());
 #else
     std::cout << "c WARNING not compiled with ZLIB, emitting unzipped proof" << std::endl;
-    proof_out.open(proof_log_name + ".proof");
-    formula_out.open(proof_log_name + ".formula");
+    proof_out.open(proof_log_name);
 #endif  // WITHZLIB
   } else {
-    proof_out.open(proof_log_name + ".proof");
-    formula_out.open(proof_log_name + ".formula");
+    proof_out.open(proof_log_name);
   }
-  formula_constr << "* #variable= 0 #constraint= 0\n";
-
   proofStream() << "pseudo-Boolean proof version 2.0\n";
   proofStream() << "rup >= 0 ;\n";
   active = true;
@@ -111,16 +106,6 @@ bool Logger::isActive() const { return active; }
 
 void Logger::flush() {
   if (!active) return;
-#if WITHZLIB
-  if (proof_is_zip)
-    formula_out_zip << formula_obj.str() << formula_constr.str();
-  else
-#endif  // WITHZLIB
-    formula_out << formula_obj.str() << formula_constr.str();
-  std::stringstream temp1;
-  formula_obj.swap(temp1);
-  std::stringstream temp2;
-  formula_constr.swap(temp2);
   proofStream().flush();
 }
 
@@ -133,20 +118,10 @@ void Logger::logComment([[maybe_unused]] const std::string& comment) {
 
 ID Logger::logInput(const CeSuper& ce) {
   if (!active) return ++last_proofID;
-  formula_constr << *ce << "\n";
   proofStream() << "l " << ++last_formID << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer
   return last_proofID;
-}
-
-void Logger::logObjective(const CeSuper& ce) {
-  if (!active) return;
-  std::stringstream temp;
-  formula_obj.swap(temp);
-  formula_obj << "min: ";
-  ce->toStreamAsOPBlhs(formula_obj, false);
-  formula_obj << ";\n";
 }
 
 ID Logger::logAssumption(const CeSuper& ce, bool allowed) { return logAssumption(*ce, allowed); }

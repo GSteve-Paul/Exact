@@ -225,7 +225,6 @@ Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver&
       boundingVal(0),
       boundingVar(0) {
   assert(origObj->getDegree() == 0);
-  global.logger.logObjective(origObj);
   if (global.options.optCoreguided) {
     reformObj = global.cePools.take<SMALL, LARGE>();
     origObj->copyTo(reformObj);
