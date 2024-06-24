@@ -93,10 +93,9 @@ void Logger::activate(const std::string& proof_log_name, [[maybe_unused]] const 
     formula_out.open(proof_log_name + ".formula");
   }
   formula_constr << "* #variable= 0 #constraint= 0\n";
-  formula_constr << " >= 0 ;\n";
 
   proofStream() << "pseudo-Boolean proof version 1.1\n";
-  proofStream() << "l 1\n";
+  proofStream() << "rup >= 0 ;";
   active = true;
 }
 
