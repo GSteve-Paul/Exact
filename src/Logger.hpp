@@ -73,6 +73,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 
+class Solver;
 class Logger {
   std::ofstream formula_out;
   std::ofstream proof_out;
@@ -110,7 +111,7 @@ class Logger {
   ID logAssumption(ConstrExpSuper& ce, bool allowed);
   ID logProofLine(const CeSuper& ce);
   ID logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::string& info);
-  ID logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position);
+  ID logUnsat(const CeSuper& ce, const Solver& solver);
   void logSat(const LitVec& lastSol);
   void logUnknown();
   void logUnit(const CeSuper& ce);

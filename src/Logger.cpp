@@ -60,6 +60,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Logger.hpp"
+#include <Solver.hpp>
 #include "constraints/ConstrExp.hpp"
 
 namespace xct {
@@ -190,21 +191,44 @@ ID Logger::logProofLineWithInfo(const CeSuper& ce, [[maybe_unused]] const std::s
   return logProofLine(ce);
 }
 
-ID Logger::logUnsat(const CeSuper& ce, const IntMap<int>& level, const std::vector<int>& position) {
+void solToStream(std::ostream& o, const LitVec& sol) {
+  for (Var v = 1; v < std::ssize(sol); ++v) {
+    o << (sol[v] < 0 ? " ~x" : " x") << v;
+  }
+}
+
+ID Logger::logUnsat(const CeSuper& ce, const Solver& solver) {
   if (!active) return ID_Undef;
-  ce->removeUnitsAndZeroes(level, position);
+  ce->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   assert(ce->isUnsat());
   ID id = logProofLineWithInfo(ce, "Inconsistency");
-  proofStream() << "output NONE\nconclusion UNSAT : " << id << "\nend pseudo-Boolean proof" << std::endl;
+  if (solver.objectiveIsSet()) {
+    if (solver.foundSolution()) {
+      const LitVec& lastSol = solver.getLastSolution();
+      bigint optval = -solver.objective->degree;
+      for (Var v : solver.objective->vars) {
+        if ((solver.objective->coefs[v] < 0 && lastSol[v] < 0) || (solver.objective->coefs[v] > 0 && lastSol[v] > 0)) {
+          optval += aux::abs(solver.objective->coefs[v]);
+        }
+      }
+      proofStream() << "rup ";
+      solver.objective->toStreamAsOPBlhs(proofStream(), false);
+      proofStream() << " >= " << optval + solver.objective->degree << " ;\n";
+      proofStream() << "output NONE\nconclusion BOUNDS " << optval << " : " << ++last_proofID << " " << optval;
+    } else {
+      proofStream() << "output NONE\nconclusion BOUNDS INF : " << id << " INF";
+    }
+  } else {
+    proofStream() << "output NONE\nconclusion UNSAT : " << id;
+  }
+  proofStream() << "\nend pseudo-Boolean proof" << std::endl;
   return id;
 }
 
 void Logger::logSat(const LitVec& lastSol) {
   if (!active) return;
-  proofStream() << "output NONE\nconclusion SAT : ";
-  for (Var v = 1; v < std::ssize(lastSol); ++v) {
-    proofStream() << (lastSol[v] < 0 ? " ~x" : " x") << v;
-  }
+  proofStream() << "output NONE\nconclusion SAT :";
+  solToStream(proofStream(), lastSol);
   proofStream() << "\nend pseudo-Boolean proof" << std::endl;
 }
 
@@ -221,7 +245,7 @@ void Logger::logUnit(const CeSuper& ce) {
 
 ID Logger::logRUP(Lit l, Lit ll) {
   if (!active) return ++last_proofID;
-  proofStream() << "rup " << (std::pair<int, Lit>{1, l}) << " " << (std::pair<int, Lit>{1, ll}) << " >= 1 ;\n";
+  proofStream() << "rup " << std::pair<int, Lit>{1, l} << " " << std::pair<int, Lit>{1, ll} << " >= 1 ;\n";
   return ++last_proofID;
 }
 
@@ -260,9 +284,7 @@ ID Logger::logUpperBound(const CeSuper& ce, const LitVec& lastSol) {
   logComment("Upper bound");
 #endif
   proofStream() << "soli";
-  for (Var v = 1; v < std::ssize(lastSol); ++v) {
-    proofStream() << (lastSol[v] < 0 ? " ~x" : " x") << v;
-  }
+  solToStream(proofStream(), lastSol);
   proofStream() << "\n";
   ++last_proofID;
   ce->resetBuffer(last_proofID);  // ensure consistent proofBuffer

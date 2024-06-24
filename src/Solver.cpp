@@ -145,7 +145,7 @@ bool Solver::objectiveIsSet() const { return objectiveSet; }
 void Solver::reportUnsat(const CeSuper& confl) {
   assert(!unsatReached);  // not a problem, but should not occur
   assert(confl->hasNegativeSlack(getLevel()));
-  ID id = global.logger.logUnsat(confl, getLevel(), getPos());
+  ID id = global.logger.logUnsat(confl, *this);
   unsatReached = true;
   Ce32 tmp = global.cePools.take32();
   tmp->addRhs(1);

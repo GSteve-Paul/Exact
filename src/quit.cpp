@@ -109,9 +109,6 @@ int quit::exit_SUCCESS(IntProg& intprog) {
   intprog.global.logger.flush();
   printFinalStats(intprog);
   if (intprog.hasLastSolution()) {
-    if (intprog.getSolver().objectiveIsSet()) {
-      intprog.global.logger.logSat(intprog.getSolver().getLastSolution());
-    }
     if (intprog.global.options.uniformOut) {
       std::cout << "o " << intprog.getUpperBoundRatio() << "\n";
       std::cout << "s OPTIMUM FOUND" << std::endl;
