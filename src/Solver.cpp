@@ -1120,7 +1120,8 @@ void Solver::presolve() {
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);
-  if (objectiveIsSet()) aux::timeCallVoid([&] { heur.bumpObjective(objective, getPos()); }, global.stats.HEURTIME);
+  if (objectiveIsSet() && global.options.varObjective)
+    aux::timeCallVoid([&] { heur.bumpObjective(objective, getPos()); }, global.stats.HEURTIME);
   aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
 
 #if WITHSOPLEX

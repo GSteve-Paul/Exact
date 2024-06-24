@@ -207,6 +207,7 @@ struct Options {
       "var-weight", "Activity weight for latest conflict variables - 0 = fixed activity, 0.5 = ACIDS, 1 = VMTF.", 0.99,
       "0 =< float =< 1", [](const double& x) -> bool { return 0 <= x && x <= 1; }};
   BoolOption varSol{"var-sol", "Use last solution as phase", true};
+  BoolOption varObjective{"var-objective", "Initialize heuristic to optimize the objective variables first", false};
   ValOption<int32_t> dbDecayLBD{"db-decay", "Decay term for the LBD of constraints", 1, "0 (no decay) =< int",
                                 [](const int32_t& x) -> bool { return 0 <= x; }};
   ValOption<int64_t> dbBase{"db-base", "Initial number of conflicts at which database cleaning is performed.", 2000,
@@ -316,8 +317,8 @@ struct Options {
       &printSol,      &printUnits,        &printCsvData,     &verbosity,
       &timeout,       &timeoutDet,        &proofLog,         &proofZip,
       &proofAssumps,  &lubyBase,          &lubyMult,         &varWeight,
-      &varSol,        &dbDecayLBD,        &dbBase,           &dbExp,
-      &dbScale,       &dbSafeLBD,         &dbMaxLBD,
+      &varSol,        &varObjective,      &dbDecayLBD,       &dbBase,
+      &dbExp,         &dbScale,           &dbSafeLBD,        &dbMaxLBD,
 #if WITHSOPLEX
       &lpTimeRatio,   &lpPivotBudget,     &lpIntolerance,    &lpLearnDuals,
       &lpGomoryCuts,  &lpLearnedCuts,     &lpGomoryCutLimit, &lpMaxCutCos,
