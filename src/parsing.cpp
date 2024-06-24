@@ -261,8 +261,8 @@ void opb_read(std::istream& in, IntProg& intprog) {
     if (opt_line) {
       assert(obj.empty());
       obj.resize(constr.size());
+      constr.toNormalFormVar();
       for (int64_t i = 0; i < std::ssize(constr); ++i) {
-        constr.toNormalFormVar();
         assert(constr.terms[i].l > 0);
         obj[i].v = indexedBoolVar(intprog, std::to_string(constr.terms[i].l));
         obj[i].c = constr.terms[i].c;

@@ -98,6 +98,7 @@ class Solver {
   CeSuper lastCore;
   CeSuper lastGlobalDual;
   CeArb objective;
+  bigint obj_offset = 0;
   Global& global;
 
  private:
@@ -152,7 +153,7 @@ class Solver {
  public:
   Solver(Global& g);
   ~Solver();
-  void setObjective(const CeArb& obj);
+  void setObjective(const CeArb& obj, const bigint& offs);
   void ignoreLastObjective();
   bool objectiveIsSet() const;
   void reportUnsat(const CeSuper& confl);

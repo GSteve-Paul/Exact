@@ -157,7 +157,7 @@ Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver, const In
   bigint offs = -obj->getDegree();
   obj->addRhs(offs);
   assert(obj->getDegree() == 0);
-  solver.setObjective(obj);
+  solver.setObjective(obj, offs);
 
   bigint maxVal = obj->absCoeffSum();
   // The argument that maxVal is a safe upper bound is that we may *increase* the coefficient of assumption literals

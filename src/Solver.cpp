@@ -132,9 +132,10 @@ bool Solver::isOrig(Var v) const {
   return isorig[v];
 }
 
-void Solver::setObjective(const CeArb& obj) {
+void Solver::setObjective(const CeArb& obj, const bigint& offs) {
   objectiveSet = true;
   objective = obj;
+  obj_offset = offs;
   if (lpSolver) lpSolver->setObjective(objective);
 }
 

@@ -205,7 +205,7 @@ ID Logger::logUnsat(const CeSuper& ce, const Solver& solver) {
   if (solver.objectiveIsSet()) {
     if (solver.foundSolution()) {
       const LitVec& lastSol = solver.getLastSolution();
-      bigint optval = -solver.objective->degree;
+      bigint optval = solver.obj_offset;
       for (Var v : solver.objective->vars) {
         if ((solver.objective->coefs[v] < 0 && lastSol[v] < 0) || (solver.objective->coefs[v] > 0 && lastSol[v] > 0)) {
           optval += aux::abs(solver.objective->coefs[v]);
@@ -213,7 +213,7 @@ ID Logger::logUnsat(const CeSuper& ce, const Solver& solver) {
       }
       proofStream() << "rup ";
       solver.objective->toStreamAsOPBlhs(proofStream(), false);
-      proofStream() << " >= " << optval + solver.objective->degree << " ;\n";
+      proofStream() << " >= " << optval - solver.obj_offset << " ;\n";
       proofStream() << "output NONE\nconclusion BOUNDS " << optval << " : " << ++last_proofID << " " << optval;
     } else {
       proofStream() << "output NONE\nconclusion BOUNDS INF : " << id << " INF";
