@@ -40,6 +40,7 @@ declare -a arr_opt=(
 "mps/neos-3437289-erdre.mps*0"
 "mps/supportcase4.mps*0"
 "mps/issue_3.mps*3"
+"opb/opt/veripb2_test.opb*-1"
 "opb/opt/empty.opb*0"
 "opb/opt/normalized-single-obj-f47-DC-Side1.seq-B-2-1-EDCBAir.opb*-1593213266"
 "opb/opt/enigma.opb*0"
