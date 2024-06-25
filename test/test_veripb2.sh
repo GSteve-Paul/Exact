@@ -5,11 +5,11 @@ ctr=0
 
 for file in /home/jod/workspace/exact/test/instances/opb/opt/*
 do
-  if [[ "$file" == "/home/jod/workspace/exact/test/instances/opb/opt/mult.op" ]]; then
+  if [ "$file" = "/home/jod/workspace/exact/test/instances/opb/opt/mult.opb" ]; then
     # non-linear constraints
     continue
   fi
-  if [[ "$file" == "/home/jod/workspace/exact/test/instances/opb/opt/testnlc.op" ]]; then
+  if [ "$file" = "/home/jod/workspace/exact/test/instances/opb/opt/testnlc.opb" ]; then
     # non-linear constraints
     continue
   fi
