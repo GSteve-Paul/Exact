@@ -194,7 +194,7 @@ struct Options {
   BoolOption proofAssumps{"proof-assumptions",
                           "Allow advanced solving techniques that generate incomplete proofs with "
                           "assumption rules. Disabling may reduce performance.",
-                          true};
+                          false};
   ValOption<double> timeout{"timeout", "Timeout in seconds, 0 is infinite ", 0, "0 =< float",
                             [](double x) -> bool { return 0 <= x; }};
   ValOption<int64_t> timeoutDet{"timeout-det", "Deterministic timeout, 0 is infinite ", 0, "0 =< int",
