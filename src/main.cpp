@@ -55,15 +55,25 @@ int main(int argc, char** argv) {
     } catch (const OutOfMemoryException&) {
       std::cout << "c OUT OF MEMORY" << std::endl;
       return quit::exit_INDETERMINATE(intprog);
+#if WITHSOPLEX
+    } catch (const soplex::SPxMemoryException&) {
+      std::cout << "c OUT OF MEMORY" << std::endl;
+      return quit::exit_INDETERMINATE(intprog);
+#endif
     }
   } catch (const EarlyTermination&) {
     return quit::exit_EARLY();
   } catch (const std::bad_alloc&) {
-    std::cout << "c OUT OF MEMORY" << std::endl;
+    std::cout << "c OUT OF MEMORY DURING PARSING" << std::endl;
     return quit::exit_EARLY();
   } catch (const OutOfMemoryException&) {
-    std::cout << "c OUT OF MEMORY" << std::endl;
+    std::cout << "c OUT OF MEMORY DURING PARSING" << std::endl;
     return quit::exit_EARLY();
+#if WITHSOPLEX
+  } catch (const soplex::SPxMemoryException&) {
+    std::cout << "c OUT OF MEMORY DURING PARSING" << std::endl;
+    return quit::exit_EARLY();
+#endif
   } catch (const std::exception& e) {
     std::cout << "c UNKNOWN EXCEPTION: " << e.what() << std::endl;
     return quit::exit_EARLY();
