@@ -544,6 +544,7 @@ struct ConstrExp final : ConstrExpSuper {
       assert(reason->getSlack(level) + getSlack(level) < 0);
     }
     if (!fixed && global.options.multWeaken) {
+      // based on the work of Orestis Lomis in his 2024 master thesis
       const SMALL reasonCoef = reason->getCoef(asserting);
       if (conflCoef >= reasonCoef) {
         const SMALL mult = aux::ceildiv(conflCoef, reasonCoef);
