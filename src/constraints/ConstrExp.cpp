@@ -1672,7 +1672,7 @@ void ConstrExp<SMALL, LARGE>::sortInDecreasingCoefOrder(const std::function<bool
 template <typename SMALL, typename LARGE>
 void ConstrExp<SMALL, LARGE>::sortWithCoefTiebreaker(const std::function<int(Var, Var)>& comp) {
   if (vars.size() <= 1) return;
-  std::ranges::sort(vars, [&](Var v1, Var v2) {
+  std::sort(vars.begin(), vars.end(), [&](Var v1, Var v2) {
     const int res = comp(v1, v2);
     return res > 0 || (res == 0 && aux::abs(coefs[v1]) > aux::abs(coefs[v2]));
   });

@@ -145,9 +145,9 @@ IntVar* indexedBoolVar(IntProg& intprog, const std::string& name) {
 // @post: asConjunction == false: result == false implies the disjunction in input
 Var reify(bool asConjunction, Solver& solver, LitVec& input, unordered_map<LitVec, Var, aux::IntVecHash>& auxiliaries) {
   assert(input.size() > 1);
-  std::ranges::sort(input);
-  const auto [first, last] = std::ranges::unique(input);
-  input.erase(first, last);
+  unordered_set<Lit> unique_lits(input.begin(),input.end());
+  input.clear();
+  input.insert(input.begin(),unique_lits.begin(),unique_lits.end());
   Var& aux = auxiliaries[input];
   if (aux != 0) return aux;
   aux = solver.addVar(true);  // increases n to n+1
