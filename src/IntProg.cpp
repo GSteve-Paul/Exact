@@ -31,7 +31,6 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "IntProg.hpp"
 #include <stdexcept>
 #include "Optimization.hpp"
-#include <algorithm>
 
 namespace xct {
 
@@ -53,7 +52,7 @@ void lhs2str(std::ostream& o, const IntConstraint& x) {
   for (const IntTerm& t : x.lhs) {
     terms.push_back(aux::str(t));
   }
-  std::sort(terms.begin(),terms.end());
+  std::sort(terms.begin(), terms.end());
   for (const std::string& s : terms) o << s << " ";
 }
 std::ostream& operator<<(std::ostream& o, const IntConstraint& x) {
