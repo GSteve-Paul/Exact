@@ -66,8 +66,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdlib.h>
 #include <algorithm>
-#include <boost/container/flat_map.hpp>
-#include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <cassert>
 #include <chrono>
@@ -139,13 +137,6 @@ size_t erase_if(unordered_set<K, H, KE>& set, Pred pred) {
   return boost::unordered::erase_if(set, pred);
 }
 #endif
-
-template <typename K, typename V, typename Comp = std::less<K>>
-using ordered_map = boost::container::flat_map<K, V, Comp>;
-// using ordered_map = std::unordered_map<K, V, Comp>;
-template <typename K, typename Comp = std::less<K>>
-using ordered_set = boost::container::flat_set<K, Comp>;
-// using ordered_set = std::set<K, Comp>;
 
 enum class State { SUCCESS, FAIL };
 enum class SolveState { UNSAT, SAT, INCONSISTENT, TIMEOUT, INPROCESSED };
