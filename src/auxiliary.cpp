@@ -61,98 +61,115 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "auxiliary.hpp"
 
-std::ostream& operator<<(std::ostream& o, enum SolveState state) {
-  switch (state) {
+std::ostream &operator<<(std::ostream &o, enum SolveState state)
+{
+    switch (state)
+    {
     case SolveState::UNSAT:
-      o << "UNSAT";
-      break;
+        o << "UNSAT";
+        break;
     case SolveState::INCONSISTENT:
-      o << "INCONSISTENT";
-      break;
+        o << "INCONSISTENT";
+        break;
     case SolveState::INPROCESSED:
-      o << "INPROCESSED";
-      break;
+        o << "INPROCESSED";
+        break;
     case SolveState::SAT:
-      o << "SAT";
-      break;
+        o << "SAT";
+        break;
     case SolveState::TIMEOUT:
-      o << "TIMEOUT";
-      break;
+        o << "TIMEOUT";
+        break;
     default:
-      assert(false);
-  }
-  return o;
+        assert(false);
+    }
+    return o;
 }
 
-namespace xct::aux {
+namespace xct::aux
+{
 
-std::ostream& cout = std::cout;  // to easily find debugging prints
+std::ostream &cout = std::cout; // to easily find debugging prints
 
-bigint commonDenominator(const std::vector<ratio>& ratios) {
-  bigint cdenom = 1;
-  for (const ratio& r : ratios) {
-    cdenom = lcm(cdenom, boost::multiprecision::denominator(r));
-  }
-  return cdenom;
+bigint commonDenominator(const std::vector<ratio> &ratios)
+{
+    bigint cdenom = 1;
+    for (const ratio &r : ratios)
+    {
+        cdenom = lcm(cdenom, boost::multiprecision::denominator(r));
+    }
+    return cdenom;
 }
 
-bool contains(const std::string& s, char c) { return s.find(c) != std::string::npos; }
+bool contains(const std::string &s, char c)
+{
+    return s.find(c) != std::string::npos;
+}
 
-namespace rng {
+namespace rng
+{
 
 uint32_t seed = 1;
 
-uint32_t xorshift32() {
-  /* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
-  seed ^= seed << 13;
-  seed ^= seed >> 17;
-  seed ^= seed << 5;
-  return seed;
+uint32_t xorshift32()
+{
+    /* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
+    seed ^= seed << 13;
+    seed ^= seed >> 17;
+    seed ^= seed << 5;
+    return seed;
 }
 
-}  // namespace rng
+} // namespace rng
 
-int32_t getRand(int32_t min, int32_t max) {
-  assert(rng::seed != 0);
-  // based on https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction
-  assert(min < max);
-  return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) + min;
+int32_t getRand(int32_t min, int32_t max)
+{
+    assert(rng::seed != 0);
+    // based on https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction
+    assert(min < max);
+    return (((uint64_t)rng::xorshift32() * (uint64_t)(max - min + 1)) >> 32) +
+           min;
 }
 
 template <>
-uint64_t hash(const uint64_t& el) {
-  return el;
+uint64_t hash(const uint64_t &el)
+{
+    return el;
 }
+
 // template <>
 // uint64_t hash(const boost::multiprecision::cpp_int& el) {
 //   // 0xffffffffffffffc5 is largest prime less than 2^64
 //   return el >= 0 ? uint64_t(el % UINT64_C(0xffffffffffffffc5)) : ~uint64_t((-el) % UINT64_C(0xffffffffffffffc5));
 // }
 
-uint64_t shift_hash(uint64_t x) {
-  // based on
-  // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key/12996028#12996028
-  x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
-  x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
-  return x ^ (x >> 31);
+uint64_t shift_hash(uint64_t x)
+{
+    // based on
+    // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key/12996028#12996028
+    x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+    x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
+    return x ^ (x >> 31);
 }
 
-void* align_alloc(size_t alignment, size_t size) {
+void *align_alloc(size_t alignment, size_t size)
+{
 #if UNIXLIKE
-  return std::aligned_alloc(alignment, size);
+    return std::aligned_alloc(alignment, size);
 #else
   // MSVC alternative
   return _aligned_malloc(size, alignment);
 #endif
 }
 
-void align_free(void* ptr) {
+void align_free(void *ptr)
+{
 #if UNIXLIKE
-  std::free(ptr);
+    std::free(ptr);
 #else
   // MSVC alternative
   _aligned_free(ptr);
 #endif
 }
 
-}  // namespace xct::aux
+} // namespace xct::aux

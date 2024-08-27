@@ -7,6 +7,7 @@ All variables are boolean (have values 0 or 1).
 A *literal* is written as `x5` or `~x10`. We have `~x10 = 1 - x10`.
 
 A *linear inequality* is written as `{<coef> <literal> }* <cmp> <degree>;`.
+
 - `<coef>` is a coefficient (a positive or negative integer).
 - `<literal>` is a literal.
 - `<cmp>` is either `>=` or `=`.
@@ -15,7 +16,8 @@ A *linear inequality* is written as `{<coef> <literal> }* <cmp> <degree>;`.
 Non-linear terms are not supported.
 
 An OPB file consists of a header line `* #variable= <N> #constraint= <M>`, comment lines (lines starting with `*`)
-and linear inequalities as defined above (using the variables `x1` to `xN`). The number of constraints is ignored by the solver; it reads until EOF.
+and linear inequalities as defined above (using the variables `x1` to `xN`). The number of constraints is ignored by the
+solver; it reads until EOF.
 
 For more information, see the [OPB description](http://www.cril.univ-artois.fr/PB16/format.pdf) for the PB competition.
 Note that Exact only supports linear OPB constraints.
@@ -62,10 +64,13 @@ A *literal* is written as `5` for `x5` or `-10` for `~x10`.
 
 A *clause* is written as `{<literal> }* 0`.
 
-A DIMACS file consists of a header line `p cnf <N> <M>` where `<N>` is the number of variables and `<M>` is the number of clauses,
-comment lines starting with `c`, and clauses as defined above. The variables are `x1` to `xN`, and the number of clauses is ignored and the solver reads until EOF.
+A DIMACS file consists of a header line `p cnf <N> <M>` where `<N>` is the number of variables and `<M>` is the number
+of clauses,
+comment lines starting with `c`, and clauses as defined above. The variables are `x1` to `xN`, and the number of clauses
+is ignored and the solver reads until EOF.
 
-For more information, see the [CNF description](https://www.satcompetition.org/2011/format-benchmarks2011.html) for the SAT competition.
+For more information, see the [CNF description](https://www.satcompetition.org/2011/format-benchmarks2011.html) for the
+SAT competition.
 
 ### Example CNF file
 
@@ -104,7 +109,8 @@ p cnf 12 22
 
 ### WCNF format
 
-An extension of the CNF format to allow for soft (weighted) clauses. See the [WCNF description](https://maxsat-evaluations.github.io/2018/rules.html#input) for the MaxSAT competition.
+An extension of the CNF format to allow for soft (weighted) clauses. See
+the [WCNF description](https://maxsat-evaluations.github.io/2018/rules.html#input) for the MaxSAT competition.
 
 ### MPS format
 

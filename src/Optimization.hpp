@@ -65,21 +65,22 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "datastructures/IntSet.hpp"
 #include "typedefs.hpp"
 
-namespace xct {
+namespace xct
+{
+ struct Global;
+ class Solver;
 
-struct Global;
-class Solver;
-
-template <typename SMALL, typename LARGE>
-struct LazyVar {
+ template <typename SMALL, typename LARGE>
+ struct LazyVar
+ {
   Solver& solver;
   int coveredVars;
   int upperBound;
   Var currentVar;
   ID atLeastID = ID_Undef;
   ID atMostID = ID_Undef;
-  ConstrSimple32 atLeast;  // X >= k + y1 + ... + yi
-  ConstrSimple32 atMost;   // k + y1 + ... + yi-1 + (1+n-k-i)yi >= X
+  ConstrSimple32 atLeast; // X >= k + y1 + ... + yi
+  ConstrSimple32 atMost; // k + y1 + ... + yi-1 + (1+n-k-i)yi >= X
 
   SMALL mult;
 
@@ -93,25 +94,27 @@ struct LazyVar {
   void addFinalAtMost();
   [[nodiscard]] int remainingVars() const;
   void setUpperBound(const LARGE& normalizedUpperBound);
-};
+ };
 
-template <typename SMALL, typename LARGE>
-std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv) {
+ template <typename SMALL, typename LARGE>
+ std::ostream& operator<<(std::ostream& o, const LazyVar<SMALL, LARGE>& lv)
+ {
   o << lv.atLeast << "\n" << lv.atMost;
   return o;
-}
+ }
 
-struct IntConstraint;
-class OptimizationSuper;
-using Optim = std::shared_ptr<OptimizationSuper>;
+ struct IntConstraint;
+ class OptimizationSuper;
+ using Optim = std::shared_ptr<OptimizationSuper>;
 
-class OptimizationSuper {
+ class OptimizationSuper
+ {
  protected:
   Solver& solver;
   Global& global;
   const bigint offset;
-  const IntSet& assumptions;  // external assumptions
-  LitVec assumps;             // all assumptions passed to solver
+  const IntSet& assumptions; // external assumptions
+  LitVec assumps; // all assumptions passed to solver
 
  public:
   virtual bigint getUpperBound() const = 0;
@@ -127,10 +130,11 @@ class OptimizationSuper {
 
   OptimizationSuper(Solver& s, const bigint& offs, const IntSet& assumps);
   virtual ~OptimizationSuper() = default;
-};
+ };
 
-template <typename SMALL, typename LARGE>
-class Optimization final : public OptimizationSuper {
+ template <typename SMALL, typename LARGE>
+ class Optimization final : public OptimizationSuper
+ {
  public:
   const CePtr<SMALL, LARGE> origObj;
 
@@ -161,15 +165,14 @@ class Optimization final : public OptimizationSuper {
   void addLowerBound();
   void addReformUpperBound(bool deletePrevious);
 
-  Ce32 reduceToCardinality(const CeSuper& core);                            // does not modify core
-  State reformObjective(const CeSuper& core);                               // modifies core
-  [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const;  // modifies core
-  void handleInconsistency(const CeSuper& core);                            // modifies core
+  Ce32 reduceToCardinality(const CeSuper& core); // does not modify core
+  State reformObjective(const CeSuper& core); // modifies core
+  [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const; // modifies core
+  void handleInconsistency(const CeSuper& core); // modifies core
   void boundObjByLastSol();
   void boundBottomUp();
 
   [[nodiscard]] SolveState run(bool optimize, double timeout);
   [[nodiscard]] SolveState runFull(bool optimize, double timeout);
-};
-
-}  // namespace xct
+ };
+} // namespace xct

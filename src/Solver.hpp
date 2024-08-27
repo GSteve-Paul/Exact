@@ -73,9 +73,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "propagation/LpSolver.hpp"
 #include "typedefs.hpp"
 
-namespace xct {
-
-class Solver {
+namespace xct
+{
+ class Solver
+ {
   friend class LpSolver;
   friend struct Constr;
   friend struct Clause;
@@ -110,22 +111,22 @@ class Solver {
   ConstraintAllocator ca;
   Heuristic heur;
 
-  std::vector<CRef> constraints;  // row-based view
+  std::vector<CRef> constraints; // row-based view
   unordered_map<ID, CRef> external;
-  IntMap<unordered_map<CRef, int>> lit2cons;  // column-based view, int is index of literal in CRef
+  IntMap<unordered_map<CRef, int>> lit2cons; // column-based view, int is index of literal in CRef
   int lastRemoveSatisfiedsTrail = 0;
-  std::unordered_multimap<Lit, Lit> binaryImplicants;  // l implies multimap[l]
+  std::unordered_multimap<Lit, Lit> binaryImplicants; // l implies multimap[l]
   IntMap<int> lit2consOldSize;
 
   IntMap<std::vector<Watch>> adj;
   // TODO: make position, level, contiguous memory for better cache efficiency.
-  IntMap<int> level;           // map from literal to decision level when on the trail. INF means unset.
-  std::vector<int> position;   // map from variable to index ('position') in the trail.
-  LitVec trail;                // current assignment in chronological order
-  std::vector<int> trail_lim;  // for each level, first index on the trail. This is the index of the decision literal.
-  std::vector<CRef> reason;    // map from variable to reason constraint (when propagated, otherwise CRef_Undef)
+  IntMap<int> level; // map from literal to decision level when on the trail. INF means unset.
+  std::vector<int> position; // map from variable to index ('position') in the trail.
+  LitVec trail; // current assignment in chronological order
+  std::vector<int> trail_lim; // for each level, first index on the trail. This is the index of the decision literal.
+  std::vector<CRef> reason; // map from variable to reason constraint (when propagated, otherwise CRef_Undef)
 
-  int qhead = 0;  // tracks where next index on trail for constraint propagation
+  int qhead = 0; // tracks where next index on trail for constraint propagation
 
   std::vector<int> assumptions_lim{0};
   IntSet assumptions;
@@ -281,8 +282,7 @@ class Solver {
   void probeRestart(Lit next);
 
   void detectAtMostOne(Lit seed, unordered_set<Lit>& considered, LitVec& previousProbe);
-  unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
+  unordered_map<uint64_t, unsigned int> atMostOneHashes; // maps to size of at-most-one
   void runAtMostOneDetection();
-};
-
-}  // namespace xct
+ };
+} // namespace xct
