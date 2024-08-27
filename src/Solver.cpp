@@ -1262,6 +1262,7 @@ void Solver::dominanceBreaking() {
 }
 
 SolveState Solver::solve() {
+  //assert(adj.end() == adj.begin());
   if (unsatReached) throw UnsatEncounter();
   StatNum lastPropTime = global.stats.PROPTIME.z;
   StatNum lastCATime = global.stats.CATIME.z;
