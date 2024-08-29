@@ -167,6 +167,14 @@ namespace xct
 
   Ce32 reduceToCardinality(const CeSuper& core); // does not modify core
   State reformObjective(const CeSuper& core); // modifies core
+
+  //based on reformObjective(const CeSuper& core)
+  //to make a higher lb and fewer auxiliary vars.
+  std::tuple<SMALL, Ce32, LARGE> getBestLowerBound(const CeSuper& core, const CePtr<SMALL,LARGE>& obj);
+  State reformObjectiveSmartly(const CeSuper& core);
+
+  void preprocessLowerBound();
+
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const; // modifies core
   void handleInconsistency(const CeSuper& core); // modifies core
   void boundObjByLastSol();
