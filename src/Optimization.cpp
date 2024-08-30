@@ -637,7 +637,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper &core)
     auto [bestLit, cardCore, bestLb]
         = getBestLowerBound(core, reformObj);
 
-    if(bestLit == 0 && cardCore == nullptr && bestLb == -1)
+    if (bestLit == 0 && cardCore == nullptr && bestLb == -1)
     {
         return State::FAIL;
     }

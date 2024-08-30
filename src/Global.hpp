@@ -26,15 +26,18 @@ or run with the flag --license=AGPLv3. If not, see
 #include "constraints/ConstrExpPools.hpp"
 #include "datastructures/IntSet.hpp"
 
-namespace xct {
+namespace xct
+{
+  struct Global
+  {
+    Options options;
+    Stats stats;
+    Logger logger;
+    ConstrExpPools cePools;
+    IntSetPool isPool;
 
-struct Global {
-  Options options;
-  Stats stats;
-  Logger logger;
-  ConstrExpPools cePools;
-  IntSetPool isPool;
-  Global(const Options& opts) : options(opts), logger(stats), cePools(*this) {}
-};
-
-}  // namespace xct
+    Global(const Options& opts) : options(opts), logger(stats), cePools(*this)
+    {
+    }
+  };
+} // namespace xct

@@ -67,46 +67,49 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../auxiliary.hpp"
 #include "../typedefs.hpp"
 
-namespace xct {
+namespace xct
+{
+  struct ConstrExpSuper;
+  class ConstrExpPools;
 
-struct ConstrExpSuper;
-class ConstrExpPools;
+  struct ConstrSimpleSuper
+  {
+    Origin orig = Origin::UNKNOWN;
 
-struct ConstrSimpleSuper {
-  Origin orig = Origin::UNKNOWN;
+    virtual ~ConstrSimpleSuper() = default;
 
-  virtual ~ConstrSimpleSuper() = default;
+    virtual CeSuper toExpanded(ConstrExpPools& cePools) const = 0;
+  };
 
-  virtual CeSuper toExpanded(ConstrExpPools& cePools) const = 0;
-};
+  template <typename CF, typename DG>
+  struct ConstrSimple final : public ConstrSimpleSuper
+  {
+    std::vector<Term<CF>> terms;
+    DG rhs;
+    std::string proofLine;
 
-template <typename CF, typename DG>
-struct ConstrSimple final : public ConstrSimpleSuper {
-  std::vector<Term<CF>> terms;
-  DG rhs;
-  std::string proofLine;
+    explicit ConstrSimple(const std::vector<Term<CF>>& t = {}, const DG& r = 0, const Origin& o = Origin::UNKNOWN,
+                          const std::string& p = (std::to_string(ID_Trivial) + " "))
+      : terms(t), rhs(r), proofLine(p)
+    {
+      orig = o;
+    }
 
-  explicit ConstrSimple(const std::vector<Term<CF>>& t = {}, const DG& r = 0, const Origin& o = Origin::UNKNOWN,
-                        const std::string& p = (std::to_string(ID_Trivial) + " "))
-      : terms(t), rhs(r), proofLine(p) {
-    orig = o;
+    CeSuper toExpanded(ConstrExpPools& cePools) const override;
+    unsigned int size() const { return terms.size(); }
+
+    void toNormalFormLit();
+    void toNormalFormVar();
+    void flip();
+    void reset();
+
+    void toStreamAsOPB(std::ostream& o) const;
+  };
+
+  template <typename CF, typename DG>
+  std::ostream& operator<<(std::ostream& o, const ConstrSimple<CF, DG>& sc)
+  {
+    for (const Term<CF>& t : sc.terms) o << "+ " << t << " ";
+    return o << ">= " << sc.rhs;
   }
-
-  CeSuper toExpanded(ConstrExpPools& cePools) const override;
-  unsigned int size() const { return terms.size(); }
-
-  void toNormalFormLit();
-  void toNormalFormVar();
-  void flip();
-  void reset();
-
-  void toStreamAsOPB(std::ostream& o) const;
-};
-
-template <typename CF, typename DG>
-std::ostream& operator<<(std::ostream& o, const ConstrSimple<CF, DG>& sc) {
-  for (const Term<CF>& t : sc.terms) o << "+ " << t << " ";
-  return o << ">= " << sc.rhs;
-}
-
-}  // namespace xct
+} // namespace xct

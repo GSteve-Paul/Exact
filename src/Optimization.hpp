@@ -170,7 +170,7 @@ namespace xct
 
   //based on reformObjective(const CeSuper& core)
   //to make a higher lb and fewer auxiliary vars.
-  std::tuple<SMALL, Ce32, LARGE> getBestLowerBound(const CeSuper& core, const CePtr<SMALL,LARGE>& obj);
+  std::tuple<SMALL, Ce32, LARGE> getBestLowerBound(const CeSuper& core, const CePtr<SMALL, LARGE>& obj);
   State reformObjectiveSmartly(const CeSuper& core);
 
   void preprocessLowerBound();

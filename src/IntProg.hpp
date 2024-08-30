@@ -37,196 +37,209 @@ See the file LICENSE or run with the flag --license=MIT.
 #include "datastructures/IntSet.hpp"
 #include "typedefs.hpp"
 
-namespace xct {
+namespace xct
+{
+  enum class Encoding { ORDER, LOG, ONEHOT };
 
-enum class Encoding { ORDER, LOG, ONEHOT };
-Encoding opt2enc(const std::string& opt);
+  Encoding opt2enc(const std::string& opt);
 
-struct IntVar {
-  explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub, Encoding e);
+  struct IntVar
+  {
+    explicit IntVar(const std::string& n, Solver& solver, bool nameAsId, const bigint& lb, const bigint& ub,
+                    Encoding e);
 
-  [[nodiscard]] const std::string& getName() const { return name; }
-  [[nodiscard]] const bigint& getUpperBound() const { return upperBound; }
-  [[nodiscard]] const bigint& getLowerBound() const { return lowerBound; }
+    [[nodiscard]] const std::string& getName() const { return name; }
+    [[nodiscard]] const bigint& getUpperBound() const { return upperBound; }
+    [[nodiscard]] const bigint& getLowerBound() const { return lowerBound; }
 
-  [[nodiscard]] bigint getRange() const { return upperBound - lowerBound; }  // TODO: Boolean range is 1?
-  [[nodiscard]] bool isBoolean() const { return lowerBound == 0 && upperBound == 1; }
+    [[nodiscard]] bigint getRange() const { return upperBound - lowerBound; } // TODO: Boolean range is 1?
+    [[nodiscard]] bool isBoolean() const { return lowerBound == 0 && upperBound == 1; }
 
-  [[nodiscard]] Encoding getEncoding() const { return encoding; }
-  [[nodiscard]] const VarVec& getEncodingVars() const { return encodingVars; }
-  [[nodiscard]] bigint getValue(const LitVec& sol) const;
+    [[nodiscard]] Encoding getEncoding() const { return encoding; }
+    [[nodiscard]] const VarVec& getEncodingVars() const { return encodingVars; }
+    [[nodiscard]] bigint getValue(const LitVec& sol) const;
 
- private:
-  const std::string name;
-  const bigint lowerBound;
-  const bigint upperBound;
+  private:
+    const std::string name;
+    const bigint lowerBound;
+    const bigint upperBound;
 
-  const Encoding encoding;
-  VarVec encodingVars;
-};
-std::ostream& operator<<(std::ostream& o, const IntVar& x);
-std::ostream& operator<<(std::ostream& o, IntVar* x);
+    const Encoding encoding;
+    VarVec encodingVars;
+  };
 
-struct IntTerm {
-  bigint c;
-  IntVar* v;
-  // constructors needed because Apple clang does not support parenthesized initialization of aggregates
-  IntTerm(const bigint& _c, IntVar* _v);
-  IntTerm() = default;
-  IntTerm(IntTerm&&) = default;
-  IntTerm& operator=(IntTerm&&) = default;
-  IntTerm(const IntTerm&) = default;
-  IntTerm& operator=(const IntTerm&) = default;
-};
-std::ostream& operator<<(std::ostream& o, const IntTerm& x);
+  std::ostream& operator<<(std::ostream& o, const IntVar& x);
+  std::ostream& operator<<(std::ostream& o, IntVar* x);
 
-using Core = std::unique_ptr<unordered_set<IntVar*>>;
-Core emptyCore();
-// NOTE: Core is a unique pointer because it is eagerly calculated and ownership is transferred to caller
+  struct IntTerm
+  {
+    bigint c;
+    IntVar* v;
+    // constructors needed because Apple clang does not support parenthesized initialization of aggregates
+    IntTerm(const bigint& _c, IntVar* _v);
+    IntTerm() = default;
+    IntTerm(IntTerm&&) = default;
+    IntTerm& operator=(IntTerm&&) = default;
+    IntTerm(const IntTerm&) = default;
+    IntTerm& operator=(const IntTerm&) = default;
+  };
 
-class IntProg;
+  std::ostream& operator<<(std::ostream& o, const IntTerm& x);
 
-struct IntConstraint {
-  std::vector<IntTerm> lhs = {};
-  std::optional<bigint> lowerBound = 0;
-  std::optional<bigint> upperBound = std::nullopt;
+  using Core = std::unique_ptr<unordered_set<IntVar*>>;
+  Core emptyCore();
+  // NOTE: Core is a unique pointer because it is eagerly calculated and ownership is transferred to caller
 
-  static std::vector<IntTerm> zip(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars);
+  class IntProg;
 
-  [[nodiscard]] bigint getRange() const;
-  [[nodiscard]] int64_t size() const;
-  void invert();
+  struct IntConstraint
+  {
+    std::vector<IntTerm> lhs = {};
+    std::optional<bigint> lowerBound = 0;
+    std::optional<bigint> upperBound = std::nullopt;
 
-  void toConstrExp(CeArb&, bool useLowerBound) const;
-};
-std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
+    static std::vector<IntTerm> zip(const std::vector<bigint>& coefs, const std::vector<IntVar*>& vars);
 
-struct OptRes {
-  SolveState state;
-  bigint optval;
-  Core core;
-};
+    [[nodiscard]] bigint getRange() const;
+    [[nodiscard]] int64_t size() const;
+    void invert();
 
-template <typename T>
-struct WithState {
-  SolveState state;
-  T val;
-};
+    void toConstrExp(CeArb&, bool useLowerBound) const;
+  };
 
-struct TimeOut {
-  bool reinitialize;
-  double limit;
-};
+  std::ostream& operator<<(std::ostream& o, const IntConstraint& x);
 
-struct ReifInfo {
-  IntVar* head = nullptr;
-  bool sign = false;
-  bool left = false;
-  IntConstraint body;
-};
+  struct OptRes
+  {
+    SolveState state;
+    bigint optval;
+    Core core;
+  };
 
-class IntProg {
- public:
-  Global global;
-  bigint obj_denominator;  // denominator for rational objectives arising from LP/MPS files
+  template <typename T>
+  struct WithState
+  {
+    SolveState state;
+    T val;
+  };
 
- private:
-  Solver solver;
-  Optim optim;
+  struct TimeOut
+  {
+    bool reinitialize;
+    double limit;
+  };
 
-  std::vector<std::unique_ptr<IntVar>> vars;
-  IntConstraint obj;  // NOTE: we could erase this, but then we would not store the untransformed input objective
-  bool minimize = true;
-  unordered_map<std::string, IntVar*> name2var;
-  unordered_map<Var, IntVar*> var2var;
+  struct ReifInfo
+  {
+    IntVar* head = nullptr;
+    bool sign = false;
+    bool left = false;
+    IntConstraint body;
+  };
 
-  int inputVarLimit = INF;
-  int64_t nConstrs = 0;
+  class IntProg
+  {
+  public:
+    Global global;
+    bigint obj_denominator; // denominator for rational objectives arising from LP/MPS files
 
-  IntSet assumptions;
-  unordered_map<VarVec, Var, aux::IntVecHash> multAuxs;
+  private:
+    Solver solver;
+    Optim optim;
 
-  // only for printing purposes:
-  const bool keepInput;
-  std::vector<IntConstraint> constraints;
-  std::vector<ReifInfo> reifications;
-  std::vector<std::vector<IntVar*>> multiplications;  // last two are bounds
+    std::vector<std::unique_ptr<IntVar>> vars;
+    IntConstraint obj; // NOTE: we could erase this, but then we would not store the untransformed input objective
+    bool minimize = true;
+    unordered_map<std::string, IntVar*> name2var;
+    unordered_map<Var, IntVar*> var2var;
 
-  IntVar* addFlag();
-  Var fixObjective(const IntConstraint& ico, const bigint& opt);
-  void addSingleAssumption(IntVar* iv, const bigint& val);
+    int inputVarLimit = INF;
+    int64_t nConstrs = 0;
 
- public:
-  explicit IntProg(const Options& opts, bool keepIn = false);
+    IntSet assumptions;
+    unordered_map<VarVec, Var, aux::IntVecHash> multAuxs;
 
-  const Solver& getSolver() const;
-  Solver& getSolver();
-  const Optim& getOptim() const;
-  void setInputVarLimit();
-  int getInputVarLimit() const;
+    // only for printing purposes:
+    const bool keepInput;
+    std::vector<IntConstraint> constraints;
+    std::vector<ReifInfo> reifications;
+    std::vector<std::vector<IntVar*>> multiplications; // last two are bounds
 
-  IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, Encoding encoding,
-                 bool nameAsId = false);
-  IntVar* getVarFor(const std::string& name) const;  // returns nullptr if it does not exist
-  std::vector<IntVar*> getVariables() const;
+    IntVar* addFlag();
+    Var fixObjective(const IntConstraint& ico, const bigint& opt);
+    void addSingleAssumption(IntVar* iv, const bigint& val);
 
-  void setObjective(const std::vector<IntTerm>& terms, bool min = true, const bigint& offset = 0);
-  IntConstraint& getObjective();
-  const IntConstraint& getObjective() const;
+  public:
+    explicit IntProg(const Options& opts, bool keepIn = false);
 
-  void setAssumptions(const std::vector<std::pair<IntVar*, std::vector<bigint>>>& ivs);
-  void setAssumptions(const std::vector<std::pair<IntVar*, bigint>>& ivs);
-  void clearAssumptions();
-  void clearAssumptions(const std::vector<IntVar*>& ivs);
-  bool hasAssumption(IntVar* iv) const;
-  std::vector<bigint> getAssumption(IntVar* iv) const;
+    const Solver& getSolver() const;
+    Solver& getSolver();
+    const Optim& getOptim() const;
+    void setInputVarLimit();
+    int getInputVarLimit() const;
 
-  void setSolutionHints(const std::vector<std::pair<IntVar*, bigint>>& hints);
-  void clearSolutionHints(const std::vector<IntVar*>& ivs);
+    IntVar* addVar(const std::string& name, const bigint& lowerbound, const bigint& upperbound, Encoding encoding,
+                   bool nameAsId = false);
+    IntVar* getVarFor(const std::string& name) const; // returns nullptr if it does not exist
+    std::vector<IntVar*> getVariables() const;
 
-  void addConstraint(const IntConstraint& ic);
-  void addReification(IntVar* head, bool sign, const IntConstraint& ic);
-  void addRightReification(IntVar* head, bool sign, const IntConstraint& ic);
-  void addLeftReification(IntVar* head, bool sign, const IntConstraint& ic);
-  void addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_bound = nullptr,
-                         IntVar* upper_bound = nullptr);
+    void setObjective(const std::vector<IntTerm>& terms, bool min = true, const bigint& offset = 0);
+    IntConstraint& getObjective();
+    const IntConstraint& getObjective() const;
 
-  void fix(IntVar* iv, const bigint& val);
-  void invalidateLastSol();
-  void invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag = 0);
+    void setAssumptions(const std::vector<std::pair<IntVar*, std::vector<bigint>>>& ivs);
+    void setAssumptions(const std::vector<std::pair<IntVar*, bigint>>& ivs);
+    void clearAssumptions();
+    void clearAssumptions(const std::vector<IntVar*>& ivs);
+    bool hasAssumption(IntVar* iv) const;
+    std::vector<bigint> getAssumption(IntVar* iv) const;
 
-  bigint getLowerBound() const;
-  bigint getUpperBound() const;
-  ratio getUpperBoundRatio() const;
+    void setSolutionHints(const std::vector<std::pair<IntVar*, bigint>>& hints);
+    void clearSolutionHints(const std::vector<IntVar*>& ivs);
 
-  bool hasLastSolution() const;
-  bigint getLastSolutionFor(IntVar* iv) const;
-  std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;
+    void addConstraint(const IntConstraint& ic);
+    void addReification(IntVar* head, bool sign, const IntConstraint& ic);
+    void addRightReification(IntVar* head, bool sign, const IntConstraint& ic);
+    void addLeftReification(IntVar* head, bool sign, const IntConstraint& ic);
+    void addMultiplication(const std::vector<IntVar*>& factors, IntVar* lower_bound = nullptr,
+                           IntVar* upper_bound = nullptr);
 
-  Core getLastCore();
+    void fix(IntVar* iv, const bigint& val);
+    void invalidateLastSol();
+    void invalidateLastSol(const std::vector<IntVar*>& ivs, Var flag = 0);
 
-  void printOrigSol() const;
-  void printFormula();
-  std::ostream& printFormula(std::ostream& out);
-  std::ostream& printInput(std::ostream& out) const;
-  std::ostream& printVars(std::ostream& out) const;
-  long long getNbVars() const;
-  long long getNbConstraints() const;
+    bigint getLowerBound() const;
+    bigint getUpperBound() const;
+    ratio getUpperBoundRatio() const;
 
-  OptRes toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& to = {false, 0});
-  WithState<Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
-  WithState<std::vector<std::pair<bigint, bigint>>> propagate(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                              const TimeOut& to = {false, 0});
-  WithState<std::vector<std::vector<bigint>>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
-                                                           const TimeOut& to = {false, 0});
-  WithState<int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
-  WithState<std::vector<unordered_map<bigint, int64_t>>> count(const std::vector<IntVar*>& ivs_base,
-                                                               const std::vector<IntVar*>& ivs_counts, bool keepstate,
-                                                               const TimeOut& to = {false, 0});
-  WithState<Core> extractMUS(const TimeOut& to = {false, 0});
+    bool hasLastSolution() const;
+    bigint getLastSolutionFor(IntVar* iv) const;
+    std::vector<bigint> getLastSolutionFor(const std::vector<IntVar*>& vars) const;
 
-  void runFromCmdLine();
-};
-std::ostream& operator<<(std::ostream& o, const IntProg& x);
+    Core getLastCore();
 
-}  // namespace xct
+    void printOrigSol() const;
+    void printFormula();
+    std::ostream& printFormula(std::ostream& out);
+    std::ostream& printInput(std::ostream& out) const;
+    std::ostream& printVars(std::ostream& out) const;
+    long long getNbVars() const;
+    long long getNbConstraints() const;
+
+    OptRes toOptimum(IntConstraint& objective, bool keepstate, const TimeOut& to = {false, 0});
+    WithState<Ce32> getSolIntersection(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
+    WithState<std::vector<std::pair<bigint, bigint>>> propagate(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                                const TimeOut& to = {false, 0});
+    WithState<std::vector<std::vector<bigint>>> pruneDomains(const std::vector<IntVar*>& ivs, bool keepstate,
+                                                             const TimeOut& to = {false, 0});
+    WithState<int64_t> count(const std::vector<IntVar*>& ivs, bool keepstate, const TimeOut& to = {false, 0});
+    WithState<std::vector<unordered_map<bigint, int64_t>>> count(const std::vector<IntVar*>& ivs_base,
+                                                                 const std::vector<IntVar*>& ivs_counts, bool keepstate,
+                                                                 const TimeOut& to = {false, 0});
+    WithState<Core> extractMUS(const TimeOut& to = {false, 0});
+
+    void runFromCmdLine();
+  };
+
+  std::ostream& operator<<(std::ostream& o, const IntProg& x);
+} // namespace xct
