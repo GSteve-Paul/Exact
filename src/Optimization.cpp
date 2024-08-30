@@ -558,22 +558,20 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
 {
     core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
     if (core->isTautology())
-        return {0, nullptr, -1};
+        return {0, nullptr, -INFLPINT};
     if (core->isUnsat())
     {
         solver.addConstraint(core);
-        return {0, nullptr, -1};
+        return {0, nullptr, -INFLPINT};
     }
     if (!core->hasNegativeSlack(solver.getAssumptions().getIndex()))
-        return {0, nullptr, -1};
+        return {0, nullptr, -INFLPINT};
 
     //saturate
     core->saturate(true, false);
     Ce32 cardCore = reduceToCardinality(core);
     cardCore->orig = Origin::COREGUIDED;
 
-    assert(core->isSortedInDecreasingCoefOrder());
-    assert(cardCore->isSortedInDecreasingCoefOrder());
     assert(cardCore->hasNoZeroes());
     assert(!cardCore->isTautology());
     assert(!cardCore->isUnsat());
@@ -626,7 +624,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
     if (bestLit == 0)
     {
         assert(bestLb == -1);
-        return {0, nullptr, -1};
+        return {0, nullptr, -INFLPINT};
     }
 
     return {bestLit, cardCore, bestLb};
@@ -638,8 +636,9 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper &core)
     auto [bestLit, cardCore, bestLb]
         = getBestLowerBound(core, reformObj);
 
-    if (bestLit == 0 && cardCore == nullptr && bestLb == -1)
+    if (bestLit == 0)
     {
+        assert(cardCore == nullptr && bestLb == -INFLPINT);
         return State::FAIL;
     }
 

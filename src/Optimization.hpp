@@ -173,7 +173,11 @@ namespace xct
   //based on reformObjective(const CeSuper& core)
   //to make a higher lb and fewer auxiliary vars.
   std::tuple<Lit, Ce32, LARGE> getBestLowerBound(const CeSuper& core, const CePtr<SMALL, LARGE>& obj);
+
+  //when inconsistent, we reform the obj and update lower_bound
   State reformObjectiveSmartly(const CeSuper& core);
+
+  //make the obj consistent with cardCore
 
   void preprocessLowerBound();
 

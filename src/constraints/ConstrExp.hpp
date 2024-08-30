@@ -232,6 +232,7 @@ struct ConstrExpSuper {
   virtual unsigned int subsumeWith(const Lit* lits, const bigint* coefs, unsigned int size, const bigint& degr, ID id,
                                    Lit l, const IntMap<int>& level, const std::vector<int>& pos,
                                    IntSet& saturatedLits) = 0;
+
 };
 std::ostream& operator<<(std::ostream& o, const ConstrExpSuper& ce);
 std::ostream& operator<<(std::ostream& o, const CeSuper& ce);
