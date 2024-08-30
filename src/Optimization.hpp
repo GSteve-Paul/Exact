@@ -64,6 +64,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "constraints/ConstrSimple.hpp"
 #include "datastructures/IntSet.hpp"
 #include "typedefs.hpp"
+#include <ranges>
+#include <vector>
 
 namespace xct
 {
@@ -170,7 +172,7 @@ namespace xct
 
   //based on reformObjective(const CeSuper& core)
   //to make a higher lb and fewer auxiliary vars.
-  std::tuple<SMALL, Ce32, LARGE> getBestLowerBound(const CeSuper& core, const CePtr<SMALL, LARGE>& obj);
+  std::tuple<Lit, Ce32, LARGE> getBestLowerBound(const CeSuper& core, const CePtr<SMALL, LARGE>& obj);
   State reformObjectiveSmartly(const CeSuper& core);
 
   void preprocessLowerBound();

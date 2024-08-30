@@ -979,9 +979,11 @@ std::pair<ID, ID> Solver::addInputConstraint(const CeSuper &ce)
 
     try
     {
+        std::cout << ce << std::endl;
         CRef cr = attachConstraint(ce, true);
         assert(cr != CRef_Undef);
         ID id = ca[cr].id();
+        std::cout << ca[cr] << std::endl;
         Origin orig = ca[cr].getOrigin();
         if (isExternal(orig))
         {
@@ -1012,6 +1014,7 @@ std::pair<ID, ID> Solver::addConstraint(const CeSuper &c)
 std::pair<ID, ID> Solver::addConstraint(const ConstrSimpleSuper &c)
 {
     CeSuper ce = c.toExpanded(global.cePools);
+    std::cout << *ce << std::endl;
     return addInputConstraint(ce);
 }
 

@@ -62,63 +62,82 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConstrSimple.hpp"
 #include "ConstrExp.hpp"
 
-namespace xct {
+namespace xct
+{
 
 template <typename CF, typename DG>
-CeSuper ConstrSimple<CF, DG>::toExpanded(ConstrExpPools& cePools) const {
-  // TODO: make this the minimal bitwidth expanded constraint?
-  CePtr<CF, DG> ce = cePools.take<CF, DG>();
-  ce->addRhs(rhs);
-  for (const Term<CF>& t : terms) {
-    ce->addLhs(t.c, t.l);
-  }
-  ce->orig = orig;
-  ce->resetBuffer(proofLine);
-  return ce;
-}
-
-template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toNormalFormLit() {
-  for (Term<CF>& t : terms) {
-    if (t.c < 0) {
-      rhs -= t.c;
-      t.c = -t.c;
-      t.l = -t.l;
+CeSuper ConstrSimple<CF, DG>::toExpanded(ConstrExpPools &cePools) const
+{
+    // TODO: make this the minimal bitwidth expanded constraint?
+    CePtr<CF, DG> ce = cePools.take<CF, DG>();
+    ce->addRhs(rhs);
+    std::cout << ce->getRhs() << std::endl;
+    for (const Term<CF> &t : terms)
+    {
+        std::cout << "c" << " " << t.c << " " << "l" << " " << t.l << std::endl;
+        ce->addLhs(t.c, t.l);
+        Var var = toVar(t.l);
+        Lit lit = ce->getLit(var);
+        std::cout << ce->getCoef(lit) << " " << lit << std::endl;
     }
-  }
+    ce->orig = orig;
+    ce->resetBuffer(proofLine);
+    return ce;
 }
 
 template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toNormalFormVar() {
-  for (Term<CF>& t : terms) {
-    if (t.l < 0) {
-      rhs -= t.c;
-      t.c = -t.c;
-      t.l = -t.l;
+void ConstrSimple<CF, DG>::toNormalFormLit()
+{
+    for (Term<CF> &t : terms)
+    {
+        if (t.c < 0)
+        {
+            rhs -= t.c;
+            t.c = -t.c;
+            t.l = -t.l;
+        }
     }
-  }
 }
 
 template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::flip() {
-  rhs = -rhs;
-  for (auto& t : terms) t.c = -t.c;
+void ConstrSimple<CF, DG>::toNormalFormVar()
+{
+    for (Term<CF> &t : terms)
+    {
+        if (t.l < 0)
+        {
+            rhs -= t.c;
+            t.c = -t.c;
+            t.l = -t.l;
+        }
+    }
 }
 
 template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::reset() {
-  orig = Origin::UNKNOWN;
-  terms.clear();
-  rhs = 0;
-  proofLine = std::to_string(ID_Trivial) + " ";
+void ConstrSimple<CF, DG>::flip()
+{
+    rhs = -rhs;
+    for (auto &t : terms)
+        t.c = -t.c;
 }
 
 template <typename CF, typename DG>
-void ConstrSimple<CF, DG>::toStreamAsOPB(std::ostream& o) const {
-  for (const Term<CF>& t : terms) {
-    o << std::pair<CF, Lit>{t.c, t.l} << " ";
-  }
-  o << ">= " << rhs << " ;";
+void ConstrSimple<CF, DG>::reset()
+{
+    orig = Origin::UNKNOWN;
+    terms.clear();
+    rhs = 0;
+    proofLine = std::to_string(ID_Trivial) + " ";
+}
+
+template <typename CF, typename DG>
+void ConstrSimple<CF, DG>::toStreamAsOPB(std::ostream &o) const
+{
+    for (const Term<CF> &t : terms)
+    {
+        o << std::pair<CF, Lit>{t.c, t.l} << " ";
+    }
+    o << ">= " << rhs << " ;";
 }
 
 template struct ConstrSimple<int, long long>;
@@ -127,4 +146,4 @@ template struct ConstrSimple<int128, int128>;
 template struct ConstrSimple<int128, int256>;
 template struct ConstrSimple<bigint, bigint>;
 
-}  // namespace xct
+} // namespace xct

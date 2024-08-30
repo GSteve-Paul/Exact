@@ -380,6 +380,7 @@ void opb_read(std::istream &in, IntProg &intprog)
             }
             else
             {
+                std::cout << constr << std::endl;
                 intprog.getSolver().addConstraint(constr);
                 if (!isInequality)
                 {

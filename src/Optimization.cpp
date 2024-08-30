@@ -553,7 +553,7 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper &core)
 }
 
 template <typename SMALL, typename LARGE>
-std::tuple<SMALL, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
+std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
     const CeSuper &core, const CePtr<SMALL, LARGE> &obj)
 {
     core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
@@ -586,15 +586,16 @@ std::tuple<SMALL, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
     LARGE bestLb = -1;
     LARGE auxiliary = cardCore->nVars() - cardCoreRhs;
     bool positive = false;
-    for (Var varInObj : obj->getVars() | std::ranges::reverse)
+    for (int i = obj->nVars() - 1; i >= 0; i--)
     {
+        Var varInObj = obj->getVars()[i];
         assert(varInObj > 0);
 
         if (!cardCore->hasVar(varInObj))
             continue;
 
         Lit litInObj = obj->getLit(varInObj);
-        SMALL targetCoefficient = obj->getCOeff(litInObj);
+        SMALL targetCoefficient = obj->getCoef(litInObj);
 
         if (!positive && targetCoefficient > 0)
         {
@@ -650,7 +651,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper &core)
     assert(bestLb >= lower_bound);
 
     //add auxiliary variables into cardCore implicitly, and then add into reformObj
-    LARGE auxiliary = cardCore->nVars - cardCore->getRhs();
+    LARGE auxiliary = cardCore->nVars() - cardCore->getRhs();
     SMALL coefficient = 1;
     SMALL targetCoefficient = reformObj->getCoef(bestLit);
     while (auxiliary)
