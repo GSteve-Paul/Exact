@@ -466,6 +466,7 @@ namespace xct
                              const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits);
     unsigned int subsumeWith(const Lit* lits, const bigint* coefs, unsigned int size, const bigint& degr, ID id, Lit l,
                              const IntMap<int>& level, const std::vector<int>& pos, IntSet& saturatedLits);
+    void consistWith(Ce32 cardCore);
 
   private:
     template <typename CF, typename DG>

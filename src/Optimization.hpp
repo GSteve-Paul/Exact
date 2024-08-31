@@ -177,8 +177,7 @@ namespace xct
   //when inconsistent, we reform the obj and update lower_bound
   State reformObjectiveSmartly(const CeSuper& core);
 
-  //make the obj consistent with cardCore
-
+  //before the cdcl procedure, initialize the lowerbound
   void preprocessLowerBound();
 
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const; // modifies core

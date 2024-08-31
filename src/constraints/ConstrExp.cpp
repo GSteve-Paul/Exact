@@ -1933,7 +1933,10 @@ unsigned int ConstrExp<SMALL, LARGE>::subsumeWith(const Lit* lits, const bigint*
                                                   const bigint& degr, ID id, Lit l, const IntMap<int>& level,
                                                   const std::vector<int>& pos, IntSet& saturatedLits) {
   return genericSubsume(lits, cfs, size, degr, id, l, level, pos, saturatedLits);
+
+
 }
+
 
 template struct ConstrExp<int, long long>;
 template struct ConstrExp<long long, int128>;

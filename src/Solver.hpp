@@ -77,8 +77,6 @@ namespace xct
 {
     class Solver
     {
-        template <typename CF, typename DG>
-        friend class Optimization;
         friend class LpSolver;
         friend struct Constr;
         friend struct Clause;
