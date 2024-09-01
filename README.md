@@ -11,12 +11,13 @@ As such, Exact can soundly be used for verification and theorem proving, where i
 
 - **Native conflict analysis** over binary linear constraints, constructing full-blown cutting planes proofs.
 - Highly efficient **watched propagation** routines.
-- Seamless use of **arbitrary precision** arithmetic when needed.
+- Fine-grained employment of **arbitrary precision** calculations - only when needed.
 - Hybrid linear (top-down) and **core-guided** (bottom-up) optimization.
 - Optional integration with the **SoPlex LP solver**.
 - Core solver also compiles on **macOS** and **Windows**.
 - **Python** interface with assumption solving and reuse of solver state (Linux only for now).
 - Generation of **certificates** of optimality and unsatisfiability that can be automatically verified by [VeriPB](https://gitlab.com/MIAOresearch/software/VeriPB).
+- Excellent **performance**, as showcased in [2024's PB competition](https://www.cril.univ-artois.fr/PB24/results/results.php?idev=108). 
 
 
 ## Python interface
