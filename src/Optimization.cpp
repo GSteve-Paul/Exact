@@ -630,6 +630,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
   }
 
   CeArb auxiliaryConstr = global.cePools.takeArb();
+  auxiliaryConstr->orig = Origin::REFORMBOUND;
   auxiliaryConstr->addRhs(auxiliary);
 
   while (auxiliary) {
@@ -688,6 +689,7 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
   }
 
   CeArb auxiliaryConstr = global.cePools.takeArb();
+  auxiliaryConstr->orig = Origin::REFORMBOUND;
   auxiliaryConstr->addRhs(auxiliary);
 
   while (auxiliary) {
