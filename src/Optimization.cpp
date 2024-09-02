@@ -469,8 +469,8 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
     solver.addConstraint(core);
     return {0, nullptr, -INFLPINT};
   }
-  if (!core->hasNegativeSlack(solver.getAssumptions().getIndex()))
-    return {0, nullptr, -INFLPINT};
+  // if (!core->hasNegativeSlack(solver.getAssumptions().getIndex()))
+  //   return {0, nullptr, -INFLPINT};
 
   // saturate
   core->saturate(true, false);
@@ -593,7 +593,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
     auxiliary >>= 1;
   }
 
-  solver.addConstraint(auxiliaryConstr);
+  //solver.addConstraint(auxiliaryConstr);
 
   // reform the obj
   cardCore->invert();
@@ -652,7 +652,7 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
     auxiliary >>= 1;
   }
 
-  solver.addConstraint(auxiliaryConstr);
+  //solver.addConstraint(auxiliaryConstr);
 
   // reform the obj
   totBestCardCore->invert();
