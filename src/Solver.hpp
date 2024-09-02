@@ -73,217 +73,215 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "propagation/LpSolver.hpp"
 #include "typedefs.hpp"
 
-namespace xct
-{
-    class Solver
-    {
-        friend class LpSolver;
-        friend struct Constr;
-        friend struct Clause;
-        friend struct Cardinality;
-        template <typename CF, typename DG>
-        friend struct Watched;
-        template <typename CF, typename DG>
-        friend struct WatchedSafe;
-        friend class Propagator;
-        friend class Equalities;
-        friend class Implications;
+namespace xct {
+class Solver {
+  friend class LpSolver;
+  friend struct Constr;
+  friend struct Clause;
+  friend struct Cardinality;
+  template <typename CF, typename DG>
+  friend struct Watched;
+  template <typename CF, typename DG>
+  friend struct WatchedSafe;
+  friend class Propagator;
+  friend class Equalities;
+  friend class Implications;
 
-        // ---------------------------------------------------------------------
-        // Members
-    private:
-        std::optional<LitVec> lastSol;
+  // ---------------------------------------------------------------------
+  // Members
+ private:
+  std::optional<LitVec> lastSol;
 
-    public:
-        bool foundSolution() const;
-        CeSuper lastCore;
-        CeSuper lastGlobalDual;
-        CeArb objective;
-        Global& global;
+ public:
+  bool foundSolution() const;
+  CeSuper lastCore;
+  CeSuper lastGlobalDual;
+  CeArb objective;
+  Global& global;
 
-    private:
-        int n = 0;
-        std::vector<bool> isorig;
-        bool firstRun = true;
-        bool unsatReached = false;
-        bool objectiveSet = false;
+ private:
+  int n = 0;
+  std::vector<bool> isorig;
+  bool firstRun = true;
+  bool unsatReached = false;
+  bool objectiveSet = false;
 
-        ConstraintAllocator ca;
-        Heuristic heur;
+  ConstraintAllocator ca;
+  Heuristic heur;
 
-        std::vector<CRef> constraints; // row-based view
-        unordered_map<ID, CRef> external;
-        IntMap<unordered_map<CRef, int>> lit2cons; // column-based view, int is index of literal in CRef
-        int lastRemoveSatisfiedsTrail = 0;
-        std::unordered_multimap<Lit, Lit> binaryImplicants; // l implies multimap[l]
-        IntMap<int> lit2consOldSize;
+  std::vector<CRef> constraints;  // row-based view
+  unordered_map<ID, CRef> external;
+  IntMap<unordered_map<CRef, int>> lit2cons;  // column-based view, int is index of literal in CRef
+  int lastRemoveSatisfiedsTrail = 0;
+  std::unordered_multimap<Lit, Lit> binaryImplicants;  // l implies multimap[l]
+  IntMap<int> lit2consOldSize;
 
-        IntMap<std::vector<Watch>> adj;
-        // TODO: make position, level, contiguous memory for better cache efficiency.
-        IntMap<int> level; // map from literal to decision level when on the trail. INF means unset.
-        std::vector<int> position; // map from variable to index ('position') in the trail.
-        LitVec trail; // current assignment in chronological order
-        std::vector<int> trail_lim;
-        // for each level, first index on the trail. This is the index of the decision literal.
-        std::vector<CRef> reason; // map from variable to reason constraint (when propagated, otherwise CRef_Undef)
+  IntMap<std::vector<Watch>> adj;
+  // TODO: make position, level, contiguous memory for better cache efficiency.
+  IntMap<int> level;          // map from literal to decision level when on the trail. INF means unset.
+  std::vector<int> position;  // map from variable to index ('position') in the trail.
+  LitVec trail;               // current assignment in chronological order
+  std::vector<int> trail_lim;
+  // for each level, first index on the trail. This is the index of the decision literal.
+  std::vector<CRef> reason;  // map from variable to reason constraint (when propagated, otherwise CRef_Undef)
 
-        int qhead = 0; // tracks where next index on trail for constraint propagation
+  int qhead = 0;  // tracks where next index on trail for constraint propagation
 
-        std::vector<int> assumptions_lim{0};
-        IntSet assumptions;
-        bool coreguided = false;
+  std::vector<int> assumptions_lim{0};
+  IntSet assumptions;
+  bool coreguided = false;
 
-        std::shared_ptr<LpSolver> lpSolver;
+  std::shared_ptr<LpSolver> lpSolver;
 
-        Equalities equalities;
-        Implications implications;
+  Equalities equalities;
+  Implications implications;
 
-        int64_t nconfl_to_reduce;
-        int64_t nconfl_to_restart;
-        Var nextToSort = 0;
+  int64_t nconfl_to_reduce;
+  int64_t nconfl_to_restart;
+  Var nextToSort = 0;
 
-        // vectors used in subroutines that should not be reallocated over and over
-        LitVec assertionStateMem;
-        std::vector<std::pair<int, Lit>> litsToSubsumeMem;
-        std::vector<unsigned int> falsifiedIdcsMem;
+  // vectors used in subroutines that should not be reallocated over and over
+  LitVec assertionStateMem;
+  std::vector<std::pair<int, Lit>> litsToSubsumeMem;
+  std::vector<unsigned int> falsifiedIdcsMem;
 
-        std::vector<CRef> db_learnts;
+  std::vector<CRef> db_learnts;
 
-        CeSuper getAnalysisCE(const CeSuper& conflict) const;
+  CeSuper getAnalysisCE(const CeSuper& conflict) const;
 
-    public:
-        Solver(Global& g);
-        ~Solver();
-        void setObjective(const CeArb& obj);
-        void ignoreLastObjective();
-        bool objectiveIsSet() const;
-        void reportUnsat(const CeSuper& confl);
+ public:
+  Solver(Global& g);
+  ~Solver();
+  void setObjective(const CeArb& obj);
+  void ignoreLastObjective();
+  bool objectiveIsSet() const;
+  void reportUnsat(const CeSuper& confl);
 
-        int getNbVars() const;
-        void setNbVars(int nvars, bool orig);
-        Var addVar(bool orig);
-        bool isOrig(Var v) const;
+  int getNbVars() const;
+  void setNbVars(int nvars, bool orig);
+  Var addVar(bool orig);
+  bool isOrig(Var v) const;
 
-        Options& getOptions();
-        Stats& getStats();
-        Logger& getLogger();
-        const IntMap<int>& getLevel() const { return level; }
-        const std::vector<int>& getPos() const { return position; }
-        Equalities& getEqualities() { return equalities; }
-        Implications& getImplications() { return implications; }
-        const Heuristic& getHeuristic() const { return heur; }
-        void fixPhase(const std::vector<std::pair<Var, Lit>>& vls, bool bump = false);
+  Options& getOptions();
+  Stats& getStats();
+  Logger& getLogger();
+  const IntMap<int>& getLevel() const { return level; }
+  const std::vector<int>& getPos() const { return position; }
+  Equalities& getEqualities() { return equalities; }
+  Implications& getImplications() { return implications; }
+  const Heuristic& getHeuristic() const { return heur; }
+  void fixPhase(const std::vector<std::pair<Var, Lit>>& vls, bool bump = false);
 
-        int decisionLevel() const { return static_cast<int32_t>(trail_lim.size()); }
-        int assumptionLevel() const { return static_cast<int32_t>(assumptions_lim.size()) - 1; }
+  int decisionLevel() const { return static_cast<int32_t>(trail_lim.size()); }
+  int assumptionLevel() const { return static_cast<int32_t>(assumptions_lim.size()) - 1; }
 
-        // @return: formula line id, processed id, needed for optimization proof logging
-        std::pair<ID, ID> addConstraint(const CeSuper& c);
-        std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c);
-        std::pair<ID, ID> addUnitConstraint(Lit l, Origin orig);
-        std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
-        std::pair<ID, ID> addClauseConstraint(const LitVec& clause, Origin orig);
-        void invalidateLastSol(const VarVec& vars);
+  // @return: formula line id, processed id, needed for optimization proof logging
+  std::pair<ID, ID> addConstraint(const CeSuper& c);
+  std::pair<ID, ID> addConstraint(const ConstrSimpleSuper& c);
+  std::pair<ID, ID> addUnitConstraint(Lit l, Origin orig);
+  std::pair<ID, ID> addBinaryConstraint(Lit l1, Lit l2, Origin orig);
+  std::pair<ID, ID> addClauseConstraint(const LitVec& clause, Origin orig);
+  void invalidateLastSol(const VarVec& vars);
 
-        void dropExternal(ID id, bool erasable, bool forceDelete);
-        int getNbConstraints() const { return constraints.size(); }
-        const std::vector<CRef>& getRawConstraints() const { return constraints; }
-        const ConstraintAllocator& getCA() const { return ca; }
+  void dropExternal(ID id, bool erasable, bool forceDelete);
+  int getNbConstraints() const { return constraints.size(); }
+  const std::vector<CRef>& getRawConstraints() const { return constraints; }
+  const ConstraintAllocator& getCA() const { return ca; }
 
-        void setAssumptions(const LitVec& assumps, bool coreguided);
-        void clearAssumptions();
-        const IntSet& getAssumptions() const;
-        bool assumptionsClashWithUnits() const;
+  void setAssumptions(const LitVec& assumps, bool coreguided);
+  void clearAssumptions();
+  const IntSet& getAssumptions() const;
+  bool assumptionsClashWithUnits() const;
 
-        int getNbUnits() const;
-        LitVec getUnits() const;
-        const LitVec& getLastSolution() const;
+  int getNbUnits() const;
+  LitVec getUnits() const;
+  const LitVec& getLastSolution() const;
 
-        void printHeader() const;
+  void printHeader() const;
 
-        /**
-         * @return SolveState:
-         * 	UNSAT if root inconsistency detected
-         * 	SAT if satisfying assignment found
-         * 	    this->lastSol contains the satisfying assignment
-         * 	INCONSISTENT if no solution extending assumptions exists
-         * 	    this->lastCore is an implied constraint falsified by the assumptions.
-         * 	INPROCESSING if solver just finished a cleanup phase
-         */
-        // TODO: use a coroutine / yield instead of a SolveAnswer return value
-        [[nodiscard]] SolveState solve();
+  /**
+   * @return SolveState:
+   * 	UNSAT if root inconsistency detected
+   * 	SAT if satisfying assignment found
+   * 	    this->lastSol contains the satisfying assignment
+   * 	INCONSISTENT if no solution extending assumptions exists
+   * 	    this->lastCore is an implied constraint falsified by the assumptions.
+   * 	INPROCESSING if solver just finished a cleanup phase
+   */
+  // TODO: use a coroutine / yield instead of a SolveAnswer return value
+  [[nodiscard]] SolveState solve();
 
-    private:
-        bool checkSAT() const;
+ private:
+  bool checkSAT() const;
 
-        // ---------------------------------------------------------------------
-        // Trail manipulation
+  // ---------------------------------------------------------------------
+  // Trail manipulation
 
-        void enqueueUnit(Lit l, Var v, CRef r);
-        void uncheckedEnqueue(Lit l, CRef r);
-        void undoOne();
-        void backjumpTo(int lvl);
-        void decide(Lit l);
-        void propagate(Lit l, CRef r);
-        [[nodiscard]] State probe(Lit l, bool deriveImplications);
-        /**
-         * Unit propagation with watched literals.
-         * @post: all constraints have been checked for propagation under trail[0..qhead[
-         * @return: true if inconsistency is detected, false otherwise. The inconsistency is stored in confl
-         */
-        // TODO: don't return actual conflict, but analyze it internally? Won't work because core extraction is necessary
-        [[nodiscard]] CeSuper runDatabasePropagation();
-        [[nodiscard]] CeSuper runPropagation();
-        [[nodiscard]] CeSuper runPropagationWithLP();
-        WatchStatus checkForPropagation(CRef cr, int& idx, Lit p);
+  void enqueueUnit(Lit l, Var v, CRef r);
+  void uncheckedEnqueue(Lit l, CRef r);
+  void undoOne();
+  void backjumpTo(int lvl);
+  void decide(Lit l);
+  void propagate(Lit l, CRef r);
+  [[nodiscard]] State probe(Lit l, bool deriveImplications);
+  /**
+   * Unit propagation with watched literals.
+   * @post: all constraints have been checked for propagation under trail[0..qhead[
+   * @return: true if inconsistency is detected, false otherwise. The inconsistency is stored in confl
+   */
+  // TODO: don't return actual conflict, but analyze it internally? Won't work because core extraction is necessary
+  [[nodiscard]] CeSuper runDatabasePropagation();
+  [[nodiscard]] CeSuper runPropagation();
+  [[nodiscard]] CeSuper runPropagationWithLP();
+  WatchStatus checkForPropagation(CRef cr, int& idx, Lit p);
 
-        // ---------------------------------------------------------------------
-        // Conflict analysis
+  // ---------------------------------------------------------------------
+  // Conflict analysis
 
-        [[nodiscard]] CeSuper analyze(const CeSuper& confl);
-        void minimize(CeSuper& conflict);
-        [[nodiscard]] Ce32 getUnitClause(Lit l) const;
-        [[nodiscard]] CeSuper extractCore(const CeSuper& confl, Lit l_assump = 0);
+  [[nodiscard]] CeSuper analyze(const CeSuper& confl);
+  void minimize(CeSuper& conflict);
+  [[nodiscard]] Ce32 getUnitClause(Lit l) const;
+  [[nodiscard]] CeSuper extractCore(const CeSuper& confl, Lit l_assump = 0);
 
-        // ---------------------------------------------------------------------
-        // Constraint management
+  // ---------------------------------------------------------------------
+  // Constraint management
 
-        [[nodiscard]] CRef attachConstraint(const CeSuper& constraint, bool locked);
-        void removeConstraint(const CRef& cr, bool override = false);
-        void learnConstraint(const CeSuper& c);
-        void learnUnitConstraint(Lit l, Origin orig, ID id);
-        void learnClause(Lit l1, Lit l2, Origin orig, ID id);
-        std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
+  [[nodiscard]] CRef attachConstraint(const CeSuper& constraint, bool locked);
+  void removeConstraint(const CRef& cr, bool override = false);
+  void learnConstraint(const CeSuper& c);
+  void learnUnitConstraint(Lit l, Origin orig, ID id);
+  void learnClause(Lit l1, Lit l2, Origin orig, ID id);
+  std::pair<ID, ID> addInputConstraint(const CeSuper& ce);
 
-        // ---------------------------------------------------------------------
-        // Garbage collection
+  // ---------------------------------------------------------------------
+  // Garbage collection
 
-        void garbage_collect();
-        void reduceDB();
+  void garbage_collect();
+  void reduceDB();
 
-        // ---------------------------------------------------------------------
-        // Restarts
+  // ---------------------------------------------------------------------
+  // Restarts
 
-        static double luby(double y, int i);
+  static double luby(double y, int i);
 
-        // ---------------------------------------------------------------------
-        // Inprocessing
-    public:
-        void presolve();
+  // ---------------------------------------------------------------------
+  // Inprocessing
+ public:
+  void presolve();
 
-    private:
-        void inProcess();
-        void sortWatchlists();
-        void removeSatisfiedNonImpliedsAtRoot();
-        void derivePureLits();
-        void dominanceBreaking();
-        void rebuildLit2Cons();
+ private:
+  void inProcess();
+  void sortWatchlists();
+  void removeSatisfiedNonImpliedsAtRoot();
+  void derivePureLits();
+  void dominanceBreaking();
+  void rebuildLit2Cons();
 
-        Var lastRestartNext = 0;
-        void probeRestart(Lit next);
+  Var lastRestartNext = 0;
+  void probeRestart(Lit next);
 
-        void detectAtMostOne(Lit seed, unordered_set<Lit>& considered, LitVec& previousProbe);
-        unordered_map<uint64_t, unsigned int> atMostOneHashes; // maps to size of at-most-one
-        void runAtMostOneDetection();
-    };
-} // namespace xct
+  void detectAtMostOne(Lit seed, unordered_set<Lit>& considered, LitVec& previousProbe);
+  unordered_map<uint64_t, unsigned int> atMostOneHashes;  // maps to size of at-most-one
+  void runAtMostOneDetection();
+};
+}  // namespace xct

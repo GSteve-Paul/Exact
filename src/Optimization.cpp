@@ -67,10 +67,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace xct {
 template <typename SMALL, typename LARGE>
-LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar,
-                               const SMALL& m, const LARGE& upperBnd)
-  : solver(slvr), coveredVars(cardCore->getDegree()),
-    upperBound(cardCore->nVars()), mult(m) {
+LazyVar<SMALL, LARGE>::LazyVar(Solver& slvr, const Ce32& cardCore, Var startVar, const SMALL& m, const LARGE& upperBnd)
+    : solver(slvr), coveredVars(cardCore->getDegree()), upperBound(cardCore->nVars()), mult(m) {
   setUpperBound(upperBnd);
   assert(remainingVars() > 0);
   cardCore->copyTo(atLeast);
@@ -105,8 +103,7 @@ void LazyVar<SMALL, LARGE>::setUpperBound(const LARGE& normalizedUpperBound) {
   assert(normalizedUpperBound >= 0);
   assert(mult > 0);
   const LARGE tmp = normalizedUpperBound / mult;
-  if (tmp < upperBound)
-    upperBound = static_cast<int>(tmp);
+  if (tmp < upperBound) upperBound = static_cast<int>(tmp);
 }
 
 template <typename SMALL, typename LARGE>
@@ -149,13 +146,10 @@ void LazyVar<SMALL, LARGE>::addFinalAtMost() {
   solver.addConstraint(atMost);
 }
 
-OptimizationSuper::OptimizationSuper(Solver& s, const bigint& os,
-                                     const IntSet& assumps)
-  : solver(s), global(s.global), offset(os), assumptions(assumps) {
-}
+OptimizationSuper::OptimizationSuper(Solver& s, const bigint& os, const IntSet& assumps)
+    : solver(s), global(s.global), offset(os), assumptions(assumps) {}
 
-Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver,
-                              const IntSet& assumps) {
+Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver, const IntSet& assumps) {
   CeArb obj = solver.global.cePools.takeArb();
   ico.toConstrExp(obj, true);
   obj->removeEqualities(solver.getEqualities());
@@ -185,14 +179,12 @@ Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver,
     // TODO: try to internalize this check in ConstrExp
     Ce32 o = solver.global.cePools.take32();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int, long long>>(
-        o, solver, offs, assumps);
+    return std::make_shared<Optimization<int, long long>>(o, solver, offs, assumps);
   }
   if (maxVal <= static_cast<bigint>(limitAbs<long long, int128>())) {
     Ce64 o = solver.global.cePools.take64();
     obj->copyTo(o);
-    return std::make_shared<Optimization<long long, int128>>(
-        o, solver, offs, assumps);
+    return std::make_shared<Optimization<long long, int128>>(o, solver, offs, assumps);
   }
   // TODO: below yielded a bug during coreguided search - not sure where. Multiplying two coefficients?
   //  if (maxVal <= static_cast<bigint>(limitAbs<int128, int128>())) {
@@ -203,13 +195,11 @@ Optim OptimizationSuper::make(const IntConstraint& ico, Solver& solver,
   if (maxVal <= static_cast<bigint>(limitAbs<int128, int256>())) {
     Ce128 o = solver.global.cePools.take128();
     obj->copyTo(o);
-    return std::make_shared<Optimization<int128, int256>>(
-        o, solver, offs, assumps);
+    return std::make_shared<Optimization<int128, int256>>(o, solver, offs, assumps);
   }
   CeArb o = solver.global.cePools.takeArb();
   obj->copyTo(o);
-  return std::make_shared<Optimization<bigint, bigint>>(
-      o, solver, offs, assumps);
+  return std::make_shared<Optimization<bigint, bigint>>(o, solver, offs, assumps);
 }
 
 template <typename SMALL, typename LARGE>
@@ -218,26 +208,24 @@ void simplifyAssumps(CePtr<SMALL, LARGE>& c, const IntSet& assumps) {
     // remove assumptions from objective
     const Var v = toVar(l);
     if (c->hasVar(v)) {
-      if (c->hasLit(l))
-        c->addRhs(aux::abs(c->coefs[v]));
+      if (c->hasLit(l)) c->addRhs(aux::abs(c->coefs[v]));
       c->coefs[v] = 0;
     }
   }
 }
 
 template <typename SMALL, typename LARGE>
-Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj,
-                                         Solver& s, const bigint& os,
+Optimization<SMALL, LARGE>::Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& os,
                                          const IntSet& assumps)
-  : OptimizationSuper(s, os, assumps),
-    origObj(obj),
-    lower_bound(0),
-    upper_bound(obj->absCoeffSum() + 1),
-    lastUpperBound(ID_Undef),
-    lastLowerBound(ID_Undef),
-    lastReformUpperBound(ID_Undef),
-    boundingVal(0),
-    boundingVar(0) {
+    : OptimizationSuper(s, os, assumps),
+      origObj(obj),
+      lower_bound(0),
+      upper_bound(obj->absCoeffSum() + 1),
+      lastUpperBound(ID_Undef),
+      lastLowerBound(ID_Undef),
+      lastReformUpperBound(ID_Undef),
+      boundingVal(0),
+      boundingVar(0) {
   assert(origObj->getDegree() == 0);
   global.logger.logObjective(origObj);
   if (global.options.optCoreguided) {
@@ -276,26 +264,20 @@ CeSuper Optimization<SMALL, LARGE>::getOrigObj() const {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::printObjBounds(bool upperImproved) {
-  if (!solver.objectiveIsSet())
-    return;
-  if (!global.options.uniformOut && (
-        global.options.fileFormat.is("opb") || global.options.fileFormat.is(
-            "wbo") ||
-        global.options.fileFormat.is("wcnf"))) {
-    if (upperImproved)
-      std::cout << "o " << getUpperBound() << std::endl;
+  if (!solver.objectiveIsSet()) return;
+  if (!global.options.uniformOut && (global.options.fileFormat.is("opb") || global.options.fileFormat.is("wbo") ||
+                                     global.options.fileFormat.is("wcnf"))) {
+    if (upperImproved) std::cout << "o " << getUpperBound() << std::endl;
     return;
   }
-  if (global.options.verbosity.get() == 0)
-    return;
+  if (global.options.verbosity.get() == 0) return;
   std::cout << "c     bounds ";
   if (solver.foundSolution()) {
     std::cout << getUpperBound();
   } else {
     std::cout << "-";
   }
-  std::cout << " >= " << getLowerBound() << " @ " << global.stats.getTime() <<
-      ", " << global.stats.NCONFL.z << "\n";
+  std::cout << " >= " << getLowerBound() << " @ " << global.stats.getTime() << ", " << global.stats.NCONFL.z << "\n";
 }
 
 template <typename SMALL, typename LARGE>
@@ -306,8 +288,7 @@ void Optimization<SMALL, LARGE>::checkLazyVariables() {
     LazyVar<SMALL, LARGE>& lv = *lazyVars[i];
     if (reformObj->getLit(lv.currentVar) == 0) {
       lv.setUpperBound(upper_bound);
-      if (lv.remainingVars() == 0 ||
-          isUnit(solver.getLevel(), -lv.currentVar)) {
+      if (lv.remainingVars() == 0 || isUnit(solver.getLevel(), -lv.currentVar)) {
         // binary constraints make all new auxiliary variables unit
         lv.addFinalAtMost();
         plf::single_reorderase(lazyVars, lazyVars.begin() + i);
@@ -341,7 +322,7 @@ void Optimization<SMALL, LARGE>::addLowerBound() {
   aux->orig = Origin::LOWERBOUND;
   aux->addRhs(lower_bound);
   assert(static_cast<bigint>(limitAbs<SMALL, LARGE>()) == 0 ||
-      aux->getDegree() < static_cast<bigint>(limitAbs<SMALL, LARGE>()));
+         aux->getDegree() < static_cast<bigint>(limitAbs<SMALL, LARGE>()));
   for (Lit l : assumptions.getKeys()) {
     aux->addLhs(static_cast<SMALL>(aux->getDegree()), -l);
     // bound only holds under assumptions
@@ -353,8 +334,7 @@ void Optimization<SMALL, LARGE>::addLowerBound() {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::addReformUpperBound(bool deletePrevious) {
-  if (!reformObj || reformObj->vars.empty())
-    return;
+  if (!reformObj || reformObj->vars.empty()) return;
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   reformObj->copyTo(aux);
   aux->orig = Origin::REFORMBOUND;
@@ -385,10 +365,7 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {
   // sort in decreasing coef order to minimize number of auxiliary variables, but break ties so that *small*
   // objective coefficient literals are removed first, to maximize the chances of a strong lower bound.
   card->sortInDecreasingCoefOrder(
-      [&](Var v1, Var v2) {
-        return reformObj->getCoef(card->getLit(v1)) > reformObj->getCoef(
-                   card->getLit(v2));
-      });
+      [&](Var v1, Var v2) { return reformObj->getCoef(card->getLit(v1)) > reformObj->getCoef(card->getLit(v2)); });
   card->simplifyToCardinality(false, card->getCardinalityDegree());
 
   Ce32 result = global.cePools.take32();
@@ -397,17 +374,10 @@ Ce32 Optimization<SMALL, LARGE>::reduceToCardinality(const CeSuper& core) {
 }
 
 template <typename SMALL, typename LARGE>
-Lit Optimization<SMALL, LARGE>::getKnapsackLit(
-    const CePtr<SMALL, LARGE>& core) const {
+Lit Optimization<SMALL, LARGE>::getKnapsackLit(const CePtr<SMALL, LARGE>& core) const {
   core->sortWithCoefTiebreaker([&](Var v1, Var v2) {
-    const LARGE o1r2 = reformObj->getLit(v1) == core->getLit(v1)
-                         ? aux::abs(
-                             reformObj->coefs[v1] * core->coefs[v2])
-                         : 0;
-    const LARGE o2r1 = reformObj->getLit(v2) == core->getLit(v2)
-                         ? aux::abs(
-                             reformObj->coefs[v2] * core->coefs[v1])
-                         : 0;
+    const LARGE o1r2 = reformObj->getLit(v1) == core->getLit(v1) ? aux::abs(reformObj->coefs[v1] * core->coefs[v2]) : 0;
+    const LARGE o2r1 = reformObj->getLit(v2) == core->getLit(v2) ? aux::abs(reformObj->coefs[v2] * core->coefs[v1]) : 0;
     return aux::sgn(o1r2 - o2r1);
     // TODO: check whether sorting the literals is a bottleneck
     // TODO: cast to LARGE when using smaller SMALL, LARGE
@@ -427,18 +397,14 @@ Lit Optimization<SMALL, LARGE>::getKnapsackLit(
 template <typename SMALL, typename LARGE>
 State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {
   // modifies core
-  core->weaken([&](Lit l) {
-    return !assumptions.has(-l) && !reformObj->hasLit(l);
-  });
-  if (core->isTautology())
-    return State::FAIL;
+  core->weaken([&](Lit l) { return !assumptions.has(-l) && !reformObj->hasLit(l); });
+  if (core->isTautology()) return State::FAIL;
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   if (core->isUnsat()) {
     solver.addConstraint(core);
     return State::FAIL;
   }
-  if (!core->hasNegativeSlack(solver.getAssumptions().getIndex()))
-    return State::FAIL;
+  if (!core->hasNegativeSlack(solver.getAssumptions().getIndex())) return State::FAIL;
   core->saturate(true, false);
   Ce32 cardCore = reduceToCardinality(core);
   cardCore->orig = Origin::COREGUIDED;
@@ -448,16 +414,11 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {
   assert(!cardCore->empty());
   SMALL mult = 0;
   for (Var v : cardCore->getVars()) {
-    if (mult == 1)
-      break;
-    if (!reformObj->hasLit(cardCore->getLit(v)))
-      continue; // in case of user assumption
-    mult = (mult == 0)
-             ? aux::abs(reformObj->coefs[v])
-             : std::min(mult, aux::abs(reformObj->coefs[v]));
+    if (mult == 1) break;
+    if (!reformObj->hasLit(cardCore->getLit(v))) continue;  // in case of user assumption
+    mult = (mult == 0) ? aux::abs(reformObj->coefs[v]) : std::min(mult, aux::abs(reformObj->coefs[v]));
   }
-  if (mult == 0)
-    return State::FAIL; // no further literals of the objective remain
+  if (mult == 0) return State::FAIL;  // no further literals of the objective remain
 
   global.stats.NCGNONCLAUSALCORES += !cardCore->isClause();
 
@@ -475,12 +436,10 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {
   if (needAuxiliary) {
     // add auxiliary variable
     int newN = solver.addVar(false);
-    reformObj->addLhs(mult, newN); // add only one variable for now
+    reformObj->addLhs(mult, newN);  // add only one variable for now
 
     // add first lazy constraint
-    lazyVars.push_back(
-        std::make_unique<LazyVar<SMALL, LARGE>>(
-            solver, cardCore, newN, mult, upper_bound));
+    lazyVars.push_back(std::make_unique<LazyVar<SMALL, LARGE>>(solver, cardCore, newN, mult, upper_bound));
     lazyVars.back()->addAtLeastConstraint();
     lazyVars.back()->addAtMostConstraint();
   }
@@ -501,8 +460,8 @@ State Optimization<SMALL, LARGE>::reformObjective(const CeSuper& core) {
 }
 
 template <typename SMALL, typename LARGE>
-std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
-    const CeSuper& core, const CePtr<SMALL, LARGE>& obj) {
+std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const CeSuper& core,
+                                                                           const CePtr<SMALL, LARGE>& obj) {
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
   if (core->isTautology())
     return {0, nullptr, -INFLPINT};
@@ -513,7 +472,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
   if (!core->hasNegativeSlack(solver.getAssumptions().getIndex()))
     return {0, nullptr, -INFLPINT};
 
-  //saturate
+  // saturate
   core->saturate(true, false);
   Ce32 cardCore = reduceToCardinality(core);
   cardCore->orig = Origin::COREGUIDED;
@@ -535,15 +494,11 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
     Lit lit;
     SMALL coeff;
 
-    LitTerm() {
-    }
+    LitTerm() {}
 
-    LitTerm(Lit lit, SMALL coeff) : lit(lit), coeff(coeff) {
-    }
+    LitTerm(Lit lit, SMALL coeff) : lit(lit), coeff(coeff) {}
 
-    bool operator<(const LitTerm& that) const {
-      return coeff < that.coeff;
-    }
+    bool operator<(const LitTerm& that) const { return coeff < that.coeff; }
   };
   static std::vector<LitTerm> objTerms;
   LARGE objRhs = obj->getRhs();
@@ -567,8 +522,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
     Var varInObj = toVar(litInObj);
     assert(varInObj > 0);
 
-    if (!cardCore->hasVar(varInObj))
-      continue;
+    if (!cardCore->hasVar(varInObj)) continue;
 
     SMALL targetCoefficient = objTerms[i].coeff;
 
@@ -583,11 +537,9 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(
     cnt++;
     presum += objTerms[i].coeff;
 
-    LARGE tmpLb = cardCoreDegree * targetCoefficient -
-                  (cnt * targetCoefficient - presum);
+    LARGE tmpLb = cardCoreDegree * targetCoefficient - (cnt * targetCoefficient - presum);
 
-    if (targetCoefficient < 0)
-      tmpLb += auxiliary * targetCoefficient;
+    if (targetCoefficient < 0) tmpLb += auxiliary * targetCoefficient;
 
     if (tmpLb > bestLb) {
       bestLit = litInObj;
@@ -618,7 +570,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
 
   assert(bestLb >= lower_bound);
 
-  //add auxiliary variables into cardCore implicitly, and then add into reformObj
+  // add auxiliary variables into cardCore implicitly, and then add into reformObj
   long long auxiliary = cardCore->nVars() - cardCore->getDegree();
   SMALL coefficient = 1;
 
@@ -643,7 +595,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
 
   solver.addConstraint(auxiliaryConstr);
 
-  //reform the obj
+  // reform the obj
   cardCore->invert();
   reformObj->addUp(cardCore, targetCoefficient);
   simplifyAssumps(reformObj, assumptions);
@@ -702,7 +654,7 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
 
   solver.addConstraint(auxiliaryConstr);
 
-  //reform the obj
+  // reform the obj
   totBestCardCore->invert();
   reformObj->addUp(totBestCardCore, targetCoefficient);
   simplifyAssumps(reformObj, assumptions);
@@ -711,7 +663,6 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
 
   addReformUpperBound(false);
 }
-
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
@@ -740,34 +691,27 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
 
   if (!core->isTautology()) {
     assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
-    State result = State::SUCCESS;
-    while (result == State::SUCCESS) {
-      //result = reformObjective(core);
+    State result = State::FAIL;
 
+    while(result == State::FAIL && reformObj->nVars()) {
       result = reformObjectiveSmartly(core);
-      core->weaken([&](Lit l) {
-        return !assumptions.has(-l) && !reformObj->hasLit(l);
-      });
-
-      if (!global.options.optReuseCores)
-        break;
+      if (!global.options.optReuseCores) break;
+      core->weaken([&](Lit l) { return !assumptions.has(-l) && !reformObj->hasLit(l); });
     }
     simplifyAssumps(reformObj, assumptions);
     addReformUpperBound(false);
-  } // else only violated unit assumptions were derived
+  }  // else only violated unit assumptions were derived
 
   checkLazyVariables();
 }
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::boundObjByLastSol() {
-  if (!solver.foundSolution())
-    throw InvalidArgument("No solution to add objective bound.");
+  if (!solver.foundSolution()) throw InvalidArgument("No solution to add objective bound.");
   const LitVec& sol = solver.getLastSolution();
 
   upper_bound = -origObj->getRhs();
-  for (Var v : origObj->getVars())
-    upper_bound += sol[v] > 0 ? origObj->coefs[v] : 0;
+  for (Var v : origObj->getVars()) upper_bound += sol[v] > 0 ? origObj->coefs[v] : 0;
 
   CePtr<SMALL, LARGE> aux = global.cePools.take<SMALL, LARGE>();
   origObj->copyTo(aux);
@@ -778,8 +722,7 @@ void Optimization<SMALL, LARGE>::boundObjByLastSol() {
   std::pair<ID, ID> res = solver.addConstraint(aux);
   lastUpperBound = res.second;
 
-  if (global.options.proofAssumps)
-    addReformUpperBound(true);
+  if (global.options.proofAssumps) addReformUpperBound(true);
 }
 
 template <typename SMALL, typename LARGE>
@@ -792,12 +735,11 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
     return SolveState::UNSAT;
   }
 
-  //initialize lowerbound
+  // initialize lowerbound
   preprocessLowerBound();
 
   while (true) {
-    if (timeout != 0 && global.stats.getRunTime() > timeout)
-      return SolveState::TIMEOUT;
+    if (timeout != 0 && global.stats.getRunTime() > timeout) return SolveState::TIMEOUT;
     quit::checkInterrupt(global);
     // NOTE: it's possible that upper_bound < lower_bound, since at the point of optimality, the objective-improving
     // constraint yields UNSAT, at which case core-guided search can derive any constraint.
@@ -813,41 +755,32 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
     if (optimize && !origObj->empty() && lower_bound < upper_bound &&
         (global.options.optRatio.get() >= 1 ||
          global.stats.DETTIMEBOTTOMUP <
-         global.options.optRatio.get() * (
-           global.stats.DETTIMETOPDOWN + global.stats.DETTIMEBOTTOMUP))) {
+             global.options.optRatio.get() * (global.stats.DETTIMETOPDOWN + global.stats.DETTIMEBOTTOMUP))) {
       // figure out and set new bottom-up assumptions
       if (global.options.optCoreguided && global.options.proofAssumps) {
         assert(reformObj);
         reformObj->removeEqualities(solver.getEqualities());
         simplifyAssumps(reformObj, assumptions);
-        reformObj->removeUnitsAndZeroes(solver.getLevel(),
-                                        solver.getPos());
+        reformObj->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
         if (!reformObj->isSortedInDecreasingCoefOrder()) {
-          reformObj->sortInDecreasingCoefOrder([](Var v1, Var v2) {
-            return v1 < v2;
-          });
+          reformObj->sortInDecreasingCoefOrder([](Var v1, Var v2) { return v1 < v2; });
         }
         if (reformObj->empty()) {
           solver.setAssumptions(assumptions.getKeys(), false);
         } else {
-          assumps.insert(assumps.end(), assumptions.getKeys().begin(),
-                         assumptions.getKeys().end());
+          assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
           VarVec& refVars = reformObj->vars;
           if (global.options.optStratification.get() == 0) {
-            for (const Var v : refVars)
-              assumps.push_back(-reformObj->getLit(v));
+            for (const Var v : refVars) assumps.push_back(-reformObj->getLit(v));
           } else {
             LARGE allowed =
-                (upper_bound - lower_bound) - (
-                  upper_bound - lower_bound) / global.options.
-                                                      optStratification.get();
+                (upper_bound - lower_bound) - (upper_bound - lower_bound) / global.options.optStratification.get();
             assert(allowed > 0);
             SMALL lastCoef = 0;
             SMALL cf = 0;
             for (const Var v : refVars) {
               cf = aux::abs(reformObj->coefs[v]);
-              if (allowed <= 0 && cf != lastCoef)
-                break;
+              if (allowed <= 0 && cf != lastCoef) break;
               assumps.push_back(-reformObj->getLit(v));
               allowed -= cf;
               lastCoef = cf;
@@ -857,8 +790,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
         }
       } else {
         boundBottomUp();
-        assumps.insert(assumps.end(), assumptions.getKeys().begin(),
-                       assumptions.getKeys().end());
+        assumps.insert(assumps.end(), assumptions.getKeys().begin(), assumptions.getKeys().end());
         assumps.push_back(-boundingVar);
         solver.setAssumptions(assumps, true);
       }
@@ -869,31 +801,22 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
     }
 
     SolveState reply;
-    if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(
-            solver.getAssumptions().getIndex())) {
+    if (solver.lastGlobalDual && solver.lastGlobalDual->hasNegativeSlack(solver.getAssumptions().getIndex())) {
       // NOTE: this optimization really helps with knapsack instances, because it immediately fixes a bunch of variables
       // TODO: generalize this: reformulate the *original* objective with the new bound after an inconsistency?
       reply = SolveState::INCONSISTENT;
       solver.lastCore = solver.lastGlobalDual;
     } else {
       try {
-        reply = aux::timeCall<SolveState>([&] {
-                                            return solver.solve();
-                                          },
-                                          topdown
-                                            ? global.stats.
-                                                     SOLVETIMETOPDOWN
-                                            : global.stats.
-                                                     SOLVETIMEBOTTOMUP);
+        reply = aux::timeCall<SolveState>([&] { return solver.solve(); },
+                                          topdown ? global.stats.SOLVETIMETOPDOWN : global.stats.SOLVETIMEBOTTOMUP);
       } catch (const UnsatEncounter&) {
         reply = SolveState::UNSAT;
       }
       if (topdown) {
-        global.stats.DETTIMETOPDOWN += global.stats.getDetTime() -
-            current_time;
+        global.stats.DETTIMETOPDOWN += global.stats.getDetTime() - current_time;
       } else {
-        global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() -
-            current_time;
+        global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
       }
     }
 
@@ -916,13 +839,9 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           return SolveState::INCONSISTENT;
         }
         current_time = global.stats.getDetTime();
-        aux::timeCallVoid([&] {
-          handleInconsistency(solver.lastCore);
-        }, global.stats.SOLVETIMEBOTTOMUP);
-        global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() -
-            current_time;
-        if (global.options.proofAssumps)
-          addLowerBound();
+        aux::timeCallVoid([&] { handleInconsistency(solver.lastCore); }, global.stats.SOLVETIMEBOTTOMUP);
+        global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
+        if (global.options.proofAssumps) addLowerBound();
         solver.clearAssumptions();
         printObjBounds(false);
       } else {
@@ -933,11 +852,9 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
         return SolveState::INCONSISTENT;
       }
     } else {
-      assert(
-          reply == SolveState::INPROCESSED || reply == SolveState::UNSAT);
+      assert(reply == SolveState::INPROCESSED || reply == SolveState::UNSAT);
       if (global.options.printCsvData) {
-        global.stats.printCsvLine(static_cast<StatNum>(lower_bound),
-                                  static_cast<StatNum>(upper_bound));
+        global.stats.printCsvLine(static_cast<StatNum>(lower_bound), static_cast<StatNum>(upper_bound));
       }
       if (reply == SolveState::UNSAT) {
         lower_bound = upper_bound;
@@ -950,8 +867,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::runFull(bool optimize, double timeout) {
   SolveState result = SolveState::INPROCESSED;
-  while (result == SolveState::INPROCESSED || (
-           result == SolveState::SAT && optimize)) {
+  while (result == SolveState::INPROCESSED || (result == SolveState::SAT && optimize)) {
     result = run(optimize, timeout);
   }
   return result;
@@ -961,9 +877,8 @@ template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::boundBottomUp() {
   assert(lower_bound < upper_bound);
   LARGE bnd = lower_bound + (global.options.optPrecision.get() == 0
-                               ? static_cast<LARGE>(0)
-                               : (upper_bound - lower_bound) / global.
-                                                               options.optPrecision.get());
+                                 ? static_cast<LARGE>(0)
+                                 : (upper_bound - lower_bound) / global.options.optPrecision.get());
   assert(bnd < upper_bound);
   assert(bnd >= lower_bound);
   if (boundingVar == 0 || bnd != boundingVal) {
@@ -971,8 +886,8 @@ void Optimization<SMALL, LARGE>::boundBottomUp() {
     CeArb bound = global.cePools.takeArb();
     origObj->copyTo(bound);
     assert(bound->getDegree() == 0);
-    bound->addRhs(boundingVal); // objective must be at least middle
-    bound->invert(); // objective must be at most middle
+    bound->addRhs(boundingVal);  // objective must be at least middle
+    bound->invert();             // objective must be at most middle
     boundingVar = solver.addVar(false);
     bound->addLhs(bound->getDegree(), boundingVar);
     // ~boundingVar enables bisect constraint
@@ -992,4 +907,4 @@ template struct LazyVar<long long, int128>;
 template struct LazyVar<int128, int128>;
 template struct LazyVar<int128, int256>;
 template struct LazyVar<bigint, bigint>;
-} // namespace xct
+}  // namespace xct

@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 name = "Exact"
 version = "2.1.0"
 authors = [
-    { name="Jo Devriendt", email="jo.devriendt@nonfictionsoftware.com" },
+    { name = "Jo Devriendt", email = "jo.devriendt@nonfictionsoftware.com" },
 ]
 description = "Python bindings for Exact"
 readme = "README.md"

@@ -67,8 +67,8 @@ ext_modules = [
         # extra_compile_args=["/O2","/std:c++20"],
         # define_macros=[("UNIXLIKE",0),("ANKERLMAPS",1)]
         # FOR LINUX / OSX
-        extra_compile_args=["-O3","-std=c++20"],
-        define_macros=[("UNIXLIKE",1),("ANKERLMAPS",1)]
+        extra_compile_args=["-O3", "-std=c++20"],
+        define_macros=[("UNIXLIKE", 1), ("ANKERLMAPS", 1)]
     ),
 ]
 

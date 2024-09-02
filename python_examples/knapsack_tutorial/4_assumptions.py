@@ -7,10 +7,14 @@ import exact
 # Create an Exact solver instance
 solver = exact.Exact()
 
+
 def lb(v):
-    return -(v%3)
+    return -(v % 3)
+
+
 def ub(v):
-    return 1+v%2
+    return 1 + v % 2
+
 
 # Construct a non-trivial integer knapsack instance
 nvars = 50
@@ -31,7 +35,7 @@ solver.addConstraint(list(zip(coefs_c, vars)), True, rhs_c)
 solver.setObjective(list(zip(coefs_o, vars)))
 
 # Assume that every other variable is zero
-assumptions = [(str(v), 0) for v in var_range if v%2==1]
+assumptions = [(str(v), 0) for v in var_range if v % 2 == 1]
 solver.setAssumptions(assumptions)
 
 # Get the optimum value
@@ -47,4 +51,4 @@ state, propagatedBounds = solver.propagate(vars)
 print(state)
 assert state == "SAT"
 print("Propagated bounds:",
-      {vars[i]: propagatedBounds[i] for i in range(0, len(vars)) if propagatedBounds[i] != (lb(i+1), ub(i+1))})
+      {vars[i]: propagatedBounds[i] for i in range(0, len(vars)) if propagatedBounds[i] != (lb(i + 1), ub(i + 1))})

@@ -71,14 +71,9 @@ CeSuper ConstrSimple<CF, DG>::toExpanded(ConstrExpPools &cePools) const
     // TODO: make this the minimal bitwidth expanded constraint?
     CePtr<CF, DG> ce = cePools.take<CF, DG>();
     ce->addRhs(rhs);
-    std::cout << ce->getRhs() << std::endl;
     for (const Term<CF> &t : terms)
     {
-        std::cout << "c" << " " << t.c << " " << "l" << " " << t.l << std::endl;
         ce->addLhs(t.c, t.l);
-        Var var = toVar(t.l);
-        Lit lit = ce->getLit(var);
-        std::cout << ce->getCoef(lit) << " " << lit << std::endl;
     }
     ce->orig = orig;
     ce->resetBuffer(proofLine);

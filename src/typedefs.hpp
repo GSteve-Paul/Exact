@@ -64,232 +64,200 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "auxiliary.hpp"
 
-namespace xct
-{
-  using ID = uint64_t;
-  constexpr ID ID_Undef = 0;
-  constexpr ID ID_Trivial = 1; // represents constraint 0 >= 0
-  inline bool isValid(ID id) { return id != ID_Undef; }
+namespace xct {
+using ID = uint64_t;
+constexpr ID ID_Undef = 0;
+constexpr ID ID_Trivial = 1;  // represents constraint 0 >= 0
+inline bool isValid(ID id) { return id != ID_Undef; }
 
-  constexpr unsigned int MAXLBD = 1e5;
+constexpr unsigned int MAXLBD = 1e5;
 
-  using Var = int32_t;
-  using Lit = int32_t;
-  inline Var toVar(Lit l) { return std::abs(l); }
-  using VarVec = std::vector<Var>;
-  using LitVec = std::vector<Lit>;
+using Var = int32_t;
+using Lit = int32_t;
+inline Var toVar(Lit l) { return std::abs(l); }
+using VarVec = std::vector<Var>;
+using LitVec = std::vector<Lit>;
 
-  constexpr int32_t resize_factor = 2;
+constexpr int32_t resize_factor = 2;
 
-  constexpr int32_t INF =
-    1e9 + 1; // 1e9 < 30 bits is the maximum number of variables in the system, anything beyond is infinity
-  // NOTE: 31 bits is not possible due to the idx entry in the Watch struct
-  constexpr long long INFLPINT = 4e15 + 1; // 4e15 < 52 bits, based on max long long range captured by double
+constexpr int32_t INF =
+    1e9 + 1;  // 1e9 < 30 bits is the maximum number of variables in the system, anything beyond is infinity
+// NOTE: 31 bits is not possible due to the idx entry in the Watch struct
+constexpr long long INFLPINT = 4e15 + 1;  // 4e15 < 52 bits, based on max long long range captured by double
 
-  template <typename CF, typename DG>
-  inline double limitAbs()
-  {
-    // static_assert(false);
-    assert(false);
-    return 0;
-  }
+template <typename CF, typename DG>
+inline double limitAbs() {
+  // static_assert(false);
+  assert(false);
+  return 0;
+}
 
-  template <>
-  inline double limitAbs<bigint, bigint>()
-  {
-    return 0;
-  }
+template <>
+inline double limitAbs<bigint, bigint>() {
+  return 0;
+}
 
-  template <>
-  inline double limitAbs<int, long long>()
-  {
-    return 1e9; // 2^29-2^30
-  }
+template <>
+inline double limitAbs<int, long long>() {
+  return 1e9;  // 2^29-2^30
+}
 
-  template <>
-  inline double limitAbs<long long, int128>()
-  {
-    return 2e18; // 2^60-2^61
-  }
+template <>
+inline double limitAbs<long long, int128>() {
+  return 2e18;  // 2^60-2^61
+}
 
-  template <>
-  inline double limitAbs<int128, int128>()
-  {
-    return 9e27; // 2^92-2^93
-  }
+template <>
+inline double limitAbs<int128, int128>() {
+  return 9e27;  // 2^92-2^93
+}
 
-  template <>
-  inline double limitAbs<int128, int256>()
-  {
-    return 4e37; // 2^124-2^125
-  }
+template <>
+inline double limitAbs<int128, int256>() {
+  return 4e37;  // 2^124-2^125
+}
 
-  template <>
-  inline double limitAbs<int256, bigint>()
-  {
-    return 1e76; // 2^252-2^253
-  }
+template <>
+inline double limitAbs<int256, bigint>() {
+  return 1e76;  // 2^252-2^253
+}
 
-  template <typename CF, typename DG>
-  inline int limitBit()
-  {
-    // static_assert(false);
-    assert(false);
-    return -1;
-  }
+template <typename CF, typename DG>
+inline int limitBit() {
+  // static_assert(false);
+  assert(false);
+  return -1;
+}
 
-  template <>
-  inline int limitBit<int, long long>()
-  {
-    return 29;
-  }
+template <>
+inline int limitBit<int, long long>() {
+  return 29;
+}
 
-  template <>
-  inline int limitBit<long long, int128>()
-  {
-    return 60;
-  }
+template <>
+inline int limitBit<long long, int128>() {
+  return 60;
+}
 
-  template <>
-  inline int limitBit<int128, int128>()
-  {
-    return 92;
-  }
+template <>
+inline int limitBit<int128, int128>() {
+  return 92;
+}
 
-  template <>
-  inline int limitBit<int128, int256>()
-  {
-    return 124;
-  }
+template <>
+inline int limitBit<int128, int256>() {
+  return 124;
+}
 
-  template <>
-  inline int limitBit<int256, bigint>()
-  {
-    return 252;
-  }
+template <>
+inline int limitBit<int256, bigint>() {
+  return 252;
+}
 
-  template <>
-  inline int limitBit<bigint, bigint>()
-  {
-    return std::numeric_limits<int>::max(); // NOTE: limits numbers to 2^(2^31)-1, which should be plenty
-  }
+template <>
+inline int limitBit<bigint, bigint>() {
+  return std::numeric_limits<int>::max();  // NOTE: limits numbers to 2^(2^31)-1, which should be plenty
+}
 
-  template <typename CF, typename DG>
-  inline int limitBitConfl()
-  {
-    return limitBit<CF, DG>() / 2;
-  }
+template <typename CF, typename DG>
+inline int limitBitConfl() {
+  return limitBit<CF, DG>() / 2;
+}
 
-  template <typename T>
-  bool fits([[maybe_unused]] const bigint& x)
-  {
-    return false;
-  }
+template <typename T>
+bool fits([[maybe_unused]] const bigint& x) {
+  return false;
+}
 
-  template <>
-  inline bool fits<int>(const bigint& x)
-  {
-    return aux::abs(x) <= static_cast<bigint>(limitAbs<int, long long>());
-  }
+template <>
+inline bool fits<int>(const bigint& x) {
+  return aux::abs(x) <= static_cast<bigint>(limitAbs<int, long long>());
+}
 
-  template <>
-  inline bool fits<long long>(const bigint& x)
-  {
-    return aux::abs(x) <= static_cast<bigint>(limitAbs<long long, int128>());
-  }
+template <>
+inline bool fits<long long>(const bigint& x) {
+  return aux::abs(x) <= static_cast<bigint>(limitAbs<long long, int128>());
+}
 
-  template <>
-  inline bool fits<int128>(const bigint& x)
-  {
-    return aux::abs(x) <= static_cast<bigint>(limitAbs<int128, int256>());
-  }
+template <>
+inline bool fits<int128>(const bigint& x) {
+  return aux::abs(x) <= static_cast<bigint>(limitAbs<int128, int256>());
+}
 
-  template <>
-  inline bool fits<int256>(const bigint& x)
-  {
-    return aux::abs(x) <= static_cast<bigint>(limitAbs<int256, bigint>());
-  }
+template <>
+inline bool fits<int256>(const bigint& x) {
+  return aux::abs(x) <= static_cast<bigint>(limitAbs<int256, bigint>());
+}
 
-  template <>
-  inline bool fits<bigint>([[maybe_unused]] const bigint& x)
-  {
-    return true;
-  }
+template <>
+inline bool fits<bigint>([[maybe_unused]] const bigint& x) {
+  return true;
+}
 
-  template <typename T, typename S>
-  bool fitsIn([[maybe_unused]] const S& x)
-  {
-    return fits<T>(bigint(x));
-  }
+template <typename T, typename S>
+bool fitsIn([[maybe_unused]] const S& x) {
+  return fits<T>(bigint(x));
+}
 
-  template <typename T>
-  bool stillFits([[maybe_unused]] const T& x)
-  {
-    return false;
-  }
+template <typename T>
+bool stillFits([[maybe_unused]] const T& x) {
+  return false;
+}
 
-  template <>
-  inline bool stillFits<int>(const int& x)
-  {
-    return aux::abs(x) <= limitAbs<int, long long>();
-  }
+template <>
+inline bool stillFits<int>(const int& x) {
+  return aux::abs(x) <= limitAbs<int, long long>();
+}
 
-  template <>
-  inline bool stillFits<long long>(const long long& x)
-  {
-    return aux::abs(x) <= limitAbs<long long, int128>();
-  }
+template <>
+inline bool stillFits<long long>(const long long& x) {
+  return aux::abs(x) <= limitAbs<long long, int128>();
+}
 
-  template <>
-  inline bool stillFits<int128>(const int128& x)
-  {
-    return aux::abs(x) <= static_cast<int128>(limitAbs<int128, int256>());
-  }
+template <>
+inline bool stillFits<int128>(const int128& x) {
+  return aux::abs(x) <= static_cast<int128>(limitAbs<int128, int256>());
+}
 
-  template <>
-  inline bool stillFits<int256>(const int256& x)
-  {
-    return aux::abs(x) <= static_cast<int256>(limitAbs<int256, bigint>());
-  }
+template <>
+inline bool stillFits<int256>(const int256& x) {
+  return aux::abs(x) <= static_cast<int256>(limitAbs<int256, bigint>());
+}
 
-  template <>
-  inline bool stillFits<bigint>([[maybe_unused]] const bigint& x)
-  {
-    return true;
-  }
+template <>
+inline bool stillFits<bigint>([[maybe_unused]] const bigint& x) {
+  return true;
+}
 
-  using ActValV = long double;
-  using DetTime = long double;
-  using StatNum = long double;
+using ActValV = long double;
+using DetTime = long double;
+using StatNum = long double;
 
-  // NOTE: max number of types is 32, as the type is stored with 5 bits in Constr
-  enum class Origin
-  {
-    UNKNOWN, // uninitialized
-    FORMULA, // original input formula
-    DOMBREAKER, // dominance breaking
-    INVALIDATOR, // solution-invalidating constraint
-    PURE, // pure unit literal
-    COREGUIDED, // extension constraints from coreguided optimization
-    BOTTOMUP, // simple bottom-up optimization constraint
-    REFORMBOUND, // upper bound on the reformed objective function
-    UPPERBOUND, // upper bound on the objective function
-    LOWERBOUND, // lower bound on the objective function
-    LEARNED, // learned from regular conflict analysis
-    FARKAS, // LP solver infeasibility witness
-    DUAL, // LP solver feasibility dual constraint
-    GOMORY, // Gomory cut
-    PROBING, // probing unit literal
-    DETECTEDAMO, // detected cardinality constraint
-    REDUCED, // reduced constraint
-    EQUALITY, // equality enforcing constraint
-    IMPLICATION, // binary implication clause
-  };
+// NOTE: max number of types is 32, as the type is stored with 5 bits in Constr
+enum class Origin {
+  UNKNOWN,      // uninitialized
+  FORMULA,      // original input formula
+  DOMBREAKER,   // dominance breaking
+  INVALIDATOR,  // solution-invalidating constraint
+  PURE,         // pure unit literal
+  COREGUIDED,   // extension constraints from coreguided optimization
+  BOTTOMUP,     // simple bottom-up optimization constraint
+  REFORMBOUND,  // upper bound on the reformed objective function
+  UPPERBOUND,   // upper bound on the objective function
+  LOWERBOUND,   // lower bound on the objective function
+  LEARNED,      // learned from regular conflict analysis
+  FARKAS,       // LP solver infeasibility witness
+  DUAL,         // LP solver feasibility dual constraint
+  GOMORY,       // Gomory cut
+  PROBING,      // probing unit literal
+  DETECTEDAMO,  // detected cardinality constraint
+  REDUCED,      // reduced constraint
+  EQUALITY,     // equality enforcing constraint
+  IMPLICATION,  // binary implication clause
+};
 
-  inline std::ostream& operator<<(std::ostream& o, enum Origin orig)
-  {
-    switch (orig)
-    {
+inline std::ostream& operator<<(std::ostream& o, enum Origin orig) {
+  switch (orig) {
     case (Origin::UNKNOWN):
       o << "UNKNOWN";
       break;
@@ -349,128 +317,113 @@ namespace xct
       break;
     default:
       assert(false);
-    }
-    return o;
   }
+  return o;
+}
 
-  inline bool isNonImplied(Origin o)
-  {
-    return o == Origin::FORMULA || o == Origin::DOMBREAKER || o == Origin::INVALIDATOR;
+inline bool isNonImplied(Origin o) {
+  return o == Origin::FORMULA || o == Origin::DOMBREAKER || o == Origin::INVALIDATOR;
+}
+
+inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
+
+inline bool isExternal(Origin o) {
+  return isBound(o) || o == Origin::COREGUIDED || o == Origin::REFORMBOUND || o == Origin::BOTTOMUP;
+}
+
+inline bool isInput(Origin o) { return o != Origin::UNKNOWN && o < Origin::LEARNED; }
+inline bool isLearned(Origin o) { return o >= Origin::LEARNED; }
+
+template <typename SMALL, typename LARGE>
+struct ConstrExp;
+using ConstrExp32 = ConstrExp<int, long long>;
+using ConstrExp64 = ConstrExp<long long, int128>;
+using ConstrExp96 = ConstrExp<int128, int128>;
+using ConstrExp128 = ConstrExp<int128, int256>;
+using ConstrExpArb = ConstrExp<bigint, bigint>;
+struct ConstrExpSuper;
+
+template <typename SMALL, typename LARGE>
+using CePtr = std::shared_ptr<ConstrExp<SMALL, LARGE>>;
+using Ce32 = std::shared_ptr<ConstrExp32>;
+using Ce64 = std::shared_ptr<ConstrExp64>;
+using Ce96 = std::shared_ptr<ConstrExp96>;
+using Ce128 = std::shared_ptr<ConstrExp128>;
+using CeArb = std::shared_ptr<ConstrExpArb>;
+using CeSuper = std::shared_ptr<ConstrExpSuper>;
+using CeNull = std::shared_ptr<ConstrExp32>;
+
+template <typename CF, typename DG>
+struct ConstrSimple;
+using ConstrSimple32 = ConstrSimple<int, long long>;
+using ConstrSimple64 = ConstrSimple<long long, int128>;
+using ConstrSimple96 = ConstrSimple<int128, int128>;
+using ConstrSimple128 = ConstrSimple<int128, int256>;
+using ConstrSimpleArb = ConstrSimple<bigint, bigint>;
+struct ConstrSimpleSuper;
+
+struct Constr;
+struct Clause;
+struct Cardinality;
+
+template <typename CF, typename DG>
+struct Watched;
+template <typename CF, typename DG>
+struct WatchedSafe;
+using Watched32 = Watched<int, long long>;
+using Watched64 = WatchedSafe<long long, int128>;
+using Watched96 = WatchedSafe<int128, int128>;
+using Watched128 = WatchedSafe<int128, int256>;
+using WatchedArb = WatchedSafe<bigint, bigint>;
+
+template <typename CF>
+struct Term {
+  Term() : c(0), l(0) {}
+
+  Term(const CF& x, Lit y) : c(x), l(y) {}
+
+  ~Term() = default;
+  CF c;
+  Lit l;
+};
+
+using Term32 = Term<int>;
+using Term64 = Term<long long>;
+using Term128 = Term<int128>;
+using TermArb = Term<bigint>;
+
+template <typename CF>
+std::ostream& operator<<(std::ostream& o, const Term<CF>& t) {
+  return o << t.c << "x" << t.l;
+}
+
+template <typename CF>
+std::ostream& operator<<(std::ostream& o, const std::pair<CF, Lit>& cl) {
+  return o << (cl.first < 0 ? "" : "+") << cl.first << (cl.second < 0 ? " ~x" : " x") << toVar(cl.second);
+}
+
+class EarlyTermination : public std::exception {
+ public:
+  [[nodiscard]] const char* what() const noexcept override { return "Program terminated early."; }
+};
+
+class AsynchronousInterrupt : public std::exception {
+ public:
+  [[nodiscard]] const char* what() const noexcept override { return "Program interrupted by user."; }
+};
+
+class UnsatEncounter : public std::exception {
+ public:
+  //  UnsatEncounter() : std::exception() { assert(false); }
+  [[nodiscard]] const char* what() const noexcept override {
+    return "UNSAT state reached, this exception should have been caught.";
   }
+};
 
-  inline bool isBound(Origin o) { return o == Origin::UPPERBOUND || o == Origin::LOWERBOUND; }
-
-  inline bool isExternal(Origin o)
-  {
-    return isBound(o) || o == Origin::COREGUIDED || o == Origin::REFORMBOUND || o == Origin::BOTTOMUP;
+class InvalidArgument : public std::invalid_argument {
+ public:
+  InvalidArgument(const std::string& what_arg) : invalid_argument(what_arg) {
+    std::cerr << "Invalid argument error: " << what_arg << std::endl;
   }
-
-  inline bool isInput(Origin o) { return o != Origin::UNKNOWN && o < Origin::LEARNED; }
-  inline bool isLearned(Origin o) { return o >= Origin::LEARNED; }
-
-  template <typename SMALL, typename LARGE>
-  struct ConstrExp;
-  using ConstrExp32 = ConstrExp<int, long long>;
-  using ConstrExp64 = ConstrExp<long long, int128>;
-  using ConstrExp96 = ConstrExp<int128, int128>;
-  using ConstrExp128 = ConstrExp<int128, int256>;
-  using ConstrExpArb = ConstrExp<bigint, bigint>;
-  struct ConstrExpSuper;
-
-  template <typename SMALL, typename LARGE>
-  using CePtr = std::shared_ptr<ConstrExp<SMALL, LARGE>>;
-  using Ce32 = std::shared_ptr<ConstrExp32>;
-  using Ce64 = std::shared_ptr<ConstrExp64>;
-  using Ce96 = std::shared_ptr<ConstrExp96>;
-  using Ce128 = std::shared_ptr<ConstrExp128>;
-  using CeArb = std::shared_ptr<ConstrExpArb>;
-  using CeSuper = std::shared_ptr<ConstrExpSuper>;
-  using CeNull = std::shared_ptr<ConstrExp32>;
-
-  template <typename CF, typename DG>
-  struct ConstrSimple;
-  using ConstrSimple32 = ConstrSimple<int, long long>;
-  using ConstrSimple64 = ConstrSimple<long long, int128>;
-  using ConstrSimple96 = ConstrSimple<int128, int128>;
-  using ConstrSimple128 = ConstrSimple<int128, int256>;
-  using ConstrSimpleArb = ConstrSimple<bigint, bigint>;
-  struct ConstrSimpleSuper;
-
-  struct Constr;
-  struct Clause;
-  struct Cardinality;
-
-  template <typename CF, typename DG>
-  struct Watched;
-  template <typename CF, typename DG>
-  struct WatchedSafe;
-  using Watched32 = Watched<int, long long>;
-  using Watched64 = WatchedSafe<long long, int128>;
-  using Watched96 = WatchedSafe<int128, int128>;
-  using Watched128 = WatchedSafe<int128, int256>;
-  using WatchedArb = WatchedSafe<bigint, bigint>;
-
-  template <typename CF>
-  struct Term
-  {
-    Term() : c(0), l(0)
-    {
-    }
-
-    Term(const CF& x, Lit y) : c(x), l(y)
-    {
-    }
-
-    ~Term() = default;
-    CF c;
-    Lit l;
-  };
-
-  using Term32 = Term<int>;
-  using Term64 = Term<long long>;
-  using Term128 = Term<int128>;
-  using TermArb = Term<bigint>;
-
-  template <typename CF>
-  std::ostream& operator<<(std::ostream& o, const Term<CF>& t)
-  {
-    return o << t.c << "x" << t.l;
-  }
-
-  template <typename CF>
-  std::ostream& operator<<(std::ostream& o, const std::pair<CF, Lit>& cl)
-  {
-    return o << (cl.first < 0 ? "" : "+") << cl.first << (cl.second < 0 ? " ~x" : " x") << toVar(cl.second);
-  }
-
-  class EarlyTermination : public std::exception
-  {
-  public:
-    [[nodiscard]] const char* what() const noexcept override { return "Program terminated early."; }
-  };
-
-  class AsynchronousInterrupt : public std::exception
-  {
-  public:
-    [[nodiscard]] const char* what() const noexcept override { return "Program interrupted by user."; }
-  };
-
-  class UnsatEncounter : public std::exception
-  {
-  public:
-    //  UnsatEncounter() : std::exception() { assert(false); }
-    [[nodiscard]] const char* what() const noexcept override
-    {
-      return "UNSAT state reached, this exception should have been caught.";
-    }
-  };
-
-  class InvalidArgument : public std::invalid_argument
-  {
-  public:
-    InvalidArgument(const std::string& what_arg) : invalid_argument(what_arg)
-    {
-      std::cerr << "Invalid argument error: " << what_arg << std::endl;
-    }
-  };
-} // namespace xct
+};
+}  // namespace xct

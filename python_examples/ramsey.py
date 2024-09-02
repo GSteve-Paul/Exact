@@ -1,16 +1,15 @@
 # Looking for Ramsey numbers (https://en.wikipedia.org/wiki/Ramsey%27s_theorem)
 
-import sys
-
 # Import the exact package
 import exact
+import sys
 
 # Fixing Ramsey number instance
 if len(sys.argv) != 6:
     print("Usage: python3 ramsey.py #nodes cliquesize1 cliquesize2 symcutoff count-breakers")
     print("Using default arguments: python3 ramsey.py 9 3 4 29 0")
     nodes = 17  # size of the graph
-    cliques = [4,4]  # size of cliques
+    cliques = [4, 4]  # size of cliques
     cutoff = 29  # should be less than 64 so that resulting coefficients still fit in long long
     uselex = True
     usecounting = False
@@ -27,12 +26,15 @@ if uselex:
 if usecounting:
     print("Using counting symmetry breaking")
 
+
 def normalize(v):
     return v if v[0] <= v[1] else (v[1], v[0])
+
 
 def to_var(v):
     vv = normalize(v)
     return str(vv[0]) + "_" + str(vv[1])
+
 
 variables = [to_var((i, j)) for i in range(0, nodes) for j in range(i + 1, nodes)]
 constraints = []
@@ -64,8 +66,11 @@ for n in cliques:
 # Lex-leader symmetry breaking
 def swapif(v, swap):
     return swap[1] if v == swap[0] else swap[0] if v == swap[1] else v
+
+
 def image(v, swap):
     return normalize((swapif(v[0], swap), swapif(v[1], swap)))
+
 
 order = [(i, j) for i in range(0, nodes) for j in range(i + 1, nodes)]
 orderdict = {order[i]: i for i in range(0, len(order))}
@@ -91,7 +96,7 @@ def get_lex_leader(swap1, swap2):
 
 if uselex:
     for i in range(0, nodes):
-        print("Lex-leader symmetry breaker",i)
+        print("Lex-leader symmetry breaker", i)
         for j in range(i + 1, nodes):
             constraints += [get_lex_leader((i, j), (0, 0))]  # swap only i and j
             for k in range(i + 1, nodes):
@@ -107,7 +112,6 @@ if usecounting:
 # Symmetry breaking on color
 if cliques[0] == cliques[1]:
     constraints += [([1], [to_var(order[0])], False, 0, True, 0)]
-
 
 # Create an Exact solver instance
 solver = exact.Exact()
@@ -129,4 +133,3 @@ if solver.hasSolution():
     print(sol)
 else:
     print("UNSAT")
-
