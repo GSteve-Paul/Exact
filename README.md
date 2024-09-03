@@ -138,3 +138,6 @@ Watched propagation:
 
 Core-guided optimization:  
 **[DGDNS21]** J. Devriendt, S. Gocht, E. Demirović, J. Nordström, P. J. Stuckey. Cutting to the Core of Pseudo-Boolean Optimization: Combining Core-Guided Search with Cutting Planes Reasoning. *AAAI 2021*
+
+## Industrial use cases
+After considering Gurobi and OR-tools to extract minimal unsatisfiable subsets for a workforce allocation problem, [a big European airplane manufacturer decided Exact was the way to go!](https://freuder.wordpress.com/wp-content/uploads/2024/08/trustworthy_allocation_pthg24.pdf) ([mirror](https://gitlab.com/nonfiction-software/exact/-/blob/main/industrial_use_cases/trustworthy_allocation_pthg24.pdf))
