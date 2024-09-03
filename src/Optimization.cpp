@@ -486,7 +486,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
   SMALL cnt = 0;
 
   Var bestLit = 0;
-  LARGE bestLb = -1;
+  LARGE bestLb = -INFLPINT;
   LARGE auxiliary = cardCore->nVars() - cardCoreDegree;
   bool positive = false;
 
@@ -548,7 +548,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
   }
 
   if (bestLit == 0) {
-    assert(bestLb == -1);
+    assert(bestLb == -INFLPINT);
     return {0, nullptr, -INFLPINT};
   }
 
