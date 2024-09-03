@@ -1,0 +1,14 @@
+* #variable= 16 #constraint= 7 #equal= 0 intsize= 6 #product= 10 sizeproduct= 48
+****************************************
+* begin normalizer comments
+* category= OPT-NLC
+* end normalizer comments
+****************************************
+min: +10 x5 x7 x9 x10 x14 x15 x16 +7 x1 x2 x3 x4 x8 x11 +1 x7 x3 x4 x8 x6 +12 x3 x4 x8 x11 +8 x7 x8 x6 x12 +3 x7 x9 x14 x16 x6 +1 x9 x10 x14 x16 +5 x5 x10 x14 x15 x16 +3 x1 x2 x11 x12 ;
+-3 x5 x7 x9 x10 x14 x15 x16 +12 x1 x2 x3 x4 x8 x11 +8 x7 x3 x4 x8 x6 -1 x3 x4 x8 x11 +7 x1 x2 x11 x12 -2 x14 x15 x16 x13 >= 2 ;
+-1 x1 x2 x3 x4 x8 x11 +10 x7 x3 x4 x8 x6 +5 x7 x8 x6 x12 -1 x7 x9 x14 x16 x6 -7 x9 x10 x14 x16 -1 x5 x10 x14 x15 x16 >= 1 ;
+-5 x5 x7 x9 x10 x14 x15 x16 +3 x1 x2 x3 x4 x8 x11 +1 x7 x3 x4 x8 x6 +2 x5 x10 x14 x15 x16 -1 x14 x15 x16 x13 >= 1 ;
+-3 x1 x2 x3 x4 x8 x11 +5 x5 x7 x9 x10 x14 x15 x16 -1 x7 x3 x4 x8 x6 -2 x5 x10 x14 x15 x16 +1 x14 x15 x16 x13 >= -1 ;
++4 x7 x3 x4 x8 x6 +2 x3 x4 x8 x11 +5 x7 x9 x14 x16 x6 -1 x9 x10 x14 x16 +9 x5 x10 x14 x15 x16 +2 x1 x2 x11 x12 >= 3 ;
+-9 x1 x2 x3 x4 x8 x11 +12 x3 x4 x8 x11 +7 x7 x8 x6 x12 -6 x7 x9 x14 x16 x6 -2 x5 x10 x14 x15 x16 +15 x1 x2 x11 x12 -3 x14 x15 x16 x13 >= 7 ;
+-5 x1 x2 x3 x4 x8 x11 +8 x5 x7 x9 x10 x14 x15 x16 -2 x7 x3 x4 x8 x6 +7 x3 x4 x8 x11 +1 x7 x8 x6 x12 +5 x9 x10 x14 x16 +10 x1 x2 x11 x12 >= 1 ;

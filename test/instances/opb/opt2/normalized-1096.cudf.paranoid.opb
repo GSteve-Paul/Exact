@@ -1,0 +1,7 @@
+* #variable= 1 #constraint= 1 #equal= 0 intsize= 2
+****************************************
+* begin normalizer comments
+* category= DEC-LIN
+* end normalizer comments
+****************************************
++1 x1 >= 1 ;

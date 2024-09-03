@@ -1,0 +1,11 @@
+* #variable= 4 #constraint= 4 #equal= 0 intsize= 3
+****************************************
+* begin normalizer comments
+* category= OPT-LIN
+* end normalizer comments
+****************************************
+min: +1 x1 +1 x2 +1 x3 +1 x4 ;
++1 x1 +1 x2 +1 x3 >= 1 ;
++1 x3 +1 x4 +1 x1 >= 1 ;
++1 x2 +1 x1 +1 x4 >= 1 ;
++1 x4 +1 x3 +1 x2 >= 1 ;

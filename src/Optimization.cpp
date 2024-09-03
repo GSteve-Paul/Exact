@@ -703,20 +703,13 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
     assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
     State result = State::FAIL;
 
-    while (result == State::FAIL && reformObj->nVars()) {
-      result = reformObjectiveSmartly(core);
-      if (!global.options.optReuseCores) break;
-      int pastVarCnt = core->nVars();
-      core->weaken([&](Lit l) { return !assumptions.has(-l) && !reformObj->hasLit(l); });
-      if (core->nVars() == 0) break;
-      if (int nowVarCnt = core->nVars(); nowVarCnt == pastVarCnt) {
-        int randNum = rand() % nowVarCnt;
-        Var var = core->vars[randNum];
-        core->weaken(var);
-      }
+    result = reformObjectiveSmartly(core);
+
+    if (result != State::FAIL) {
+      simplifyAssumps(reformObj, assumptions);
+      addReformUpperBound(false);
     }
-    simplifyAssumps(reformObj, assumptions);
-    addReformUpperBound(false);
+
   }  // else only violated unit assumptions were derived
 }
 
@@ -868,6 +861,10 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
         std::getline(ss, s1);
         std::string s2;
         std::getline(ss2, s2);
+
+        if(s1 == s2) {
+          int t = 1;
+        }
 
         global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
         if (global.options.proofAssumps) addLowerBound();

@@ -1,0 +1,10 @@
+* #variable= 15 #constraint= 3 #equal= 1 intsize= 11 #product= 25 sizeproduct= 50
+****************************************
+* begin normalizer comments
+* category= OPT-NLC
+* end normalizer comments
+****************************************
+min: +1 x1 +2 x2 +4 x3 +8 x4 +16 x5 ;
++1 x1 +2 x2 +4 x3 +8 x4 +16 x5 >= 2 ;
++1 x6 +2 x7 +4 x8 +8 x9 +16 x10 >= 2 ;
++1 x1 x6 +2 x2 x6 +4 x3 x6 +8 x4 x6 +16 x5 x6 +2 x1 x7 +4 x2 x7 +8 x3 x7 +16 x4 x7 +32 x5 x7 +4 x1 x8 +8 x2 x8 +16 x3 x8 +32 x4 x8 +64 x5 x8 +8 x1 x9 +16 x2 x9 +32 x3 x9 +64 x4 x9 +128 x5 x9 +16 x1 x10 +32 x2 x10 +64 x3 x10 +128 x4 x10 +256 x5 x10 -32 x11 -64 x12 -128 x13 -256 x14 -512 x15 = 27 ;
