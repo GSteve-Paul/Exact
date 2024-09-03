@@ -281,7 +281,7 @@ struct Options {
       "opt-stratification",
       "Stratification during core-guided optimization will ignore the smallest literals that together amount to at "
       "most 1/x of the optimality gap (0 means no stratification)",
-      0, "0 or int > 1", [](const int32_t& x) -> bool { return x > 1 || x == 0; }};
+      50, "0 or int > 1", [](const int32_t& x) -> bool { return x > 1 || x == 0; }};
   ValOption<int32_t> optPrecision{"opt-precision",
                                   "Precision of bottom-up optimization. Each core will improve the optimality gap by "
                                   "at least a factor of 1/x (0 guarantees the minimum improvement of 1)",
