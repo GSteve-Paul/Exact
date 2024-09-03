@@ -463,8 +463,7 @@ template <typename SMALL, typename LARGE>
 std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const CeSuper& core,
                                                                            const CePtr<SMALL, LARGE>& obj) {
   core->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
-  if (core->isTautology())
-    return {0, nullptr, -INFLPINT};
+  if (core->isTautology()) return {0, nullptr, -INFLPINT};
   if (core->isUnsat()) {
     solver.addConstraint(core);
     return {0, nullptr, -INFLPINT};
@@ -564,11 +563,11 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
     return State::FAIL;
   }
 
-  if (bestLb < lower_bound) {
+  if (bestLb <= lower_bound) {
     return State::FAIL;
   }
 
-  assert(bestLb >= lower_bound);
+  assert(bestLb > lower_bound);
 
   // add auxiliary variables into cardCore implicitly, and then add into reformObj
   long long auxiliary = cardCore->nVars() - cardCore->getDegree();
@@ -593,12 +592,17 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
     auxiliary >>= 1;
   }
 
-  //solver.addConstraint(auxiliaryConstr);
+  // solver.addConstraint(auxiliaryConstr);
 
   // reform the obj
-  cardCore->invert();
-  reformObj->addUp(cardCore, targetCoefficient);
+
+  if (targetCoefficient >= 1) cardCore->invert();
+  reformObj->addUp(cardCore, aux::abs(targetCoefficient));
   simplifyAssumps(reformObj, assumptions);
+
+  if (-reformObj->degree <= lower_bound) return State::FAIL;
+
+  assert(-reformObj->getDegree() > lower_bound);
 
   lower_bound = aux::max(lower_bound, -reformObj->getDegree());
   return State::SUCCESS;
@@ -606,6 +610,12 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
 
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::preprocessLowerBound() {
+  static bool firstRun = false;
+  if (!firstRun) {
+    firstRun = true;
+  } else {
+    return;
+  }
   const std::vector<CRef> all_constraints = solver.getRawConstraints();
   LARGE totBestLb = -INFLPINT;
   Lit totBestLit = 0;
@@ -652,11 +662,11 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
     auxiliary >>= 1;
   }
 
-  //solver.addConstraint(auxiliaryConstr);
+  // solver.addConstraint(auxiliaryConstr);
 
   // reform the obj
-  totBestCardCore->invert();
-  reformObj->addUp(totBestCardCore, targetCoefficient);
+  if (targetCoefficient >= 1) totBestCardCore->invert();
+  reformObj->addUp(totBestCardCore, aux::abs(targetCoefficient));
   simplifyAssumps(reformObj, assumptions);
 
   lower_bound = -reformObj->getDegree();
@@ -693,16 +703,21 @@ void Optimization<SMALL, LARGE>::handleInconsistency(const CeSuper& core) {
     assert(core->hasNegativeSlack(solver.getAssumptions().getIndex()));
     State result = State::FAIL;
 
-    while(result == State::FAIL && reformObj->nVars()) {
+    while (result == State::FAIL && reformObj->nVars()) {
       result = reformObjectiveSmartly(core);
       if (!global.options.optReuseCores) break;
+      int pastVarCnt = core->nVars();
       core->weaken([&](Lit l) { return !assumptions.has(-l) && !reformObj->hasLit(l); });
+      if (core->nVars() == 0) break;
+      if (int nowVarCnt = core->nVars(); nowVarCnt == pastVarCnt) {
+        int randNum = rand() % nowVarCnt;
+        Var var = core->vars[randNum];
+        core->weaken(var);
+      }
     }
     simplifyAssumps(reformObj, assumptions);
     addReformUpperBound(false);
   }  // else only violated unit assumptions were derived
-
-  checkLazyVariables();
 }
 
 template <typename SMALL, typename LARGE>
@@ -839,7 +854,21 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           return SolveState::INCONSISTENT;
         }
         current_time = global.stats.getDetTime();
+        // TODO: sometimes, the function handleInconsistency() cannot update the lowerbound, which might cause TLE
+
+        std::stringstream ss;
+        ss << reformObj;
+        std::cout << reformObj << std::endl;
         aux::timeCallVoid([&] { handleInconsistency(solver.lastCore); }, global.stats.SOLVETIMEBOTTOMUP);
+        std::stringstream ss2;
+        ss2 << reformObj;
+        std::cout << reformObj << std::endl;
+
+        std::string s1;
+        std::getline(ss, s1);
+        std::string s2;
+        std::getline(ss2, s2);
+
         global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
         if (global.options.proofAssumps) addLowerBound();
         solver.clearAssumptions();
