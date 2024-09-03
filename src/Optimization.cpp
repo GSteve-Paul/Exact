@@ -494,7 +494,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
     Lit lit;
     SMALL coeff;
 
-    LitTerm() {}
+    LitTerm() = default;
 
     LitTerm(Lit lit, SMALL coeff) : lit(lit), coeff(coeff) {}
 
