@@ -60,7 +60,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Heuristic.hpp"
-#include <constraints/ConstrExp.hpp>
+#include "../constraints/ConstrExp.hpp"
 
 namespace xct {
 
