@@ -180,9 +180,6 @@ namespace xct
   //before the cdcl procedure, initialize the lowerbound
   void preprocessLowerBound();
 
-  //add a constraint to force the lb
-  void addReformLowerbound();
-
   [[nodiscard]] Lit getKnapsackLit(const CePtr<SMALL, LARGE>& core) const; // modifies core
   void handleInconsistency(const CeSuper& core); // modifies core
   void boundObjByLastSol();

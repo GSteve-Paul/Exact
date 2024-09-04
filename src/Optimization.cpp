@@ -478,7 +478,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
   long long auxiliary = cardCore->nVars() - cardCore->getDegree();
   SMALL coefficient = 1;
 
-  SMALL targetCoefficient = reformObj->coefs[toVar(bestLit)];
+SMALL targetCoefficient = reformObj->getCoef(bestLit);
   assert(cardCore->hasVar(toVar(bestLit)));
   assert(reformObj->hasVar(toVar(bestLit)));
   if (!reformObj->hasLit(bestLit)) {
@@ -505,9 +505,11 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
   reformObj->addUp(cardCore, aux::abs(targetCoefficient));
   simplifyAssumps(reformObj, assumptions);
 
-  if (-reformObj->degree <= lower_bound) return State::FAIL;
+  if (-reformObj->degree <= lower_bound)
+    return State::FAIL;
 
   assert(-reformObj->getDegree() > lower_bound);
+  assert(-reformObj->getDegree() == bestLb);
 
   lower_bound = aux::max(lower_bound, -reformObj->getDegree());
   return State::SUCCESS;
@@ -561,8 +563,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
   // std::cout << reformObj << std::endl;
 
   static std::vector<LitTerm> objTerms;
-  LARGE objRhs = obj->getRhs();
-  LARGE objDegree = obj->getDegree();
+  LARGE objOldLb = -obj->getDegree();
   objTerms.resize(reformObj->vars.size());
   for (int i = 0; i < reformObj->vars.size(); i++) {
     Var v = reformObj->vars[i];
@@ -571,7 +572,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
     objTerms[i].coeff = reformObj->getCoef(lit);
     if (cardCore->hasVar(v) && !cardCore->hasLit(lit)) {
       objTerms[i].coeff = -objTerms[i].coeff;
-      objRhs -= objTerms[i].coeff;
+      objOldLb += objTerms[i].coeff;
       objTerms[i].lit = -lit;
     }
   }
@@ -617,7 +618,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
     return {0, nullptr, -INFLPINT};
   }
 
-  return {bestLit, cardCore, bestLb - reformObj->getDegree()};
+  return {bestLit, cardCore, bestLb + objOldLb};
 }
 
 template <typename SMALL, typename LARGE>
@@ -633,15 +634,19 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
   Lit totBestLit = 0;
   Ce32 totBestCardCore = nullptr;
 
+  int bestIdx;
+  int idx = 0;
   for (CRef cref : all_constraints) {
     const Constr& constr = solver.getCA()[cref];
     const CeSuper ce = constr.toExpanded(global.cePools);
     auto [bestLit, cardCore, bestLb] = getBestLowerBound(ce, reformObj);
     if (bestLb > totBestLb) {
+      bestIdx = idx;
       totBestLb = bestLb;
       totBestLit = bestLit;
       totBestCardCore = cardCore;
     }
+    idx++;
   }
 
   if (totBestLit == 0) {
@@ -655,7 +660,7 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
 
   long long auxiliary = totBestCardCore->nVars() - totBestCardCore->getDegree();
   SMALL coefficient = 1;
-  SMALL targetCoefficient = reformObj->coefs[toVar(totBestLit)];
+  SMALL targetCoefficient = reformObj->getCoef(totBestLit);
   assert(totBestCardCore->hasVar(toVar(totBestLit)));
   assert(reformObj->hasVar(toVar(totBestLit)));
   if (!reformObj->hasLit(totBestLit)) {
@@ -681,13 +686,11 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
   reformObj->addUp(totBestCardCore, aux::abs(targetCoefficient));
   simplifyAssumps(reformObj, assumptions);
 
+  assert(-reformObj->getDegree() == totBestLb);
+
   lower_bound = -reformObj->getDegree();
 
   addReformUpperBound(true);
-}
-template <typename SMALL, typename LARGE>
-void Optimization<SMALL, LARGE>::addReformLowerbound() {
-
 }
 
 template <typename SMALL, typename LARGE>
@@ -762,8 +765,6 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   // initialize lowerbound
   preprocessLowerBound();
 
-  bool setAssumptionsDueToLb = false;
-
   while (true) {
     if (timeout != 0 && global.stats.getRunTime() > timeout) return SolveState::TIMEOUT;
     quit::checkInterrupt(global);
@@ -779,7 +780,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
     assumps.clear();
     bool topdown = false;
     if (optimize && !origObj->empty() && lower_bound < upper_bound &&
-        (setAssumptionsDueToLb || global.options.optRatio.get() >= 1 ||
+        (global.options.optRatio.get() >= 1 ||
          global.stats.DETTIMEBOTTOMUP <
              global.options.optRatio.get() * (global.stats.DETTIMETOPDOWN + global.stats.DETTIMEBOTTOMUP))) {
       // figure out and set new bottom-up assumptions
@@ -865,35 +866,11 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           return SolveState::INCONSISTENT;
         }
         current_time = global.stats.getDetTime();
-        // TODO: sometimes, the function handleInconsistency() cannot update the lowerbound, which might cause TLE
-
-        int lastLb = lower_bound;
-        // std::stringstream ss;
-        // ss << reformObj;
-        // std::cout << reformObj << std::endl;
         aux::timeCallVoid([&] { handleInconsistency(solver.lastCore); }, global.stats.SOLVETIMEBOTTOMUP);
-        // std::stringstream ss2;
-        // ss2 << reformObj;
-        // std::cout << reformObj << std::endl;
-        //
-        // std::string s1;
-        // std::getline(ss, s1);
-        // std::string s2;
-        // std::getline(ss2, s2);
-        //
-        // if (s1 == s2) {
-        //   int t = 1;
-        // }
-
 
         global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
         if (global.options.proofAssumps) addLowerBound();
         solver.clearAssumptions();
-        if(int nowLb = lower_bound; nowLb <= lastLb) {
-          setAssumptionsDueToLb = true;
-        } else {
-          setAssumptionsDueToLb = false;
-        }
         printObjBounds(false);
       } else {
         assert(solver.getAssumptions().size() == assumptions.size());
