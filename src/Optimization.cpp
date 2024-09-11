@@ -478,7 +478,7 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
   long long auxiliary = cardCore->nVars() - cardCore->getDegree();
   SMALL coefficient = 1;
 
-SMALL targetCoefficient = reformObj->getCoef(bestLit);
+  SMALL targetCoefficient = reformObj->getCoef(bestLit);
   assert(cardCore->hasVar(toVar(bestLit)));
   assert(reformObj->hasVar(toVar(bestLit)));
   if (!reformObj->hasLit(bestLit)) {
@@ -505,8 +505,7 @@ SMALL targetCoefficient = reformObj->getCoef(bestLit);
   reformObj->addUp(cardCore, aux::abs(targetCoefficient));
   simplifyAssumps(reformObj, assumptions);
 
-  if (-reformObj->degree <= lower_bound)
-    return State::FAIL;
+  if (-reformObj->degree <= lower_bound) return State::FAIL;
 
   assert(-reformObj->getDegree() > lower_bound);
   assert(-reformObj->getDegree() == bestLb);
@@ -540,14 +539,11 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
   assert(!cardCore->isTautology());
   assert(!cardCore->isUnsat());
 
-  LARGE cardCoreDegree = cardCore->getDegree();
-  LARGE presum = 0;
-  SMALL cnt = 0;
+  const LARGE cardCoreDegree = cardCore->getDegree();
 
   Var bestLit = 0;
   LARGE bestLb = -INFLPINT;
-  LARGE auxiliary = cardCore->nVars() - cardCoreDegree;
-  bool positive = false;
+  const LARGE auxiliary = cardCore->nVars() - cardCoreDegree;
 
   struct LitTerm {
     Lit lit;
@@ -572,8 +568,9 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
     objTerms[i].coeff = reformObj->getCoef(lit);
     if (cardCore->hasVar(v) && !cardCore->hasLit(lit)) {
       objTerms[i].coeff = -objTerms[i].coeff;
-      objOldLb += objTerms[i].coeff;
       objTerms[i].lit = -lit;
+    } else {
+
     }
   }
   std::stable_sort(objTerms.begin(), objTerms.end());
@@ -583,29 +580,67 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
   // }
   // std::cout << std::endl;
 
+  SMALL cnt1 = 0;
+  LARGE sum1 = 0;
   for (int i = 0; i < objTerms.size(); i++) {
     Lit litInObj = objTerms[i].lit;
+    if (!cardCore->hasLit(litInObj)) continue;
+    if (objTerms[i].coeff > 0) break;
+    sum1 += objTerms[i].coeff;
+  }
+
+  int idx = 0;
+  for (; idx < objTerms.size(); ++idx) {
+    Lit litInObj = objTerms[idx].lit;
     Var varInObj = toVar(litInObj);
     assert(varInObj > 0);
 
     if (!cardCore->hasVar(varInObj)) continue;
+    assert(litInObj == cardCore->getLit(varInObj));
+    SMALL targetCoefficient = objTerms[idx].coeff;
+    assert(targetCoefficient != 0);
+    if (targetCoefficient > 0) break;
+    assert(targetCoefficient < 0);
 
-    SMALL targetCoefficient = objTerms[i].coeff;
+    sum1 -= objTerms[idx].coeff;
+    ++cnt1;
 
-    if (!positive && targetCoefficient > 0) {
-      positive = true;
-      for (Var varInCard : cardCore->getVars()) {
-        assert(varInCard > 0);
-        cnt += !obj->hasVar(varInCard);
-      }
+    LARGE tmpLb = 0;
+    tmpLb -= cnt1 * targetCoefficient;
+    tmpLb -= sum1;
+    tmpLb += cardCoreDegree * targetCoefficient;
+    tmpLb += auxiliary * targetCoefficient;
+
+    if (tmpLb > bestLb) {
+      bestLit = litInObj;
+      bestLb = tmpLb;
     }
+  }
 
-    cnt++;
-    presum += objTerms[i].coeff;
+  SMALL cnt2 = cnt1;
+  for (const Var& varInCore : cardCore->getVars()) {
+    cnt2 += !obj->hasVar(varInCore);
+  }
+  SMALL cnt3 = 0;
+  LARGE sum3 = 0;
 
-    LARGE tmpLb = cardCoreDegree * targetCoefficient - (cnt * targetCoefficient - presum);
+  for (; idx < objTerms.size(); ++idx) {
+    Lit litInObj = objTerms[idx].lit;
+    Var varInObj = toVar(litInObj);
+    assert(varInObj > 0);
 
-    if (targetCoefficient < 0) tmpLb += auxiliary * targetCoefficient;
+    if (!cardCore->hasVar(varInObj)) continue;
+    assert(litInObj == cardCore->getLit(varInObj));
+    SMALL targetCoefficient = objTerms[idx].coeff;
+    assert(targetCoefficient > 0);
+
+    ++cnt3;
+    sum3 += targetCoefficient;
+
+    LARGE tmpLb = 0;
+    tmpLb -= cnt2 * targetCoefficient;
+    tmpLb += sum3 - targetCoefficient * cnt3;
+    tmpLb += cardCoreDegree * targetCoefficient;
 
     if (tmpLb > bestLb) {
       bestLit = litInObj;
@@ -684,7 +719,7 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
   // reform the obj
   if (targetCoefficient >= 1) totBestCardCore->invert();
   reformObj->addUp(totBestCardCore, aux::abs(targetCoefficient));
-  simplifyAssumps(reformObj, assumptions);
+  // simplifyAssumps(reformObj, assumptions);
 
   assert(-reformObj->getDegree() == totBestLb);
 
