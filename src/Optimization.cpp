@@ -473,46 +473,34 @@ State Optimization<SMALL, LARGE>::reformObjectiveSmartly(const CeSuper& core) {
   }
 
   assert(bestLb > lower_bound);
+  lower_bound = bestLb;
 
-  // add auxiliary variables into cardCore implicitly, and then add into reformObj
-  long long auxiliary = cardCore->nVars() - cardCore->getDegree();
+  reformObjectiveWithCoreAndLit(cardCore, bestLit);
+
+  assert(-reformObj->getDegree() == lower_bound);
+  return State::SUCCESS;
+}
+template <typename SMALL, typename LARGE>
+void Optimization<SMALL, LARGE>::reformObjectiveWithCoreAndLit(const Ce32& cardCore, Lit lit) {
+  long auxiliary = cardCore->nVars() - cardCore->getDegree();
+  SMALL targetCoefficient = reformObj->getCoef(lit);
   SMALL coefficient = 1;
 
-  SMALL targetCoefficient = reformObj->getCoef(bestLit);
-  assert(cardCore->hasVar(toVar(bestLit)));
-  assert(reformObj->hasVar(toVar(bestLit)));
-  if (!reformObj->hasLit(bestLit)) {
-    targetCoefficient = -targetCoefficient;
-  }
+  assert(targetCoefficient < 0 && !reformObj->hasLit(lit) || targetCoefficient > 0 && reformObj->hasLit(lit));
 
-  CeArb auxiliaryConstr = global.cePools.takeArb();
-  auxiliaryConstr->orig = Origin::REFORMBOUND;
-  auxiliaryConstr->addRhs(auxiliary);
-
-  while (auxiliary) {
+  while(auxiliary) {
     Var newVar = solver.addVar(false);
-    reformObj->addLhs(coefficient * targetCoefficient, newVar);
-    auxiliaryConstr->addLhs(coefficient, newVar);
+    reformObj->addLhs(targetCoefficient * coefficient, newVar);
     coefficient <<= 1;
     auxiliary >>= 1;
   }
 
-  // solver.addConstraint(auxiliaryConstr);
-
-  // reform the obj
-
   if (targetCoefficient >= 1) cardCore->invert();
   reformObj->addUp(cardCore, aux::abs(targetCoefficient));
+  assert(!reformObj->hasVar(toVar(lit)));
   simplifyAssumps(reformObj, assumptions);
-
-  if (-reformObj->degree <= lower_bound) return State::FAIL;
-
-  assert(-reformObj->getDegree() > lower_bound);
-  assert(-reformObj->getDegree() == bestLb);
-
-  lower_bound = aux::max(lower_bound, -reformObj->getDegree());
-  return State::SUCCESS;
 }
+
 template <typename SMALL, typename LARGE>
 std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const CeSuper& core,
                                                                            const CePtr<SMALL, LARGE>& obj) {
@@ -570,7 +558,6 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
       objTerms[i].coeff = -objTerms[i].coeff;
       objTerms[i].lit = -lit;
     } else {
-
     }
   }
   std::stable_sort(objTerms.begin(), objTerms.end());
@@ -669,19 +656,21 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
   Lit totBestLit = 0;
   Ce32 totBestCardCore = nullptr;
 
-  int bestIdx;
-  int idx = 0;
   for (CRef cref : all_constraints) {
     const Constr& constr = solver.getCA()[cref];
     const CeSuper ce = constr.toExpanded(global.cePools);
-    auto [bestLit, cardCore, bestLb] = getBestLowerBound(ce, reformObj);
+    auto [bestLit, bestCardCore, bestLb] = getBestLowerBound(ce, reformObj);
+
+    if(bestLit == 0) {
+      assert(bestCardCore == nullptr && bestLb == -INFLPINT);
+      continue;
+    }
+
     if (bestLb > totBestLb) {
-      bestIdx = idx;
       totBestLb = bestLb;
       totBestLit = bestLit;
-      totBestCardCore = cardCore;
+      totBestCardCore = bestCardCore;
     }
-    idx++;
   }
 
   if (totBestLit == 0) {
@@ -693,39 +682,10 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
   assert(totBestCardCore != nullptr);
   assert(totBestLb != -INFLPINT);
 
-  long long auxiliary = totBestCardCore->nVars() - totBestCardCore->getDegree();
-  SMALL coefficient = 1;
-  SMALL targetCoefficient = reformObj->getCoef(totBestLit);
-  assert(totBestCardCore->hasVar(toVar(totBestLit)));
-  assert(reformObj->hasVar(toVar(totBestLit)));
-  if (!reformObj->hasLit(totBestLit)) {
-    targetCoefficient = -targetCoefficient;
-  }
+  lower_bound = totBestLb;
+  reformObjectiveWithCoreAndLit(totBestCardCore, totBestLit);
 
-  CeArb auxiliaryConstr = global.cePools.takeArb();
-  auxiliaryConstr->orig = Origin::REFORMBOUND;
-  auxiliaryConstr->addRhs(auxiliary);
-
-  while (auxiliary) {
-    Var newVar = solver.addVar(false);
-    reformObj->addLhs(coefficient * targetCoefficient, newVar);
-    auxiliaryConstr->addLhs(coefficient, newVar);
-    coefficient <<= 1;
-    auxiliary >>= 1;
-  }
-
-  // solver.addConstraint(auxiliaryConstr);
-
-  // reform the obj
-  if (targetCoefficient >= 1) totBestCardCore->invert();
-  reformObj->addUp(totBestCardCore, aux::abs(targetCoefficient));
-  // simplifyAssumps(reformObj, assumptions);
-
-  assert(-reformObj->getDegree() == totBestLb);
-
-  lower_bound = -reformObj->getDegree();
-
-  addReformUpperBound(true);
+  assert(-reformObj->getDegree() == lower_bound);
 }
 
 template <typename SMALL, typename LARGE>

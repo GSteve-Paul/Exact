@@ -177,6 +177,9 @@ namespace xct
   //when inconsistent, we reform the obj and update lower_bound
   State reformObjectiveSmartly(const CeSuper& core);
 
+  //reform the reformObj with CardCore and Lit
+  void reformObjectiveWithCoreAndLit(const Ce32& cardCore, Lit lit);
+
   //before the cdcl procedure, initialize the lowerbound
   void preprocessLowerBound();
 
