@@ -491,7 +491,7 @@ void Optimization<SMALL, LARGE>::reformObjectiveWithCoreAndLit(const Ce32& cardC
   while(auxiliary) {
     Var newVar = solver.addVar(false);
     reformObj->addLhs(targetCoefficient * coefficient, newVar);
-    coefficient <<= 1;
+    coefficient *= 2;
     auxiliary >>= 1;
   }
 
@@ -531,7 +531,14 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
 
   Var bestLit = 0;
   LARGE bestLb = -INFLPINT;
-  const LARGE auxiliary = cardCore->nVars() - cardCoreDegree;
+
+  long auxiliary = cardCore->nVars() - cardCoreDegree;
+  int auxiBit = 0;
+  while(auxiliary) {
+    ++auxiBit;
+    auxiliary /= 2;
+  }
+  auxiliary = (1 << auxiBit) - 1;
 
   struct LitTerm {
     Lit lit;
@@ -556,8 +563,11 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
     objTerms[i].coeff = reformObj->getCoef(lit);
     if (cardCore->hasVar(v) && !cardCore->hasLit(lit)) {
       objTerms[i].coeff = -objTerms[i].coeff;
-      objTerms[i].lit = -lit;
-    } else {
+      objTerms[i].lit = -objTerms[i].lit;
+    }
+    if (!cardCore->hasVar(v) && lit < 0) {
+      objTerms[i].coeff = -objTerms[i].coeff;
+      objTerms[i].lit = -objTerms[i].lit;
     }
   }
   std::stable_sort(objTerms.begin(), objTerms.end());
@@ -651,11 +661,10 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
   } else {
     return;
   }
-  const std::vector<CRef> all_constraints = solver.getRawConstraints();
-  LARGE totBestLb = -INFLPINT;
-  Lit totBestLit = 0;
-  Ce32 totBestCardCore = nullptr;
 
+  lower_bound = -reformObj->getDegree();
+
+  const std::vector<CRef> all_constraints = solver.getRawConstraints();
   for (CRef cref : all_constraints) {
     const Constr& constr = solver.getCA()[cref];
     const CeSuper ce = constr.toExpanded(global.cePools);
@@ -665,27 +674,18 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
       assert(bestCardCore == nullptr && bestLb == -INFLPINT);
       continue;
     }
+    assert(bestLit != 0);
+    assert(bestCardCore != nullptr);
+    assert(bestLb != -INFLPINT);
 
-    if (bestLb > totBestLb) {
-      totBestLb = bestLb;
-      totBestLit = bestLit;
-      totBestCardCore = bestCardCore;
-    }
+    if(bestLb <= lower_bound)
+      continue;
+
+    lower_bound = bestLb;
+    reformObjectiveWithCoreAndLit(bestCardCore, bestLit);
+    assert(-reformObj->getDegree() == lower_bound);
+    addReformUpperBound(true);
   }
-
-  if (totBestLit == 0) {
-    assert(totBestCardCore == nullptr);
-    assert(totBestLb == -INFLPINT);
-    return;
-  }
-
-  assert(totBestCardCore != nullptr);
-  assert(totBestLb != -INFLPINT);
-
-  lower_bound = totBestLb;
-  reformObjectiveWithCoreAndLit(totBestCardCore, totBestLit);
-
-  assert(-reformObj->getDegree() == lower_bound);
 }
 
 template <typename SMALL, typename LARGE>
