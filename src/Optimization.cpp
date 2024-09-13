@@ -758,7 +758,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   }
 
   // initialize lowerbound
-  // preprocessLowerBound();
+  preprocessLowerBound();
 
   bool lbnotupdated = false;
 
