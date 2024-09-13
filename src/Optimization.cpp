@@ -758,7 +758,9 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   }
 
   // initialize lowerbound
-  preprocessLowerBound();
+  // preprocessLowerBound();
+
+  bool lbnotupdated = false;
 
   while (true) {
     if (timeout != 0 && global.stats.getRunTime() > timeout) return SolveState::TIMEOUT;
@@ -774,7 +776,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
 
     assumps.clear();
     bool topdown = false;
-    if (optimize && !origObj->empty() && lower_bound < upper_bound &&
+    if (optimize && !lbnotupdated && !origObj->empty() && lower_bound < upper_bound &&
         (global.options.optRatio.get() >= 1 ||
          global.stats.DETTIMEBOTTOMUP <
              global.options.optRatio.get() * (global.stats.DETTIMETOPDOWN + global.stats.DETTIMEBOTTOMUP))) {
@@ -818,6 +820,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       }
     } else {
       // set regular assumptions
+      lbnotupdated = false;
       topdown = true;
       solver.setAssumptions(assumptions.getKeys(), false);
     }
@@ -861,7 +864,15 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
           return SolveState::INCONSISTENT;
         }
         current_time = global.stats.getDetTime();
+
+        LARGE oldLb = lower_bound;
         aux::timeCallVoid([&] { handleInconsistency(solver.lastCore); }, global.stats.SOLVETIMEBOTTOMUP);
+        if(oldLb != lower_bound) {
+          lbnotupdated = false;
+        }
+        else {
+          lbnotupdated = true;
+        }
 
         global.stats.DETTIMEBOTTOMUP += global.stats.getDetTime() - current_time;
         if (global.options.proofAssumps) addLowerBound();
