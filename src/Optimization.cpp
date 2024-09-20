@@ -488,7 +488,7 @@ void Optimization<SMALL, LARGE>::reformObjectiveWithCoreAndLit(const Ce32& cardC
 
   assert(targetCoefficient < 0 && !reformObj->hasLit(lit) || targetCoefficient > 0 && reformObj->hasLit(lit));
 
-  while(auxiliary) {
+  while (auxiliary) {
     Var newVar = solver.addVar(false);
     reformObj->addLhs(targetCoefficient * coefficient, newVar);
     coefficient *= 2;
@@ -534,7 +534,7 @@ std::tuple<Lit, Ce32, LARGE> Optimization<SMALL, LARGE>::getBestLowerBound(const
 
   long auxiliary = cardCore->nVars() - cardCoreDegree;
   int auxiBit = 0;
-  while(auxiliary) {
+  while (auxiliary) {
     ++auxiBit;
     auxiliary /= 2;
   }
@@ -662,15 +662,20 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
     return;
   }
 
+  std::chrono::steady_clock::time_point tstart = std::chrono::steady_clock::now();
+
   lower_bound = -reformObj->getDegree();
 
   const std::vector<CRef> all_constraints = solver.getRawConstraints();
   for (CRef cref : all_constraints) {
+    std::chrono::steady_clock::time_point tend = std::chrono::steady_clock::now();
+    std::chrono::duration<double> time_span = duration_cast<std::chrono::duration<double>>(tend - tstart);
+    if (time_span.count() > 5 * 60) return;
     const Constr& constr = solver.getCA()[cref];
     const CeSuper ce = constr.toExpanded(global.cePools);
     auto [bestLit, bestCardCore, bestLb] = getBestLowerBound(ce, reformObj);
 
-    if(bestLit == 0) {
+    if (bestLit == 0) {
       assert(bestCardCore == nullptr && bestLb == -INFLPINT);
       continue;
     }
@@ -678,8 +683,7 @@ void Optimization<SMALL, LARGE>::preprocessLowerBound() {
     assert(bestCardCore != nullptr);
     assert(bestLb != -INFLPINT);
 
-    if(bestLb <= lower_bound)
-      continue;
+    if (bestLb <= lower_bound) continue;
 
     lower_bound = bestLb;
     reformObjectiveWithCoreAndLit(bestCardCore, bestLit);
@@ -867,10 +871,9 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
 
         LARGE oldLb = lower_bound;
         aux::timeCallVoid([&] { handleInconsistency(solver.lastCore); }, global.stats.SOLVETIMEBOTTOMUP);
-        if(oldLb != lower_bound) {
+        if (oldLb != lower_bound) {
           lbnotupdated = false;
-        }
-        else {
+        } else {
           lbnotupdated = true;
         }
 
