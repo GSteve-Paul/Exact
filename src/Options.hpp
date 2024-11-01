@@ -223,12 +223,12 @@ struct Options {
   ValOption<int32_t> dbMaxLBD{"db-maxlbd", "Constraints with an LBD larger than this are considered to have this LBD",
                               static_cast<int32_t>(1e5), "1 =< int =< 1e5",
                               [](const int32_t& x) -> bool { return 1 <= x && x <= static_cast<int32_t>(MAXLBD); }};
-  ValOption<double> lpTimeRatio{
-      "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
+  ValOption<double> lpTimeRatio {
+    "lp", "Ratio of time spent in LP calls (0 means no LP solving, 1 means no limit on LP solver)",
 #if WITHSOPLEX
-      0.1, "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }
+        0.1, "0 =< float <= 1", [](const double& x) -> bool { return 1 >= x && x >= 0; }
 #else
-      0, "0", [](const double& x) -> bool { return x == 0; }
+        0, "0", [](const double& x) -> bool { return x == 0; }
 #endif
   };
   ValOption<int32_t> lpPivotBudget{"lp-budget", "Initial LP call pivot budget", 2000, "1 =< int",

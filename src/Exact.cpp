@@ -328,8 +328,9 @@ std::pair<std::string, int64_t> Exact::count(const std::vector<std::string>& var
 std::vector<std::pair<std::string, double>> Exact::getStats() {
   intprog.global.stats.setDerivedStats(static_cast<StatNum>(intprog.getLowerBound()),
                                        static_cast<StatNum>(intprog.getUpperBound()));
-  return aux::comprehension(intprog.global.stats.statsToDisplay,
-                            [](Stat* s) { return std::pair<std::string, double>{s->name, static_cast<double>(s->z)}; });
+  return aux::comprehension(intprog.global.stats.statsToDisplay, [](Stat* s) {
+    return std::pair<std::string, double>{s->name, static_cast<double>(s->z)};
+  });
 }
 
 PYBIND11_MODULE(exact, m) {

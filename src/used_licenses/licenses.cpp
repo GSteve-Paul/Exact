@@ -94,15 +94,13 @@ std::vector<Codebase> usedCodebases = {
 void printLicense(const std::string& lic) {
   std::unordered_map<std::string, const char*> lic2text;
   lic2text.insert({
-      {"AGPLv3", COPYING},
-      {"Boost", boost},
+    {"AGPLv3", COPYING}, {"Boost", boost},
 #if WITHCOINUTILS
-      {"EPL", EPL},
+        {"EPL", EPL},
 #endif
-      {"MIT", MIT},
-      {"RS", roundingsat},
+        {"MIT", MIT}, {"RS", roundingsat},
 #if WITHSOPLEX
-      {"ZIB Apache 2", zib_apache},
+        {"ZIB Apache 2", zib_apache},
 #endif
   });
 
@@ -112,7 +110,9 @@ void printLicense(const std::string& lic) {
 
 void printUsed() {
   std::cout << "The following codebases are used in this binary." << std::endl;
-  std::cout << std::setw(20) << "Codebase" << std::setw(15) << "License(s)" << "   " << "Information" << std::endl;
+  std::cout << std::setw(20) << "Codebase" << std::setw(15) << "License(s)"
+            << "   "
+            << "Information" << std::endl;
   for (Codebase& cb : usedCodebases) {
     std::cout << std::setw(20) << cb.shortName << std::setw(15) << cb.licenseName << "   " << cb.info << std::endl;
   }

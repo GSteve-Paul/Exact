@@ -16,3 +16,4 @@
 
 # superfluous test files
 /test/instances/mps_troublesome*
+build*
