@@ -49,6 +49,13 @@ set(soplex_src "${PROJECT_SOURCE_DIR}/soplex/src"
 set(soplex_build "${PROJECT_SOURCE_DIR}/soplex_build"
     CACHE STRING "SoPlex build directory used to find the compiled libraries and the header file soplex/config.h.")
 
+set(ls "ON"
+    CACHE STRING "Use local search to accelerate SAT.")
+set(ls_src "${PROJECT_SOURCE_DIR}/LS-SCIP-BIG-final-init"
+    CACHE STRING "Local search source directory used to find the header files.")
+set(ls_build "${PROJECT_SOURCE_DIR}/LS-SCIP-BIG-final-init/build"
+    CACHE STRING "Local search build directory used to find the compiled libraries.")
+
 set(coinutils "OFF"
     CACHE STRING "Coin OR Utils library to parse .mps and .lp files.")
 set(zlib "OFF"
@@ -238,6 +245,13 @@ if(soplex)
         target_link_libraries(Exact "${soplex_build}/lib/libsoplexshared.so")
     endif()
     target_compile_definitions(Exact PUBLIC WITHSOPLEX=1)
+endif()
+
+if(ls)
+    add_subdirectory(${ls_src})
+    target_include_directories(Exact SYSTEM PUBLIC ${ls_src})
+    target_link_libraries(Exact DNOP)
+    target_compile_definitions(Exact PUBLIC WITHLS=1)
 endif()
 
 if(coinutils)

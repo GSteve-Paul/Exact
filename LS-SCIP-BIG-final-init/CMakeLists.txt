@@ -14,7 +14,7 @@ set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 
-option(USE_PRESOLVE "USE PRESOLVE" ON)
+option(USE_PRESOLVE "USE PRESOLVE" OFF)
 option(USE_SCIP "USE SCIP" ON)
 
 #if(USE_PRESOLVE)
@@ -102,14 +102,14 @@ target_include_directories(DNOP PRIVATE
 endif()
 
 if(USE_PRESOLVE)
-target_link_directories(DNOP PRIVATE
+target_link_directories(DNOP PUBLIC
     scipoptsuite-8.1.0/build/papilo
 )
 endif()
 
 if(USE_SCIP)
-target_link_directories(DNOP PRIVATE
-  scipoptsuite-8.1.0/build/lib
+target_link_directories(DNOP PUBLIC
+    scipoptsuite-8.1.0/build/lib
 )
 endif()
 
@@ -127,7 +127,7 @@ target_link_libraries(DNOP PRIVATE
 endif()
 if(USE_SCIP)
 target_link_libraries(DNOP PRIVATE
-  scip 
+  scip
   soplex-pic
 )
 endif()
