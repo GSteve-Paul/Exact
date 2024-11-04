@@ -45,51 +45,51 @@ void Satlike::print_best_solution_OPT() // 传入文件名和seed
             if (intsize <= 63 && use_presolve)
                 postsolve_solution(true, false);
             else
-                cout << "o " << realobj_small << endl;
-            cout << "s OPTIMUM FOUND" << endl;
+                std::cout << "o " << realobj_small << std::endl;
+            std::cout << "s OPTIMUM FOUND" << std::endl;
         }
         else
         {
-            cout << "s SATISFIABLE" << endl;
+            std::cout << "s SATISFIABLE" << std::endl;
         }
         if (intsize <= 63 && use_presolve)
             postsolve_solution(false, true);
         else
         {
-            cout << "v " << flush;
+            std::cout << "v " << std::flush;
             for (int i = 1; i <= num_vars; ++i)
             {
                 if (best_soln[i] == 0)
-                    cout << "-x" << i << " ";
+                    std::cout << "-x" << i << " ";
                 else
-                    cout << 'x' << i << " ";
+                    std::cout << 'x' << i << " ";
             }
-            cout << endl;
+            std::cout << std::endl;
         }
 #else
         if (!opt_dec_model)
         {
-            cout << "o " << realobj_small << endl;
-            cout << "s OPTIMUM FOUND" << endl;
+            std::cout << "o " << realobj_small << std::endl;
+            std::cout << "s OPTIMUM FOUND" << std::endl;
         }
         else
         {
-            cout << "s SATISFIABLE" << endl;
+            std::cout << "s SATISFIABLE" << std::endl;
         }
-        cout << "v " << flush;
+        std::cout << "v " << std::flush;
         for (int i = 1; i <= num_vars; ++i)
         {
             if (best_soln[i] == 0)
-                cout << "-x" << i << " ";
+                std::cout << "-x" << i << " ";
             else
-                cout << 'x' << i << " ";
+                std::cout << 'x' << i << " ";
         }
-        cout << endl;
+        std::cout << std::endl;
 #endif
-        cout << "c Done " << opt_time << "s" << endl;
+        std::cout << "c Done " << opt_time << "s" << std::endl;
     }
     else
-        cout << "s UNKNOWN" << endl;
+        std::cout << "s UNKNOWN" << std::endl;
 }
 
 int extractNumericPartAsInt(const char *varName)
@@ -289,9 +289,9 @@ uint8_t Satlike::scip_solve()
         SCIP_SOL* sol = SCIPgetBestSol(scip);  // 获取最优解
     if (sol != nullptr) {
         double obj = SCIPgetSolOrigObj(scip, sol);
-        std::cout << "Solution found with objective value: " << obj << std::endl;
+        std::std::cout << "Solution found with objective value: " << obj << std::std::endl;
     } else {
-        std::cout << "No solution found." << std::endl;
+        std::std::cout << "No solution found." << std::std::endl;
     }*/
 
     return scip_solve_async(scip, std::move(vars));

@@ -56,6 +56,10 @@ set(ls_src "${PROJECT_SOURCE_DIR}/LS-SCIP-BIG-final-init"
 set(ls_build "${PROJECT_SOURCE_DIR}/LS-SCIP-BIG-final-init/build"
     CACHE STRING "Local search build directory used to find the compiled libraries.")
 
+if(ls)
+    add_subdirectory(${ls_src})
+endif()
+
 set(coinutils "OFF"
     CACHE STRING "Coin OR Utils library to parse .mps and .lp files.")
 set(zlib "OFF"
@@ -248,7 +252,6 @@ if(soplex)
 endif()
 
 if(ls)
-    add_subdirectory(${ls_src})
     target_include_directories(Exact SYSTEM PUBLIC ${ls_src})
     target_link_libraries(Exact DNOP)
     target_compile_definitions(Exact PUBLIC WITHLS=1)

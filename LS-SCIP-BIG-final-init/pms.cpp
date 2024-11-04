@@ -108,7 +108,7 @@ bool parse_options(int argc, char *argv[])
 
 	cutoff_time = args::get(TimeLim);
 	memory_limit_gb = args::get(MemoryLimit);
-	cout << cutoff_time << endl;
+	std::cout << cutoff_time << std::endl;
 
 #ifdef USE_SCIP
 	if (ScipLim)
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 		// signal(SIGILL, interrupt);	// 捕获非法指令信号
 		signal(SIGINT, interrupt); // 捕获中断信号
 
-		vector<int> init_solution;
+		std::vector<int> init_solution;
 		int intsize = s.get_intsize(filename);
 #ifdef USEPRESOLVE
 		s.use_presolve = false; // 问问对不对

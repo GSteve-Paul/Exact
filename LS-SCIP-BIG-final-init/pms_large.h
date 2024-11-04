@@ -327,9 +327,9 @@ void Satlike::build_instance_large(char *filename)
   {
     file.close();
     throw "c " + std::string(filename) + " does not exist!";
-    cout << "s UNSUPPORTED" << endl;
-    cout << "c the input filename " << filename
-         << " is invalid, please input the correct filename." << endl;
+    std::cout << "s UNSUPPORTED" << std::endl;
+    std::cout << "c the input filename " << filename
+         << " is invalid, please input the correct filename." << std::endl;
     exit(-1);
   }
 
@@ -411,7 +411,7 @@ void Satlike::build_instance_large(char *filename)
   Int *temp_weight = new Int[num_vars + 10];
   int *temp_lit = new int[num_vars + 10]; // modify local
   // T cur_weight;
-  string symbol;
+  std::string symbol;
   Int degree;
   total_soft_weight_large = 0;
 
@@ -676,7 +676,7 @@ void Satlike::build_instance_large(char *filename)
   opt_unsat_weight_large = total_soft_weight_large + 1;
 }
 
-void Satlike::init_large(vector<int> &init_solution)
+void Satlike::init_large(std::vector<int> &init_solution)
 {
   int v, c;
   int j;
@@ -695,7 +695,7 @@ void Satlike::init_large(vector<int> &init_solution)
   ave_soft_weight_large = num_sclauses == 0 ? 0 : total_soft_weight_large / num_sclauses;
   ave_hard_weight_large = 0;
   inc_hard_weight_large = 0;
-  // cout << "ave soft weight is " << ave_soft_weight_large << endl;
+  // std::cout << "ave soft weight is " << ave_soft_weight_large << std::endl;
 
   double tmp_avg_soft_clause_weight = 0.0; // Nupbo-zyj3.7
 
@@ -749,20 +749,20 @@ void Satlike::init_large(vector<int> &init_solution)
     }
     else
       gap1_large[c] = clause_total_sum_large[c];
-    // gap1_large[c] = min((int)(clause_true_lit_thres_large[c] + clause_max_weight_large[c]),
+    // gap1_large[c] = std::min((int)(clause_true_lit_thres_large[c] + clause_max_weight_large[c]),
     // (int)clause_total_sum_large[c]);//gap1_large 一样
     /********min{k + amax, asum}**********/
   }
   inc_hard_weight_large = ave_hard_weight_large % num_hclauses;
   ave_hard_weight_large /= num_hclauses;
   inc_hard_weight_large += ave_soft_weight_large;
-  // cout<<"gap1_large"<<gap1_large[3];
-  // cout << "inc hard weight is " << inc_hard_weight_large << endl;
-  // cout << "ave hard weight is " << ave_hard_weight_large << endl;
+  // std::cout<<"gap1_large"<<gap1_large[3];
+  // std::cout << "inc hard weight is " << inc_hard_weight_large << std::endl;
+  // std::cout << "ave hard weight is " << ave_hard_weight_large << std::endl;
   //  for(int i = 0;i < num_clauses;i++)
   //     {
-  //    	cout<<"gap1_large "<<i<<" = "<<gap1_large[i]<<endl;
-  //     	//cout<<"c_sum "<<i<<"="<<clause_total_sum_large[i]<<endl;
+  //    	std::cout<<"gap1_large "<<i<<" = "<<gap1_large[i]<<std::endl;
+  //     	//std::cout<<"c_sum "<<i<<"="<<clause_total_sum_large[i]<<std::endl;
   //     }
 
   // init_large solution
@@ -850,7 +850,7 @@ void Satlike::init_large(vector<int> &init_solution)
         hard_unsat_weight_large += clause_true_lit_thres_large[c] - sat_count_large[c]; // zyj
       unsat_large(c);
     }
-    // cout<<"soft_unsat_weight_large "<<soft_unsat_weight_large<<endl;
+    // std::cout<<"soft_unsat_weight_large "<<soft_unsat_weight_large<<std::endl;
   }
 
   /*figure out score_large*/
@@ -875,10 +875,10 @@ void Satlike::init_large(vector<int> &init_solution)
           {
             score_large[v] +=
                 double(tuned_degree_unit_weight_large[c] *
-                       min(clause_true_lit_thres_large[c] - sat_count_large[c], weight));
-            // hhscore_large[v] += unit_weight_large[c] * max(weight -
+                       std::min(clause_true_lit_thres_large[c] - sat_count_large[c], weight));
+            // hhscore_large[v] += unit_weight_large[c] * std::max(weight -
             // (clause_true_lit_thres_large[c] - sat_count_large[c]), 0);
-            hhscore_large[v] += max(weight - (clause_true_lit_thres_large[c] - sat_count_large[c]), Int(0));
+            hhscore_large[v] += std::max(weight - (clause_true_lit_thres_large[c] - sat_count_large[c]), Int(0));
           }
           else
           {
@@ -894,16 +894,16 @@ void Satlike::init_large(vector<int> &init_solution)
             {
               score_large[v] -= double(
                   tuned_degree_unit_weight_large[c] *
-                  max(Int(0), clause_true_lit_thres_large[c] - sat_count_large[c] + weight));
-              // hhscore_large[v] -= unit_weight_large[c] * min(weight, sat_count_large[c] -
+                  std::max(Int(0), clause_true_lit_thres_large[c] - sat_count_large[c] + weight));
+              // hhscore_large[v] -= unit_weight_large[c] * std::min(weight, sat_count_large[c] -
               // clause_true_lit_thres_large[c]);
-              hhscore_large[v] -= min(weight, sat_count_large[c] - clause_true_lit_thres_large[c]);
+              hhscore_large[v] -= std::min(weight, sat_count_large[c] - clause_true_lit_thres_large[c]);
             }
             else
             {
-              // hhscore_large[v] += unit_weight_large[c] * min(weight, gap1_large[c] -
+              // hhscore_large[v] += unit_weight_large[c] * std::min(weight, gap1_large[c] -
               // sat_count_large[c]);
-              hhscore_large[v] += min(weight, gap1_large[c] - sat_count_large[c]);
+              hhscore_large[v] += std::min(weight, gap1_large[c] - sat_count_large[c]);
             }
           }
           else if (sat_count_large[c] > gap1_large[c])
@@ -911,10 +911,10 @@ void Satlike::init_large(vector<int> &init_solution)
             if (sense == cur_soln[v])
             {
               score_large[v] -= tuned_degree_unit_weight_large[c] *
-                                max(Int(0), clause_true_lit_thres_large[c] - sat_count_large[c] + weight);
-              // hhscore_large[v] -= unit_weight_large[c] * max(weight - (sat_count_large[c] -
+                                std::max(Int(0), clause_true_lit_thres_large[c] - sat_count_large[c] + weight);
+              // hhscore_large[v] -= unit_weight_large[c] * std::max(weight - (sat_count_large[c] -
               // gap1_large[c]), 0);
-              hhscore_large[v] -= max(weight - (sat_count_large[c] - gap1_large[c]), Int(0));
+              hhscore_large[v] -= std::max(weight - (sat_count_large[c] - gap1_large[c]), Int(0));
             }
           }
         }
@@ -1231,7 +1231,7 @@ void Satlike::pick_vars_large() // new adds
     //   else
     //     sel_c = pick_hardc_large(); // zyj-MABh
     //   mark_which = 1;
-    //   // cout << "MAB-h" << sel_c;
+    //   // std::cout << "MAB-h" << sel_c;
     // }
   }
   else
@@ -2398,7 +2398,7 @@ void Satlike::flip_fps_large(
         // clause_true_lit_thres_large[c]) //？？？冗余，可以删除
         // {
         // 	//soft_unsat_weight是否需要复制？
-        // 	soft_unsat_weight_large -= org_unit_weight_large[c] * min(weight,
+        // 	soft_unsat_weight_large -= org_unit_weight_large[c] * std::min(weight,
         // clause_true_lit_thres_large[c] - sat_count_large[c]);
         // }
         // sat_count_large[c] += weight;
@@ -2418,12 +2418,12 @@ void Satlike::flip_fps_large(
             {
               score2_large[v] -=
                   double((tuned_degree_unit_weight_large[c] *
-                          (min(gap, p->weight) -
-                           min(gap - weight, p->weight)))); // 变量v的硬子句得分，累积减去(硬子句c的单元权重*(min(gap,
-                                                            // 文字p的权重)-min(gap-文字i的权重,
+                          (std::min(gap, p->weight) -
+                           std::min(gap - weight, p->weight)))); // 变量v的硬子句得分，累积减去(硬子句c的单元权重*(std::min(gap,
+                                                            // 文字p的权重)-std::min(gap-文字i的权重,
                                                             // 文字p的权重)))
-              hhscore2_large[v] += ((max(p->weight - gap + weight, Int(0)) -
-                                     max(p->weight - gap, Int(0))));
+              hhscore2_large[v] += ((std::max(p->weight - gap + weight, Int(0)) -
+                                     std::max(p->weight - gap, Int(0))));
             }
           }
         }
@@ -2437,21 +2437,21 @@ void Satlike::flip_fps_large(
             if (p->sense != cur_soln[v])
             {
               score2_large[v] -=
-                  double((tuned_degree_unit_weight_large[c] * min(gap, p->weight)));
-              // hhscore_large[v] += (unit_weight_large[c] * (min(p->weight, gap1_large[c] -
-              // sat_count_large[c] - weight) - max(p->weight - gap, 0)));//2 unsat_large
+                  double((tuned_degree_unit_weight_large[c] * std::min(gap, p->weight)));
+              // hhscore_large[v] += (unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
+              // sat_count_large[c] - weight) - std::max(p->weight - gap, 0)));//2 unsat_large
               hhscore2_large[v] +=
-                  ((min(p->weight, gap1_large[c] - sat_count2_large[c] - weight) -
-                    max(p->weight - gap, Int(0)))); // 2 unsat_large
+                  ((std::min(p->weight, gap1_large[c] - sat_count2_large[c] - weight) -
+                    std::max(p->weight - gap, Int(0)))); // 2 unsat_large
             }
             else
             {
               score2_large[v] +=
                   double(tuned_degree_unit_weight_large[c] *
-                         (p->weight - max(Int(0), gap - weight + p->weight)));
-              // hhscore_large[v] -= unit_weight_large[c] * min(p->weight, weight - gap);//2
+                         (p->weight - std::max(Int(0), gap - weight + p->weight)));
+              // hhscore_large[v] -= unit_weight_large[c] * std::min(p->weight, weight - gap);//2
               // sat_large
-              hhscore2_large[v] -= min(p->weight, weight - gap); // 2 sat_large
+              hhscore2_large[v] -= std::min(p->weight, weight - gap); // 2 sat_large
             }
           }
         }
@@ -2471,21 +2471,21 @@ void Satlike::flip_fps_large(
                 if (p->sense == cur_soln[v])
                 {
                   score2_large[v] += double(tuned_degree_unit_weight_large[c] *
-                                            (max(Int(0), gap + p->weight) -
-                                             max(Int(0), gap - weight + p->weight)));
-                  // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, -gap) -
-                  // min(p->weight, weight - gap));//4
-                  hhscore2_large[v] += (min(p->weight, -gap) -
-                                        min(p->weight, weight - gap)); // 4
+                                            (std::max(Int(0), gap + p->weight) -
+                                             std::max(Int(0), gap - weight + p->weight)));
+                  // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, -gap) -
+                  // std::min(p->weight, weight - gap));//4
+                  hhscore2_large[v] += (std::min(p->weight, -gap) -
+                                        std::min(p->weight, weight - gap)); // 4
                 }
                 else
                 {
-                  // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, gap1_large[c] -
-                  // sat_count_large[c] - weight) - min(p->weight, gap1_large[c] -
+                  // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
+                  // sat_count_large[c] - weight) - std::min(p->weight, gap1_large[c] -
                   // sat_count_large[c]));//3
                   hhscore2_large[v] +=
-                      (min(p->weight, gap1_large[c] - sat_count2_large[c] - weight) -
-                       min(p->weight, gap1_large[c] - sat_count2_large[c])); // 3
+                      (std::min(p->weight, gap1_large[c] - sat_count2_large[c] - weight) -
+                       std::min(p->weight, gap1_large[c] - sat_count2_large[c])); // 3
                 }
               }
             }
@@ -2497,18 +2497,18 @@ void Satlike::flip_fps_large(
                 if (p->sense == cur_soln[v])
                 {
                   score2_large[v] += double(tuned_degree_unit_weight_large[c] *
-                                            (max(Int(0), gap + p->weight) -
-                                             max(Int(0), gap - weight + p->weight)));
-                  // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, -gap) -
-                  // max(p->weight - weight - sat_count_large[c] + gap , 0));//5
-                  hhscore2_large[v] += (min(p->weight, -gap) - max(p->weight - weight - sat_count2_large[c] + gap, Int(0))); // 5
+                                            (std::max(Int(0), gap + p->weight) -
+                                             std::max(Int(0), gap - weight + p->weight)));
+                  // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, -gap) -
+                  // std::max(p->weight - weight - sat_count_large[c] + gap , 0));//5
+                  hhscore2_large[v] += (std::min(p->weight, -gap) - std::max(p->weight - weight - sat_count2_large[c] + gap, Int(0))); // 5
                 }
                 else
                 {
-                  // hhscore_large[v] -= unit_weight_large[c] * (min(p->weight, gap1_large[c] -
+                  // hhscore_large[v] -= unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
                   // sat_count_large[c]));//6
                   hhscore2_large[v] -=
-                      (min(p->weight, gap1_large[c] - sat_count2_large[c])); // 6
+                      (std::min(p->weight, gap1_large[c] - sat_count2_large[c])); // 6
                 }
               }
             }
@@ -2521,14 +2521,14 @@ void Satlike::flip_fps_large(
               if (p->sense == cur_soln[v])
               {
                 score2_large[v] += double(tuned_degree_unit_weight_large[c] *
-                                          (max(Int(0), gap + p->weight) -
-                                           max(Int(0), gap - weight + p->weight)));
-                // hhscore_large[v] += unit_weight_large[c] * (max(p->weight - sat_count_large[c]
-                // + gap1_large[c] , 0) - max(p->weight - sat_count_large[c] - weight +
+                                          (std::max(Int(0), gap + p->weight) -
+                                           std::max(Int(0), gap - weight + p->weight)));
+                // hhscore_large[v] += unit_weight_large[c] * (std::max(p->weight - sat_count_large[c]
+                // + gap1_large[c] , 0) - std::max(p->weight - sat_count_large[c] - weight +
                 // gap1_large[c], 0));//7
                 hhscore2_large[v] +=
-                    (max(p->weight - sat_count2_large[c] + gap1_large[c], Int(0)) -
-                     max(p->weight - sat_count2_large[c] - weight + gap1_large[c],
+                    (std::max(p->weight - sat_count2_large[c] + gap1_large[c], Int(0)) -
+                     std::max(p->weight - sat_count2_large[c] - weight + gap1_large[c],
                          Int(0))); // 7
               }
             }
@@ -2544,7 +2544,7 @@ void Satlike::flip_fps_large(
         // weight < clause_true_lit_thres_large[c]) //？？？
         // {
         // 	//soft_unsat_weight是否需要复制？
-        // 	soft_unsat_weight_large += org_unit_weight_large[c] * min(weight,
+        // 	soft_unsat_weight_large += org_unit_weight_large[c] * std::min(weight,
         // clause_true_lit_thres_large[c] - sat_count_large[c] + weight);
         // }
 
@@ -2562,14 +2562,14 @@ void Satlike::flip_fps_large(
                 if (p->sense == cur_soln[v])
                 {
                   score2_large[v] -= double(tuned_degree_unit_weight_large[c] *
-                                            (max(Int(0), gap + weight + p->weight) -
-                                             max(Int(0), gap + p->weight)));
-                  // hhscore_large[v] += unit_weight_large[c] * (max(p->weight -
-                  // sat_count_large[c] + gap1_large[c], 0) - max(p->weight - sat_count_large[c] +
+                                            (std::max(Int(0), gap + weight + p->weight) -
+                                             std::max(Int(0), gap + p->weight)));
+                  // hhscore_large[v] += unit_weight_large[c] * (std::max(p->weight -
+                  // sat_count_large[c] + gap1_large[c], 0) - std::max(p->weight - sat_count_large[c] +
                   // weight + gap1_large[c], 0));//8
                   hhscore2_large[v] +=
-                      (max(p->weight - sat_count2_large[c] + gap1_large[c], Int(0)) -
-                       max(p->weight - sat_count2_large[c] + weight + gap1_large[c],
+                      (std::max(p->weight - sat_count2_large[c] + gap1_large[c], Int(0)) -
+                       std::max(p->weight - sat_count2_large[c] + weight + gap1_large[c],
                            Int(0))); // 8
                 }
               }
@@ -2582,21 +2582,21 @@ void Satlike::flip_fps_large(
                 if (p->sense == cur_soln[v])
                 {
                   score2_large[v] -= double(tuned_degree_unit_weight_large[c] *
-                                            (max(Int(0), gap + weight + p->weight) -
-                                             max(Int(0), gap + p->weight)));
-                  // hhscore_large[v] += unit_weight_large[c] * (max(p->weight -
-                  // sat_count_large[c] + gap1_large[c], 0) - min(p->weight, sat_count_large[c] -
+                                            (std::max(Int(0), gap + weight + p->weight) -
+                                             std::max(Int(0), gap + p->weight)));
+                  // hhscore_large[v] += unit_weight_large[c] * (std::max(p->weight -
+                  // sat_count_large[c] + gap1_large[c], 0) - std::min(p->weight, sat_count_large[c] -
                   // weight - sat_count_large[c]));//9
                   hhscore2_large[v] +=
-                      (max(p->weight - sat_count2_large[c] + gap1_large[c], Int(0)) -
-                       min(p->weight,
+                      (std::max(p->weight - sat_count2_large[c] + gap1_large[c], Int(0)) -
+                       std::min(p->weight,
                            sat_count2_large[c] - weight - sat_count2_large[c])); // 9
                 }
                 else
                 {
-                  // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, gap1_large[c] -
+                  // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
                   // sat_count_large[c] + weight));//10
-                  hhscore2_large[v] += (min(p->weight, gap1_large[c] - sat_count2_large[c] + weight)); // 10
+                  hhscore2_large[v] += (std::min(p->weight, gap1_large[c] - sat_count2_large[c] + weight)); // 10
                 }
               }
             }
@@ -2609,24 +2609,24 @@ void Satlike::flip_fps_large(
               if (p->sense == cur_soln[v])
               {
                 score2_large[v] -= double(tuned_degree_unit_weight_large[c] *
-                                          (max(Int(0), gap + weight + p->weight) -
-                                           max(Int(0), gap + p->weight)));
-                // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, -gap) -
-                // min(p->weight, sat_count_large[c] - weight -
+                                          (std::max(Int(0), gap + weight + p->weight) -
+                                           std::max(Int(0), gap + p->weight)));
+                // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, -gap) -
+                // std::min(p->weight, sat_count_large[c] - weight -
                 // clause_true_lit_thres_large[c]));//11
                 hhscore2_large[v] +=
-                    (min(p->weight, -gap) -
-                     min(p->weight, sat_count2_large[c] - weight -
+                    (std::min(p->weight, -gap) -
+                     std::min(p->weight, sat_count2_large[c] - weight -
                                         clause_true_lit_thres_large[c])); // 11
               }
               else
               {
-                // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, gap1_large[c] -
-                // sat_count_large[c] + weight) - min(p->weight, gap1_large[c] -
+                // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
+                // sat_count_large[c] + weight) - std::min(p->weight, gap1_large[c] -
                 // sat_count_large[c]));//12
                 hhscore2_large[v] +=
-                    (min(p->weight, gap1_large[c] - sat_count2_large[c] + weight) -
-                     min(p->weight, gap1_large[c] - sat_count2_large[c])); // 12
+                    (std::min(p->weight, gap1_large[c] - sat_count2_large[c] + weight) -
+                     std::min(p->weight, gap1_large[c] - sat_count2_large[c])); // 12
               }
             }
           }
@@ -2635,8 +2635,8 @@ void Satlike::flip_fps_large(
           {
                   if (p->sense == cur_soln[v])
                   {
-                          score_large[v] -= unit_weight_large[c] * (max(0, gap + weight +
-          p->weight) - max(0, gap + p->weight));
+                          score_large[v] -= unit_weight_large[c] * (std::max(0, gap + weight +
+          p->weight) - std::max(0, gap + p->weight));
                   }
           }*/
         }
@@ -2648,19 +2648,19 @@ void Satlike::flip_fps_large(
             if (p->sense == cur_soln[v])
             {
               score2_large[v] -= double(tuned_degree_unit_weight_large[c] *
-                                        (p->weight - max(Int(0), gap + p->weight)));
+                                        (p->weight - std::max(Int(0), gap + p->weight)));
               // hhscore_large[v] += unit_weight_large[c] * (p->weight, -gap);//13
               hhscore2_large[v] += (p->weight, -gap); // 13
             }
             else
             {
               score2_large[v] += double(tuned_degree_unit_weight_large[c] *
-                                        min(p->weight, gap + weight));
-              // hhscore_large[v] += unit_weight_large[c] * (min(p->weight - gap - weight,
-              // 0) - min(p->weight, gap1_large[c] - sat_count_large[c]));//14
+                                        std::min(p->weight, gap + weight));
+              // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight - gap - weight,
+              // 0) - std::min(p->weight, gap1_large[c] - sat_count_large[c]));//14
               hhscore2_large[v] +=
-                  (min(p->weight - gap - weight, Int(0)) -
-                   min(p->weight, gap1_large[c] - sat_count2_large[c])); // 14
+                  (std::min(p->weight - gap - weight, Int(0)) -
+                   std::min(p->weight, gap1_large[c] - sat_count2_large[c])); // 14
             }
           }
         }
@@ -2673,11 +2673,11 @@ void Satlike::flip_fps_large(
             {
               score2_large[v] +=
                   double(tuned_degree_unit_weight_large[c] *
-                         (min(p->weight, gap + weight) - min(p->weight, gap)));
-              // hhscore_large[v] += unit_weight_large[c] * (max(p->weight - gap - weight,
-              // 0) - max(p->weight - gap, 0));//15
-              hhscore2_large[v] += (max(p->weight - gap - weight, Int(0)) -
-                                    max(p->weight - gap, Int(0))); // 15
+                         (std::min(p->weight, gap + weight) - std::min(p->weight, gap)));
+              // hhscore_large[v] += unit_weight_large[c] * (std::max(p->weight - gap - weight,
+              // 0) - std::max(p->weight - gap, 0));//15
+              hhscore2_large[v] += (std::max(p->weight - gap - weight, Int(0)) -
+                                    std::max(p->weight - gap, Int(0))); // 15
             }
           }
         }
@@ -2699,9 +2699,9 @@ void Satlike::flip_fps_large(
     // < clause_true_lit_thres_large[c])
     // 		// {
     // 		// 	//soft_unsat_weight是否需要复制？
-    // 		// 	soft_unsat_weight_large -= org_unit_weight_large[c] * min(weight,
+    // 		// 	soft_unsat_weight_large -= org_unit_weight_large[c] * std::min(weight,
     // clause_true_lit_thres_large[c] - sat_count_large[c]);
-    // //不满足的软子句权重，累积减去(软子句c的初始单元权重*min(文字i的权重,
+    // //不满足的软子句权重，累积减去(软子句c的初始单元权重*std::min(文字i的权重,
     // 软子句c的度-软子句c的满足计数))
     // 		// }
     // 		//sat_count_large[c] += weight;
@@ -2715,7 +2715,7 @@ void Satlike::flip_fps_large(
     // 				if (p->sense != cur_soln[v])
     // 				{
     // 					sscore2_large[v] -= (unit_weight_large[c] *
-    // (min(gap, p->weight) - min(gap - weight, p->weight)));
+    // (std::min(gap, p->weight) - std::min(gap - weight, p->weight)));
     // 				}
     // 			}
     // 		}
@@ -2727,13 +2727,13 @@ void Satlike::flip_fps_large(
     // 			{
     // 				if (p->sense != cur_soln[v])
     // 				{
-    // 					sscore2_large[v] -= (unit_weight_large[c] * min(gap,
+    // 					sscore2_large[v] -= (unit_weight_large[c] * std::min(gap,
     // p->weight));
     // 				}
     // 				else
     // 				{
     // 					sscore2_large[v] += unit_weight_large[c] *
-    // (p->weight - max(0, gap - weight + p->weight));
+    // (p->weight - std::max(0, gap - weight + p->weight));
     // 				}
     // 			}
     // 		}
@@ -2745,8 +2745,8 @@ void Satlike::flip_fps_large(
     // 			{
     // 				if (p->sense == cur_soln[v])
     // 				{
-    // 					sscore2_large[v] += unit_weight_large[c] * (max(0,
-    // gap + p->weight) - max(0, gap - weight + p->weight));
+    // 					sscore2_large[v] += unit_weight_large[c] * (std::max(0,
+    // gap + p->weight) - std::max(0, gap - weight + p->weight));
     // 				}
     // 			}
     // 		}
@@ -2764,7 +2764,7 @@ void Satlike::flip_fps_large(
     // - weight < clause_true_lit_thres_large[c])
     // 		// {
     // 		// 	//soft_unsat_weight是否需要复制
-    // 		// 	soft_unsat_weight_large += org_unit_weight_large[c] * min(weight,
+    // 		// 	soft_unsat_weight_large += org_unit_weight_large[c] * std::min(weight,
     // clause_true_lit_thres_large[c] - sat_count_large[c] + weight);
     // 		// }
 
@@ -2775,8 +2775,8 @@ void Satlike::flip_fps_large(
     // 			{
     // 				if (p->sense == cur_soln[v])
     // 				{
-    // 					sscore2_large[v] -= unit_weight_large[c] * (max(0,
-    // gap + weight + p->weight) - max(0, gap + p->weight));
+    // 					sscore2_large[v] -= unit_weight_large[c] * (std::max(0,
+    // gap + weight + p->weight) - std::max(0, gap + p->weight));
     // 				}
     // 			}
     // 		}
@@ -2788,12 +2788,12 @@ void Satlike::flip_fps_large(
     // 				if (p->sense == cur_soln[v])
     // 				{
     // 					sscore2_large[v] -= unit_weight_large[c] *
-    // (p->weight - max(0, gap + p->weight));
+    // (p->weight - std::max(0, gap + p->weight));
     // 				}
     // 				else
     // 				{
     // 					sscore2_large[v] += unit_weight_large[c] *
-    // min(p->weight, gap + weight);
+    // std::min(p->weight, gap + weight);
     // 				}
     // 			}
     // 		}
@@ -2805,7 +2805,7 @@ void Satlike::flip_fps_large(
     // 				if (p->sense != cur_soln[v])
     // 				{
     // 					sscore2_large[v] += unit_weight_large[c] *
-    // (min(p->weight, gap + weight) - min(p->weight, gap));
+    // (std::min(p->weight, gap + weight) - std::min(p->weight, gap));
     // 				}
     // 			}
     // 		}
@@ -2929,7 +2929,7 @@ void Satlike::flip_large(int flipvar)
   Int org_hhscore = hhscore_large[flipvar]; // hhscore_large
   cur_soln[flipvar] = 1 - cur_soln[flipvar];
 
-  // cout<<"filpvar = "<<flipvar<<endl;
+  // std::cout<<"filpvar = "<<flipvar<<std::endl;
 
   for (i = 0; i < var_lit_count[flipvar]; ++i)
   {
@@ -2964,11 +2964,11 @@ void Satlike::flip_large(int flipvar)
             {
               score_large[v] -= double(
                   (tuned_degree_unit_weight_large[c] *
-                   (min(gap, p->weight) - min(gap - weight, p->weight))));
-              // hhscore_large[v] += (unit_weight_large[c] * (max(p->weight - gap + weight,
-              // 0) - max(p->weight - gap , 0)));//1
-              hhscore_large[v] += ((max(p->weight - gap + weight, Int(0)) -
-                                    max(p->weight - gap, Int(0)))); // 1
+                   (std::min(gap, p->weight) - std::min(gap - weight, p->weight))));
+              // hhscore_large[v] += (unit_weight_large[c] * (std::max(p->weight - gap + weight,
+              // 0) - std::max(p->weight - gap , 0)));//1
+              hhscore_large[v] += ((std::max(p->weight - gap + weight, Int(0)) -
+                                    std::max(p->weight - gap, Int(0)))); // 1
             }
           }
         }
@@ -2982,21 +2982,21 @@ void Satlike::flip_large(int flipvar)
             if (p->sense != cur_soln[v])
             {
               score_large[v] -=
-                  double((tuned_degree_unit_weight_large[c] * min(gap, p->weight)));
-              // hhscore_large[v] += (unit_weight_large[c] * (min(p->weight, gap1_large[c] -
-              // sat_count_large[c] - weight) - max(p->weight - gap, 0)));//2 unsat_large
+                  double((tuned_degree_unit_weight_large[c] * std::min(gap, p->weight)));
+              // hhscore_large[v] += (unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
+              // sat_count_large[c] - weight) - std::max(p->weight - gap, 0)));//2 unsat_large
               hhscore_large[v] +=
-                  ((min(p->weight, gap1_large[c] - sat_count_large[c] - weight) -
-                    max(p->weight - gap, Int(0)))); // 2 unsat_large
+                  ((std::min(p->weight, gap1_large[c] - sat_count_large[c] - weight) -
+                    std::max(p->weight - gap, Int(0)))); // 2 unsat_large
             }
             else
             {
               score_large[v] +=
                   double(tuned_degree_unit_weight_large[c] *
-                         (p->weight - max(Int(0), gap - weight + p->weight)));
-              // hhscore_large[v] -= unit_weight_large[c] * min(p->weight, weight - gap);//2
+                         (p->weight - std::max(Int(0), gap - weight + p->weight)));
+              // hhscore_large[v] -= unit_weight_large[c] * std::min(p->weight, weight - gap);//2
               // sat_large
-              hhscore_large[v] -= min(p->weight, weight - gap); // 2 sat_large
+              hhscore_large[v] -= std::min(p->weight, weight - gap); // 2 sat_large
             }
           }
         }
@@ -3016,21 +3016,21 @@ void Satlike::flip_large(int flipvar)
                 if (p->sense == cur_soln[v])
                 {
                   score_large[v] += double(tuned_degree_unit_weight_large[c] *
-                                           (max(Int(0), gap + p->weight) -
-                                            max(Int(0), gap - weight + p->weight)));
-                  // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, -gap) -
-                  // min(p->weight, weight - gap));//4
-                  hhscore_large[v] += (min(p->weight, -gap) -
-                                       min(p->weight, weight - gap)); // 4
+                                           (std::max(Int(0), gap + p->weight) -
+                                            std::max(Int(0), gap - weight + p->weight)));
+                  // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, -gap) -
+                  // std::min(p->weight, weight - gap));//4
+                  hhscore_large[v] += (std::min(p->weight, -gap) -
+                                       std::min(p->weight, weight - gap)); // 4
                 }
                 else
                 {
-                  // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, gap1_large[c] -
-                  // sat_count_large[c] - weight) - min(p->weight, gap1_large[c] -
+                  // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
+                  // sat_count_large[c] - weight) - std::min(p->weight, gap1_large[c] -
                   // sat_count_large[c]));//3
                   hhscore_large[v] +=
-                      (min(p->weight, gap1_large[c] - sat_count_large[c] - weight) -
-                       min(p->weight, gap1_large[c] - sat_count_large[c])); // 3
+                      (std::min(p->weight, gap1_large[c] - sat_count_large[c] - weight) -
+                       std::min(p->weight, gap1_large[c] - sat_count_large[c])); // 3
                 }
               }
             }
@@ -3042,19 +3042,19 @@ void Satlike::flip_large(int flipvar)
                 if (p->sense == cur_soln[v])
                 {
                   score_large[v] += double(tuned_degree_unit_weight_large[c] *
-                                           (max(Int(0), gap + p->weight) -
-                                            max(Int(0), gap - weight + p->weight)));
-                  // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, -gap) -
-                  // max(p->weight - weight - sat_count_large[c] + gap , 0));//5
-                  hhscore_large[v] += (min(p->weight, -gap) -
-                                       max(p->weight - weight - sat_count_large[c] + gap, Int(0))); // 5
+                                           (std::max(Int(0), gap + p->weight) -
+                                            std::max(Int(0), gap - weight + p->weight)));
+                  // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, -gap) -
+                  // std::max(p->weight - weight - sat_count_large[c] + gap , 0));//5
+                  hhscore_large[v] += (std::min(p->weight, -gap) -
+                                       std::max(p->weight - weight - sat_count_large[c] + gap, Int(0))); // 5
                 }
                 else
                 {
-                  // hhscore_large[v] -= unit_weight_large[c] * (min(p->weight, gap1_large[c] -
+                  // hhscore_large[v] -= unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
                   // sat_count_large[c]));//6
                   hhscore_large[v] -=
-                      (min(p->weight, gap1_large[c] - sat_count_large[c])); // 6
+                      (std::min(p->weight, gap1_large[c] - sat_count_large[c])); // 6
                 }
               }
             }
@@ -3067,14 +3067,14 @@ void Satlike::flip_large(int flipvar)
               if (p->sense == cur_soln[v])
               {
                 score_large[v] += double(tuned_degree_unit_weight_large[c] *
-                                         (max(Int(0), gap + p->weight) -
-                                          max(Int(0), gap - weight + p->weight)));
-                // hhscore_large[v] += unit_weight_large[c] * (max(p->weight - sat_count_large[c]
-                // + gap1_large[c] , 0) - max(p->weight - sat_count_large[c] - weight +
+                                         (std::max(Int(0), gap + p->weight) -
+                                          std::max(Int(0), gap - weight + p->weight)));
+                // hhscore_large[v] += unit_weight_large[c] * (std::max(p->weight - sat_count_large[c]
+                // + gap1_large[c] , 0) - std::max(p->weight - sat_count_large[c] - weight +
                 // gap1_large[c], 0));//7
                 hhscore_large[v] +=
-                    (max(p->weight - sat_count_large[c] + gap1_large[c], Int(0)) -
-                     max(p->weight - sat_count_large[c] - weight + gap1_large[c],
+                    (std::max(p->weight - sat_count_large[c] + gap1_large[c], Int(0)) -
+                     std::max(p->weight - sat_count_large[c] - weight + gap1_large[c],
                          Int(0))); // 7
               }
             }
@@ -3118,14 +3118,14 @@ void Satlike::flip_large(int flipvar)
                 if (p->sense == cur_soln[v])
                 {
                   score_large[v] -= double(tuned_degree_unit_weight_large[c] *
-                                           (max(Int(0), gap + weight + p->weight) -
-                                            max(Int(0), gap + p->weight)));
-                  // hhscore_large[v] += unit_weight_large[c] * (max(p->weight -
-                  // sat_count_large[c] + gap1_large[c], 0) - max(p->weight - sat_count_large[c] +
+                                           (std::max(Int(0), gap + weight + p->weight) -
+                                            std::max(Int(0), gap + p->weight)));
+                  // hhscore_large[v] += unit_weight_large[c] * (std::max(p->weight -
+                  // sat_count_large[c] + gap1_large[c], 0) - std::max(p->weight - sat_count_large[c] +
                   // weight + gap1_large[c], 0));//8
                   hhscore_large[v] +=
-                      (max(p->weight - sat_count_large[c] + gap1_large[c], Int(0)) -
-                       max(p->weight - sat_count_large[c] + weight + gap1_large[c],
+                      (std::max(p->weight - sat_count_large[c] + gap1_large[c], Int(0)) -
+                       std::max(p->weight - sat_count_large[c] + weight + gap1_large[c],
                            Int(0))); // 8
                 }
               }
@@ -3138,21 +3138,21 @@ void Satlike::flip_large(int flipvar)
                 if (p->sense == cur_soln[v])
                 {
                   score_large[v] -= double(tuned_degree_unit_weight_large[c] *
-                                           (max(Int(0), gap + weight + p->weight) -
-                                            max(Int(0), gap + p->weight)));
-                  // hhscore_large[v] += unit_weight_large[c] * (max(p->weight -
-                  // sat_count_large[c] + gap1_large[c], 0) - min(p->weight, sat_count_large[c] -
+                                           (std::max(Int(0), gap + weight + p->weight) -
+                                            std::max(Int(0), gap + p->weight)));
+                  // hhscore_large[v] += unit_weight_large[c] * (std::max(p->weight -
+                  // sat_count_large[c] + gap1_large[c], 0) - std::min(p->weight, sat_count_large[c] -
                   // weight - sat_count_large[c]));//9
                   hhscore_large[v] +=
-                      (max(p->weight - sat_count_large[c] + gap1_large[c], Int(0)) -
-                       min(p->weight,
+                      (std::max(p->weight - sat_count_large[c] + gap1_large[c], Int(0)) -
+                       std::min(p->weight,
                            sat_count_large[c] - weight - sat_count_large[c])); // 9
                 }
                 else
                 {
-                  // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, gap1_large[c] -
+                  // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
                   // sat_count_large[c] + weight));//10
-                  hhscore_large[v] += (min(p->weight, gap1_large[c] - sat_count_large[c] + weight)); // 10
+                  hhscore_large[v] += (std::min(p->weight, gap1_large[c] - sat_count_large[c] + weight)); // 10
                 }
               }
             }
@@ -3165,24 +3165,24 @@ void Satlike::flip_large(int flipvar)
               if (p->sense == cur_soln[v])
               {
                 score_large[v] -= double(tuned_degree_unit_weight_large[c] *
-                                         (max(Int(0), gap + weight + p->weight) -
-                                          max(Int(0), gap + p->weight)));
-                // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, -gap) -
-                // min(p->weight, sat_count_large[c] - weight -
+                                         (std::max(Int(0), gap + weight + p->weight) -
+                                          std::max(Int(0), gap + p->weight)));
+                // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, -gap) -
+                // std::min(p->weight, sat_count_large[c] - weight -
                 // clause_true_lit_thres_large[c]));//11
                 hhscore_large[v] +=
-                    (min(p->weight, -gap) -
-                     min(p->weight, sat_count_large[c] - weight -
+                    (std::min(p->weight, -gap) -
+                     std::min(p->weight, sat_count_large[c] - weight -
                                         clause_true_lit_thres_large[c])); // 11
               }
               else
               {
-                // hhscore_large[v] += unit_weight_large[c] * (min(p->weight, gap1_large[c] -
-                // sat_count_large[c] + weight) - min(p->weight, gap1_large[c] -
+                // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight, gap1_large[c] -
+                // sat_count_large[c] + weight) - std::min(p->weight, gap1_large[c] -
                 // sat_count_large[c]));//12
                 hhscore_large[v] +=
-                    (min(p->weight, gap1_large[c] - sat_count_large[c] + weight) -
-                     min(p->weight, gap1_large[c] - sat_count_large[c])); // 12
+                    (std::min(p->weight, gap1_large[c] - sat_count_large[c] + weight) -
+                     std::min(p->weight, gap1_large[c] - sat_count_large[c])); // 12
               }
             }
           }
@@ -3191,8 +3191,8 @@ void Satlike::flip_large(int flipvar)
           {
                   if (p->sense == cur_soln[v])
                   {
-                          score_large[v] -= unit_weight_large[c] * (max(0, gap + weight +
-          p->weight) - max(0, gap + p->weight));
+                          score_large[v] -= unit_weight_large[c] * (std::max(0, gap + weight +
+          p->weight) - std::max(0, gap + p->weight));
                   }
           }*/
         }
@@ -3204,18 +3204,18 @@ void Satlike::flip_large(int flipvar)
             if (p->sense == cur_soln[v])
             {
               score_large[v] -= double(tuned_degree_unit_weight_large[c] *
-                                       (p->weight - max(Int(0), gap + p->weight)));
+                                       (p->weight - std::max(Int(0), gap + p->weight)));
               // hhscore_large[v] += unit_weight_large[c] * (p->weight, -gap);//13
               hhscore_large[v] += (p->weight, -gap); // 13
             }
             else
             {
               score_large[v] += double(tuned_degree_unit_weight_large[c] *
-                                       min(p->weight, gap + weight));
-              // hhscore_large[v] += unit_weight_large[c] * (min(p->weight - gap - weight,
-              // 0) - min(p->weight, gap1_large[c] - sat_count_large[c]));//14
-              hhscore_large[v] += (min(p->weight - gap - weight, Int(0)) -
-                                   min(p->weight, gap1_large[c] - sat_count_large[c])); // 14
+                                       std::min(p->weight, gap + weight));
+              // hhscore_large[v] += unit_weight_large[c] * (std::min(p->weight - gap - weight,
+              // 0) - std::min(p->weight, gap1_large[c] - sat_count_large[c]));//14
+              hhscore_large[v] += (std::min(p->weight - gap - weight, Int(0)) -
+                                   std::min(p->weight, gap1_large[c] - sat_count_large[c])); // 14
             }
           }
         }
@@ -3228,11 +3228,11 @@ void Satlike::flip_large(int flipvar)
             {
               score_large[v] +=
                   double(tuned_degree_unit_weight_large[c] *
-                         (min(p->weight, gap + weight) - min(p->weight, gap)));
-              // hhscore_large[v] += unit_weight_large[c] * (max(p->weight - gap - weight,
-              // 0) - max(p->weight - gap, 0));//15
-              hhscore_large[v] += (max(p->weight - gap - weight, Int(0)) -
-                                   max(p->weight - gap, Int(0))); // 15
+                         (std::min(p->weight, gap + weight) - std::min(p->weight, gap)));
+              // hhscore_large[v] += unit_weight_large[c] * (std::max(p->weight - gap - weight,
+              // 0) - std::max(p->weight - gap, 0));//15
+              hhscore_large[v] += (std::max(p->weight - gap - weight, Int(0)) -
+                                   std::max(p->weight - gap, Int(0))); // 15
             }
           }
         }
@@ -3252,7 +3252,7 @@ void Satlike::flip_large(int flipvar)
     // 		if (org_clause_weight_large[c] != top_clause_weight_large && sat_count_large[c] <
     // clause_true_lit_thres_large[c])
     // 		{
-    // 			soft_unsat_weight_large -= org_unit_weight_large[c] * min(weight,
+    // 			soft_unsat_weight_large -= org_unit_weight_large[c] * std::min(weight,
     // clause_true_lit_thres_large[c] - sat_count_large[c]);
     // 		}
     // 		//sat_count_large[c] += weight;
@@ -3264,8 +3264,8 @@ void Satlike::flip_large(int flipvar)
     // 			{
     // 				if (p->sense != cur_soln[v])
     // 				{
-    // 					sscore_large[v] -= (unit_weight_large[c] * (min(gap,
-    // p->weight) - min(gap - weight, p->weight)));
+    // 					sscore_large[v] -= (unit_weight_large[c] * (std::min(gap,
+    // p->weight) - std::min(gap - weight, p->weight)));
     // 				}
     // 			}
     // 		}
@@ -3277,13 +3277,13 @@ void Satlike::flip_large(int flipvar)
     // 			{
     // 				if (p->sense != cur_soln[v])
     // 				{
-    // 					sscore_large[v] -= (unit_weight_large[c] * min(gap,
+    // 					sscore_large[v] -= (unit_weight_large[c] * std::min(gap,
     // p->weight));
     // 				}
     // 				else
     // 				{
     // 					sscore_large[v] += unit_weight_large[c] * (p->weight
-    // - max(0, gap - weight + p->weight));
+    // - std::max(0, gap - weight + p->weight));
     // 				}
     // 			}
     // 		}
@@ -3295,8 +3295,8 @@ void Satlike::flip_large(int flipvar)
     // 			{
     // 				if (p->sense == cur_soln[v])
     // 				{
-    // 					sscore_large[v] += unit_weight_large[c] * (max(0,
-    // gap + p->weight) - max(0, gap - weight + p->weight));
+    // 					sscore_large[v] += unit_weight_large[c] * (std::max(0,
+    // gap + p->weight) - std::max(0, gap - weight + p->weight));
     // 				}
     // 			}
     // 		}
@@ -3313,7 +3313,7 @@ void Satlike::flip_large(int flipvar)
     // 		if (org_clause_weight_large[c] != top_clause_weight_large && sat_count_large[c] -
     // weight < clause_true_lit_thres_large[c])
     // 		{
-    // 			soft_unsat_weight_large += org_unit_weight_large[c] * min(weight,
+    // 			soft_unsat_weight_large += org_unit_weight_large[c] * std::min(weight,
     // clause_true_lit_thres_large[c] - sat_count_large[c] + weight);
     // 		}
 
@@ -3324,8 +3324,8 @@ void Satlike::flip_large(int flipvar)
     // 			{
     // 				if (p->sense == cur_soln[v])
     // 				{
-    // 					sscore_large[v] -= unit_weight_large[c] * (max(0,
-    // gap + weight + p->weight) - max(0, gap + p->weight));
+    // 					sscore_large[v] -= unit_weight_large[c] * (std::max(0,
+    // gap + weight + p->weight) - std::max(0, gap + p->weight));
     // 				}
     // 			}
     // 		}
@@ -3337,12 +3337,12 @@ void Satlike::flip_large(int flipvar)
     // 				if (p->sense == cur_soln[v])
     // 				{
     // 					sscore_large[v] -= unit_weight_large[c] * (p->weight
-    // - max(0, gap + p->weight));
+    // - std::max(0, gap + p->weight));
     // 				}
     // 				else
     // 				{
     // 					sscore_large[v] += unit_weight_large[c] *
-    // min(p->weight, gap + weight);
+    // std::min(p->weight, gap + weight);
     // 				}
     // 			}
     // 		}
@@ -3354,7 +3354,7 @@ void Satlike::flip_large(int flipvar)
     // 				if (p->sense != cur_soln[v])
     // 				{
     // 					sscore_large[v] += unit_weight_large[c] *
-    // (min(p->weight, gap + weight) - min(p->weight, gap));
+    // (std::min(p->weight, gap + weight) - std::min(p->weight, gap));
     // 				}
     // 			}
     // 		}
@@ -3391,19 +3391,19 @@ void Satlike::flip_large(int flipvar)
   update_goodvarstack1_large(flipvar);
   // for(int i = 1;i <= num_vars; i++)
   // {
-  // 	cout<<"hhscore_large "<<i<<" = "<<hhscore_large[i]<<endl;
+  // 	std::cout<<"hhscore_large "<<i<<" = "<<hhscore_large[i]<<std::endl;
   // }
 }
 
-void Satlike::local_search_large(vector<int> &init_solution)
+void Satlike::local_search_large(std::vector<int> &init_solution)
 {
   settings_large();
   max_flips = 200000000;
   init_large(init_solution);
-  cout << "time is " << get_runtime() << endl;
-  cout << "hard unsat_large nb is " << hard_unsat_nb << endl;
-  cout << "soft unsat_large nb is " << toString(soft_unsat_weight_large) << endl;
-  cout << "goodvar nb is " << goodvar_stack_fill_pointer << endl;
+  std::cout << "time is " << get_runtime() << std::endl;
+  std::cout << "hard unsat_large nb is " << hard_unsat_nb << std::endl;
+  std::cout << "soft unsat_large nb is " << toString(soft_unsat_weight_large) << std::endl;
+  std::cout << "goodvar nb is " << goodvar_stack_fill_pointer << std::endl;
 }
 
 void Satlike::cal_solution_large() // 传入文件名和seed
@@ -3431,7 +3431,7 @@ void Satlike::cal_solution_large() // 传入文件名和seed
   }
 }
 
-void Satlike::local_search_with_decimation_large(vector<int> &init_solution,
+void Satlike::local_search_with_decimation_large(std::vector<int> &init_solution,
                                                  char *inputfile)
 {
   printf("c Use LS-big\n");
@@ -3463,8 +3463,8 @@ void Satlike::local_search_with_decimation_large(vector<int> &init_solution,
       if (hard_unsat_nb == 0 &&
           (soft_unsat_weight_large < opt_unsat_weight_large || best_soln_feasible == 0))
       {
-        // cout << "unsat_large soft stack fill pointer" <<
-        // softunsat_stack_fill_pointer << endl;
+        // std::cout << "unsat_large soft stack fill pointer" <<
+        // softunsat_stack_fill_pointer << std::endl;
         if (soft_unsat_weight_large < top_clause_weight_large)
         {
           // softclause_weight_threshold += 0;
@@ -3508,7 +3508,7 @@ void Satlike::local_search_with_decimation_large(vector<int> &init_solution,
       }
       else
       {
-        // cout<<"???"<<endl;
+        // std::cout<<"???"<<std::endl;
         pick_vars_large();
       }
       if ((step_count % (100000 * xishu)) == (100000 * xishu - 1)) // 一万 十万
@@ -3543,7 +3543,7 @@ void Satlike::local_search_with_decimation_large(vector<int> &init_solution,
 
 void Satlike::turb_large()
 {
-  // cout<<hard_unsat_nb<<endl;
+  // std::cout<<hard_unsat_nb<<std::endl;
   /*扰动解*/
   /*1、cur_sol*/
   /*2、候选解集合*/
@@ -3690,10 +3690,10 @@ void Satlike::turb_large()
       }
     }
   }
-  // cout<<z<<endl;
+  // std::cout<<z<<std::endl;
   //  for(c = 0; c < cur_hard_unsat_nb; c++)
   //  {
-  //  	cout<<is_selected_clauses[c]<<" ";
+  //  	std::cout<<is_selected_clauses[c]<<" ";
   //  }
   /*扰动翻转*/
   // printf("count_var_mark =%d, theshold = %d,
@@ -3759,7 +3759,7 @@ void Satlike::init_turb_large()
   // ave_soft_weight_large = total_soft_weight_large / num_sclauses;
   // ave_hard_weight_large = 0;
   // inc_hard_weight_large = 0;
-  // cout << "ave soft weight is " << ave_soft_weight_large << endl;
+  // std::cout << "ave soft weight is " << ave_soft_weight_large << std::endl;
   // Initialize clause information
   // for (c = 0; c < num_clauses; c++)
   // {
@@ -3853,7 +3853,7 @@ void Satlike::init_turb_large()
         hard_unsat_weight_large += clause_true_lit_thres_large[c] - sat_count_large[c]; // zyj
       unsat_large(c);
     }
-    // cout<<"soft_unsat_weight_large "<<soft_unsat_weight_large<<endl;
+    // std::cout<<"soft_unsat_weight_large "<<soft_unsat_weight_large<<std::endl;
   }
 
   /*figure out score_large*/
@@ -3878,11 +3878,11 @@ void Satlike::init_turb_large()
           {
             score_large[v] +=
                 double(tuned_degree_unit_weight_large[c] *
-                       min(clause_true_lit_thres_large[c] - sat_count_large[c], weight));
-            // hhscore_large[v] += unit_weight_large[c] * max(weight -
+                       std::min(clause_true_lit_thres_large[c] - sat_count_large[c], weight));
+            // hhscore_large[v] += unit_weight_large[c] * std::max(weight -
             // (clause_true_lit_thres_large[c] - sat_count_large[c]), 0);
             hhscore_large[v] +=
-                max(weight - (clause_true_lit_thres_large[c] - sat_count_large[c]), Int(0));
+                std::max(weight - (clause_true_lit_thres_large[c] - sat_count_large[c]), Int(0));
           }
           else
           {
@@ -3898,17 +3898,17 @@ void Satlike::init_turb_large()
             {
               score_large[v] -= double(
                   tuned_degree_unit_weight_large[c] *
-                  max(Int(0), clause_true_lit_thres_large[c] - sat_count_large[c] + weight));
-              // hhscore_large[v] -= unit_weight_large[c] * min(weight, sat_count_large[c] -
+                  std::max(Int(0), clause_true_lit_thres_large[c] - sat_count_large[c] + weight));
+              // hhscore_large[v] -= unit_weight_large[c] * std::min(weight, sat_count_large[c] -
               // clause_true_lit_thres_large[c]);
               hhscore_large[v] -=
-                  min(weight, sat_count_large[c] - clause_true_lit_thres_large[c]);
+                  std::min(weight, sat_count_large[c] - clause_true_lit_thres_large[c]);
             }
             else
             {
-              // hhscore_large[v] += unit_weight_large[c] * min(weight, gap1_large[c] -
+              // hhscore_large[v] += unit_weight_large[c] * std::min(weight, gap1_large[c] -
               // sat_count_large[c]);
-              hhscore_large[v] += min(weight, gap1_large[c] - sat_count_large[c]);
+              hhscore_large[v] += std::min(weight, gap1_large[c] - sat_count_large[c]);
             }
           }
           else if (sat_count_large[c] > gap1_large[c])
@@ -3917,10 +3917,10 @@ void Satlike::init_turb_large()
             {
               score_large[v] -= double(
                   tuned_degree_unit_weight_large[c] *
-                  max(Int(0), clause_true_lit_thres_large[c] - sat_count_large[c] + weight));
-              // hhscore_large[v] -= unit_weight_large[c] * max(weight - (sat_count_large[c] -
+                  std::max(Int(0), clause_true_lit_thres_large[c] - sat_count_large[c] + weight));
+              // hhscore_large[v] -= unit_weight_large[c] * std::max(weight - (sat_count_large[c] -
               // gap1_large[c]), 0);
-              hhscore_large[v] -= max(weight - (sat_count_large[c] - gap1_large[c]), Int(0));
+              hhscore_large[v] -= std::max(weight - (sat_count_large[c] - gap1_large[c]), Int(0));
             }
           }
         }
@@ -4035,8 +4035,8 @@ int Satlike::turb_pick_var_large(int last_flip_var) // 轮盘转法
           {
                   abs_min = abs(min_pick_score);//如果最小值<0，分数 + abs+1
                   abs_min_pick_score = abs_min + 1;
-                  //cout<<min_pick_score<<" "<<abs_min<<"
-  "<<abs_min_pick_score<<endl; pick_score[i] = pick_score[i-1] + pick_score[i] +
+                  //std::cout<<min_pick_score<<" "<<abs_min<<"
+  "<<abs_min_pick_score<<std::endl; pick_score[i] = pick_score[i-1] + pick_score[i] +
   abs_min_pick_score;  //直接在原数组上改了 sum_pick_score =
   pick_score[bms_turb_pick];  //最后的是分数总和，用来取随机数的范围
           }
@@ -4147,10 +4147,10 @@ int Satlike::turb_pick_var_large(int last_flip_var) // 轮盘转法
 // 	}
 // 	else
 // 	{
-// 		cout << " error :num_vars != num_vars_opb "
-// 			 << " " << opb_file_name << endl;
-// 		cout << "num_vars = " << num_vars << "num_vars_opb = " <<
-// num_vars_opb << endl;
+// 		std::cout << " error :num_vars != num_vars_opb "
+// 			 << " " << opb_file_name << std::endl;
+// 		std::cout << "num_vars = " << num_vars << "num_vars_opb = " <<
+// num_vars_opb << std::endl;
 // 	}
 // }
 
@@ -4189,9 +4189,9 @@ void Satlike::check_softunsat_weight_large()
 
   if (verify_unsat_weight != soft_unsat_weight_large)
   {
-    cout << step << endl;
-    cout << "verify unsat_large weight is" << toString(verify_unsat_weight)
-         << " and soft unsat_large weight is " << toString(soft_unsat_weight_large) << endl;
+    std::cout << step << std::endl;
+    std::cout << "verify unsat_large weight is" << toString(verify_unsat_weight)
+         << " and soft unsat_large weight is " << toString(soft_unsat_weight_large) << std::endl;
   }
   // return 0;
 }
@@ -4220,20 +4220,20 @@ bool Satlike::verify_sol_large()
       if (org_clause_weight_large[c] == top_clause_weight_large) // verify hard clauses
       {
         // output the clause unsatisfied by the solution
-        cout << "c Error: hard clause " << c << " is not satisfied" << endl;
+        std::cout << "c Error: hard clause " << c << " is not satisfied" << std::endl;
 
-        cout << "c ";
+        std::cout << "c ";
         for (j = 0; j < clause_lit_count[c]; ++j)
         {
           if (clause_lit_large[c][j].sense == 0)
-            cout << "-";
-          cout << clause_lit_large[c][j].var_num << " ";
+            std::cout << "-";
+          std::cout << clause_lit_large[c][j].var_num << " ";
         }
-        cout << endl;
-        cout << "c ";
+        std::cout << std::endl;
+        std::cout << "c ";
         for (j = 0; j < clause_lit_count[c]; ++j)
-          cout << best_soln[clause_lit_large[c][j].var_num] << " ";
-        cout << endl;
+          std::cout << best_soln[clause_lit_large[c][j].var_num] << " ";
+        std::cout << std::endl;
         return 0;
       }
       else
@@ -4241,21 +4241,21 @@ bool Satlike::verify_sol_large()
         verify_unsat_weight += org_unit_weight_large[c] * (clause_true_lit_thres_large[c] -
                                                            tem_clause_true_lit_count);
         /*
-        cout << "c wanning: soft clause " << c << " is not satisfied" << endl;
+        std::cout << "c wanning: soft clause " << c << " is not satisfied" << std::endl;
 
-        cout << "c org clause weight " << org_clause_weight_large[c] << " " << endl;
+        std::cout << "c org clause weight " << org_clause_weight_large[c] << " " << std::endl;
 
         for (j = 0; j < clause_lit_count[c]; ++j)
         {
                 if (clause_lit_large[c][j].sense == 0)
-                        cout << "-";
-                cout << clause_lit_large[c][j].var_num << " ";
+                        std::cout << "-";
+                std::cout << clause_lit_large[c][j].var_num << " ";
         }
-        cout << endl;
-        //cout << "c ";
+        std::cout << std::endl;
+        //std::cout << "c ";
         for (j = 0; j < clause_lit_count[c]; ++j)
-                cout << best_soln[clause_lit_large[c][j].var_num] << " ";
-        cout << endl;*/
+                std::cout << best_soln[clause_lit_large[c][j].var_num] << " ";
+        std::cout << std::endl;*/
         // return 0;
       }
     }
@@ -4265,8 +4265,8 @@ bool Satlike::verify_sol_large()
     return 1;
   else
   {
-    cout << "c Error: find opt=" << toString(opt_unsat_weight_large)
-         << ", but verified opt=" << toString(verify_unsat_weight) << endl;
+    std::cout << "c Error: find opt=" << toString(opt_unsat_weight_large)
+         << ", but verified opt=" << toString(verify_unsat_weight) << std::endl;
   }
   return 0;
 }
@@ -4276,12 +4276,12 @@ void Satlike::simple_print_large()
   if (best_soln_feasible == 1)
   {
     if (verify_sol_large() == 1)
-      cout << toString(opt_unsat_weight_large) << endl;
+      std::cout << toString(opt_unsat_weight_large) << std::endl;
     else
-      cout << "solution is wrong " << endl;
+      std::cout << "solution is wrong " << std::endl;
   }
   else
-    cout << -1 << '\t' << -1 << endl;
+    std::cout << -1 << '\t' << -1 << std::endl;
 }
 
 void Satlike::increase_weights_large()
@@ -4306,7 +4306,7 @@ void Satlike::increase_weights_large()
 
     inc_hard_weight_large += clause_weight_large[c];
     // clause_weight_large[c] += (h_inc * clause_true_lit_thres_large[c]);
-    // cout << "c: " << c << endl;
+    // std::cout << "c: " << c << std::endl;
     unit_weight_large[c] += h_inc;
     tuned_degree_unit_weight_large[c] =
         unit_weight_large[c] / avg_clause_coe_large[c]; // Nupbo
@@ -4316,7 +4316,7 @@ void Satlike::increase_weights_large()
       weight = p->weight;
       if (p->sense != cur_soln[v])
       {
-        score_large[v] += Int(h_inc) * min(clause_true_lit_thres_large[c] - sat_count_large[c], weight) /
+        score_large[v] += Int(h_inc) * std::min(clause_true_lit_thres_large[c] - sat_count_large[c], weight) /
                           avg_clause_coe_large[c];
         if (score_large[v] + sscore_large[v] > 0 && already_in_goodvar_stack[v] == -1)
         // if (score_large[v] + sscore_large[v] + ans * hhscore_large[v] > 0 &&
@@ -4342,7 +4342,7 @@ void Satlike::increase_weights_large()
     }
   }
 
-  // cout << "now ave hard weight is " << ave_hard_weight_large << endl; &&
+  // std::cout << "now ave hard weight is " << ave_hard_weight_large << std::endl; &&
   // ave_soft_weight_large - ave_hard_weight_large > 400 if (soft_unsat_weight_large >=
   // opt_unsat_weight_large && ave_soft_weight_large - ave_hard_weight_large < 100)
   if (0 == hard_unsat_nb)
@@ -4363,7 +4363,7 @@ void Satlike::increase_weights_large()
         for (lit_large *p = clause_lit_large[c]; (v = p->var_num) != 0; p++)
         {
           sscore_large[v] += tune_soft_clause_weight_large[c];
-          // min(clause_true_lit_thres_large[c] - sat_count_large[c], weight);
+          // std::min(clause_true_lit_thres_large[c] - sat_count_large[c], weight);
           if (score_large[v] + sscore_large[v] > 0 && already_in_goodvar_stack[v] == -1)
           // if (score_large[v] + sscore_large[v] + ans * hhscore_large[v]> 0 &&
           // already_in_goodvar_stack[v] == -1)
@@ -4572,7 +4572,7 @@ void Satlike::check_new_score_large()
           if (sense != cur_soln[v])
           {
             tem_score += unit_weight_large[c] *
-                         min(clause_true_lit_thres_large[c] - sat_count_large[c], weight);
+                         std::min(clause_true_lit_thres_large[c] - sat_count_large[c], weight);
           }
           else
             tem_score -= unit_weight_large[c] * weight;
@@ -4581,7 +4581,7 @@ void Satlike::check_new_score_large()
         {
           if (sense == cur_soln[v])
           {
-            tem_score -= unit_weight_large[c] * max(Int(0), clause_true_lit_thres_large[c] -
+            tem_score -= unit_weight_large[c] * std::max(Int(0), clause_true_lit_thres_large[c] -
                                                                 sat_count_large[c] + weight);
           }
         }
@@ -4593,7 +4593,7 @@ void Satlike::check_new_score_large()
           if (sense != cur_soln[v])
           {
             tem_sscore += unit_weight_large[c] *
-                          min(clause_true_lit_thres_large[c] - sat_count_large[c], weight);
+                          std::min(clause_true_lit_thres_large[c] - sat_count_large[c], weight);
           }
           else
             tem_sscore -= unit_weight_large[c] * weight;
@@ -4602,7 +4602,7 @@ void Satlike::check_new_score_large()
         {
           if (sense == cur_soln[v])
           {
-            tem_sscore -= unit_weight_large[c] * max(Int(0), clause_true_lit_thres_large[c] -
+            tem_sscore -= unit_weight_large[c] * std::max(Int(0), clause_true_lit_thres_large[c] -
                                                                  sat_count_large[c] + weight);
           }
         }
@@ -4611,19 +4611,19 @@ void Satlike::check_new_score_large()
     if (tem_score != score_large[v] || tem_sscore != sscore_large[v])
     {
 
-      cout << "score_large is worng in variable " << v << endl;
-      cout << "tem_score is " << toString(tem_score) << endl;
-      cout << "score_large function is " << toString(score_large[v]) << endl;
-      cout << "flip_large num is " << step << endl;
+      std::cout << "score_large is worng in variable " << v << std::endl;
+      std::cout << "tem_score is " << toString(tem_score) << std::endl;
+      std::cout << "score_large function is " << toString(score_large[v]) << std::endl;
+      std::cout << "flip_large num is " << step << std::endl;
 
       for (i = 0; i < var_lit_count[v]; ++i)
       {
         c = var_lit_large[v][i].clause_num;
         sense = var_lit_large[v][i].sense;
         weight = var_lit_large[v][i].weight;
-        cout << c << " ";
+        std::cout << c << " ";
       }
-      cout << endl;
+      std::cout << std::endl;
       exit(0);
       break;
     }
@@ -4641,7 +4641,7 @@ void Satlike::check_new_score_large()
   }
   if (tem_unsat_softweight != soft_unsat_weight_large)
   {
-    cout << "verify softunsat weight wrong " << endl;
+    std::cout << "verify softunsat weight wrong " << std::endl;
     exit(0);
   }
 }

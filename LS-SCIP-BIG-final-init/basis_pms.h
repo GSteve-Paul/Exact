@@ -30,7 +30,6 @@
 
 #include "Int.h"
 
-using namespace std;
 
 #define mypop(stack) stack[--stack##_fill_pointer]
 #define mypush(item, stack) stack[stack##_fill_pointer++] = item
@@ -335,8 +334,8 @@ public:
 	void unsat_large(int clause);
 	void sat_small(int clause);
 	void sat_large(int clause);
-	void init_small(vector<int> &init_solution);
-	void init_large(vector<int> &init_solution);
+	void init_small(std::vector<int> &init_solution);
+	void init_large(std::vector<int> &init_solution);
 	void flip_small(int flipvar);
 	void flip_large(int flipvar);
 	void flip_fps_small(int flipvar); // fps
@@ -385,10 +384,10 @@ public:
 #endif
 	void build_instance_small(char *filename);
 	void build_instance_large(char *filename);
-	void local_search_small(vector<int> &init_solution);
-	void local_search_large(vector<int> &init_solution);
-	void local_search_with_decimation_small(vector<int> &init_solution, char *inputfile);
-	void local_search_with_decimation_large(vector<int> &init_solution, char *inputfile);
+	void local_search_small(std::vector<int> &init_solution);
+	void local_search_large(std::vector<int> &init_solution);
+	void local_search_with_decimation_small(std::vector<int> &init_solution, char *inputfile);
+	void local_search_with_decimation_large(std::vector<int> &init_solution, char *inputfile);
 	void simple_print_small();
 	void simple_print_large();
 	void print_best_solution(); // 传入测试名和seed
