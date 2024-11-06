@@ -64,6 +64,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "constraints/ConstrSimple.hpp"
 #include "datastructures/IntSet.hpp"
 #include "typedefs.hpp"
+#include <basis_pms.h>
 
 namespace xct {
 
@@ -135,6 +136,7 @@ class Optimization final : public OptimizationSuper {
   const CePtr<SMALL, LARGE> origObj;
 
  private:
+
   CePtr<SMALL, LARGE> reformObj;
 
   LARGE lower_bound;
@@ -147,6 +149,9 @@ class Optimization final : public OptimizationSuper {
 
   LARGE boundingVal;
   Var boundingVar;
+
+  bool presolveFirstRun = true;
+  void cloneDataIntoLS();
 
  public:
   explicit Optimization(const CePtr<SMALL, LARGE>& obj, Solver& s, const bigint& offset, const IntSet& assumps);

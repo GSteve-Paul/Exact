@@ -1113,7 +1113,7 @@ void Solver::sortWatchlists() {
 
 void Solver::presolve() {
   if (!firstRun) return;
-  firstRun = false;
+
   global.logger.flush();  // flush objective and formula, no need to keep in memory
 
   if (unsatReached) throw UnsatEncounter();
@@ -1133,7 +1133,9 @@ void Solver::presolve() {
     if (bound) lastGlobalDual = bound;
   }
 #endif
+  firstRun = false;
 }
+
 
 void Solver::removeSatisfiedNonImpliedsAtRoot() {
   assert(decisionLevel() == 0);

@@ -44,19 +44,19 @@ enum OptFinder
 #define l_True (uint8_t)0
 #define l_False (uint8_t)1
 #define l_Undef (uint8_t)2
-double opt_scip_cpu;
+inline double opt_scip_cpu;
 #endif
 
 const float MY_RAND_MAX_FLOAT = 10000000.0;
 const int MY_RAND_MAX_INT = 10000000;
 const float BASIC_SCALE = 0.0000001; // 1.0f/MY_RAND_MAX_FLOAT;
 
-int seed;
-bool use_scip;
-char *filename;
-bool opt_dec_model;
-int cutoff_time;
-long memory_limit_gb;
+inline int seed;
+inline bool use_scip;
+inline char* filename;
+inline bool opt_dec_model;
+inline int cutoff_time;
+inline long memory_limit_gb;
 // int presolveTimeLimit;
 
 // Define a data structure for a literal.
@@ -208,7 +208,7 @@ public:
 	int *clause_lit_count; // amount of literals in each clause
 	long long *clause_true_lit_thres_small;
 	Int *clause_true_lit_thres_large;
-	int *clause_visied_times; // wyy
+	int *clause_visited_times; // wyy
 
 	/* Information about the variables. */
 	double *score_small;

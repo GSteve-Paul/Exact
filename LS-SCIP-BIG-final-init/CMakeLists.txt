@@ -61,7 +61,8 @@ endif()
 #endif()
 
 file(GLOB SOURCES "*.cpp")
-add_library(DNOP ${SOURCES})
+add_library(DNOP
+        pms_small.cpp)
 
 # 针对 DNOP 目标设置包含路径和链接库
 #target_include_directories(DNOP PRIVATE

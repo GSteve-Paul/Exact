@@ -72,10 +72,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "propagation/Implications.hpp"
 #include "propagation/LpSolver.hpp"
 #include "typedefs.hpp"
+#include "Optimization.hpp"
 
 namespace xct {
 
 class Solver {
+ public:
+  template<typename SMALL, typename LARGE>
+  friend class Optimization;
   friend class LpSolver;
   friend struct Constr;
   friend struct Clause;
@@ -95,6 +99,7 @@ class Solver {
 
  public:
   bool foundSolution() const;
+  Satlike lsSolver;
   CeSuper lastCore;
   CeSuper lastGlobalDual;
   CeArb objective;

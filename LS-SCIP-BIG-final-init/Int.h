@@ -251,57 +251,48 @@ public:
 #define Int_MIN Int((mpz_t *)-1)
 #define Int_MAX Int((mpz_t *)1)
 
-class Int
-{
-  mpz_t *data; // This pointer is meant to contain small integers when bit 0 is
-               // set (for efficiency). Currently the only small integers used
-               // are the special values 'Int_MIN' and 'Int_MAX'.
+class Int {
+  mpz_t* data;  // This pointer is meant to contain small integers when bit 0 is
+                // set (for efficiency). Currently the only small integers used
+                // are the special values 'Int_MIN' and 'Int_MAX'.
   bool small() const { return ((intp)data & 1) != 0; }
 
-public:
+ public:
   // Constructors/Destructor (+assignment operator)
   //
-  explicit Int(mpz_t *d) : data(d) {} // Low-level constructor -- don't use!
+  explicit Int(mpz_t* d) : data(d) {}  // Low-level constructor -- don't use!
 
-  Int()
-  {
+  Int() {
     data = xmalloc<mpz_t>(1);
     assert(((intp)data & 1) == 0);
     mpz_init(*data);
   }
 
-  explicit Int(int x)
-  {
+  explicit Int(int x) {
     data = xmalloc<mpz_t>(1);
     assert(((intp)data & 1) == 0);
     mpz_init_set_si(*data, x);
   }
 
-  Int(int64_t x)
-  {
+  Int(int64_t x) {
     data = xmalloc<mpz_t>(1);
     assert(((intp)data & 1) == 0);
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
     bool neg = false, int64_min = false;
-    if (x < 0)
-    {
-      if (x == INT64_MIN)
-        int64_min = true, x++;
+    if (x < 0) {
+      if (x == INT64_MIN) int64_min = true, x++;
       x = -x, neg = true;
     }
     mpz_init(*data);
     mpz_import(*data, 1, 1, sizeof(x), 0, 0, &x);
-    if (neg)
-      mpz_neg(*data, *data);
-    if (int64_min)
-      mpz_sub_ui(*data, *data, 1);
+    if (neg) mpz_neg(*data, *data);
+    if (int64_min) mpz_sub_ui(*data, *data, 1);
 #else
     mpz_init_set_si(*data, x);
 #endif
   }
 
-  explicit Int(uint64_t x)
-  {
+  explicit Int(uint64_t x) {
     data = xmalloc<mpz_t>(1);
     assert(((intp)data & 1) == 0);
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
@@ -312,65 +303,51 @@ public:
 #endif
   }
 
-  Int(const Int &src)
-  {
+  Int(const Int& src) {
     if (src.small())
       data = src.data;
-    else
-    {
+    else {
       data = xmalloc<mpz_t>(1);
       assert(((intp)data & 1) == 0);
       mpz_init_set(*data, *src.data);
     }
   }
 
-  Int(Int &&src)
-  {
+  Int(Int&& src) {
     data = src.data;
-    src.data = (mpz_t *)1;
+    src.data = (mpz_t*)1;
   }
 
-  ~Int()
-  {
-    if (!small())
-    {
+  ~Int() {
+    if (!small()) {
       mpz_clear(*data);
       xfree(data);
     }
     data = 0;
   }
 
-  Int &operator=(const Int &other)
-  {
-    if (&other != this)
-    {
-      if (other.small())
-      {
+  Int& operator=(const Int& other) {
+    if (&other != this) {
+      if (other.small()) {
         this->~Int();
         data = other.data;
-      }
-      else
-      {
-        if (small())
-        {
+      } else {
+        if (small()) {
           data = xmalloc<mpz_t>(1);
           assert(((intp)data & 1) == 0);
           mpz_init_set(*data, *other.data);
-        }
-        else
+        } else
           mpz_set(*data, *other.data);
       }
     }
     return *this;
   }
 
-  Int &operator=(Int &&other)
-  {
-    if (&other != this)
-    {
+  Int& operator=(Int&& other) {
+    if (&other != this) {
       this->~Int();
       data = other.data;
-      other.data = (mpz_t *)1;
+      other.data = (mpz_t*)1;
     }
     return *this;
   }
@@ -381,152 +358,123 @@ public:
   // -- Comparison (supports infinity)
   //    '+oo' and '-oo' are treated as two unique points beyond the integers.
   //    For instanse '+oo' is not < than itself, but <= than itself.
-  bool operator==(const Int &other) const
-  {
+  bool operator==(const Int& other) const {
     if (small())
       return other.small() ? (data == other.data) : false;
     else
       return other.small() ? false : mpz_cmp(*data, *other.data) == 0;
   }
 
-  bool operator<(const Int &other) const
-  {
-    if (small())
-    {
+  bool operator<(const Int& other) const {
+    if (small()) {
       if (data == Int_MIN.data)
         return (!other.small() || other.data != Int_MIN.data);
-      else
-      {
+      else {
         assert(data == Int_MAX.data);
         return false;
       }
-    }
-    else
-    {
-      if (other.small())
-      {
+    } else {
+      if (other.small()) {
         if (other.data == Int_MIN.data)
           return false;
-        else
-        {
+        else {
           assert(other.data == Int_MAX.data);
           return true;
         }
-      }
-      else
+      } else
         return mpz_cmp(*data, *other.data) < 0;
     }
   }
 
-  bool operator!=(const Int &other) const { return !(*this == other); }
-  bool operator>=(const Int &other) const { return !(*this < other); }
-  bool operator>(const Int &other) const { return other < *this; }
-  bool operator<=(const Int &other) const { return !(*this > other); }
+  bool operator!=(const Int& other) const { return !(*this == other); }
+  bool operator>=(const Int& other) const { return !(*this < other); }
+  bool operator>(const Int& other) const { return other < *this; }
+  bool operator<=(const Int& other) const { return !(*this > other); }
 
   // -- Arithmetic (not allowed on infinity except for unary '-')
-  Int operator+(const Int &other) const
-  {
+  Int operator+(const Int& other) const {
     A2 Int ret;
     mpz_add(*ret.data, *data, *other.data);
     return ret;
   }
-  Int operator-(const Int &other) const
-  {
+  Int operator-(const Int& other) const {
     A2 Int ret;
     mpz_sub(*ret.data, *data, *other.data);
     return ret;
   }
-  Int operator*(const Int &other) const
-  {
+  Int operator*(const Int& other) const {
     A2 Int ret;
     mpz_mul(*ret.data, *data, *other.data);
     return ret;
   }
-  Int operator/(const Int &other) const
-  {
+  Int operator/(const Int& other) const {
     A2 Int ret;
     mpz_tdiv_q(*ret.data, *data, *other.data);
     return ret;
   }
-  Int operator%(const Int &other) const
-  {
+  Int operator%(const Int& other) const {
     A2 Int ret;
     mpz_tdiv_r(*ret.data, *data, *other.data);
     return ret;
   }
 
-  Int &operator+=(const Int &other)
-  {
+  Int& operator+=(const Int& other) {
     A2 mpz_add(*data, *data, *other.data);
     return *this;
   }
-  Int &operator-=(const Int &other)
-  {
+  Int& operator-=(const Int& other) {
     A2 mpz_sub(*data, *data, *other.data);
     return *this;
   }
-  Int &operator*=(const Int &other)
-  {
+  Int& operator*=(const Int& other) {
     A2 mpz_mul(*data, *data, *other.data);
     return *this;
   }
-  Int &operator/=(const Int &other)
-  {
+  Int& operator/=(const Int& other) {
     A2 mpz_tdiv_q(*data, *data, *other.data);
     return *this;
   }
-  Int &operator%=(const Int &other)
-  {
+  Int& operator%=(const Int& other) {
     A2 mpz_tdiv_r(*data, *data, *other.data);
     return *this;
   }
-  Int &operator++() { return *this += Int(1); }
-  Int &operator--() { return *this -= Int(1); }
+  Int& operator++() { return *this += Int(1); }
+  Int& operator--() { return *this -= Int(1); }
 
-  Int operator-() const
-  {
+  Int operator-() const {
     if (small())
-      return Int((mpz_t *)(-(intp)data));
-    else
-    {
+      return Int((mpz_t*)(-(intp)data));
+    else {
       Int ret;
       mpz_neg(*ret.data, *data);
       return ret;
     }
   }
 
-  Int abs() const
-  {
-    Int result(*this);                  // Copy the current object
-    mpz_abs(*result.data, *this->data); // Calculate abs without modifying the original
+  Int abs() const {
+    Int result(*this);                   // Copy the current object
+    mpz_abs(*result.data, *this->data);  // Calculate abs without modifying the original
     return result;
   }
 
-  void applyRandom(gmp_randstate_t randState, const Int &x)
-  {
-    mpz_urandomm(*data, randState, *x.data);
-  }
+  void applyRandom(gmp_randstate_t randState, const Int& x) { mpz_urandomm(*data, randState, *x.data); }
 
   // -- Bit operators (incomplete; we don't need more at the moment)
-  Int operator&(const Int &other) const
-  {
+  Int operator&(const Int& other) const {
     A2 Int ret;
     mpz_and(*ret.data, *data, *other.data);
     return ret;
   }
-  Int &operator>>=(int n)
-  {
+  Int& operator>>=(int n) {
     A1 mpz_fdiv_q_2exp(*data, *data, n);
     return *this;
   }
 
   // addition that allowed infinity (not allowed as 2nd parameter)
-  Int add(const Int &other) const
-  {
+  Int add(const Int& other) const {
     if (small())
       return *this;
-    else
-    {
+    else {
       Int ret;
       mpz_add(*ret.data, *data, *other.data);
       return ret;
@@ -535,80 +483,65 @@ public:
 
   // Methods:
   //
-  friend char *toString(Int num)
-  {
+  friend char* toString(Int num) {
     if (num == Int_MIN)
       return xstrdup("-oo");
     else if (num == Int_MAX)
       return xstrdup("+oo");
     assert(!num.small());
-    char *tmp = xmalloc<char>(mpz_sizeinbase(*num.data, 10) + 2);
+    char* tmp = xmalloc<char>(mpz_sizeinbase(*num.data, 10) + 2);
     mpz_get_str(tmp, 10, *num.data);
     return tmp;
   }
 
-  friend int toint(Int num)
-  {
-    if (num.small() || !mpz_fits_sint_p(*num.data))
-      throw Exception_IntOverflow(xstrdup("toint"));
+  friend int toint(Int num) {
+    if (num.small() || !mpz_fits_sint_p(*num.data)) throw Exception_IntOverflow(xstrdup("toint"));
     return (int)mpz_get_si(*num.data);
   }
 
-  friend int64_t tolong(Int num)
-  {
-    if (num.small())
-      throw Exception_IntOverflow(xstrdup("tolong"));
+  friend int64_t tolong(Int num) {
+    if (num.small()) throw Exception_IntOverflow(xstrdup("tolong"));
     int64_t res;
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
     size_t cnt = 0;
     bool neg = mpz_sgn(*num.data) < 0;
     uint64_t ures[20];
     mpz_export(ures, &cnt, 1, sizeof(uint64_t), 0, 0, *num.data);
-    if (cnt > 1 || neg && ures[0] > 1ULL - (INT64_MIN + 1) ||
-        !neg && ures[0] > (uint64_t)INT64_MAX)
+    if (cnt > 1 || neg && ures[0] > 1ULL - (INT64_MIN + 1) || !neg && ures[0] > (uint64_t)INT64_MAX)
       throw Exception_IntOverflow(xstrdup("toulong"));
     res = (cnt == 0 ? 0 : (neg ? -(int64_t)ures[0] : (int64_t)ures[0]));
 #else
-    if (!mpz_fits_slong_p(*num.data))
-      throw Exception_IntOverflow(xstrdup("tolong"));
+    if (!mpz_fits_slong_p(*num.data)) throw Exception_IntOverflow(xstrdup("tolong"));
     res = mpz_get_si(*num.data);
 #endif
     return res;
   }
 
-  friend uint64_t toulong(Int num)
-  {
-    if (num.small())
-      throw Exception_IntOverflow(xstrdup("toulong"));
+  friend uint64_t toulong(Int num) {
+    if (num.small()) throw Exception_IntOverflow(xstrdup("toulong"));
     uint64_t res;
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
     size_t cnt = 0;
     uint64_t ures[20];
     mpz_export(ures, &cnt, 1, sizeof(uint64_t), 0, 0, *num.data);
-    if (mpz_sgn(*num.data) < 0 || cnt > 1)
-      throw Exception_IntOverflow(xstrdup("toulong"));
+    if (mpz_sgn(*num.data) < 0 || cnt > 1) throw Exception_IntOverflow(xstrdup("toulong"));
     res = (cnt == 0 ? 0 : ures[0]);
 #else
-    if (!mpz_fits_ulong_p(*num.data))
-      throw Exception_IntOverflow(xstrdup("toulong"));
+    if (!mpz_fits_ulong_p(*num.data)) throw Exception_IntOverflow(xstrdup("toulong"));
     res = mpz_get_ui(*num.data);
 #endif
     return res;
   }
 
-  explicit operator double()
-  {
-    if (this->small())
-      throw Exception_IntOverflow(xstrdup("double"));
+  explicit operator double() {
+    if (this->small()) throw Exception_IntOverflow(xstrdup("double"));
     return mpz_get_d(*this->data);
   }
 
-  uint hash() const
-  { // primitive hash function -- not good with bit-shifts
+  uint hash() const {  // primitive hash function -- not good with bit-shifts
     mp_size_t size = mpz_size(*data);
     mp_limb_t val = 0;
-    for (mp_size_t i = 0; i < size; i++)
-    {
+    for (mp_size_t i = 0; i < size; i++) {
       mp_limb_t limb = mpz_getlimbn(*data, i);
       val ^= limb;
     }
@@ -620,12 +553,11 @@ public:
   }
 };
 
-Int absInt(const Int &number)
-{
-  return number.abs(); // Utilize the member function to calculate the absolute value
+inline Int absInt(const Int& number) {
+  return number.abs();  // Utilize the member function to calculate the absolute value
 }
 
-Int randInt(const Int &x)
+inline Int randInt(const Int &x)
 {
   static gmp_randstate_t randState;
   static bool initialized = false;

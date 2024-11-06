@@ -79,7 +79,7 @@ void Satlike::allocate_memory_small()
   clause_lit_small = new lit_small *[malloc_clause_length];
   clause_lit_count = new int[malloc_clause_length];
   clause_true_lit_thres_small = new long long[malloc_clause_length];
-  clause_visied_times = new int[malloc_clause_length]; // wyy
+  clause_visited_times = new int[malloc_clause_length]; // wyy
   equal_cons = new bool[malloc_clause_length];
   for (int i = 0; i < malloc_clause_length; i++)
     equal_cons[i] = false;
@@ -224,7 +224,7 @@ void Satlike::free_memory_small()
   delete[] clause_lit_small;
   delete[] clause_lit_count;
   delete[] clause_true_lit_thres_small;
-  delete[] clause_visied_times;
+  delete[] clause_visited_times;
 
   delete[] score_small;
   // delete[] oscore;
@@ -682,7 +682,7 @@ void Satlike::build_instance_small(char *filename)
       var_lit_small[v][var_lit_count[v]] = clause_lit_small[c][i];
       ++var_lit_count[v];
     }
-    clause_visied_times[c] = 0; // wyy
+    clause_visited_times[c] = 0; // wyy
 
     if (org_clause_weight_small[c] != top_clause_weight_small)
     {
@@ -740,7 +740,7 @@ void Satlike::init_small(std::vector<int> &init_solution)
     selected_times_hard[c] = 0;     // MAB-hselectd_times_hard
     clause_hard_score_small[c] = 1; // MAB-h
 
-    clause_visied_times[c] = 0;
+    clause_visited_times[c] = 0;
     // clause_selected_count[c] = 0;
 
     if (org_clause_weight_small[c] == top_clause_weight_small)
@@ -4334,14 +4334,14 @@ void Satlike::increase_weights_small()
   for (i = 0; i < hardunsat_stack_fill_pointer; ++i)
   {
     c = hardunsat_stack[i];
-    if (clause_visied_times[c] < clause_true_lit_thres_small[c] / clause_weight_small[c])
+    if (clause_visited_times[c] < clause_true_lit_thres_small[c] / clause_weight_small[c])
     {
-      clause_visied_times[c]++;
+      clause_visited_times[c]++;
       continue;
     }
     else
     {
-      clause_visied_times[c] = 0;
+      clause_visited_times[c] = 0;
     }
 
     inc_hard_weight_small += clause_weight_small[c];
