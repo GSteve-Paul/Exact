@@ -579,18 +579,18 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
     cnt_cons++;
   }
 
-  for (const Var &v : origObj->vars) {
+  for (const Var& v : origObj->vars) {
     int coef = origObj->coefs[v];
     int abs_coef = abs(coef);
     lsSolver.clause_lit_count[cnt_cons] = 1;
     lsSolver.clause_lit_small[cnt_cons] = new lit_small[lsSolver.clause_lit_count[cnt_cons] + 1];
 
-    lsSolver.clause_lit_small[cnt_cons][0] = {cnt_cons,v,coef < 0,1};
+    lsSolver.clause_lit_small[cnt_cons][0] = {cnt_cons, v, coef < 0, 1};
     lsSolver.org_clause_weight_small[cnt_cons] = abs_coef;
     lsSolver.clause_max_weight_small[cnt_cons] = 1;
     lsSolver.var_lit_count[v]++;
     lsSolver.clause_true_lit_thres_small[cnt_cons] = 1;
-    lsSolver.clause_lit_small[cnt_cons][1] = {-1,0,false,0};
+    lsSolver.clause_lit_small[cnt_cons][1] = {-1, 0, false, 0};
     cnt_cons++;
   }
 
@@ -603,13 +603,13 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
   lsSolver.num_sclauses = 0;
   for (int i = 0; i < lsSolver.num_clauses; i++) {
     for (int j = 0; j < lsSolver.clause_lit_count[i]; j++) {
-      const Var &var = lsSolver.clause_lit_small[i][j].var_num;
+      const Var& var = lsSolver.clause_lit_small[i][j].var_num;
       lsSolver.var_lit_small[i][lsSolver.var_lit_count[var]] = lsSolver.clause_lit_small[i][j];
       lsSolver.var_lit_count[var]++;
     }
     lsSolver.clause_visited_times[i] = 0;
 
-    if(lsSolver.org_clause_weight_small[i] != lsSolver.top_clause_weight_small) {
+    if (lsSolver.org_clause_weight_small[i] != lsSolver.top_clause_weight_small) {
       lsSolver.total_soft_weight_small += lsSolver.org_clause_weight_small[i];
       lsSolver.soft_clause_num_index[lsSolver.num_sclauses++] = i;
     } else {
@@ -617,15 +617,39 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
     }
   }
 
-  for (int i = 1; i <= lsSolver.num_vars; i++)
-    lsSolver.var_lit_small[i][lsSolver.var_lit_count[i]].clause_num = -1;
+  for (int i = 1; i <= lsSolver.num_vars; i++) lsSolver.var_lit_small[i][lsSolver.var_lit_count[i]].clause_num = -1;
 
-  //TODO: rewrite SATlike::build_neighbor_relation_small() in Exact
+  // TODO: rewrite SATlike::build_neighbor_relation_small() in Exact
+  std::function<void()> buildNeighborData = [&lsSolver]() -> void {
+    for (Var v = 1; v <= lsSolver.num_vars; v++) {
+      lsSolver.neighbor_flag[v] = 1;
+      lsSolver.var_neighbor_count[v] = 0;
+      for (int i = 0; i < lsSolver.var_lit_count[v]; i++) {
+        const int& c = lsSolver.var_lit_small[v][i].clause_num;
+        for (int j = 0; j < lsSolver.clause_lit_count[c]; j++) {
+          int nei = lsSolver.clause_lit_small[c][j].var_num;
+          if (!lsSolver.neighbor_flag[nei]) {
+            lsSolver.neighbor_flag[nei] = 1;
+            lsSolver.temp_neighbor[lsSolver.var_neighbor_count[v]++] = nei;
+          }
+        }
+      }
+
+      lsSolver.neighbor_flag[v] = 0;
+
+      lsSolver.var_neighbor[v] = new int[lsSolver.var_neighbor_count[v]];
+
+      for (int i = 0; i < lsSolver.var_neighbor_count[v]; i++) {
+        lsSolver.var_neighbor[v][i] = lsSolver.temp_neighbor[i];
+        lsSolver.neighbor_flag[lsSolver.temp_neighbor[i]] = 0;
+      }
+    }
+  };
+  buildNeighborData();
 
   lsSolver.best_soln_feasible = 0;
   lsSolver.opt_unsat_weight_small = lsSolver.total_soft_weight_small + 1;
   lsSolver.opt_realobj_small = lsSolver.total_soft_weight_small + 1;
-
 }
 
 template <typename SMALL, typename LARGE>
