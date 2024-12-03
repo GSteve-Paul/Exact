@@ -551,11 +551,12 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
     Ce32 ce = global.cePools.take32();
     ces->copyTo(ce);
     lsSolver.clause_lit_count[cnt_cons] = ce->getVars().size();
+    lsSolver.clause_lit_small[cnt_cons] = new lit_small[ce->getVars().size() + 1];
     lsSolver.clause_true_lit_thres_small[cnt_cons] = -ce->getDegree();
     int cnt_vars = 0;
     for (const Var& v : ce->getVars()) {
       int coef = ce->coefs[v];
-      int abs_coef = abs(coef);
+      long long abs_coef = abs(coef);
 
       lsSolver.clause_lit_small[cnt_cons][cnt_vars].clause_num = cnt_cons;
       lsSolver.clause_lit_small[cnt_cons][cnt_vars].var_num = v;
@@ -604,7 +605,7 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
   for (int i = 0; i < lsSolver.num_clauses; i++) {
     for (int j = 0; j < lsSolver.clause_lit_count[i]; j++) {
       const Var& var = lsSolver.clause_lit_small[i][j].var_num;
-      lsSolver.var_lit_small[i][lsSolver.var_lit_count[var]] = lsSolver.clause_lit_small[i][j];
+      lsSolver.var_lit_small[var][lsSolver.var_lit_count[var]] = lsSolver.clause_lit_small[i][j];
       lsSolver.var_lit_count[var]++;
     }
     lsSolver.clause_visited_times[i] = 0;
@@ -650,6 +651,8 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
   lsSolver.best_soln_feasible = 0;
   lsSolver.opt_unsat_weight_small = lsSolver.total_soft_weight_small + 1;
   lsSolver.opt_realobj_small = lsSolver.total_soft_weight_small + 1;
+
+  std::cout << "Finish cloning data from SAT to LS\n";
 }
 
 template <typename SMALL, typename LARGE>
