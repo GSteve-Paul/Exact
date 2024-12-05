@@ -294,6 +294,26 @@ CeSuper Solver::runDatabasePropagation() {
       }  // blocked literal check
       CRef cr = ws[it_ws].cref;
       WatchStatus wstat = checkForPropagation(cr, ws[it_ws].idx, -p);
+      // TODO: change the condition
+      // eg. trail.size() > getNbVars() * 0.8
+      bool runLsCondition = true;
+      if (runLsCondition && isClone) {
+        // TODO: run Local-Search with current solution from SAT
+        std::vector<int> init_solution(lsSolver.num_vars + 1, 2);
+        for (const Lit& l : trail) {
+          Var v = toVar(l);
+          if (!isOrig(v)) continue;
+          init_solution[v] = l < 0 ? 0 : 1;
+        }
+        char file_name[] = "";
+        //set cutoff time for lsSolver
+        cutoff_time = 5;
+        lsSolver.local_search_with_decimation_small(init_solution, file_name);
+        std::cout << "ls solution:\n";
+        for (int i =1; i <= lsSolver.num_vars; i++)
+          std::cout << lsSolver.best_soln[i] << " ";
+        std::cout << "\n";
+      }
       if (wstat == WatchStatus::DROPWATCH) {
         plf::single_reorderase(ws, ws.begin() + it_ws);
         --it_ws;

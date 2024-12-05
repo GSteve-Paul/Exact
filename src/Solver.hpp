@@ -107,6 +107,7 @@ class Solver {
 
  private:
   int n = 0;
+  bool isClone = false;
   std::vector<bool> isorig;
   bool firstRun = true;
   bool unsatReached = false;

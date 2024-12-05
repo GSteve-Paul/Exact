@@ -332,378 +332,378 @@ int Satlike::get_intsize(char *filename)
   return intsize;
 }
 
-void Satlike::build_instance_small(char *filename)
-{
-  printf("c Not use presolve\n");
-  int i, v, c;
-  int num_hc;
-  int num_intsize;
-
-  std::string s;
-  // int     temp_lit[MAX_VARS];
-
-  std::ifstream file(filename, std::ifstream::in);
-  if (file.fail())
-  {
-    file.close();
-    throw "c " + std::string(filename) + " does not exist!";
-    std::cout << "s UNSUPPORTED" << std::endl;
-    std::cout << "c the input filename " << filename
-         << " is invalid, please input the correct filename." << std::endl;
-    exit(-1);
-  }
-
-  for (int i = 0; i < 9; ++i)
-  {
-    std::string temp;
-    file >> temp;
-    if (i == 2)
-      num_vars = std::stoi(temp);
-    if (i == 4)
-      num_hc = std::stoi(temp);
-    if (i == 6)
-      num_equal = std::stoi(temp);
-    if (i == 8)
-      if (stoi(temp) > 63)
-      {
-        printf("s UNSUPPORTED\n");
-        printf("c intsize > 64\n");
-        exit(0);
-      }
-  }
-  std::string commentLineTemp;
-  bool loadingObj = false;
-  long long int coeff;
-  int newcol = 0;
-  num_hclauses = num_hc + num_equal;
-
-  num_sclauses = 0; // 软子句数目为0
-  sumneg_min_small = 0;
-  top_clause_weight_small = 0; // 最高子句权重为0
-  while (file >> s)
-  {
-    if (s == "*" || s[0] == '*')
-      std::getline(file, commentLineTemp);
-    // Load objective function
-    else if (s == "min:")
-      loadingObj = true, opt_dec_model = false;
-    else if (s == ";")
-    {
-      loadingObj = false;
-    }
-    else if (loadingObj)
-    {
-      if (s[0] == '-' || s[0] == '+' || isdigit(s[0]))
-        coeff = std::stoll(s);
-      else
-      {
-        if (coeff > 0)
-          top_clause_weight_small += coeff; // top_clause_weight_small = 0 + (+1)
-        else
-        {
-          top_clause_weight_small += (-coeff); // top_clause_weight_small = 0 - (-1)
-          sumneg_min_small += (-coeff);
-        }
-        ++num_sclauses;
-      }
-    }
-    else
-    {
-      file.close();
-      file.open(filename, std::ifstream::in);
-      break;
-    }
-  }
-
-  top_clause_weight_small = top_clause_weight_small + 1;
-
-  num_clauses = num_hclauses + num_sclauses;
-
-  allocate_memory_small(); // 加入了hhscore hard+soft+equal+10
-
-  for (c = 0; c < num_clauses; c++)
-  {
-    clause_lit_count[c] = 0;
-    clause_true_lit_thres_small[c] = 1;
-    clause_lit_small[c] = NULL;
-  }
-
-  for (v = 1; v <= num_vars; ++v)
-  {
-    var_lit_count[v] = 0;
-    var_lit_small[v] = NULL;
-    var_neighbor[v] = NULL;
-  }
-
-  long long int *temp_weight = new long long int[num_vars + 10];
-  int *temp_lit = new int[num_vars + 10]; // modify local
-  // T cur_weight;
-  std::string symbol;
-  long long int degree;
-  total_soft_weight_small = 0;
-
-  // 处理负系数
-  long long int negsum = 0;
-
-  c = 0;
-
-  while (file >> s)
-  {
-    // Handle coefficient case
-    if (s[0] == '+' || s[0] == '-' || isdigit(s[0]))
-      coeff = std::stoll(s);
-    // Handle bound
-    else if (s == ">=" || s == "=")
-    {
-      symbol = s;
-      file >> s;
-      temp_weight[clause_lit_count[c]] = 0;
-      temp_lit[clause_lit_count[c]] = 0;
-      degree = std::stoll(s);
-      org_clause_weight_small[c] = top_clause_weight_small;
-      int c_equal = 0;
-      int c_more = c;
-      long long int sum = 0;
-      long long int equal_degree = 0;
-
-      long long int equal_temp_weight[clause_lit_count[c] + 10] = {0}; // modify
-      int equal_temp_lit[clause_lit_count[c] + 10] = {0};
-
-      if (symbol == "=")
-      {
-        equal_cons[c] = true;
-        c_more = c + 1;
-        i = 0;
-        sum = 0;
-
-        while (temp_weight[i] != 0)
-        {
-          equal_temp_weight[i] = temp_weight[i];
-          sum += temp_weight[i];
-          i++;
-        }
-        equal_temp_weight[i] = 0;
-
-        i = 0;
-        while (temp_lit[i] != 0)
-        {
-          equal_temp_lit[i] = -temp_lit[i];
-          i++;
-        }
-        equal_temp_lit[i] = 0;
-
-        clause_lit_count[c_more] = clause_lit_count[c];
-        equal_degree = sum - degree;
-        org_clause_weight_small[c_more] = top_clause_weight_small;
-      }
-
-      negsum = 0;
-      i = 0;
-      while (temp_weight[i] != 0)
-      {
-        if (temp_weight[i] < 0)
-        {
-          negsum += -temp_weight[i];
-          temp_weight[i] = -temp_weight[i];
-          temp_lit[i] = -temp_lit[i];
-        }
-        i++;
-      }
-      degree += negsum;
-      clause_true_lit_thres_small[c] = degree;
-      if (symbol == "=")
-      {
-        negsum = 0;
-        i = 0;
-        while (equal_temp_weight[i] != 0)
-        {
-          if (equal_temp_weight[i] < 0)
-          {
-            negsum += -equal_temp_weight[i];
-            equal_temp_weight[i] = -equal_temp_weight[i];
-            equal_temp_lit[i] = -equal_temp_lit[i];
-          }
-          i++;
-        }
-        equal_degree += negsum;
-        clause_true_lit_thres_small[c_more] = equal_degree;
-      }
-
-      long long int max_weight = 0; // find max_weight
-      clause_lit_small[c] = new lit_small[clause_lit_count[c] + 1];
-
-      for (i = 0; i < clause_lit_count[c]; ++i)
-      {
-        clause_lit_small[c][i].clause_num = c;
-        clause_lit_small[c][i].var_num = abs(temp_lit[i]);
-        clause_lit_small[c][i].weight = temp_weight[i];
-        if (temp_weight[i] > max_weight)
-          max_weight = temp_weight[i]; // max_weight
-        avg_clause_coe_small[c] += double(clause_lit_small[c][i].weight);
-
-        if (temp_lit[i] > 0)
-          clause_lit_small[c][i].sense = 1;
-        else
-          clause_lit_small[c][i].sense = 0;
-
-        var_lit_count[clause_lit_small[c][i].var_num]++;
-      }
-
-      clause_max_weight_small[c] = max_weight;
-
-      avg_clause_coe_small[c] =
-          round(double(avg_clause_coe_small[c] / (double)clause_lit_count[c]));
-      if (avg_clause_coe_small[c] < 1)
-        avg_clause_coe_small[c] = 1;
-
-      clause_lit_small[c][i].var_num = 0;
-      clause_lit_small[c][i].clause_num = -1;
-      clause_lit_small[c][i].weight = 0;
-
-      if (symbol == "=")
-      {
-        max_weight = 0; // find max_weight
-        c = c_more;
-        clause_lit_small[c] = new lit_small[clause_lit_count[c] + 1];
-
-        for (i = 0; i < clause_lit_count[c]; ++i)
-        {
-          clause_lit_small[c][i].clause_num = c;
-          clause_lit_small[c][i].var_num = abs(equal_temp_lit[i]);
-          clause_lit_small[c][i].weight = equal_temp_weight[i];
-          if (equal_temp_weight[i] > max_weight)
-            max_weight = equal_temp_weight[i]; // max_weight
-          avg_clause_coe_small[c] += double(clause_lit_small[c][i].weight);
-
-          if (equal_temp_lit[i] > 0)
-            clause_lit_small[c][i].sense = 1;
-          else
-            clause_lit_small[c][i].sense = 0;
-
-          var_lit_count[clause_lit_small[c][i].var_num]++;
-        }
-
-        clause_max_weight_small[c] = max_weight;
-        avg_clause_coe_small[c] =
-            round(double(avg_clause_coe_small[c] / (double)clause_lit_count[c]));
-        if (avg_clause_coe_small[c] < 1)
-          avg_clause_coe_small[c] = 1;
-
-        clause_lit_small[c][i].var_num = 0;
-        clause_lit_small[c][i].clause_num = -1;
-        clause_lit_small[c][i].weight = 0;
-      }
-    }
-    // Handle var
-    else if (s[0] == 'x')
-    {
-      temp_weight[clause_lit_count[c]] = coeff;
-      temp_lit[clause_lit_count[c]] = stoi(s.substr(1));
-      ++clause_lit_count[c];
-    }
-    else if (s == ";")
-      ++c, clause_lit_count[c] = 0;
-    // If comment or objective function push iterator past line
-    else if (s == "*" || s[0] == '*' || s[0] == 'm')
-      std::getline(file, commentLineTemp);
-  }
-
-  file.close();
-  file.open(filename, std::ifstream::in);
-
-  while (file >> s)
-  {
-    if (s == "*" || s[0] == '*')
-      std::getline(file, commentLineTemp);
-    else if (s == "min:")
-      loadingObj = true;
-    else if (s == ";")
-    {
-      loadingObj = false;
-    }
-    else if (loadingObj)
-    {
-      if (s[0] == '-' || s[0] == '+' || isdigit(s[0]))
-        coeff = std::stoll(s);
-      else
-      {
-        clause_lit_count[c] = 1;
-        clause_lit_small[c] = new lit_small[clause_lit_count[c] + 1];
-        if (coeff < 0)
-        {
-          clause_lit_small[c][0].var_num = std::stoi(s.substr(1));
-          clause_lit_small[c][0].clause_num = c;
-          clause_lit_small[c][0].weight = 1;
-          clause_lit_small[c][0].sense = 1;
-          org_clause_weight_small[c] = -coeff;
-        }
-        else
-        {
-          clause_lit_small[c][0].var_num = std::stoi(s.substr(1));
-          clause_lit_small[c][0].clause_num = c;
-          clause_lit_small[c][0].weight = 1;
-          clause_lit_small[c][0].sense = 0;
-          org_clause_weight_small[c] = coeff;
-        }
-        clause_max_weight_small[c] = 1;
-        var_lit_count[clause_lit_small[c][0].var_num]++;
-        clause_true_lit_thres_small[c] = 1;
-        clause_lit_small[c][1].var_num = 0;
-        clause_lit_small[c][1].clause_num = -1;
-        clause_lit_small[c][1].weight = 0;
-        c++;
-      }
-    }
-    else
-    {
-      file.close();
-      file.open(filename, std::ifstream::in);
-      break;
-    }
-  }
-
-  delete[] temp_weight; // zyj
-  delete[] temp_lit;
-
-  // creat var literal arrays
-  for (v = 1; v <= num_vars; ++v)
-  {
-    var_lit_small[v] = new lit_small[var_lit_count[v] + 1];
-    var_lit_count[v] = 0; // reset to 0, for build up the array
-  }
-
-  // scan all clauses to build up var literal arrays
-  num_hclauses = num_sclauses = 0; // modify
-  for (c = 0; c < num_clauses; ++c)
-  {
-    for (i = 0; i < clause_lit_count[c]; ++i)
-    {
-      v = clause_lit_small[c][i].var_num;
-      var_lit_small[v][var_lit_count[v]] = clause_lit_small[c][i];
-      ++var_lit_count[v];
-    }
-    clause_visited_times[c] = 0; // wyy
-
-    if (org_clause_weight_small[c] != top_clause_weight_small)
-    {
-      total_soft_weight_small += org_clause_weight_small[c];
-      // num_sclauses++; //privious-DeepOpt-v1
-      soft_clause_num_index[num_sclauses++] = c; // NuPBO
-    }
-    else
-    {
-      hard_clause_num_index[num_hclauses++] = c; // NuPBO
-    }
-  }
-  for (v = 1; v <= num_vars; ++v)
-    var_lit_small[v][var_lit_count[v]].clause_num = -1;
-
-  build_neighbor_relation_small();
-
-  best_soln_feasible = 0;
-  opt_unsat_weight_small = total_soft_weight_small + 1;
-  opt_realobj_small = total_soft_weight_small + 1;
-}
+// void Satlike::build_instance_small(char *filename)
+// {
+//   printf("c Not use presolve\n");
+//   int i, v, c;
+//   int num_hc;
+//   int num_intsize;
+//
+//   std::string s;
+//   // int     temp_lit[MAX_VARS];
+//
+//   std::ifstream file(filename, std::ifstream::in);
+//   if (file.fail())
+//   {
+//     file.close();
+//     throw "c " + std::string(filename) + " does not exist!";
+//     std::cout << "s UNSUPPORTED" << std::endl;
+//     std::cout << "c the input filename " << filename
+//          << " is invalid, please input the correct filename." << std::endl;
+//     exit(-1);
+//   }
+//
+//   for (int i = 0; i < 9; ++i)
+//   {
+//     std::string temp;
+//     file >> temp;
+//     if (i == 2)
+//       num_vars = std::stoi(temp);
+//     if (i == 4)
+//       num_hc = std::stoi(temp);
+//     if (i == 6)
+//       num_equal = std::stoi(temp);
+//     if (i == 8)
+//       if (stoi(temp) > 63)
+//       {
+//         printf("s UNSUPPORTED\n");
+//         printf("c intsize > 64\n");
+//         exit(0);
+//       }
+//   }
+//   std::string commentLineTemp;
+//   bool loadingObj = false;
+//   long long int coeff;
+//   int newcol = 0;
+//   num_hclauses = num_hc + num_equal;
+//
+//   num_sclauses = 0; // 软子句数目为0
+//   sumneg_min_small = 0;
+//   top_clause_weight_small = 0; // 最高子句权重为0
+//   while (file >> s)
+//   {
+//     if (s == "*" || s[0] == '*')
+//       std::getline(file, commentLineTemp);
+//     // Load objective function
+//     else if (s == "min:")
+//       loadingObj = true, opt_dec_model = false;
+//     else if (s == ";")
+//     {
+//       loadingObj = false;
+//     }
+//     else if (loadingObj)
+//     {
+//       if (s[0] == '-' || s[0] == '+' || isdigit(s[0]))
+//         coeff = std::stoll(s);
+//       else
+//       {
+//         if (coeff > 0)
+//           top_clause_weight_small += coeff; // top_clause_weight_small = 0 + (+1)
+//         else
+//         {
+//           top_clause_weight_small += (-coeff); // top_clause_weight_small = 0 - (-1)
+//           sumneg_min_small += (-coeff);
+//         }
+//         ++num_sclauses;
+//       }
+//     }
+//     else
+//     {
+//       file.close();
+//       file.open(filename, std::ifstream::in);
+//       break;
+//     }
+//   }
+//
+//   top_clause_weight_small = top_clause_weight_small + 1;
+//
+//   num_clauses = num_hclauses + num_sclauses;
+//
+//   allocate_memory_small(); // 加入了hhscore hard+soft+equal+10
+//
+//   for (c = 0; c < num_clauses; c++)
+//   {
+//     clause_lit_count[c] = 0;
+//     clause_true_lit_thres_small[c] = 1;
+//     clause_lit_small[c] = NULL;
+//   }
+//
+//   for (v = 1; v <= num_vars; ++v)
+//   {
+//     var_lit_count[v] = 0;
+//     var_lit_small[v] = NULL;
+//     var_neighbor[v] = NULL;
+//   }
+//
+//   long long int *temp_weight = new long long int[num_vars + 10];
+//   int *temp_lit = new int[num_vars + 10]; // modify local
+//   // T cur_weight;
+//   std::string symbol;
+//   long long int degree;
+//   total_soft_weight_small = 0;
+//
+//   // 处理负系数
+//   long long int negsum = 0;
+//
+//   c = 0;
+//
+//   while (file >> s)
+//   {
+//     // Handle coefficient case
+//     if (s[0] == '+' || s[0] == '-' || isdigit(s[0]))
+//       coeff = std::stoll(s);
+//     // Handle bound
+//     else if (s == ">=" || s == "=")
+//     {
+//       symbol = s;
+//       file >> s;
+//       temp_weight[clause_lit_count[c]] = 0;
+//       temp_lit[clause_lit_count[c]] = 0;
+//       degree = std::stoll(s);
+//       org_clause_weight_small[c] = top_clause_weight_small;
+//       int c_equal = 0;
+//       int c_more = c;
+//       long long int sum = 0;
+//       long long int equal_degree = 0;
+//
+//       long long int equal_temp_weight[clause_lit_count[c] + 10] = {0}; // modify
+//       int equal_temp_lit[clause_lit_count[c] + 10] = {0};
+//
+//       if (symbol == "=")
+//       {
+//         equal_cons[c] = true;
+//         c_more = c + 1;
+//         i = 0;
+//         sum = 0;
+//
+//         while (temp_weight[i] != 0)
+//         {
+//           equal_temp_weight[i] = temp_weight[i];
+//           sum += temp_weight[i];
+//           i++;
+//         }
+//         equal_temp_weight[i] = 0;
+//
+//         i = 0;
+//         while (temp_lit[i] != 0)
+//         {
+//           equal_temp_lit[i] = -temp_lit[i];
+//           i++;
+//         }
+//         equal_temp_lit[i] = 0;
+//
+//         clause_lit_count[c_more] = clause_lit_count[c];
+//         equal_degree = sum - degree;
+//         org_clause_weight_small[c_more] = top_clause_weight_small;
+//       }
+//
+//       negsum = 0;
+//       i = 0;
+//       while (temp_weight[i] != 0)
+//       {
+//         if (temp_weight[i] < 0)
+//         {
+//           negsum += -temp_weight[i];
+//           temp_weight[i] = -temp_weight[i];
+//           temp_lit[i] = -temp_lit[i];
+//         }
+//         i++;
+//       }
+//       degree += negsum;
+//       clause_true_lit_thres_small[c] = degree;
+//       if (symbol == "=")
+//       {
+//         negsum = 0;
+//         i = 0;
+//         while (equal_temp_weight[i] != 0)
+//         {
+//           if (equal_temp_weight[i] < 0)
+//           {
+//             negsum += -equal_temp_weight[i];
+//             equal_temp_weight[i] = -equal_temp_weight[i];
+//             equal_temp_lit[i] = -equal_temp_lit[i];
+//           }
+//           i++;
+//         }
+//         equal_degree += negsum;
+//         clause_true_lit_thres_small[c_more] = equal_degree;
+//       }
+//
+//       long long int max_weight = 0; // find max_weight
+//       clause_lit_small[c] = new lit_small[clause_lit_count[c] + 1];
+//
+//       for (i = 0; i < clause_lit_count[c]; ++i)
+//       {
+//         clause_lit_small[c][i].clause_num = c;
+//         clause_lit_small[c][i].var_num = abs(temp_lit[i]);
+//         clause_lit_small[c][i].weight = temp_weight[i];
+//         if (temp_weight[i] > max_weight)
+//           max_weight = temp_weight[i]; // max_weight
+//         avg_clause_coe_small[c] += double(clause_lit_small[c][i].weight);
+//
+//         if (temp_lit[i] > 0)
+//           clause_lit_small[c][i].sense = 1;
+//         else
+//           clause_lit_small[c][i].sense = 0;
+//
+//         var_lit_count[clause_lit_small[c][i].var_num]++;
+//       }
+//
+//       clause_max_weight_small[c] = max_weight;
+//
+//       avg_clause_coe_small[c] =
+//           round(double(avg_clause_coe_small[c] / (double)clause_lit_count[c]));
+//       if (avg_clause_coe_small[c] < 1)
+//         avg_clause_coe_small[c] = 1;
+//
+//       clause_lit_small[c][i].var_num = 0;
+//       clause_lit_small[c][i].clause_num = -1;
+//       clause_lit_small[c][i].weight = 0;
+//
+//       if (symbol == "=")
+//       {
+//         max_weight = 0; // find max_weight
+//         c = c_more;
+//         clause_lit_small[c] = new lit_small[clause_lit_count[c] + 1];
+//
+//         for (i = 0; i < clause_lit_count[c]; ++i)
+//         {
+//           clause_lit_small[c][i].clause_num = c;
+//           clause_lit_small[c][i].var_num = abs(equal_temp_lit[i]);
+//           clause_lit_small[c][i].weight = equal_temp_weight[i];
+//           if (equal_temp_weight[i] > max_weight)
+//             max_weight = equal_temp_weight[i]; // max_weight
+//           avg_clause_coe_small[c] += double(clause_lit_small[c][i].weight);
+//
+//           if (equal_temp_lit[i] > 0)
+//             clause_lit_small[c][i].sense = 1;
+//           else
+//             clause_lit_small[c][i].sense = 0;
+//
+//           var_lit_count[clause_lit_small[c][i].var_num]++;
+//         }
+//
+//         clause_max_weight_small[c] = max_weight;
+//         avg_clause_coe_small[c] =
+//             round(double(avg_clause_coe_small[c] / (double)clause_lit_count[c]));
+//         if (avg_clause_coe_small[c] < 1)
+//           avg_clause_coe_small[c] = 1;
+//
+//         clause_lit_small[c][i].var_num = 0;
+//         clause_lit_small[c][i].clause_num = -1;
+//         clause_lit_small[c][i].weight = 0;
+//       }
+//     }
+//     // Handle var
+//     else if (s[0] == 'x')
+//     {
+//       temp_weight[clause_lit_count[c]] = coeff;
+//       temp_lit[clause_lit_count[c]] = stoi(s.substr(1));
+//       ++clause_lit_count[c];
+//     }
+//     else if (s == ";")
+//       ++c, clause_lit_count[c] = 0;
+//     // If comment or objective function push iterator past line
+//     else if (s == "*" || s[0] == '*' || s[0] == 'm')
+//       std::getline(file, commentLineTemp);
+//   }
+//
+//   file.close();
+//   file.open(filename, std::ifstream::in);
+//
+//   while (file >> s)
+//   {
+//     if (s == "*" || s[0] == '*')
+//       std::getline(file, commentLineTemp);
+//     else if (s == "min:")
+//       loadingObj = true;
+//     else if (s == ";")
+//     {
+//       loadingObj = false;
+//     }
+//     else if (loadingObj)
+//     {
+//       if (s[0] == '-' || s[0] == '+' || isdigit(s[0]))
+//         coeff = std::stoll(s);
+//       else
+//       {
+//         clause_lit_count[c] = 1;
+//         clause_lit_small[c] = new lit_small[clause_lit_count[c] + 1];
+//         if (coeff < 0)
+//         {
+//           clause_lit_small[c][0].var_num = std::stoi(s.substr(1));
+//           clause_lit_small[c][0].clause_num = c;
+//           clause_lit_small[c][0].weight = 1;
+//           clause_lit_small[c][0].sense = 1;
+//           org_clause_weight_small[c] = -coeff;
+//         }
+//         else
+//         {
+//           clause_lit_small[c][0].var_num = std::stoi(s.substr(1));
+//           clause_lit_small[c][0].clause_num = c;
+//           clause_lit_small[c][0].weight = 1;
+//           clause_lit_small[c][0].sense = 0;
+//           org_clause_weight_small[c] = coeff;
+//         }
+//         clause_max_weight_small[c] = 1;
+//         var_lit_count[clause_lit_small[c][0].var_num]++;
+//         clause_true_lit_thres_small[c] = 1;
+//         clause_lit_small[c][1].var_num = 0;
+//         clause_lit_small[c][1].clause_num = -1;
+//         clause_lit_small[c][1].weight = 0;
+//         c++;
+//       }
+//     }
+//     else
+//     {
+//       file.close();
+//       file.open(filename, std::ifstream::in);
+//       break;
+//     }
+//   }
+//
+//   delete[] temp_weight; // zyj
+//   delete[] temp_lit;
+//
+//   // creat var literal arrays
+//   for (v = 1; v <= num_vars; ++v)
+//   {
+//     var_lit_small[v] = new lit_small[var_lit_count[v] + 1];
+//     var_lit_count[v] = 0; // reset to 0, for build up the array
+//   }
+//
+//   // scan all clauses to build up var literal arrays
+//   num_hclauses = num_sclauses = 0; // modify
+//   for (c = 0; c < num_clauses; ++c)
+//   {
+//     for (i = 0; i < clause_lit_count[c]; ++i)
+//     {
+//       v = clause_lit_small[c][i].var_num;
+//       var_lit_small[v][var_lit_count[v]] = clause_lit_small[c][i];
+//       ++var_lit_count[v];
+//     }
+//     clause_visited_times[c] = 0; // wyy
+//
+//     if (org_clause_weight_small[c] != top_clause_weight_small)
+//     {
+//       total_soft_weight_small += org_clause_weight_small[c];
+//       // num_sclauses++; //privious-DeepOpt-v1
+//       soft_clause_num_index[num_sclauses++] = c; // NuPBO
+//     }
+//     else
+//     {
+//       hard_clause_num_index[num_hclauses++] = c; // NuPBO
+//     }
+//   }
+//   for (v = 1; v <= num_vars; ++v)
+//     var_lit_small[v][var_lit_count[v]].clause_num = -1;
+//
+//   build_neighbor_relation_small();
+//
+//   best_soln_feasible = 0;
+//   opt_unsat_weight_small = total_soft_weight_small + 1;
+//   opt_realobj_small = total_soft_weight_small + 1;
+// }
 
 void Satlike::init_small(std::vector<int> &init_solution)
 {
@@ -3585,11 +3585,11 @@ void Satlike::local_search_with_decimation_small(std::vector<int> &init_solution
           xishu = xishu / 2;
       }
 
-      // double elapse_time = get_runtime();
-      // if (elapse_time >= cutoff_time)
-      // {
-      //   return;
-      // }
+      double elapse_time = get_runtime();
+      if (elapse_time >= cutoff_time)
+      {
+        return;
+      }
 
       if (goodvar_stack_fill_pointer > 0)
       { // 选择变量，翻转变量
@@ -4687,766 +4687,5 @@ void Satlike::check_new_score_small()
   }
 }
 
-#ifdef USEPRESOLVE
-std::pair<std::string, std::string> split(std::string str)
-{
-  std::vector<std::string> internal;
-  std::stringstream ss(str); // Turn the string into a stream.
-  std::string tok;
-
-  while (getline(ss, tok, ' '))
-  {
-    internal.push_back(tok);
-  }
-
-  return std::pair<std::string, std::string>(internal[0],
-                                             internal[internal.size() - 1]);
-}
-
-namespace utils
-{
-
-  template <typename Enumeration>
-  auto as_integer(Enumeration const value)
-      -> typename std::underlying_type<Enumeration>::type
-  {
-    return static_cast<typename std::underlying_type<Enumeration>::type>(value);
-  }
-
-  template <typename T>
-  void print_problem(papilo::Problem<T> prob)
-  {
-    const papilo::ConstraintMatrix<T> &consmatrix = prob.getConstraintMatrix();
-    const papilo::Vec<std::string> &consnames = prob.getConstraintNames();
-    const papilo::Vec<std::string> &varnames = prob.getVariableNames();
-    const papilo::Vec<T> &lhs = consmatrix.getLeftHandSides();
-    const papilo::Vec<T> &rhs = consmatrix.getRightHandSides();
-    const papilo::Objective<T> &obj = prob.getObjective();
-    const papilo::Vec<papilo::ColFlags> &col_flags = prob.getColFlags();
-    const papilo::Vec<papilo::RowFlags> &row_flags = prob.getRowFlags();
-
-    std::std::cout << "Print Problem: " << prob.getName() << std::std::endl;
-
-    std::std::cout << "n vars: " << consmatrix.getNCols() << std::std::endl;
-    std::std::cout << "m constraints: " << consmatrix.getNRows() << std::std::endl;
-    std::std::cout << "Variable Names: " << std::std::endl;
-
-    std::std::cout << "  ";
-    for (papilo::String varname : varnames)
-    {
-      std::std::cout << varname << ", ";
-    }
-    std::std::cout << std::std::endl;
-
-    const auto cols = *consmatrix.getColumns();
-
-    const auto getRowZeroCoeff = consmatrix.getRowCoefficients(0);
-    const auto len = getRowZeroCoeff.getLength();
-
-    const T *rowZeroCoeffVal = getRowZeroCoeff.getValues();
-    for (int i = 0; i < len; ++i)
-    {
-      const auto test = int(rowZeroCoeffVal[i]);
-    }
-
-    std::std::cout << "Constraint matrix:" << std::std::endl;
-    for (int i = 0; i < consmatrix.getNRows(); ++i)
-    {
-      const papilo::SparseVectorView<T> row = consmatrix.getRowCoefficients(i);
-      const T *rowVals = row.getValues();
-      const int *indices = row.getIndices();
-      const auto len = row.getLength();
-
-      for (int j = 0; j < len; ++j)
-      {
-        std::std::cout << std::setw(7) << varnames[indices[j]] << ":" << int(rowVals[j]);
-      }
-      std::std::cout << std::std::endl;
-    }
-  }
-  template <typename T>
-  void printVector(papilo::Vec<T> const &input)
-  {
-    for (int i = 0; i < input.size(); i++)
-    {
-      std::std::cout << input.at(i) << ' ';
-    }
-    std::std::cout << std::std::endl;
-  }
-
-}
-
-namespace PresolveOpb
-{
-  template <typename T>
-  struct OpbParser
-  {
-    static papilo::ProblemBuilder<T> parseProbOpb(char *filename)
-    {
-
-      std::ifstream file(filename, std::ifstream::in);
-      if (file.fail())
-      {
-        file.close();
-        throw "c " + std::string(filename) + " does not exist!";
-      }
-      // Create Problem builder
-      papilo::ProblemBuilder<T> probBuilder;
-      probBuilder.setProblemName(filename);
-
-      int nCols;
-      int nRows;
-
-      for (int i = 0; i < 9; ++i)
-      {
-        std::string temp;
-        file >> temp;
-        if (i == 2)
-          nCols = std::stoi(temp);
-        if (i == 4)
-          nRows = std::stoi(temp);
-        if (i == 8)
-          if (stoi(temp) > 63)
-          {
-            printf("s UNSUPPORTED\n");
-            exit(0);
-          }
-      }
-
-      // set dims
-      probBuilder.setNumCols(nCols);
-      probBuilder.setNumRows(nRows);
-
-      // set all vars to bool
-      for (int i = 0; i < probBuilder.getNumCols(); ++i)
-      {
-        probBuilder.setColUb(i, 1);
-        probBuilder.setColLb(i, 0);
-        probBuilder.setColIntegral(i, true);
-        probBuilder.setColName(i, "x" + std::to_string(i + 1));
-      }
-
-      std::string commentLineTemp;
-      bool loadingObj = false;
-      long long coeff;
-      int newcol = 0;
-
-      // Mapping vars to col index
-      std::map<std::string, int> varMap;
-      std::string s;
-
-      // Get objective function if one is present:
-      while (file >> s)
-      {
-        if (s == "*" || s[0] == '*')
-          std::getline(file, commentLineTemp);
-        // Load objective function
-        else if (s == "min:")
-          loadingObj = true, opt_dec_model = false;
-        else if (s == ";")
-        {
-          loadingObj = false;
-        }
-        else if (loadingObj)
-        {
-          if (s[0] == '-' || s[0] == '+' || isdigit(s[0]))
-            coeff = std::stoll(s);
-          else
-          {
-            auto addr = varMap.find(s);
-            if (addr == varMap.end())
-            {
-              varMap[s] = newcol++;
-              addr = varMap.find(s);
-              probBuilder.setColName(addr->second, s);
-            }
-            int col = addr->second;
-            probBuilder.setObj(col, (T)coeff);
-          }
-        }
-        // TODO: check why this is necessary.
-        else
-        {
-          file.close();
-          file.open(filename, std::ifstream::in);
-          break;
-        }
-      }
-
-      int row = 0;
-
-      while (file >> s)
-      {
-        // Handle coefficient case
-        if (s[0] == '+' || s[0] == '-' || isdigit(s[0]))
-          coeff = std::stoll(s);
-        // Handle bound
-        else if (s == ">=")
-        {
-          probBuilder.setRowRhsInf(row, true);
-          probBuilder.setRowLhsInf(row, false);
-          file >> s;
-          probBuilder.setRowLhs(row, (T)std::stoll(s));
-        }
-        // Note: Case not in normal opb files
-        else if (s == "<=")
-        {
-          probBuilder.setRowRhsInf(row, false);
-          probBuilder.setRowLhsInf(row, true);
-          file >> s;
-          probBuilder.setRowLhs(row, (T)std::stoll(s));
-        }
-        else if (s == "=")
-        {
-          probBuilder.setRowRhsInf(row, false);
-          probBuilder.setRowLhsInf(row, false);
-          file >> s;
-          probBuilder.setRowLhs(row, (T)std::stoll(s));
-          probBuilder.setRowRhs(row, (T)std::stoll(s));
-        }
-        // Handle var
-        else if (s[0] == 'x')
-        {
-          auto addr = varMap.find(s);
-          if (addr == varMap.end())
-          {
-            varMap[s] = newcol++;
-            addr = varMap.find(s);
-            probBuilder.setColName(addr->second, s);
-          }
-          int col = addr->second;
-          probBuilder.addEntry(row, col, (T)coeff);
-        }
-        else if (s == ";")
-          ++row;
-        // If comment or objective function push iterator past line
-        else if (s == "*" || s[0] == '*' || s[0] == 'm')
-          std::getline(file, commentLineTemp);
-      }
-
-      file.close();
-      return probBuilder;
-    }
-  };
-
-  struct ParamParser
-  {
-    static std::map<std::string, std::string>
-    ParseParamFile(std::string filename)
-    {
-      std::map<std::string, std::string> paramList;
-      std::ifstream file(filename);
-      if (file.fail())
-      {
-        throw "Parameters not found. Path given: " + filename;
-      }
-      std::string s;
-
-      while (std::getline(file, s))
-      {
-        if (s.length() < 2 || s[0] == '#')
-          continue;
-        paramList.insert(split(s));
-      }
-      return paramList;
-    }
-  };
-
-} // namespace PresolveOpb
-
-void Satlike::presolve_build(char *filename)
-{
-  printf("c Use Presolve\n");
-  use_presolve = true;
-  int i, v, c;
-  int num_hc;
-  int num_intsize;
-
-  probBuilder = PresolveOpb::OpbParser<double>::parseProbOpb(filename);
-  printf("c Parse finsih\n");
-  prob = probBuilder.build();
-  presolver.addDefaultPresolvers();
-  papilo::ParameterSet paramset = presolver.getParameters();
-  /*std::map <std::string, std::string> params = PresolveOpb::ParamParser::ParseParamFile("../parameters.opb.txt");
-  std::map <std::string, std::string>::iterator itr;
-
-  for (itr = params.begin(); itr != params.end(); ++itr) {
-    std::std::cout << (itr->first).c_str() << " " << (itr->second).c_str() << std::std::endl;
-    paramset.parseParameter((itr->first).c_str(), (itr->second).c_str());
-  }
-  paramset.parseParameter("parallelrows.enabled", "0");
-  paramset.parseParameter("parallelrows.enabled", "0");
-  paramset.parseParameter("substitution.binarieswithints", "0");
-  paramset.parseParameter("message.verbosity", "0");
-  paramset.parseParameter("presolve.threads", "1");*/
-  paramset.parseParameter("coefftightening.enabled", "1");
-  paramset.parseParameter("colsingleton.enabled", "1");
-  paramset.parseParameter("domcol.enabled", "1");
-  paramset.parseParameter("doubletoneq.enabled", "1");
-  paramset.parseParameter("dualfix.enabled", "1");
-  paramset.parseParameter("dualinfer.enabled", "1");
-  paramset.parseParameter("fixcontinuous.enabled", "1");
-  paramset.parseParameter("implint.enabled", "1");
-  paramset.parseParameter("message.verbosity", "0");
-  paramset.parseParameter("numerics.epsilon", "1.0000000000000001e-09");
-  paramset.parseParameter("numerics.feastol", "9.9999999999999995e-07");
-  paramset.parseParameter("numerics.hugeval", "100000000");
-  paramset.parseParameter("parallelcols.enabled", "0");
-  paramset.parseParameter("parallelrows.enabled", "0");
-  paramset.parseParameter("presolve.abortfac", "0.00080000000000000004");
-  paramset.parseParameter("presolve.boundrelax", "0");
-  paramset.parseParameter("presolve.componentsmaxint", "0");
-  paramset.parseParameter("presolve.compressfac", "0.84999999999999998");
-  paramset.parseParameter("presolve.detectlindep", "1");
-  paramset.parseParameter("presolve.dualreds", "2");
-  paramset.parseParameter("presolve.lpabortfac", "0.01");
-  paramset.parseParameter("presolve.minabscoeff", "1e-10");
-  paramset.parseParameter("presolve.randomseed", "0");
-  paramset.parseParameter("presolve.removeslackvars", "1");
-  paramset.parseParameter("presolve.threads", "1");
-  // paramset.parseParameter("presolve.tlim", "1.7976931348623157e+308");
-  // paramset.parseParameter("presolve.tlim", "100");
-  // paramset.parseParameter("presolve.tlim", std::to_string(presolveTimeLimit));
-  paramset.parseParameter("presolve.weakenlpvarbounds", "0");
-  paramset.parseParameter("probing.enabled", "1");
-  paramset.parseParameter("probing.maxinitialbadgesize", "1000");
-  paramset.parseParameter("probing.minbadgesize", "10");
-  paramset.parseParameter("probing.mincontdomred", "0.29999999999999999");
-  paramset.parseParameter("propagation.enabled", "1");
-  paramset.parseParameter("simpleprobing.enabled", "1");
-  paramset.parseParameter("simplifyineq.enabled", "1");
-  paramset.parseParameter("sparsify.enabled", "1");
-  paramset.parseParameter("sparsify.maxscale", "1000");
-  paramset.parseParameter("stuffing.enabled", "1");
-  paramset.parseParameter("substitution.binarieswithints", "0");
-  paramset.parseParameter("substitution.enabled", "1");
-  paramset.parseParameter("substitution.markowitz_tolerance", "0.01");
-  paramset.parseParameter("substitution.maxfillin", "10");
-  paramset.parseParameter("substitution.maxshiftperrow", "10");
-
-  int PretimeLimit;
-  if (cutoff_time > 1800)
-  { // 如果运行时间超过1800秒
-    PretimeLimit = 200;
-  }
-  else if (600 < cutoff_time <= 1800)
-  {
-    PretimeLimit = 100;
-  }
-  else if (cutoff_time <= 600)
-  { // 如果运行时间少于1000秒
-    PretimeLimit = 10;
-  }
-  else
-  {
-    PretimeLimit = 10; // 默认值或者基于其他逻辑的值
-  }
-  paramset.parseParameter("presolve.tlim", std::to_string(PretimeLimit).c_str());
-
-  printf("c Start Presolve\n");
-  // std::ostringstream oss;
-  // std::ostream_iterator<char> out_it(oss);
-  // paramset.printParams(out_it);
-  // std::std::cout << oss.str() << std::std::endl;
-  result = presolver.apply(prob);
-  opt_time = get_runtime();
-
-  if (utils::as_integer(result.status) > 2)
-  {
-    use_presolve = false;
-    build_instance_small(filename);
-    return;
-  }
-  // printf("%s %g\n", basename(filename), opt_time);
-  /*auto varlbounds = prob.getLowerBounds();
-  int cnt = 0;
-  for(double b : varlbounds) {
-    printf("%d %d\n", cnt++, (int)b);
-     if ((int)b != 0) throw std::invalid_argument("NOT BOOL! lower bound: " + std::to_string(b));
-  }
-  cnt = 0;
-  auto varubounds = prob.getUpperBounds();
-  for(double b : varubounds) {
-    printf("%d %d\n", cnt++, (int)b);
-     if ((int)b != 1) throw std::invalid_argument("NOT BOOL! upper bound: " + std::to_string(b));
-  }
-
-  for(papilo::String name : prob.getVariableNames()) {
-     if(name[0] != 'x') throw std::invalid_argument("Incorrect naming of var " + name);
-  }*/
-  const papilo::ConstraintMatrix<double> &consmatrix =
-      prob.getConstraintMatrix();
-  const papilo::Vec<std::string> &varnames = prob.getVariableNames();
-  const papilo::Vec<double> &lhs = consmatrix.getLeftHandSides();
-  const papilo::Vec<papilo::RowFlags> &row_flags = prob.getRowFlags();
-  const papilo::Vec<double> &rhs = consmatrix.getRightHandSides();
-
-  // std::std::cout << "* #variable= " << consmatrix.getNCols() << " #constraint= " << consmatrix.getNRows() << std::std::endl;
-
-  num_vars = consmatrix.getNCols();
-  num_hclauses = consmatrix.getNRows();
-
-  for (int i = 0; i < consmatrix.getNRows(); ++i)
-  {
-    int signBit = 1;
-    if (!row_flags[i].test(papilo::RowFlag::kRhsInf) &&
-        !row_flags[i].test(papilo::RowFlag::kLhsInf))
-    {
-      ++num_hclauses;
-    }
-    /*if (!row_flags[i].test( papilo::RowFlag::kRhsInf) && !row_flags[i].test(papilo::RowFlag::kLhsInf)) {
-    std::std::cout << "=\n";
-}
-else if (row_flags[i].test(papilo::RowFlag::kRhsInf) || row_flags[i].test(papilo::RowFlag::kLhsInf)) {
-    std::std::cout << ">=\n";
-}
-else {
-    throw std::invalid_argument( "Row " + std::to_string(i) + " contains invalid constraint. LhsInf: " + std::to_string(row_flags[i].test( papilo::RowFlag::kLhsInf))
-                                                                                         + " RhsInf: " + std::to_string(row_flags[i].test( papilo::RowFlag::kRhsInf)));
-}*/
-  }
-  top_clause_weight_small = 0;
-  const papilo::Objective<double> objective = prob.getObjective();
-  num_sclauses = 0;
-  for (int i = 0; i < objective.coefficients.size(); ++i)
-  {
-    if (objective.coefficients[i] == 0)
-      continue;
-    if (objective.coefficients[i] < 0)
-    {
-      top_clause_weight_small +=
-          -(long long)objective.coefficients[i]; // top_clause_weight_small = 0 - (-1)
-      sumneg_min_small += -(long long)objective.coefficients[i];
-    }
-    else if (objective.coefficients[i] > 0)
-      top_clause_weight_small += (long long)objective.coefficients[i];
-    if (top_clause_weight_small < 0)
-    {
-      use_presolve = false;
-      printf("c -top-nopre\n");
-      build_instance_small(filename);
-      return;
-    }
-    ++num_sclauses;
-  }
-  top_clause_weight_small = top_clause_weight_small + 1;
-  num_clauses = num_hclauses + num_sclauses;
-  printf("c After Reduce Vars: %d Clauses: %d Top clause weight: %lld Hard Clauses: %d\n", num_vars, num_clauses, top_clause_weight_small, num_hclauses);
-  allocate_memory_small();
-  for (c = 0; c < num_clauses; c++)
-  {
-    clause_lit_count[c] = 0;
-    clause_true_lit_thres_small[c] = 1;
-    clause_lit_small[c] = NULL;
-  }
-  for (v = 1; v <= num_vars; ++v)
-  {
-    var_lit_count[v] = 0;
-    var_lit_small[v] = NULL;
-    var_neighbor[v] = NULL;
-  }
-  long long *temp_weight = new long long[num_vars + 10];
-  int *temp_lit = new int[num_vars + 10]; // modify local
-  string symbol;
-  long long degree;
-  total_soft_weight_small = 0;
-
-  // 处理负系数
-  long long negsum = 0;
-
-  c = 0;
-
-  for (int col = 0; col < consmatrix.getNRows(); ++col)
-  {
-    // If constraint is <= flip_small to >=
-    int signBit = 1;
-    if (row_flags[col].test(papilo::RowFlag::kLhsInf))
-    {
-      signBit = -1;
-    }
-
-    const papilo::SparseVectorView<double> row =
-        consmatrix.getRowCoefficients(col);
-    const double *rowVals = row.getValues();
-    const int *indices = row.getIndices();
-    const auto len = row.getLength();
-
-    for (int j = 0; j < len; ++j)
-    {
-      temp_weight[clause_lit_count[c]] = (long long)(rowVals[j]) * signBit;
-      temp_lit[clause_lit_count[c]] = indices[j] + 1;
-      clause_lit_count[c]++;
-    }
-    temp_weight[clause_lit_count[c]] = 0;
-    temp_lit[clause_lit_count[c]] = 0;
-    degree = (((long long)lhs[col]) * signBit);
-    org_clause_weight_small[c] = top_clause_weight_small; // 也可以统一一起 区分hard和soft
-    int c_equal = 0;
-    int c_more = c;
-    long long sum = 0;
-    long long equal_degree = 0;
-    long long equal_temp_weight[clause_lit_count[c] + 10] = {0};
-    int equal_temp_lit[clause_lit_count[c] + 10] = {0};
-    if (!row_flags[col].test(papilo::RowFlag::kRhsInf) &&
-        !row_flags[col].test(papilo::RowFlag::kLhsInf))
-    {
-      c_more = c + 1;
-      i = 0;
-      sum = 0;
-
-      while (temp_weight[i] != 0)
-      {
-        equal_temp_weight[i] = temp_weight[i];
-        sum += temp_weight[i];
-        i++;
-      }
-      equal_temp_weight[i] = 0;
-
-      i = 0;
-      while (temp_lit[i] != 0)
-      {
-        equal_temp_lit[i] = -temp_lit[i];
-        i++;
-      }
-      equal_temp_lit[i] = 0;
-
-      clause_lit_count[c_more] = clause_lit_count[c];
-      equal_degree = sum - degree;
-      org_clause_weight_small[c_more] = top_clause_weight_small;
-    }
-    negsum = 0;
-    i = 0;
-    while (temp_weight[i] != 0)
-    {
-      if (temp_weight[i] < 0)
-      {
-        negsum += -temp_weight[i];
-        temp_weight[i] = -temp_weight[i];
-        temp_lit[i] = -temp_lit[i];
-      }
-      i++;
-    }
-    degree += negsum;
-    clause_true_lit_thres_small[c] = degree;
-    if (!row_flags[col].test(papilo::RowFlag::kRhsInf) &&
-        !row_flags[col].test(papilo::RowFlag::kLhsInf))
-    {
-      negsum = 0;
-      i = 0;
-      while (equal_temp_weight[i] != 0)
-      {
-        if (equal_temp_weight[i] < 0)
-        {
-          negsum += -equal_temp_weight[i];
-          equal_temp_weight[i] = -equal_temp_weight[i];
-          equal_temp_lit[i] = -equal_temp_lit[i];
-        }
-        i++;
-      }
-      equal_degree += negsum;
-      clause_true_lit_thres_small[c_more] = equal_degree;
-    }
-    long long max_weight = 0; // find max_weight
-    clause_lit_small[c] = new lit_small[clause_lit_count[c] + 1];
-    for (i = 0; i < clause_lit_count[c]; ++i)
-    {
-      clause_lit_small[c][i].clause_num = c;
-      clause_lit_small[c][i].var_num = abs(temp_lit[i]);
-      clause_lit_small[c][i].weight = temp_weight[i];
-      if (temp_weight[i] > max_weight)
-        max_weight = temp_weight[i]; // max_weight
-      avg_clause_coe_small[c] += double(clause_lit_small[c][i].weight);
-
-      if (temp_lit[i] > 0)
-        clause_lit_small[c][i].sense = 1;
-      else
-        clause_lit_small[c][i].sense = 0;
-
-      var_lit_count[clause_lit_small[c][i].var_num]++;
-    }
-    clause_max_weight_small[c] = max_weight;
-    avg_clause_coe_small[c] =
-        round(double(avg_clause_coe_small[c] / (double)clause_lit_count[c]));
-    if (avg_clause_coe_small[c] < 1)
-      avg_clause_coe_small[c] = 1;
-    clause_lit_small[c][i].var_num = 0;
-    clause_lit_small[c][i].clause_num = -1;
-    clause_lit_small[c][i].weight = 0;
-    if (!row_flags[col].test(papilo::RowFlag::kRhsInf) &&
-        !row_flags[col].test(papilo::RowFlag::kLhsInf))
-    {
-      max_weight = 0;
-      c = c_more;
-      clause_lit_small[c] = new lit_small[clause_lit_count[c] + 1];
-      for (i = 0; i < clause_lit_count[c]; ++i)
-      {
-        clause_lit_small[c][i].clause_num = c;
-        clause_lit_small[c][i].var_num = abs(equal_temp_lit[i]);
-        clause_lit_small[c][i].weight = equal_temp_weight[i];
-        if (equal_temp_weight[i] > max_weight)
-          max_weight = equal_temp_weight[i]; // max_weight
-        avg_clause_coe_small[c] += double(clause_lit_small[c][i].weight);
-        if (equal_temp_lit[i] > 0)
-          clause_lit_small[c][i].sense = 1;
-        else
-          clause_lit_small[c][i].sense = 0;
-
-        var_lit_count[clause_lit_small[c][i].var_num]++;
-      }
-      clause_max_weight_small[c] = max_weight;
-      avg_clause_coe_small[c] =
-          round(double(avg_clause_coe_small[c] / (double)clause_lit_count[c]));
-      if (avg_clause_coe_small[c] < 1)
-        avg_clause_coe_small[c] = 1;
-      clause_lit_small[c][i].var_num = 0;
-      clause_lit_small[c][i].clause_num = -1;
-      clause_lit_small[c][i].weight = 0;
-    }
-    c++;
-  }
-  for (int i = 0; i < objective.coefficients.size(); ++i)
-  {
-    if (objective.coefficients[i] == 0)
-      continue;
-    clause_lit_count[c] = 1;
-    clause_lit_small[c] = new lit_small[clause_lit_count[c] + 1];
-    if (objective.coefficients[i] < 0)
-    {
-      clause_lit_small[c][0].var_num = i + 1;
-      clause_lit_small[c][0].clause_num = c;
-      clause_lit_small[c][0].weight = 1;
-      clause_lit_small[c][0].sense = 1;
-      org_clause_weight_small[c] = -objective.coefficients[i];
-    }
-    else
-    {
-      clause_lit_small[c][0].var_num = i + 1;
-      clause_lit_small[c][0].clause_num = c;
-      clause_lit_small[c][0].weight = 1;
-      clause_lit_small[c][0].sense = 0;
-      org_clause_weight_small[c] = objective.coefficients[i];
-    }
-    clause_max_weight_small[c] = 1;
-    var_lit_count[clause_lit_small[c][0].var_num]++;
-    clause_true_lit_thres_small[c] = 1;
-    clause_lit_small[c][1].var_num = 0;
-    clause_lit_small[c][1].clause_num = -1;
-    clause_lit_small[c][1].weight = 0;
-    c++;
-  }
-  delete[] temp_weight; // zyj
-  delete[] temp_lit;
-
-  // creat var literal arrays
-  for (v = 1; v <= num_vars; ++v)
-  {
-    var_lit_small[v] = new lit_small[var_lit_count[v] + 1];
-    var_lit_count[v] = 0; // reset to 0, for build up the array
-  }
-
-  // scan all clauses to build up var literal arrays
-  num_hclauses = num_sclauses = 0; // modify
-  for (c = 0; c < num_clauses; ++c)
-  {
-    for (i = 0; i < clause_lit_count[c]; ++i)
-    {
-      v = clause_lit_small[c][i].var_num;
-      var_lit_small[v][var_lit_count[v]] = clause_lit_small[c][i];
-      ++var_lit_count[v];
-    }
-    clause_visied_times[c] = 0; // wyy
-
-    if (org_clause_weight_small[c] != top_clause_weight_small)
-    {
-      total_soft_weight_small += org_clause_weight_small[c];
-      // num_sclauses++; //privious-DeepOpt-v1
-      soft_clause_num_index[num_sclauses++] = c; // NuPBO
-    }
-    else
-    {
-      hard_clause_num_index[num_hclauses++] = c; // NuPBO
-    }
-  }
-  for (v = 1; v <= num_vars; ++v)
-    var_lit_small[v][var_lit_count[v]].clause_num = -1;
-
-  build_neighbor_relation_small();
-
-  best_soln_feasible = 0;
-  opt_unsat_weight_small = total_soft_weight_small + 1;
-  opt_realobj_small = total_soft_weight_small + 1;
-}
-
-void Satlike::postsolve_solution(bool flag_value, bool flag_solution)
-{
-  printf("c Use postsolve\n");
-  papilo::Vec<double> vec = {};
-  for (int i = 1; i <= prob.getConstraintMatrix().getNCols(); i++)
-  {
-    // if(i == 8 || i == 10) vec.push_back(1);
-    // else vec.push_back(0);
-    // printf("%d", best_soln[i]);
-    vec.push_back(best_soln[i]);
-  }
-  // printf("\n");
-  papilo::Solution<double> originSol;
-  papilo::Solution<double> reducedSol(std::move(vec));
-  papilo::Message msg;
-  papilo::Num<double> num;
-  msg.setVerbosityLevel(papilo::VerbosityLevel::kQuiet);
-  papilo::Postsolve<double> postsolver(msg, num);
-  auto originalSolution =
-      postsolver.undo(reducedSol, originSol, result.postsolve);
-  const papilo::Problem<double> &origprob =
-      result.postsolve.getOriginalProblem();
-  auto varNames = origprob.getVariableNames();
-  if (flag_value)
-  {
-    long long obj = (long long)origprob.computeSolObjective(originSol.primal);
-    if (realobj_small < opt_realobj_small)
-    {
-      opt_realobj_small = realobj_small;
-      printf("o %lld\n", obj);
-    }
-  }
-  if (flag_solution)
-  {
-    /*printf("v ");
-    for (int i = 0; i < originSol.primal.size(); i++)
-    {
-      if (originSol.primal[i] == 0)
-        printf("-");
-      printf("%s ", varNames[i].c_str());
-    }
-    printf("\n");*/
-    constexpr int BUF_SIZE = 50000;
-    static char buf[BUF_SIZE];
-    static int lst = 0;
-    // buf[0] = '\n';
-    // buf[1] = 'v';
-    buf[0] = 'v';
-    lst += 1;
-    for (int i = 0; i < originSol.primal.size(); i++)
-    {
-      int sz = strlen(varNames[i].c_str());
-      if (lst + sz + 2 >= BUF_SIZE)
-      {
-        buf[lst++] = '\n';
-        lst = write(1, buf, lst);
-        buf[0] = 'v';
-        lst = 1;
-      }
-      buf[lst++] = ' ';
-      if (originSol.primal[i] == 0)
-        buf[lst++] = '-';
-      strcpy(buf + lst, varNames[i].c_str());
-      lst += sz;
-    }
-    buf[lst++] = '\n';
-    lst = write(1, buf, lst);
-    lst = 0;
-  }
-}
-#endif
 
 #endif

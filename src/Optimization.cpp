@@ -552,7 +552,9 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
     ces->copyTo(ce);
     lsSolver.clause_lit_count[cnt_cons] = ce->getVars().size();
     lsSolver.clause_lit_small[cnt_cons] = new lit_small[ce->getVars().size() + 1];
-    lsSolver.clause_true_lit_thres_small[cnt_cons] = -ce->getDegree();
+    lsSolver.clause_true_lit_thres_small[cnt_cons] = ce->getDegree();
+    lsSolver.org_clause_weight_small[cnt_cons] = lsSolver.top_clause_weight_small;
+    lsSolver.clause_max_weight_small[cnt_cons] = 0;
     int cnt_vars = 0;
     for (const Var& v : ce->getVars()) {
       int coef = ce->coefs[v];
@@ -618,10 +620,16 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
     }
   }
 
+  /*
+
+   */
+
   for (int i = 1; i <= lsSolver.num_vars; i++) lsSolver.var_lit_small[i][lsSolver.var_lit_count[i]].clause_num = -1;
 
   // TODO: rewrite SATlike::build_neighbor_relation_small() in Exact
   std::function<void()> buildNeighborData = [&lsSolver]() -> void {
+    for (Var v = 1; v <= lsSolver.num_vars; v++)
+      lsSolver.neighbor_flag[v] = 0;
     for (Var v = 1; v <= lsSolver.num_vars; v++) {
       lsSolver.neighbor_flag[v] = 1;
       lsSolver.var_neighbor_count[v] = 0;
@@ -652,6 +660,78 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
   lsSolver.opt_unsat_weight_small = lsSolver.total_soft_weight_small + 1;
   lsSolver.opt_realobj_small = lsSolver.total_soft_weight_small + 1;
 
+  //
+  std::function<void(Satlike&)> print = [](Satlike& s) {
+    using std::cout, std::endl;
+    cout << "num_vars\n";
+    cout << s.num_vars << "\n";
+    cout << "num_hclauses\n";
+    cout << s.num_hclauses << "\n";
+    cout << "num_sclauses\n";
+    cout << s.num_sclauses << "\n";
+    cout << "sumneg_min_small\n";
+    cout << s.sumneg_min_small << "\n";
+    cout << "top_clause_weight_small\n";
+    cout << s.top_clause_weight_small << "\n";
+    cout << "num_clauses\n";
+    cout << s.num_clauses << "\n";
+    cout << "clause_lit_count\n";
+    for (int i = 0; i < s.num_clauses; i++) cout << s.clause_lit_count[i] << " ";
+    cout << "\n";
+    cout << "clause_true_lit_thres_small\n";
+    for (int i = 0; i < s.num_clauses; i++) cout << s.clause_true_lit_thres_small[i] << " ";
+    cout << "\n";
+    cout << "org_clause_weight_small\n";
+    for (int i = 0; i < s.num_clauses; i++) cout << s.org_clause_weight_small[i] << " ";
+    cout << "\n";
+    cout << "clause_lit_small\n";
+    for (int i = 0; i < s.num_clauses; i++) {
+      for (int j = 0; j < s.clause_lit_count[i]; j++) cout << s.clause_lit_small[i][j] << " ";
+      cout << "\n";
+    }
+    cout << "avg_clause_coe_small\n";
+    for (int i = 0; i < s.num_clauses; i++) cout << s.avg_clause_coe_small[i] << " ";
+    cout << "\n";
+    cout << "clause_max_weight_small\n";
+    for (int i = 0; i < s.num_clauses; i++) cout << s.clause_max_weight_small[i] << " ";
+    cout << "\n";
+    cout << "var_lit_count\n";
+    for (int i = 1; i <= s.num_vars; i++) cout << s.var_lit_count[i] << " ";
+    cout << "\n";
+    cout << "var_lit_small\n";
+    for (int i = 1; i <= s.num_vars; i++) {
+      for (int j = 0; j < s.var_lit_count[i]; j++) cout << s.var_lit_small[i][j] << " ";
+      cout << "\n";
+    }
+    cout << "clause_visited_times\n";
+    for (int i = 0; i < s.num_clauses; i++) cout << s.clause_visited_times[i] << " ";
+    cout << "\n";
+    cout << "total_soft_weight_small\n";
+    cout << s.total_soft_weight_small << "\n";
+    cout << "soft_clause_num_index\n";
+    for (int i = 0; i < s.num_sclauses; i++) cout << s.soft_clause_num_index[i] << " ";
+    cout << "\n";
+    cout << "hard_clause_num_index\n";
+    for (int i = 0; i < s.num_hclauses; i++) cout << s.hard_clause_num_index[i] << " ";
+    cout << "\n";
+    cout << "var_neighbor_count\n";
+    for (int i = 1; i <= s.num_vars; i++) cout << s.var_neighbor_count[i] << " ";
+    cout << "\n";
+    cout << "var_neighbor\n";
+    for (int i = 1; i <= s.num_vars; i++) {
+      for (int j = 0; j < s.var_neighbor_count[i]; j++) cout << s.var_neighbor[i][j] << " ";
+      cout << "\n";
+    }
+    cout << "best_soln_feasible\n";
+    cout << s.best_soln_feasible << "\n";
+    cout << "opt_unsat_weight_small\n";
+    cout << s.opt_unsat_weight_small << "\n";
+    cout << "opt_realobj_small\n";
+    cout << s.opt_realobj_small << "\n";
+  };
+
+  print(lsSolver);
+
   std::cout << "Finish cloning data from SAT to LS\n";
 }
 
@@ -663,6 +743,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       // TODO: clone data from PB-CDCL Solver to PB-LS Solver
       cloneDataIntoLS();
       presolveFirstRun = false;
+      solver.isClone = true;
     }
   } catch (const UnsatEncounter&) {
     lower_bound = upper_bound;

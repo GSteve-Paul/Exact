@@ -55,9 +55,10 @@ inline int seed;
 inline bool use_scip;
 inline char* filename;
 inline bool opt_dec_model;
-inline int cutoff_time;
+inline int cutoff_time = 5;
 inline long memory_limit_gb;
 // int presolveTimeLimit;
+
 
 // Define a data structure for a literal.
 struct lit_small
@@ -67,7 +68,9 @@ struct lit_small
 	bool sense;		// is 1 for true literals, 0 for false literals.
 	long long weight;
 };
-
+inline std::ostream& operator<<(std::ostream& out, const lit_small& lit) {
+	return out << lit.clause_num << " " << lit.var_num << " " << lit.sense << " " << lit.weight;
+}
 struct lit_large
 {
 	int clause_num; // clause num, begin with 0
