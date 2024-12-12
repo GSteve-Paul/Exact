@@ -56,6 +56,7 @@ inline bool use_scip;
 inline char* filename;
 inline bool opt_dec_model;
 inline int cutoff_time = 5;
+inline long long cutoff_step = 1e18;
 inline long memory_limit_gb;
 // int presolveTimeLimit;
 

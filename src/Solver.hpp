@@ -205,6 +205,8 @@ class Solver {
 
   void printHeader() const;
 
+  void runLS();
+
   /**
    * @return SolveState:
    * 	UNSAT if root inconsistency detected

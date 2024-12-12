@@ -275,6 +275,39 @@ State Solver::probe(Lit l, bool deriveImplications) {
   return State::SUCCESS;
 }
 
+void Solver::runLS() {
+  // TODO: change the condition
+  // eg. trail.size() > getNbVars() * 0.8
+  bool runLsCondition = trail.size() > lsSolver.num_vars * 0.8;
+  if (runLsCondition && isClone) {
+    // TODO: run Local-Search with current solution from SAT
+    std::vector<int> init_solution(lsSolver.num_vars + 1, 0);
+    for (const Lit& l : trail) {
+      Var v = toVar(l);
+      if (!isOrig(v)) continue;
+      init_solution[v] = l < 0 ? 0 : 1;
+    }
+    char file_name[] = "";
+    //set cutoff time for lsSolver
+    cutoff_time = 60;
+    cutoff_step = 5e6;
+    lsSolver.local_search_with_decimation_small(init_solution, file_name);
+    std::cout << "tries: " << lsSolver.tries << std::endl;
+    std::cout << "steps: " << lsSolver.step << std::endl;
+    std::cout << "ls solution:\n";
+    for (int i = 1; i <= lsSolver.num_vars; i++)
+      std::cout << lsSolver.best_soln[i] << " ";
+    std::cout << "\n";
+    std::cout << "unsat hard\n";
+    std::cout << lsSolver.hard_unsat_nb << "\n";
+    if (lsSolver.hard_unsat_nb == 0) {
+      std::cout << "SAT\n";
+      exit(0);
+    }
+  }
+}
+
+
 /**
  * Unit propagation with watched literals.
  * @post: all watches up to trail[qhead] have been propagated
@@ -294,26 +327,7 @@ CeSuper Solver::runDatabasePropagation() {
       }  // blocked literal check
       CRef cr = ws[it_ws].cref;
       WatchStatus wstat = checkForPropagation(cr, ws[it_ws].idx, -p);
-      // TODO: change the condition
-      // eg. trail.size() > getNbVars() * 0.8
-      bool runLsCondition = true;
-      if (runLsCondition && isClone) {
-        // TODO: run Local-Search with current solution from SAT
-        std::vector<int> init_solution(lsSolver.num_vars + 1, 2);
-        for (const Lit& l : trail) {
-          Var v = toVar(l);
-          if (!isOrig(v)) continue;
-          init_solution[v] = l < 0 ? 0 : 1;
-        }
-        char file_name[] = "";
-        //set cutoff time for lsSolver
-        cutoff_time = 5;
-        lsSolver.local_search_with_decimation_small(init_solution, file_name);
-        std::cout << "ls solution:\n";
-        for (int i =1; i <= lsSolver.num_vars; i++)
-          std::cout << lsSolver.best_soln[i] << " ";
-        std::cout << "\n";
-      }
+      runLS();
       if (wstat == WatchStatus::DROPWATCH) {
         plf::single_reorderase(ws, ws.begin() + it_ws);
         --it_ws;
@@ -1299,6 +1313,18 @@ SolveState Solver::solve() {
     }
 
     runLP = (bool)confl;
+    if (!confl && lsSolver.hard_unsat_nb == 0) {
+      if (!lastSol.has_value()) {
+        lastSol = LitVec();
+        lastSol.value().resize(getNbVars() + 1);
+        lastSol.value()[0] = 0;
+      }
+      for (Var v = 1; v <= getNbVars() && v <= lsSolver.num_vars; ++v) {
+        lastSol.value()[v] = lsSolver.best_soln[v] ? v : -v;
+      }
+      //backjumpTo(0);
+      return SolveState::SAT;
+    }
     if (confl) {
       assert(confl->hasNegativeSlack(level));
       ++global.stats.NCONFL;

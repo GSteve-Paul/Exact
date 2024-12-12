@@ -3506,6 +3506,7 @@ void Satlike::cal_solution_small() // 传入文件名和seed
 void Satlike::local_search_with_decimation_small(std::vector<int> &init_solution,
                                                  char *inputfile)
 {
+  start_timing();
   printf("c Use LS-small\n");
   int step_count = 0;        // wyy-20221213
   int cur_hard_unsat_nb = 0; // wyy-20221213-1
@@ -3518,11 +3519,11 @@ void Satlike::local_search_with_decimation_small(std::vector<int> &init_solution
     xishu = 16;
 
   settings_small();
-  for (tries = 1; tries < max_tries; ++tries)
+  for (tries = 1; tries < max_tries && step_count < cutoff_step; ++tries)
   {
     init_small(init_solution);
     cur_hard_unsat_nb = hard_unsat_nb; // wyy-20221213-1
-    for (step = 1; step < max_flips; ++step)
+    for (step = 1; step < max_flips && step_count < cutoff_step; ++step)
     {
       step_count++;
       // MABh_step++;
@@ -3602,32 +3603,32 @@ void Satlike::local_search_with_decimation_small(std::vector<int> &init_solution
         // std::cout<<"???"<<std::endl;
         pick_vars_small();
       }
-      if ((step_count % (100000 * xishu)) == (100000 * xishu - 1)) // 一万 十万
-      {
-        // printf("----turb_small begin------------------------------\n");
-        // printf("hard_unsat_nb = %d, run time =%.2f
-        // \n",hard_unsat_nb,get_runtime());
-        if (hard_unsat_nb <= 10 && rand() % 100 < 50)
-        {
-          turb_small();
-          if (xishu <= 100)
-            xishu = 2 * xishu;
-          // xishu = 36;
-        }
-        else
-        {
-          // printf("missing turb_small\n");
-          if (best_soln_feasible == 1)
-          {
-            for (int v = 1; v <= num_vars; ++v)
-              cur_soln[v] = best_soln[v];
-            init_turb_small();
-            turb_small();
-          }
-        }
-        step_count = 0;
-        cur_hard_unsat_nb = hard_unsat_nb;
-      }
+      // if ((step_count % (100000 * xishu)) == (100000 * xishu - 1)) // 一万 十万
+      // {
+      //   // printf("----turb_small begin------------------------------\n");
+      //   // printf("hard_unsat_nb = %d, run time =%.2f
+      //   // \n",hard_unsat_nb,get_runtime());
+      //   if (hard_unsat_nb <= 10 && rand() % 100 < 50)
+      //   {
+      //     turb_small();
+      //     if (xishu <= 100)
+      //       xishu = 2 * xishu;
+      //     // xishu = 36;
+      //   }
+      //   else
+      //   {
+      //     // printf("missing turb_small\n");
+      //     if (best_soln_feasible == 1)
+      //     {
+      //       for (int v = 1; v <= num_vars; ++v)
+      //         cur_soln[v] = best_soln[v];
+      //       init_turb_small();
+      //       turb_small();
+      //     }
+      //   }
+      //   step_count = 0;
+      //   cur_hard_unsat_nb = hard_unsat_nb;
+      // }
     }
   }
 }

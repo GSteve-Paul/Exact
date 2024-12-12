@@ -64,6 +64,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IntProg.hpp"
 #include "Solver.hpp"
 #include "constraints/ConstrExp.hpp"
+#include <sys/resource.h>
 
 namespace xct {
 
@@ -508,7 +509,18 @@ void Optimization<SMALL, LARGE>::boundObjByLastSol() {
 template <typename SMALL, typename LARGE>
 void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
   assert(presolveFirstRun);
-  opt_dec_model = false;
+
+
+  const rlim_t kMemoryLimit = 500000 * 1024L * 1024L; // 30 GB
+  struct rlimit rl;
+  rl.rlim_cur = kMemoryLimit; // 设置软限制
+  rl.rlim_max = kMemoryLimit; // 设置硬限制
+  if (setrlimit(9, &rl) == -1)
+  {
+    fprintf(stderr, "c Failed to set memory limit: %s\n", strerror(errno));
+  }
+
+  opt_dec_model = true;
 
   Satlike& lsSolver = solver.lsSolver;
 
@@ -738,13 +750,14 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   try {
-    solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
-    if (presolveFirstRun) {
+    if (presolveFirstRun && !solver.isClone) {
       // TODO: clone data from PB-CDCL Solver to PB-LS Solver
       cloneDataIntoLS();
       presolveFirstRun = false;
       solver.isClone = true;
     }
+    solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
+
   } catch (const UnsatEncounter&) {
     lower_bound = upper_bound;
     return SolveState::UNSAT;
