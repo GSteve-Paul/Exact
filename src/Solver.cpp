@@ -282,6 +282,11 @@ void Solver::runLS() {
   if (runLsCondition && isClone) {
     // TODO: run Local-Search with current solution from SAT
     std::vector<int> init_solution(lsSolver.num_vars + 1, 0);
+    // std::set<int> trail_set;
+    // for (const Lit & l :trail) {
+    //   trail_set.insert(toVar(l));
+    // }
+    // assert(trail.size() == trail_set.size());
     for (const Lit& l : trail) {
       Var v = toVar(l);
       if (!isOrig(v)) continue;
@@ -292,16 +297,12 @@ void Solver::runLS() {
     cutoff_time = 60;
     cutoff_step = 5e6;
     lsSolver.local_search_with_decimation_small(init_solution, file_name);
-    std::cout << "tries: " << lsSolver.tries << std::endl;
-    std::cout << "steps: " << lsSolver.step << std::endl;
-    std::cout << "ls solution:\n";
-    for (int i = 1; i <= lsSolver.num_vars; i++)
-      std::cout << lsSolver.best_soln[i] << " ";
-    std::cout << "\n";
-    std::cout << "unsat hard\n";
-    std::cout << lsSolver.hard_unsat_nb << "\n";
     if (lsSolver.hard_unsat_nb == 0) {
       std::cout << "SAT\n";
+      std::cout << "ls solution:\n";
+      for (int i = 1; i <= lsSolver.num_vars; i++)
+        std::cout << lsSolver.best_soln[i] << " ";
+      std::cout << "\n";
       exit(0);
     }
   }
@@ -327,7 +328,6 @@ CeSuper Solver::runDatabasePropagation() {
       }  // blocked literal check
       CRef cr = ws[it_ws].cref;
       WatchStatus wstat = checkForPropagation(cr, ws[it_ws].idx, -p);
-      runLS();
       if (wstat == WatchStatus::DROPWATCH) {
         plf::single_reorderase(ws, ws.begin() + it_ws);
         --it_ws;
@@ -365,6 +365,7 @@ CeSuper Solver::runDatabasePropagation() {
 CeSuper Solver::runPropagation() {
   while (true) {
     CeSuper confl = runDatabasePropagation();
+    runLS();
     if (confl) return confl;
     if (equalities.propagate() == State::FAIL) continue;
     if (implications.propagate() == State::FAIL) continue;
@@ -1313,18 +1314,6 @@ SolveState Solver::solve() {
     }
 
     runLP = (bool)confl;
-    if (!confl && lsSolver.hard_unsat_nb == 0) {
-      if (!lastSol.has_value()) {
-        lastSol = LitVec();
-        lastSol.value().resize(getNbVars() + 1);
-        lastSol.value()[0] = 0;
-      }
-      for (Var v = 1; v <= getNbVars() && v <= lsSolver.num_vars; ++v) {
-        lastSol.value()[v] = lsSolver.best_soln[v] ? v : -v;
-      }
-      //backjumpTo(0);
-      return SolveState::SAT;
-    }
     if (confl) {
       assert(confl->hasNegativeSlack(level));
       ++global.stats.NCONFL;
@@ -1360,6 +1349,9 @@ SolveState Solver::solve() {
       if (nconfl_to_restart <= 0) {
         backjumpTo(assumptionLevel());
         ++global.stats.NRESTARTS;
+        if (static_cast<long long>(global.stats.NRESTARTS.z) % 500 == 0) {
+          runLS();
+        }
         double rest_base = luby(global.options.lubyBase.get(), static_cast<int>(global.stats.NRESTARTS.z));
         nconfl_to_restart = (long long)rest_base * global.options.lubyMult.get();
         sortWatchlists();

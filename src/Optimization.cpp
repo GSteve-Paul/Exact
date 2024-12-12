@@ -742,7 +742,7 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
     cout << s.opt_realobj_small << "\n";
   };
 
-  print(lsSolver);
+  //print(lsSolver);
 
   std::cout << "Finish cloning data from SAT to LS\n";
 }
@@ -750,14 +750,13 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
 template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   try {
+    solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
     if (presolveFirstRun && !solver.isClone) {
       // TODO: clone data from PB-CDCL Solver to PB-LS Solver
       cloneDataIntoLS();
       presolveFirstRun = false;
       solver.isClone = true;
     }
-    solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
-
   } catch (const UnsatEncounter&) {
     lower_bound = upper_bound;
     return SolveState::UNSAT;
