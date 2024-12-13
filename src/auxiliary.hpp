@@ -139,7 +139,7 @@ size_t erase_if(unordered_set<K, H, KE>& set, Pred pred) {
 #endif
 
 enum class State { SUCCESS, FAIL };
-enum class SolveState { UNSAT, SAT, INCONSISTENT, TIMEOUT, INPROCESSED };
+enum class SolveState { UNSAT, SAT, INCONSISTENT, TIMEOUT, INPROCESSED, LSSAT };
 std::ostream& operator<<(std::ostream& o, SolveState state);
 
 namespace xct {

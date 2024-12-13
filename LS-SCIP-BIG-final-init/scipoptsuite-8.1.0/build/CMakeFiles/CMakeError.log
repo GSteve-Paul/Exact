@@ -1,0 +1,140 @@
+Determining if the function sgemm_ exists failed with the following output:
+Change Dir: /mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_20143/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_20143.dir/build.make CMakeFiles/cmTC_20143.dir/build
+gmake[1]: Entering directory '/mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_20143.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=sgemm_ -fPIE -o CMakeFiles/cmTC_20143.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.22/Modules/CheckFunctionExists.c
+Linking C executable cmTC_20143
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_20143.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=sgemm_ CMakeFiles/cmTC_20143.dir/CheckFunctionExists.c.o -o cmTC_20143 
+/usr/bin/ld: CMakeFiles/cmTC_20143.dir/CheckFunctionExists.c.o: in function `main':
+CheckFunctionExists.c:(.text+0x14): undefined reference to `sgemm_'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_20143.dir/build.make:99: cmTC_20143] Error 1
+gmake[1]: Leaving directory '/mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_20143/fast] Error 2
+
+
+
+Performing C++ SOURCE FILE Test PAPILO_BYTELL_HASHMAP_WORKS failed with the following output:
+Change Dir: /mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_5120b/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_5120b.dir/build.make CMakeFiles/cmTC_5120b.dir/build
+gmake[1]: Entering directory '/mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_5120b.dir/src.cxx.o
+/usr/bin/c++ -DPAPILO_BYTELL_HASHMAP_WORKS -I/mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external -Wno-psabi -std=c++14 -fPIE -std=gnu++14 -o CMakeFiles/cmTC_5120b.dir/src.cxx.o -c /mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx
+In file included from /mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx:1:
+/mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp: In member function ‘ska::detailv8::sherwood_v8_table<T, FindKey, ArgumentHash, Hasher, ArgumentEqual, Equal, ArgumentAlloc, ByteAlloc, BlockSize>::iterator ska::detailv8::sherwood_v8_table<T, FindKey, ArgumentHash, Hasher, ArgumentEqual, Equal, ArgumentAlloc, ByteAlloc, BlockSize>::end()’:
+/mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:394:36: error: ‘numeric_limits’ is not a member of ‘std’
+  394 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                    ^~~~~~~~~~~~~~
+/mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:394:57: error: expected primary-expression before ‘>’ token
+  394 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                                         ^
+/mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:394:60: error: ‘::max’ has not been declared; did you mean ‘std::max’?
+  394 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                                            ^~~
+      |                                                            std::max
+In file included from /usr/include/c++/11/algorithm:62,
+                 from /mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:10,
+                 from /mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx:1:
+/usr/include/c++/11/bits/stl_algo.h:3467:5: note: ‘std::max’ declared here
+ 3467 |     max(initializer_list<_Tp> __l, _Compare __comp)
+      |     ^~~
+In file included from /mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx:1:
+/mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp: In member function ‘ska::detailv8::sherwood_v8_table<T, FindKey, ArgumentHash, Hasher, ArgumentEqual, Equal, ArgumentAlloc, ByteAlloc, BlockSize>::const_iterator ska::detailv8::sherwood_v8_table<T, FindKey, ArgumentHash, Hasher, ArgumentEqual, Equal, ArgumentAlloc, ByteAlloc, BlockSize>::end() const’:
+/mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:398:36: error: ‘numeric_limits’ is not a member of ‘std’
+  398 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                    ^~~~~~~~~~~~~~
+/mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:398:57: error: expected primary-expression before ‘>’ token
+  398 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                                         ^
+/mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:398:60: error: ‘::max’ has not been declared; did you mean ‘std::max’?
+  398 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                                            ^~~
+      |                                                            std::max
+In file included from /usr/include/c++/11/algorithm:62,
+                 from /mnt/e/product/c/LS/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:10,
+                 from /mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx:1:
+/usr/include/c++/11/bits/stl_algo.h:3467:5: note: ‘std::max’ declared here
+ 3467 |     max(initializer_list<_Tp> __l, _Compare __comp)
+      |     ^~~
+gmake[1]: *** [CMakeFiles/cmTC_5120b.dir/build.make:78: CMakeFiles/cmTC_5120b.dir/src.cxx.o] Error 1
+gmake[1]: Leaving directory '/mnt/e/product/c/LS/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_5120b/fast] Error 2
+
+
+Source file was:
+#include "ska/bytell_hash_map.hpp"
+   int main() { ska::bytell_hash_map<int,int> hashmap; (void)hashmap; return 0; }
+Determining if the function sgemm_ exists failed with the following output:
+Change Dir: /mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_f767c/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_f767c.dir/build.make CMakeFiles/cmTC_f767c.dir/build
+gmake[1]: Entering directory '/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_f767c.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=sgemm_ -fPIE -o CMakeFiles/cmTC_f767c.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.22/Modules/CheckFunctionExists.c
+Linking C executable cmTC_f767c
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f767c.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=sgemm_ CMakeFiles/cmTC_f767c.dir/CheckFunctionExists.c.o -o cmTC_f767c 
+/usr/bin/ld: CMakeFiles/cmTC_f767c.dir/CheckFunctionExists.c.o: in function `main':
+CheckFunctionExists.c:(.text+0x14): undefined reference to `sgemm_'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_f767c.dir/build.make:99: cmTC_f767c] Error 1
+gmake[1]: Leaving directory '/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_f767c/fast] Error 2
+
+
+
+Performing C++ SOURCE FILE Test PAPILO_BYTELL_HASHMAP_WORKS failed with the following output:
+Change Dir: /mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_a1b63/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_a1b63.dir/build.make CMakeFiles/cmTC_a1b63.dir/build
+gmake[1]: Entering directory '/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_a1b63.dir/src.cxx.o
+/usr/bin/c++ -DPAPILO_BYTELL_HASHMAP_WORKS -I/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external -Wno-psabi -std=c++14 -fPIE -std=gnu++14 -o CMakeFiles/cmTC_a1b63.dir/src.cxx.o -c /mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx
+In file included from /mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx:1:
+/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp: In member function ‘ska::detailv8::sherwood_v8_table<T, FindKey, ArgumentHash, Hasher, ArgumentEqual, Equal, ArgumentAlloc, ByteAlloc, BlockSize>::iterator ska::detailv8::sherwood_v8_table<T, FindKey, ArgumentHash, Hasher, ArgumentEqual, Equal, ArgumentAlloc, ByteAlloc, BlockSize>::end()’:
+/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:394:36: error: ‘numeric_limits’ is not a member of ‘std’
+  394 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                    ^~~~~~~~~~~~~~
+/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:394:57: error: expected primary-expression before ‘>’ token
+  394 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                                         ^
+/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:394:60: error: ‘::max’ has not been declared; did you mean ‘std::max’?
+  394 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                                            ^~~
+      |                                                            std::max
+In file included from /usr/include/c++/11/algorithm:62,
+                 from /mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:10,
+                 from /mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx:1:
+/usr/include/c++/11/bits/stl_algo.h:3467:5: note: ‘std::max’ declared here
+ 3467 |     max(initializer_list<_Tp> __l, _Compare __comp)
+      |     ^~~
+In file included from /mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx:1:
+/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp: In member function ‘ska::detailv8::sherwood_v8_table<T, FindKey, ArgumentHash, Hasher, ArgumentEqual, Equal, ArgumentAlloc, ByteAlloc, BlockSize>::const_iterator ska::detailv8::sherwood_v8_table<T, FindKey, ArgumentHash, Hasher, ArgumentEqual, Equal, ArgumentAlloc, ByteAlloc, BlockSize>::end() const’:
+/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:398:36: error: ‘numeric_limits’ is not a member of ‘std’
+  398 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                    ^~~~~~~~~~~~~~
+/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:398:57: error: expected primary-expression before ‘>’ token
+  398 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                                         ^
+/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:398:60: error: ‘::max’ has not been declared; did you mean ‘std::max’?
+  398 |         return { entries - 1, std::numeric_limits<size_t>::max() };
+      |                                                            ^~~
+      |                                                            std::max
+In file included from /usr/include/c++/11/algorithm:62,
+                 from /mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/papilo/src/papilo/external/ska/bytell_hash_map.hpp:10,
+                 from /mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp/src.cxx:1:
+/usr/include/c++/11/bits/stl_algo.h:3467:5: note: ‘std::max’ declared here
+ 3467 |     max(initializer_list<_Tp> __l, _Compare __comp)
+      |     ^~~
+gmake[1]: *** [CMakeFiles/cmTC_a1b63.dir/build.make:78: CMakeFiles/cmTC_a1b63.dir/src.cxx.o] Error 1
+gmake[1]: Leaving directory '/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_a1b63/fast] Error 2
+
+
+Source file was:
+#include "ska/bytell_hash_map.hpp"
+   int main() { ska::bytell_hash_map<int,int> hashmap; (void)hashmap; return 0; }

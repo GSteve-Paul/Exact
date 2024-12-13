@@ -275,10 +275,12 @@ State Solver::probe(Lit l, bool deriveImplications) {
   return State::SUCCESS;
 }
 
-void Solver::runLS() {
+bool Solver::runLS() {
   // TODO: change the condition
   // eg. trail.size() > getNbVars() * 0.8
-  bool runLsCondition = trail.size() > lsSolver.num_vars * 0.8;
+  int now_restart_iter = global.stats.NRESTARTS.z;
+  bool runLsCondition = trail.size() > lsSolver.num_vars * 0.8 && now_restart_iter - run_ls_restart_iter > 500;
+  run_ls_restart_iter = global.stats.NRESTARTS.z;
   if (runLsCondition && isClone) {
     // TODO: run Local-Search with current solution from SAT
     std::vector<int> init_solution(lsSolver.num_vars + 1, 0);
@@ -296,16 +298,20 @@ void Solver::runLS() {
     //set cutoff time for lsSolver
     cutoff_time = 60;
     cutoff_step = 5e6;
+    // std::cout << "ls init:\n";
+    // for (int i = 0; i < lsSolver.num_vars; ++i) {
+    //   std::cout << init_solution[i] << " ";
+    // }
+    // std::cout << std::endl;
+    lsSolver.low_unsat_hard_nb = 1000000000;
     lsSolver.local_search_with_decimation_small(init_solution, file_name);
-    if (lsSolver.hard_unsat_nb == 0) {
-      std::cout << "SAT\n";
-      std::cout << "ls solution:\n";
-      for (int i = 1; i <= lsSolver.num_vars; i++)
-        std::cout << lsSolver.best_soln[i] << " ";
-      std::cout << "\n";
-      exit(0);
-    }
+     // std::cout << "ls solution:\n";
+     // for (int i = 1; i <= lsSolver.num_vars; i++)
+     //   std::cout << lsSolver.low_unsat_hard_small[i] << " ";
+     // std::cout << std::endl;
+     return lsSolver.best_soln_feasible;
   }
+  return false;
 }
 
 
@@ -365,7 +371,7 @@ CeSuper Solver::runDatabasePropagation() {
 CeSuper Solver::runPropagation() {
   while (true) {
     CeSuper confl = runDatabasePropagation();
-    runLS();
+
     if (confl) return confl;
     if (equalities.propagate() == State::FAIL) continue;
     if (implications.propagate() == State::FAIL) continue;
@@ -1313,6 +1319,11 @@ SolveState Solver::solve() {
       confl = aux::timeCall<CeSuper>([&] { return runPropagation(); }, global.stats.PROPTIME);
     }
 
+    bool get_sat = runLS();
+    if (get_sat) {
+      std::cout << "c SAT by LS-small\n";
+      return SolveState::LSSAT;
+    }
     runLP = (bool)confl;
     if (confl) {
       assert(confl->hasNegativeSlack(level));
@@ -1349,9 +1360,6 @@ SolveState Solver::solve() {
       if (nconfl_to_restart <= 0) {
         backjumpTo(assumptionLevel());
         ++global.stats.NRESTARTS;
-        if (static_cast<long long>(global.stats.NRESTARTS.z) % 500 == 0) {
-          runLS();
-        }
         double rest_base = luby(global.options.lubyBase.get(), static_cast<int>(global.stats.NRESTARTS.z));
         nconfl_to_restart = (long long)rest_base * global.options.lubyMult.get();
         sortWatchlists();

@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -O3 -DNDEBUG CMakeFiles/miniisc.dir/src/benders.c.o CMakeFiles/miniisc.dir/src/miniisc.c.o CMakeFiles/miniisc.dir/src/readargs.c.o -o ../../../bin/applications/miniisc  ../../../lib/libscip.a -lm ../../../lib/libsoplex.a 

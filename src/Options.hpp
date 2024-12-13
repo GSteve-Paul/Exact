@@ -181,7 +181,7 @@ struct Options {
                         "opb",
                         {"opb", "wbo", "cnf", "wcnf", "mps", "lp"}};
   VoidOption printOpb{"print-opb", "Print OPB of the parsed problem"};
-  BoolOption uniformOut{"print-uniform", "Use a default output style for all file formats", true};
+  BoolOption uniformOut{"print-uniform", "Use a default output style for all file formats", false};
   VoidOption printSol{"print-sol", "Print the solution if found (style can be uniform or non-uniform)"};
   VoidOption printUnits{"print-units", "Print unit literals"};
   VoidOption printCsvData{"print-csv", "Print statistics in a comma-separated value format"};

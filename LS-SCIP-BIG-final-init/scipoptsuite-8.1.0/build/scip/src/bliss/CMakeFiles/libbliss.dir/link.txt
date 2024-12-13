@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libbliss.a CMakeFiles/libbliss.dir/src/abstractgraph.cc.o CMakeFiles/libbliss.dir/src/bliss_C.cc.o CMakeFiles/libbliss.dir/src/defs.cc.o CMakeFiles/libbliss.dir/src/digraph.cc.o CMakeFiles/libbliss.dir/src/graph.cc.o CMakeFiles/libbliss.dir/src/orbit.cc.o CMakeFiles/libbliss.dir/src/partition.cc.o CMakeFiles/libbliss.dir/src/uintseqhash.cc.o CMakeFiles/libbliss.dir/src/utils.cc.o
+/usr/bin/ranlib ../../../lib/libbliss.a

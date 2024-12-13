@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -O3 -DNDEBUG CMakeFiles/brachistochrone.dir/src/brachistochrone.c.o -o ../../../bin/examples/brachistochrone  ../../../lib/libscip.a -lm ../../../lib/libsoplex.a 

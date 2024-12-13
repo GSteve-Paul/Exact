@@ -1174,7 +1174,7 @@ void IntProg::runFromCmdLine() {
   solver.printHeader();
 
   global.stats.runStartTime = std::chrono::steady_clock::now();
-  [[maybe_unused]] SolveState res = optim->runFull(true, 0);
+  [[maybe_unused]] SolveState res = optim->runFull(false, 0);
 }
 
 }  // namespace xct

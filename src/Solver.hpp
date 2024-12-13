@@ -205,7 +205,8 @@ class Solver {
 
   void printHeader() const;
 
-  void runLS();
+  int run_ls_restart_iter = -100000000;
+  bool runLS();
 
   /**
    * @return SolveState:

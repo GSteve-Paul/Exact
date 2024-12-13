@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -O3 -DNDEBUG CMakeFiles/scipmip.dir/src/cppmain.cpp.o -o ../../../bin/examples/scipmip  ../../../lib/libscip.a ../../../lib/libsoplex.a 

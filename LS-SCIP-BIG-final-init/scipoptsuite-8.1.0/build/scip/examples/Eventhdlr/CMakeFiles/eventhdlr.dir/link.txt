@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -O3 -DNDEBUG CMakeFiles/eventhdlr.dir/src/cmain.c.o CMakeFiles/eventhdlr.dir/src/event_bestsol.c.o CMakeFiles/eventhdlr.dir/src/event_boundwriting.c.o -o ../../../bin/examples/eventhdlr  ../../../lib/libscip.a ../../../lib/libsoplex.a 

@@ -1,0 +1,1 @@
+/usr/bin/c++ -w -O3 -DNDEBUG CMakeFiles/bliss.dir/src/bliss.cc.o -o ../../../bin/bliss  ../../../lib/libbliss.a 

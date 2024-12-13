@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -O3 -DNDEBUG CMakeFiles/gmi.dir/src/cmain.c.o CMakeFiles/gmi.dir/src/sepa_gmi.c.o -o ../../../bin/examples/gmi  ../../../lib/libscip.a -lm ../../../lib/libsoplex.a 

@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -Wno-psabi -Wall -Wno-strict-overflow -Wno-psabi -O3 -DNDEBUG -rdynamic CMakeFiles/soplex_c_testing.dir/main.c.o -o ../../../bin/soplex_c_testing  -Wl,-rpath,/mnt/e/product/c/LS-SCIP/scipoptsuite-8.1.0/build/lib ../../../lib/libsoplexshared.so.6.0.4.0 ../../../lib/libsoplex.a 

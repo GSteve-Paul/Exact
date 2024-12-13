@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -O3 -DNDEBUG CMakeFiles/lop.dir/src/cmain.c.o CMakeFiles/lop.dir/src/cons_lop.c.o CMakeFiles/lop.dir/src/reader_lop.c.o -o ../../../bin/examples/lop  ../../../lib/libscip.a ../../../lib/libsoplex.a 

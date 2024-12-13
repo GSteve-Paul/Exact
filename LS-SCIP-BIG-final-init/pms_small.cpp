@@ -156,6 +156,7 @@ void Satlike::allocate_memory_small()
 
   cur_soln = new int[malloc_var_length];
   best_soln = new int[malloc_var_length];
+  low_unsat_hard_small = new int[malloc_var_length];
   // local_opt_soln = new int[malloc_var_length];
 
   // large_weight_clauses = new int[malloc_clause_length];
@@ -259,6 +260,7 @@ void Satlike::free_memory_small()
   // delete [] fix;
   delete[] cur_soln;
   delete[] best_soln;
+  delete[] low_unsat_hard_small;
   // delete[] local_opt_soln;
 
   // delete[] large_weight_clauses;
@@ -3532,6 +3534,13 @@ void Satlike::local_search_with_decimation_small(std::vector<int> &init_solution
         cur_hard_unsat_nb = hard_unsat_nb; // wyy-20221213-1
         step_count = step_count / 2 + 1;
       }
+
+      if (hard_unsat_nb < low_unsat_hard_nb) {
+        low_unsat_hard_nb = hard_unsat_nb;
+        for (int i = 1; i <= num_vars; i++)
+          low_unsat_hard_small[i] = cur_soln[i];
+      }
+
       if (hard_unsat_nb == 0 && (soft_unsat_weight_small < opt_unsat_weight_small || best_soln_feasible == 0))
       {
         if (soft_unsat_weight_small < top_clause_weight_small)

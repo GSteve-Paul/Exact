@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -O3 -DNDEBUG CMakeFiles/sudoku.dir/src/sudoku_main.cpp.o -o ../../../bin/examples/sudoku  ../../../lib/libscip.a ../../../lib/libsoplex.a 

@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -O3 -DNDEBUG CMakeFiles/gastrans.dir/src/gastrans.c.o -o ../../../bin/examples/gastrans  ../../../lib/libscip.a -lm ../../../lib/libsoplex.a 

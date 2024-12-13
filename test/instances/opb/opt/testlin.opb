@@ -3,7 +3,7 @@
 * comments
 *
 *
-min: 1 x2 -1 x3 ;
+* min: 1 x2 -1 x3 ;
 1 x1 +4 x2 -2 x5 >= 2;
 -1 x1 +4 x2 -2 x5 >= 3;
 * a big number

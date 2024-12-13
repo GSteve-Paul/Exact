@@ -1,4 +1,4 @@
-* #variable= 33 #constraint= 16
+* #variable= 33 #constraint= 16 #equal= 0 intsize= 20
 * #binary= 33 #integer= 0
 * NOTE: using following variable name mapping
 * x1..1 : C157
@@ -37,7 +37,7 @@
 *   Obj. scale       : 1
 *   Obj. offset      : 0
 * NOTE: new objective = (old objective - offset) * scale
-min: +171 x1 +171 x2 +171 x3 +171 x4 +163 x5 +162 x6 +163 x7 +69 x8 +69 x9 +183 x10 +183 x11 +183 x12 +183 x13 +49 x14 +183 x15 +258 x16 +517 x17 +250 x18 +500 x19 +250 x20 +500 x21 +159 x22 +318 x23 +159 x24 +318 x25 +159 x26 +318 x27 +159 x28 +318 x29 +114 x30 +228 x31 +159 x32 +318 x33 ;
+* min: +171 x1 +171 x2 +171 x3 +171 x4 +163 x5 +162 x6 +163 x7 +69 x8 +69 x9 +183 x10 +183 x11 +183 x12 +183 x13 +49 x14 +183 x15 +258 x16 +517 x17 +250 x18 +500 x19 +250 x20 +500 x21 +159 x22 +318 x23 +159 x24 +318 x25 +159 x26 +318 x27 +159 x28 +318 x29 +114 x30 +228 x31 +159 x32 +318 x33 ;
 -1 x1 -1 x2 -1 x3 -1 x4 >= -1 ;
 -1 x5 -1 x6 -1 x7 >= -1 ;
 -1 x8 -1 x9 >= -1 ;

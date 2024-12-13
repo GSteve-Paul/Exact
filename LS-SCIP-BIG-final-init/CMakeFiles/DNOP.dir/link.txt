@@ -1,0 +1,2 @@
+/usr/bin/ar qc libDNOP.a CMakeFiles/DNOP.dir/pms_small.cpp.o
+/usr/bin/ranlib libDNOP.a

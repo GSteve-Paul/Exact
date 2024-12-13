@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -Wno-psabi -Wall -Wno-strict-overflow -Wno-psabi -O3 -DNDEBUG -rdynamic CMakeFiles/soplex.dir/soplexmain.cpp.o -o ../../bin/soplex  -Wl,-rpath,:::::::::::::: ../../lib/libsoplex.a 

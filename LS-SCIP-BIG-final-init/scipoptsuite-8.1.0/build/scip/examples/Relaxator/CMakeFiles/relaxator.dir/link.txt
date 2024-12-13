@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wno-psabi -O3 -DNDEBUG CMakeFiles/relaxator.dir/src/cmain.c.o CMakeFiles/relaxator.dir/src/relax_lp.c.o CMakeFiles/relaxator.dir/src/relax_nlp.c.o -o ../../../bin/examples/relaxator  ../../../lib/libscip.a ../../../lib/libsoplex.a 
