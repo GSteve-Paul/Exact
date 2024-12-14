@@ -182,6 +182,7 @@ struct Options {
                         {"opb", "wbo", "cnf", "wcnf", "mps", "lp"}};
   VoidOption printOpb{"print-opb", "Print OPB of the parsed problem"};
   BoolOption uniformOut{"print-uniform", "Use a default output style for all file formats", false};
+  BoolOption preSolve{"pre-solve", "enable CDCL solver to pre-solve", true};
   VoidOption printSol{"print-sol", "Print the solution if found (style can be uniform or non-uniform)"};
   VoidOption printUnits{"print-units", "Print unit literals"};
   VoidOption printCsvData{"print-csv", "Print statistics in a comma-separated value format"};
@@ -329,6 +330,7 @@ struct Options {
       &optReuseCores, &optStratification, &optPrecision,     &intEncoding,
       &intContinuous, &intUnbounded,      &intDefaultBound,  &pureLits,
       &domBreakLim,   &inpProbing,        &inpAMO,           &basetime,
+      &preSolve,
       //      &test,
   };
   unordered_map<std::string, Option*> name2opt;

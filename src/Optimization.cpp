@@ -751,7 +751,7 @@ template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   try {
     solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
-    std::cout << solver.getNbConstraints() << " constraints\n";
+
     if (presolveFirstRun && !solver.isClone) {
       // TODO: clone data from PB-CDCL Solver to PB-LS Solver
       cloneDataIntoLS();
@@ -856,7 +856,7 @@ SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
       // PBS NOT PBO!
       solver.lastSol = LitVec(solver.lsSolver.num_vars + 1);
       for (int i = 1 ; i <= solver.lsSolver.num_vars; i++) {
-        solver.lastSol.value()[i] = solver.lsSolver.low_unsat_hard_small[i] > 0 ? 1 : 0;
+        solver.lastSol.value()[i] = solver.lsSolver.low_unsat_hard_small[i] > 0 ? i : -i;
       }
       return SolveState::LSSAT;
     } else if (reply == SolveState::INCONSISTENT) {

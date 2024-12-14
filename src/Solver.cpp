@@ -279,9 +279,9 @@ bool Solver::runLS() {
   // TODO: change the condition
   // eg. trail.size() > getNbVars() * 0.8
   int now_restart_iter = global.stats.NRESTARTS.z;
-  bool runLsCondition = trail.size() > lsSolver.num_vars * 0.8 && now_restart_iter - run_ls_restart_iter > 500;
-  run_ls_restart_iter = global.stats.NRESTARTS.z;
-  if (runLsCondition && isClone) {
+  bool runLsCondition = trail.size() > lsSolver.num_vars * 0.4 && now_restart_iter - run_ls_restart_iter > 500;
+  if ((run_ls_restart_iter == -100000 || runLsCondition) && isClone) {
+    run_ls_restart_iter= now_restart_iter;
     // TODO: run Local-Search with current solution from SAT
     std::vector<int> init_solution(lsSolver.num_vars + 1, 0);
     // std::set<int> trail_set;
@@ -1162,7 +1162,8 @@ void Solver::presolve() {
 
   if (global.options.verbosity.get() > 0) std::cout << "c PRESOLVE" << std::endl;
   aux::timeCallVoid([&] { heur.randomize(getPos()); }, global.stats.HEURTIME);
-  return;
+  std::cout << getNbConstraints() << " constraints\n";
+  if (!global.options.preSolve) return;
   if (objectiveIsSet() && global.options.varObjective)
     aux::timeCallVoid([&] { heur.bumpObjective(objective, getPos()); }, global.stats.HEURTIME);
   aux::timeCallVoid([&] { inProcess(); }, global.stats.INPROCESSTIME);
