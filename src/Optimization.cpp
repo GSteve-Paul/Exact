@@ -751,6 +751,7 @@ template <typename SMALL, typename LARGE>
 SolveState Optimization<SMALL, LARGE>::run(bool optimize, double timeout) {
   try {
     solver.presolve();  // will run only once, but also short-circuits (throws UnsatEncounter) when unsat was reached
+    std::cout << solver.getNbConstraints() << " constraints\n";
     if (presolveFirstRun && !solver.isClone) {
       // TODO: clone data from PB-CDCL Solver to PB-LS Solver
       cloneDataIntoLS();
