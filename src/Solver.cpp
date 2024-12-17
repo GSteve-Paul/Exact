@@ -1368,9 +1368,6 @@ SolveState Solver::solve() {
       }
       if (global.stats.NCONFL >= nconfl_to_reduce) {
         ++global.stats.NCLEANUP;
-        if (global.stats.NCONFL >= 50000) {
-          global.options.dbScale.set(100);
-        }
         nconfl_to_reduce +=
             1 + global.options.dbScale.get() *
                     std::pow(std::log(static_cast<double>(global.stats.NCONFL.z)), global.options.dbExp.get());
