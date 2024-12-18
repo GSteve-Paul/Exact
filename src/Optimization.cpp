@@ -559,19 +559,28 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
   int cnt_cons = 0;
   for (const CRef& cref : solver.getRawConstraints()) {
     const Constr& constr = solver.getCA()[cref];
+
     const CeSuper ces = constr.toExpanded(global.cePools);
-    Ce32 ce = global.cePools.take32();
+
+    Ce64 ce = global.cePools.take64();
     ces->copyTo(ce);
-    lsSolver.clause_lit_count[cnt_cons] = ce->getVars().size();
-    lsSolver.clause_lit_small[cnt_cons] = new lit_small[ce->getVars().size() + 1];
+    ce->removeUnitsAndZeroes(solver.getLevel(), solver.getPos());
+    int vcnt = 0;
+    for (const Var& v : ce->getVars()) {
+      long long coef = ce->coefs[v];
+      long long abs_coef = std::abs(coef);
+      vcnt += abs_coef != 0;
+    }
+    lsSolver.clause_lit_count[cnt_cons] = vcnt;
+    lsSolver.clause_lit_small[cnt_cons] = new lit_small[vcnt + 1];
     lsSolver.clause_true_lit_thres_small[cnt_cons] = ce->getDegree();
     lsSolver.org_clause_weight_small[cnt_cons] = lsSolver.top_clause_weight_small;
     lsSolver.clause_max_weight_small[cnt_cons] = 0;
     int cnt_vars = 0;
     for (const Var& v : ce->getVars()) {
-      int coef = ce->coefs[v];
+      long long coef = ce->coefs[v];
       long long abs_coef = abs(coef);
-
+      if (abs_coef == 0) continue;
       lsSolver.clause_lit_small[cnt_cons][cnt_vars].clause_num = cnt_cons;
       lsSolver.clause_lit_small[cnt_cons][cnt_vars].var_num = v;
       lsSolver.clause_lit_small[cnt_cons][cnt_vars].weight = abs_coef;
