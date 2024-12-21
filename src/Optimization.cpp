@@ -604,8 +604,8 @@ void Optimization<SMALL, LARGE>::cloneDataIntoLS() {
   }
 
   for (const Var& v : origObj->vars) {
-    int coef = origObj->coefs[v];
-    int abs_coef = abs(coef);
+    long long coef = origObj->coefs[v];
+    long long abs_coef = abs(coef);
     lsSolver.clause_lit_count[cnt_cons] = 1;
     lsSolver.clause_lit_small[cnt_cons] = new lit_small[lsSolver.clause_lit_count[cnt_cons] + 1];
 
