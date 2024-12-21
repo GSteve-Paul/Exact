@@ -72,9 +72,16 @@ struct ActNode {
 };
 
 class Heuristic {
+  friend class Solver;
+
   std::vector<std::pair<Lit, Lit>> phase;  // first lit is user-fixed phase, second is dynamic phase
   std::vector<ActNode> actList;
   Var nextDecision;
+
+  static constexpr double beta = 0.001;
+  std::vector<double> p;
+  int longest_trail_len = 0;
+  LitVec longest_trail;        // maintain the longest trail with no conflict
 
   int nVars() const;
 
@@ -85,6 +92,8 @@ class Heuristic {
   void undoOne(Var v, Lit l);
   void setPhase(Var v, Lit l);
   void setFixedPhase(Var v, Lit l);
+
+
 
   ActValV getActivity(Var v) const;
   const std::vector<ActNode>& getActList() const;

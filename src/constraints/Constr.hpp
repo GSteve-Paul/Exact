@@ -84,6 +84,7 @@ struct Constr {  // internal solver constraint optimized for fast propagation
     const unsigned long long id : 56;  // plenty of bits to store ID
   } header;
   const uint32_t sze;
+  unsigned confl_nb = 0;
 
   Constr(ID i, Origin o, bool lkd, unsigned int lngth, float strngth, unsigned int maxLBD);
   virtual ~Constr() {}

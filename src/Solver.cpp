@@ -80,6 +80,7 @@ Solver::Solver(Global& g)
   position.resize(1, INF);
   isorig.resize(1, true);
   objective = std::make_shared<ConstrExpArb>(global);
+  lsSolver.p = &heur.p;
   assert(!lastGlobalDual);
 }
 
@@ -279,9 +280,9 @@ bool Solver::runLS() {
   // TODO: change the condition
   // eg. trail.size() > getNbVars() * 0.8
   int now_restart_iter = global.stats.NRESTARTS.z;
-  bool runLsCondition = trail.size() > lsSolver.num_vars * 0.4 && now_restart_iter - run_ls_restart_iter > 500;
+  bool runLsCondition = trail.size() > lsSolver.num_vars * 0.8 && now_restart_iter - run_ls_restart_iter > 500;
   if ((run_ls_restart_iter == -100000 || runLsCondition) && isClone) {
-    run_ls_restart_iter= now_restart_iter;
+    run_ls_restart_iter = now_restart_iter;
     // TODO: run Local-Search with current solution from SAT
     std::vector<int> init_solution(lsSolver.num_vars + 1, 0);
     // std::set<int> trail_set;
@@ -348,6 +349,7 @@ CeSuper Solver::runDatabasePropagation() {
         }
         --qhead;
         Constr& c = ca[cr];
+        c.confl_nb++;
         CeSuper result = c.toExpanded(global.cePools);
         c.decreaseLBD(result->getLBD(level));
         c.fixEncountered(global.stats);
@@ -356,6 +358,7 @@ CeSuper Solver::runDatabasePropagation() {
       } else {
         assert(wstat == WatchStatus::KEEPWATCH);
         Constr& c = ca[cr];
+
         cPrio = c.priority;
         if (cPrio < prevPrio) {
           assert(it_ws > 0);
@@ -371,10 +374,25 @@ CeSuper Solver::runDatabasePropagation() {
 CeSuper Solver::runPropagation() {
   while (true) {
     CeSuper confl = runDatabasePropagation();
-
     if (confl) return confl;
     if (equalities.propagate() == State::FAIL) continue;
     if (implications.propagate() == State::FAIL) continue;
+    // no conflict here
+    if ((int)trail.size() > heur.longest_trail_len) {
+      heur.longest_trail_len = trail.size();
+      std::fill(heur.longest_trail.begin(), heur.longest_trail.end(), 0);
+      for (const Lit &l : trail) {
+        const Var v = toVar(l);
+        heur.longest_trail[v] = l;
+        if (l < 0) {
+          heur.p[v] -= Heuristic::beta;
+          if (heur.p[v] <= 0) heur.p[v] = Heuristic::beta;
+        }
+        else {
+          heur.p[v] += Heuristic::beta;
+        }
+      }
+    }
     return CeNull();
   }
 }
@@ -1365,6 +1383,14 @@ SolveState Solver::solve() {
         double rest_base = luby(global.options.lubyBase.get(), static_cast<int>(global.stats.NRESTARTS.z));
         nconfl_to_restart = (long long)rest_base * global.options.lubyMult.get();
         sortWatchlists();
+
+        // change phase_save
+        for (Var v = 1 ; v <= getNbVars(); v++) {
+          int random_num = rand() % 5000;
+          if (random_num < 2500) {
+            heur.setFixedPhase(v, lsSolver.low_unsat_hard_small[v] ? v : -v);
+          }
+        }
       }
       if (global.stats.NCONFL >= nconfl_to_reduce) {
         ++global.stats.NCLEANUP;

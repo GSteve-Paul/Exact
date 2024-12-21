@@ -30,7 +30,6 @@
 
 #include "Int.h"
 
-
 #define mypop(stack) stack[--stack##_fill_pointer]
 #define mypush(item, stack) stack[stack##_fill_pointer++] = item
 
@@ -95,6 +94,7 @@ static void start_timing()
 class Satlike
 {
 public:
+	std::vector<double> *p;
 	/***********non-algorithmic information ****************/
 	// int problem_weighted;
 	// int partial; // 1 if the instance has hard clauses, and 0 otherwise.

@@ -84,6 +84,8 @@ void Heuristic::resize(int nvars) {
   int old_n = nVars();  // at least one after initialization
   assert(old_n >= 1);
   phase.resize(nvars);
+  p.resize(nvars);
+  longest_trail.resize(nvars);
   actList.resize(nvars);
   for (Var v = old_n; v < nvars; ++v) {
     phase[v] = {0, -v};
@@ -199,6 +201,9 @@ Lit Heuristic::pickBranchLit(const std::vector<int>& position, bool coreguided) 
   while (isKnown(position, nextDecision)) {
     nextDecision = actList[nextDecision].next;
   }
+
+  if (longest_trail[nextDecision])
+    return longest_trail[nextDecision];
   return (!coreguided && phase[nextDecision].first) ? phase[nextDecision].first : phase[nextDecision].second;
 }
 
